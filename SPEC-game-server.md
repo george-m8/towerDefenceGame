@@ -43,9 +43,9 @@ This module is the server and the message format only. The browser doesn't use i
 
 **Time and updates**
 - Each room ticks on its own timer at 20 Hz, times `state.speed`, with the same catch-up cap as `main.ts`. A paused or game-over room doesn't tick.
-- **Snapshot:** on create, join, rejoin and restart, the player gets the whole `GameState` except `flow` (the client recomputes it lazily) and `rngState` (server only).
+- **Snapshot:** on create, join, rejoin and restart, the player gets the whole `GameState` except `flow` (the client recomputes it lazily) and `rngState` (server only). Enemies carry only `id`, `x`, `y`, `hp` and `maxHp`, with positions rounded to 2 decimals, and structures leave out `cooldown` (see `ClientEnemy` / `ClientStructure`).
 - **Updates:** sent to everyone in the room at 10 Hz (every 2 ticks), and straight away after any command that changes state. An update contains: `tick`, `enemies`, `effects`, `structures`, `players` (without tokens), `wave`, `keep`, `paused`, `speed`, `gameOver`. The tile layers (`terrain`, `base`, `mount`) and `features` are only included when `gridVersion` has changed since the last update.
-- **Size target:** an update with 200 enemies and 150 structures is under 30 KB of JSON. Smaller encodings can come later if it's ever a problem.
+- **Size target:** an update with 200 enemies and 150 structures is under 30 KB of JSON (measured: about 21 KB; 41 KB when it carries the grid). Sending full enemy objects measured 40 KB, which is why enemies and structures are trimmed. Smaller encodings can come later if it's ever a problem.
 
 **Hosting**
 - `HOST` (default `0.0.0.0`, so other machines on the network can connect) and `PORT` (default `8787`) come from environment variables.
@@ -74,7 +74,7 @@ export type ServerMessage =
   | { type: "error"; reason: string };
 ```
 
-`ClientState` is `GameState` without `flow` and `rngState`. `StateUpdate` is the update described above, with the grid fields optional. Names are trimmed, 1-16 characters, and made unique in the room (a duplicate gets " 2" added).
+`ClientState` is `GameState` without `flow` and `rngState`, with trimmed enemies and structures. `StateUpdate` is the update described above, with the grid fields optional. Names are trimmed, 1-16 characters, and made unique in the room (a duplicate gets " 2" added).
 
 ## Out of scope
 

@@ -55,12 +55,12 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** `src/net/snapshot.ts` with `toClientState(state)` (everything except `flow` and `rngState`) and `toUpdate(state, lastGridVersion)` (the dynamic fields every time; `terrain`, `base`, `mount` and `features` only when `gridVersion` differs). Neither carries tokens, since tokens live only in the server's room data, never in `GameState`.
 
 **Acceptance criteria:**
-- [ ] `toClientState` drops `flow` and `rngState`, and the client can rebuild `flow` lazily (`getFlowField` works on a received state)
-- [ ] `toUpdate` includes grid fields only after a grid change
-- [ ] An update with 200 enemies and 150 structures is under 30 KB of JSON
+- [x] `toClientState` drops `flow` and `rngState`, and the client can rebuild `flow` lazily (`getFlowField` works on a received state)
+- [x] `toUpdate` includes grid fields only after a grid change
+- [x] An update with 200 enemies and 150 structures is under 30 KB of JSON
 
 **Verification:**
-- [ ] `tests/server/snapshot.test.ts`, including the size check
+- [x] `tests/server/snapshot.test.ts`, including the size check
 
 **Dependencies:** Task 1
 
@@ -71,8 +71,8 @@ Standard verification for every task (in addition to task-specific checks):
 ---
 
 ### Checkpoint G: shared pieces
-- [ ] All tests pass; the update size test is under 30 KB
-- [ ] `npm run server` starts and logs its LAN address
+- [x] All tests pass; the update size test is under 30 KB
+- [x] `npm run server` starts and logs its LAN address
 
 ---
 

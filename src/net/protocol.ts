@@ -3,9 +3,11 @@ import { STRUCTURES, type StructureStats } from "../sim/config";
 import type {
   Command,
   CommandResult,
+  Enemy,
   Facing,
   GameState,
   PlayerId,
+  Structure,
   StructureKind,
 } from "../sim/types";
 
@@ -27,8 +29,19 @@ export type ClientMessage =
   | { type: "command"; seq: number; command: OnlineCommand }
   | { type: "restart" };
 
-/** Everything a client needs to draw the game. `flow` is rebuilt lazily; `rngState` stays on the server. */
-export type ClientState = Omit<GameState, "flow" | "rngState">;
+/** The enemy fields a client draws with. Positions are rounded to 2 decimals. */
+export type ClientEnemy = Pick<Enemy, "id" | "x" | "y" | "hp" | "maxHp">;
+/** Structures without their firing cooldown, which only the server needs. */
+export type ClientStructure = Omit<Structure, "cooldown">;
+
+/**
+ * Everything a client needs to draw the game. `flow` is rebuilt lazily, `rngState` stays on
+ * the server, and enemies and structures carry only the fields a client uses.
+ */
+export type ClientState = Omit<GameState, "flow" | "rngState" | "enemies" | "structures"> & {
+  enemies: ClientEnemy[];
+  structures: Record<number, ClientStructure>;
+};
 
 type GridFields = "terrain" | "base" | "mount" | "features";
 type DynamicFields =
@@ -45,7 +58,7 @@ type DynamicFields =
   | "gameOver";
 
 /** Sent every few ticks. The grid fields are only present when the grid changed. */
-export type StateUpdate = Pick<GameState, DynamicFields> & Partial<Pick<GameState, GridFields>>;
+export type StateUpdate = Pick<ClientState, DynamicFields> & Partial<Pick<ClientState, GridFields>>;
 
 export type ServerMessage =
   | { type: "welcome"; room: string; playerId: PlayerId; token: string; state: ClientState }
