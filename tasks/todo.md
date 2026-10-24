@@ -149,13 +149,13 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** `waves.ts`: wave N spawns `5 + 3N` enemies with HP `20 * (1 + 0.15 * (N - 1))`, staggered 0.5s apart across random spawn-zone tiles (seeded rng). A 20s countdown starts after a wave finishes spawning. A `sendWave` command skips the countdown and awards +1 gold per full second skipped. The panel shows the wave number, countdown and a "Send next wave" button. The dev `E` key goes behind a dev flag.
 
 **Acceptance criteria:**
-- [ ] Wave N spawns exactly `5 + 3N` enemies with the scaled HP
-- [ ] The countdown runs between waves, and `sendWave` starts the next wave immediately with the correct bonus gold. Waves can overlap.
-- [ ] Waves continue indefinitely
+- [x] Wave N spawns exactly `5 + 3N` enemies with the scaled HP
+- [x] The countdown runs between waves, and `sendWave` starts the next wave immediately with the correct bonus gold. Waves can overlap.
+- [x] Waves continue indefinitely
 
 **Verification:**
-- [ ] `npm test` (`tests/sim/waves.test.ts`: counts and HP for waves 1, 5 and 20, countdown timing, early send, spawn stagger)
-- [ ] Manual: play through 3+ waves, use "Send next wave"
+- [x] `npm test` (`tests/sim/waves.test.ts`: counts and HP for waves 1, 5 and 20, countdown timing, early send, spawn stagger)
+- [x] Manual: play through 3+ waves, use "Send next wave"
 
 **Dependencies:** Task 5 (Task 6 recommended first for the full experience, but not required)
 
@@ -166,8 +166,8 @@ Standard verification for every task (in addition to task-specific checks):
 ---
 
 ### Checkpoint 2: Playable without defences
-- [ ] All tests pass, build clean
-- [ ] Waves spawn endlessly. Enemies route around walls, breach when fully enclosed, and can kill the keep. Restart works.
+- [x] All tests pass, build clean
+- [x] Waves spawn endlessly. Enemies route around walls, breach when fully enclosed, and can kill the keep. Restart works.
 - [ ] Review with human before proceeding
 
 ---

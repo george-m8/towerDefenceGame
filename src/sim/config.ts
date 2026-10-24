@@ -30,3 +30,13 @@ export const ENEMY = {
   structureDps: 5,
   baseBounty: 2,
 };
+
+export const WAVES = {
+  countdownSeconds: 20, // before wave 1, and after each wave finishes spawning
+  spawnIntervalSeconds: 0.5,
+  baseCount: 5,
+  countPerWave: 3,
+  hpGrowthPerWave: 0.15,
+  bountyStepWaves: 5, // bounty +1 every this many waves
+  earlySendGoldPerSecond: 1,
+};

@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { ENEMY, STRUCTURES, TICK_RATE } from "../../src/sim/config";
 import { spawnEnemy } from "../../src/sim/enemies";
-import { applyCommand, createGame, tick } from "../../src/sim/game";
+import { applyCommand, tick } from "../../src/sim/game";
 import { structureAt } from "../../src/sim/grid";
 import type { GameState } from "../../src/sim/types";
-import { buildAt, ring } from "./helpers";
+import { buildAt, createGameWithoutWaves, ring } from "./helpers";
 
 const ticksPerTile = TICK_RATE / ENEMY.speed;
 
@@ -17,7 +17,7 @@ function run(state: GameState, ticks: number, each?: () => void) {
 
 describe("enemy movement", () => {
   it("walks to the keep in the expected time and deals damage on arrival", () => {
-    const state = createGame(1);
+    const state = createGameWithoutWaves();
     const start = { x: 0, y: state.keep.y + 1 };
     const tiles = state.keep.x - start.x; // straight line to the keep's left edge
     spawnEnemy(state, start.x, start.y);
@@ -32,7 +32,7 @@ describe("enemy movement", () => {
   });
 
   it("reroutes around a wall placed in its path and never walks through it", () => {
-    const state = createGame(1);
+    const state = createGameWithoutWaves();
     const y = state.keep.y + 1;
     spawnEnemy(state, 0, y);
     run(state, Math.ceil(2 * ticksPerTile));
@@ -48,7 +48,7 @@ describe("enemy movement", () => {
   });
 
   it("ends the game when keep HP reaches 0, and stops ticking", () => {
-    const state = createGame(1);
+    const state = createGameWithoutWaves();
     state.keep.hp = ENEMY.keepDamage;
     spawnEnemy(state, state.keep.x - 1, state.keep.y);
     run(state, Math.ceil(2 * ticksPerTile));
@@ -62,7 +62,7 @@ describe("enemy movement", () => {
 
 describe("building near enemies", () => {
   it("rejects building on a tile an enemy is standing on or moving into", () => {
-    const state = createGame(1);
+    const state = createGameWithoutWaves();
     const y = state.keep.y + 1;
     spawnEnemy(state, 10, y);
     expect(applyCommand(state, { type: "build", kind: "wall", x: 10, y })).toEqual({
@@ -79,7 +79,7 @@ describe("breaking through", () => {
   const hitsToBreakWall = Math.ceil(STRUCTURES.wall.maxHp / ENEMY.structureDps);
 
   it("attacks only the structure on the cheapest route when the keep is enclosed", () => {
-    const state = createGame(1);
+    const state = createGameWithoutWaves();
     const { keep } = state;
     const walls = ring(keep.x - 1, keep.y - 1, keep.x + keep.size, keep.y + keep.size);
     buildAt(state, walls);
@@ -106,7 +106,7 @@ describe("breaking through", () => {
   });
 
   it("never damages structures when an open route exists", () => {
-    const state = createGame(1);
+    const state = createGameWithoutWaves();
     const { keep } = state;
     // Enclose the keep except for one gap on the far (right) side.
     const gap = { x: keep.x + keep.size, y: keep.y + 1 };

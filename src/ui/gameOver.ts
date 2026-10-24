@@ -17,7 +17,8 @@ export function createGameOverDialog(root: HTMLElement, onRestart: () => void) {
       if (root.hidden === !state.gameOver) return;
       root.hidden = !state.gameOver;
       const seconds = Math.floor(state.tick / TICK_RATE);
-      summary.textContent = `You survived ${Math.floor(seconds / 60)}m ${seconds % 60}s.`;
+      const time = `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+      summary.textContent = `You reached wave ${state.wave.number} and held out for ${time}.`;
     },
   };
 }

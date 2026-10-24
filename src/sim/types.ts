@@ -38,6 +38,17 @@ export interface FlowField {
   dist: number[];
 }
 
+export interface WaveState {
+  /** Waves started so far (0 before the first wave). */
+  number: number;
+  /** Enemies of the current wave still to spawn. */
+  toSpawn: number;
+  /** Ticks until the next spawn while spawning. */
+  spawnTimer: number;
+  /** Ticks until the next wave, once spawning has finished. */
+  countdown: number;
+}
+
 export interface Keep {
   x: number; // top-left tile
   y: number;
@@ -59,6 +70,7 @@ export interface GameState {
   enemies: Enemy[];
   spawnTiles: Point[];
   keep: Keep;
+  wave: WaveState;
   gold: number;
   tick: number;
   paused: boolean;
@@ -70,6 +82,7 @@ export type Command =
   | { type: "togglePause" }
   | { type: "build"; kind: StructureKind; x: number; y: number }
   /** Dev only: spawn enemies at random spawn tiles. */
-  | { type: "debugSpawn"; count: number };
+  | { type: "debugSpawn"; count: number }
+  | { type: "sendWave" };
 
 export type CommandResult = { ok: true } | { ok: false; reason: string };

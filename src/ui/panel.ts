@@ -1,15 +1,24 @@
-import { STRUCTURES } from "../sim/config";
-import type { GameState } from "../sim/types";
+import { STRUCTURES, TICK_RATE } from "../sim/config";
+import type { Command, CommandResult, GameState } from "../sim/types";
 import { GLYPHS } from "../render/palette";
-import { TOOLS, type UiState } from "./state";
+import { TOOLS, showMessage, type UiState } from "./state";
 
-export function createPanel(root: HTMLElement, ui: UiState) {
+export function createPanel(
+  root: HTMLElement,
+  ui: UiState,
+  dispatch: (command: Command) => CommandResult,
+) {
   root.innerHTML = `
     <dl class="stats">
       <dt>Gold</dt><dd data-stat="gold"></dd>
       <dt>Keep</dt><dd data-stat="keep"></dd>
-      <dt>Tick</dt><dd data-stat="tick"></dd>
+      <dt>Wave</dt><dd data-stat="wave"></dd>
+      <dt>Next</dt><dd data-stat="next"></dd>
     </dl>
+    <div class="actions">
+      <button class="button" data-action="sendWave">Send wave</button>
+      <button class="button" data-action="pause">Pause</button>
+    </div>
     <h2 class="section">Build</h2>
     <div class="tools">
       ${TOOLS.map(
@@ -27,10 +36,18 @@ export function createPanel(root: HTMLElement, ui: UiState) {
   const field = (name: string) => root.querySelector<HTMLElement>(`[data-stat="${name}"]`)!;
   const gold = field("gold");
   const keep = field("keep");
-  const tickCount = field("tick");
+  const wave = field("wave");
+  const next = field("next");
   const status = field("status");
+  const sendWaveButton = root.querySelector<HTMLButtonElement>('[data-action="sendWave"]')!;
+  const pauseButton = root.querySelector<HTMLButtonElement>('[data-action="pause"]')!;
   const toolButtons = [...root.querySelectorAll<HTMLButtonElement>("[data-tool]")];
 
+  sendWaveButton.addEventListener("click", () => {
+    const result = dispatch({ type: "sendWave" });
+    if (!result.ok) showMessage(ui, result.reason);
+  });
+  pauseButton.addEventListener("click", () => dispatch({ type: "togglePause" }));
   for (const button of toolButtons) {
     button.addEventListener("click", () => {
       const tool = button.dataset.tool as UiState["tool"];
@@ -42,7 +59,11 @@ export function createPanel(root: HTMLElement, ui: UiState) {
     update(state: GameState) {
       gold.textContent = String(state.gold);
       keep.textContent = `${state.keep.hp} / ${state.keep.maxHp}`;
-      tickCount.textContent = String(state.tick);
+      wave.textContent = String(state.wave.number);
+      const spawning = state.wave.toSpawn > 0;
+      next.textContent = spawning ? "incoming!" : `${Math.ceil(state.wave.countdown / TICK_RATE)}s`;
+      sendWaveButton.disabled = spawning || state.gameOver;
+      pauseButton.textContent = state.paused ? "Resume" : "Pause";
       for (const button of toolButtons) {
         button.classList.toggle("selected", button.dataset.tool === ui.tool);
       }

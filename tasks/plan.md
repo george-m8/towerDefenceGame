@@ -62,7 +62,7 @@ T9, T10a and T11 only depend on T8 and can be built in any order (or in parallel
 - [x] Task 4: Flow field pathfinding and debug overlay
 - [x] Task 5: Enemies walk to the keep, keep HP, game over and restart
 - [x] Task 6: Blocked path - enemies attack and destroy structures
-- [ ] Task 7: Endless waves with countdown and early send
+- [x] Task 7: Endless waves with countdown and early send
 
 ### Checkpoint 2: Playable without defences
 - [ ] All tests pass

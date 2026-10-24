@@ -5,6 +5,7 @@ import { createPanel } from "./ui/panel";
 import { bindInput } from "./ui/input";
 import { createUiState } from "./ui/state";
 import { createGameOverDialog } from "./ui/gameOver";
+import type { Command } from "./sim/types";
 
 const TICK_MS = 1000 / TICK_RATE;
 // Cap catch-up after the tab was in the background, so we never spiral.
@@ -14,12 +15,13 @@ let state = createGame(Date.now() >>> 0);
 const ui = createUiState();
 const canvas = document.querySelector<HTMLCanvasElement>("#map")!;
 const renderer = createRenderer(canvas, state.width, state.height);
-const panel = createPanel(document.querySelector<HTMLElement>("#panel")!, ui);
+const dispatch = (command: Command) => applyCommand(state, command);
+const panel = createPanel(document.querySelector<HTMLElement>("#panel")!, ui, dispatch);
 const gameOver = createGameOverDialog(document.querySelector<HTMLElement>("#game-over")!, () => {
   state = createGame(Date.now() >>> 0);
   ui.tool = null;
 });
-bindInput(canvas, ui, (command) => applyCommand(state, command));
+bindInput(canvas, ui, dispatch);
 
 let lastTime = performance.now();
 let accumulator = 0;

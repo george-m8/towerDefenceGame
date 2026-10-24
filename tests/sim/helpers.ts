@@ -1,3 +1,4 @@
+import { createGame } from "../../src/sim/game";
 import { placeStructure } from "../../src/sim/grid";
 import type { GameState, Point, StructureKind } from "../../src/sim/types";
 
@@ -12,4 +13,11 @@ export function ring(x0: number, y0: number, x1: number, y1: number): Point[] {
   for (let x = x0; x <= x1; x++) points.push({ x, y: y0 }, { x, y: y1 });
   for (let y = y0 + 1; y < y1; y++) points.push({ x: x0, y }, { x: x1, y });
   return points;
+}
+
+/** A game whose wave countdown never runs out, for testing other systems in isolation. */
+export function createGameWithoutWaves(seed = 1): GameState {
+  const state = createGame(seed);
+  state.wave.countdown = Infinity;
+  return state;
 }

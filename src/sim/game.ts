@@ -10,6 +10,7 @@ import {
 import { spawnEnemy, updateEnemies } from "./enemies";
 import { EMPTY, KEEP_TILE, canBuild, placeStructure } from "./grid";
 import { randomInt } from "./rng";
+import { createWaveState, sendWaveEarly, updateWaves } from "./waves";
 import type { Command, CommandResult, GameState, Point } from "./types";
 
 export function createGame(seed: number): GameState {
@@ -39,6 +40,7 @@ export function createGame(seed: number): GameState {
     enemies: [],
     spawnTiles,
     keep: { x: keepX, y: keepY, size: KEEP_SIZE, hp: KEEP_HP, maxHp: KEEP_HP },
+    wave: createWaveState(),
     gold: STARTING_GOLD,
     tick: 0,
     paused: false,
@@ -51,6 +53,7 @@ export function tick(state: GameState): void {
   if (state.paused || state.gameOver) return;
   state.tick++;
   updateEnemies(state);
+  updateWaves(state);
   if (state.keep.hp <= 0) state.gameOver = true;
 }
 
@@ -66,6 +69,8 @@ export function applyCommand(state: GameState, command: Command): CommandResult 
       placeStructure(state, command.kind, command.x, command.y);
       return { ok: true };
     }
+    case "sendWave":
+      return sendWaveEarly(state);
     case "debugSpawn":
       for (let i = 0; i < command.count; i++) {
         const p = state.spawnTiles[randomInt(state, 0, state.spawnTiles.length - 1)];

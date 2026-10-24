@@ -174,3 +174,19 @@ body {
   color: var(--paper);
   background: var(--ink);
 }
+
+.actions {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.actions .button {
+  min-width: 0;
+  flex: 1;
+}
+
+.button:disabled {
+  color: #888;
+  cursor: default;
+}
