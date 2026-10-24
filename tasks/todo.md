@@ -1,178 +1,139 @@
-# Tasks: map-gen
+# Tasks: tower-aiming
 
-Spec: [`SPEC-map-gen.md`](../SPEC-map-gen.md) | Plan: [`plan.md`](plan.md) | Map: [`CAPABILITIES.md`](../CAPABILITIES.md)
+Spec: [`SPEC-tower-aiming.md`](../SPEC-tower-aiming.md) | Plan: [`plan.md`](plan.md) | Map: [`CAPABILITIES.md`](../CAPABILITIES.md)
 
 Standard verification for every task (in addition to task-specific checks):
 `npm run typecheck && npm test && npm run build`
 
 ---
 
-## Phase C: Terrain and the generator
+## Phase E: Aiming rules
 
-## Task 1: Terrain rules for walking and building
+## Task 1: Angle maths module
 
-**Description:** Extend `Terrain` to `"ground" | "ford" | "river" | "sea" | "rock" | "tree"` with a `TERRAIN` table in config (walkable; buildable `any` / `bridgeOnly` / `none`). Add grid helpers `terrainAt` and `isWalkable` (terrain walkable, or a bridge on it once bridges exist). Pathfinding skips non-walkable tiles entirely. `canBuild` rejects sea, rock and trees ("Can't build on rock" etc.) and allows only bridges on rivers (the bridge kind arrives in Task 2, so for now every build on a river is rejected). The renderer draws terrain colours and glyphs. Tests set terrain by hand.
+**Description:** Add a pure `src/sim/aiming.ts`. Angles are in degrees, measured clockwise from north (up the screen, negative y), from the tower's tile centre to a point:
+- `facingAngle(facing)`: N 0, E 90, S 180, W 270
+- `angleTo(from, to)`: the angle from a tower tile to a point
+- `angleBetween(a, b)`: the smallest absolute difference, 0-180
+- `inArc(aimAngle, arcDegrees, angle)`: inside or exactly on the edge; 360 always true
+- `turnTowards(current, target, maxStep)`: shorter way round, never overshoots, result normalised to [0, 360)
+
+No game changes yet.
 
 **Acceptance criteria:**
-- [x] Enemy routes never include sea, river, rock or tree tiles. Fords behave like ground.
-- [x] Building on sea, rock, tree or river is rejected with a clear reason. Ground and fords work as before.
-- [x] Terrain is drawn by the renderer (visual check moved to Checkpoint C, once the generator puts terrain on the map)
+- [ ] `angleTo` is correct for all four compass directions and the four diagonals
+- [ ] `inArc` is true at the centre and exactly on the edge, false just outside, and always true for 360°
+- [ ] `turnTowards` takes the shorter way across 0°/360°, stops exactly on the target, and never overshoots
 
 **Verification:**
-- [x] `npm test` (new `tests/sim/terrain.test.ts`)
-- [x] Manual: terrain renders with the spec's glyphs and colours (checked at Checkpoint C)
+- [ ] `npm test` (new `tests/sim/aiming.test.ts`)
 
 **Dependencies:** None
 
-**Files likely touched:** `src/sim/types.ts`, `src/sim/config.ts`, `src/sim/grid.ts`, `src/sim/pathfinding.ts`, `src/render/canvas.ts` + `palette.ts`, `tests/sim/terrain.test.ts`
+**Files likely touched:** `src/sim/aiming.ts`, `tests/sim/aiming.test.ts`
 
-**Estimated scope:** M
+**Estimated scope:** S
 
 ---
 
-## Task 2: Bridges over rivers
+## Task 2: Facing on every tower and arc-limited targeting
 
-**Description:** Add the `bridge` structure (base layer, cost 10, no HP, doesn't block, doesn't accept a mount, key `8`, glyph `=`). It can be built only on river tiles, and `isWalkable` treats a bridged river as walkable. Selling a bridge is rejected while an enemy is on it.
+**Description:**
+- Add `arcDegrees` and `turnDegreesPerSecond` to `TowerStats`, plus `AIM_TOLERANCE_DEGREES = 5`. Values: archer 90 / 0, cannon 360 / 90, catapult 360 / 30.
+- `placeStructure` sets `facing` on every tower (and still on directional traps), and sets `aim` to the facing angle for turning towers.
+- Fixed towers (turn speed 0) target only enemies inside their arc, via `inArc(angleTo(...))`.
+- `glyphFor` draws arrows only for directional traps, so towers keep their letters.
+- Update existing tests that rely on all-round archers to give the archer a facing towards its enemy (same intent).
 
 **Acceptance criteria:**
-- [x] A bridge can be built only on a river tile, and anything else on a river is still rejected
-- [x] A river that blocked the only route becomes crossable once bridged; enemies reroute over it
-- [x] Selling a bridge with an enemy on it is rejected; otherwise it refunds as usual
+- [ ] Every placed tower records the facing it was built with. Turning towers start with `aim` on that facing.
+- [ ] An archer facing E fires at an enemy to its east and ignores an equally close enemy to its west, even when the western one is closer to the keep
+- [ ] Towers still draw as `A`, `C` and `P` (not arrows). All existing tests pass after the facing updates.
 
 **Verification:**
-- [x] `npm test` (`tests/sim/terrain.test.ts` bridge cases)
-- [x] Manual: bridge a river and watch the path overlay (`D`) reroute (checked at Checkpoint C)
+- [ ] `npm test` (`tests/sim/towers.test.ts`; touched tests in `economy`/`layers` tests listed in the commit message)
+- [ ] Manual: place archers facing different ways; they keep their letter glyphs
 
 **Dependencies:** Task 1
 
-**Files likely touched:** `src/sim/config.ts`, `src/sim/grid.ts`, `src/sim/economy.ts`, `src/ui/state.ts`, `src/render/palette.ts`, `tests/sim/terrain.test.ts`
+**Files likely touched:** `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/grid.ts`, `src/sim/towers.ts`, `src/render/palette.ts` (+ tests)
 
-**Estimated scope:** S
+**Estimated scope:** M
 
 ---
 
-## Task 3: Map generator with coast, river, fords and guarantees
+## Task 3: Turning towers
 
-**Description:** Add `src/sim/mapgen.ts` with `generateMap(state)` using the game's seeded rng and `MAP_GEN` config:
-- coast band on a random non-spawn edge
-- one meandering river in any direction, with 1-2 fords
-- clear zones (a 4-tile ring around the keep, the spawn plus 2 columns)
-- route validation with capped, deterministic regeneration
-
-`createGame(seed, options?)` runs it unless `options.blankMap` is set. Existing tests move to blank maps through the test helpers. Show the seed in the panel.
+**Description:** In `towers.ts`, turning towers (360° arc, turn speed above 0) pick their target as today (in range, closest to the keep), then turn `aim` towards it by at most `turnDegreesPerSecond / TICK_RATE` per tick. They fire only when the target is within `AIM_TOLERANCE_DEGREES` of `aim`. The cooldown keeps counting down while they turn, and the target is re-picked every tick.
 
 **Acceptance criteria:**
-- [x] Same seed gives an identical map, and different seeds give different maps
-- [x] For 500 seeds: a walkable route exists from every spawn tile to the keep, the keep ring and spawn columns are clear, there's exactly one coast and one river, and each river has 1-2 fords
-- [x] Works on a 96x64 state with the same guarantees. Regeneration attempts are capped and the fallback is tested.
+- [ ] A cannon facing N with an enemy due S doesn't fire until it has turned (about 2 s at 90°/s, within a tick), then fires
+- [ ] A catapult in the same setup takes about 3x as long. Its minimum range is still respected.
+- [ ] A turning tower already aimed at its target fires immediately, exactly as before (no regression for targets in front)
 
 **Verification:**
-- [x] `npm test` (new `tests/sim/mapgen.test.ts`; all existing tests green on `blankMap`)
-- [x] Manual: reload a few times. Each map has a coast and a river, and enemies cross only at fords.
+- [ ] `npm test` (`tests/sim/towers.test.ts` turning cases)
+- [ ] Manual: watch a cannon swing round onto a wave
 
 **Dependencies:** Task 2
 
-**Files likely touched:** `src/sim/mapgen.ts`, `src/sim/game.ts`, `src/sim/config.ts`, `src/sim/types.ts`, `tests/sim/mapgen.test.ts`, `tests/sim/helpers.ts` (+ `createGame` calls in existing tests)
-
-**Estimated scope:** M (the test-file updates are mechanical)
-
----
-
-### Checkpoint C: generated maps
-- [x] All tests pass, including the 500-seed guarantee tests
-- [x] Browser: several seeds look right; enemies use fords or bridges and never cross water (found and fixed: fords that did not cross, path arrows drawn on water)
-- [ ] Review with human before adding the remaining features
-
----
-
-## Phase D: Map features
-
-## Task 4: Rocks, forests and clearing trees
-
-**Description:** Generator passes for rock clusters (2-8 tiles) and forest patches (4-15 trees), with counts from per-1,000-tile densities, outside the clear zones and without breaking the route guarantee. The X tool on a tree clears it for `TREE_CLEAR_GOLD`, turning it into ground (bumps `gridVersion`). Rocks can't be cleared.
-
-**Acceptance criteria:**
-- [x] Maps contain rock clusters and forests, and guarantees still hold for 500 seeds
-- [x] Clearing a tree pays its gold, makes the tile ground and lets enemies use it. Clearing rock is rejected.
-- [x] Feature counts scale with map area (96x64 has noticeably more than 48x32)
-
-**Verification:**
-- [x] `npm test` (`tests/sim/mapgen.test.ts`, `tests/sim/terrain.test.ts`)
-- [x] Manual: clear a line of trees with X and watch the path overlay change
-
-**Dependencies:** Task 3
-
-**Files likely touched:** `src/sim/mapgen.ts`, `src/sim/config.ts`, `src/sim/economy.ts`, `tests/sim/mapgen.test.ts`, `tests/sim/terrain.test.ts`
+**Files likely touched:** `src/sim/towers.ts`, `tests/sim/towers.test.ts`
 
 **Estimated scope:** S
 
 ---
 
-## Task 5: Ruins
+### Checkpoint E: aiming works
+- [ ] All tests pass, build clean
+- [ ] Browser: an archer ignores enemies behind it; a cannon visibly swings onto targets before firing
+- [ ] Review with human (including whether the arc and turn numbers feel right)
 
-**Description:** Add the `ruin` structure (base layer, blocks, accepts a mount, not buildable by the player, glyph `#` in dark grey). The generator places fragments (lines, L shapes, broken squares) of 3-8 tiles at 40-80% HP, outside the clear zones. Selling a ruin pays `RUIN_SALVAGE_GOLD`, scaled by HP.
+---
+
+## Phase F: Showing it
+
+## Task 4: Arc overlay, facing notch and aim line
+
+**Description:** The range overlay (while placing a tower, or hovering a placed one) tints only the tiles that are in range, outside the minimum range, and inside the arc for the tower's facing. It uses `aiming.ts` and the same range rules as targeting. Placed towers show a small notch on the tile edge they face. Hovering a turning tower also draws a short line along its current `aim`. The ghost while placing shows the facing notch for the current `R` facing.
 
 **Acceptance criteria:**
-- [x] Ruins start damaged, block movement, can hold a tower, and are attacked only when sealing the route
-- [x] Ruins aren't in the build tools, and `canBuild` rejects the ruin kind
-- [x] Selling a ruin pays salvage scaled by HP. Guarantees hold for 500 seeds, and every ruin is reachable.
+- [ ] The placement overlay covers exactly the tiles the tower could fire at for the current facing (range, minimum range and arc)
+- [ ] Every placed tower shows which way it faces at a glance
+- [ ] Hovering a cannon or catapult shows its current aim line, which moves as it turns
 
 **Verification:**
-- [x] `npm test` (`tests/sim/mapgen.test.ts`, `tests/sim/layers.test.ts`, `tests/sim/economy.test.ts`)
-- [x] Manual: put an archer on a ruin; sell a ruin
+- [ ] `npm run build`
+- [ ] Manual: rotate an archer ghost with `R` and watch the quarter circle swing round; hover a turning cannon during a wave
 
 **Dependencies:** Task 3
 
-**Files likely touched:** `src/sim/config.ts`, `src/sim/mapgen.ts`, `src/sim/grid.ts`, `src/sim/economy.ts`, `src/render/palette.ts` (+ tests)
+**Files likely touched:** `src/render/canvas.ts`, `src/render/palette.ts`
 
 **Estimated scope:** M
 
 ---
 
-## Task 6: Treasure chests
+## Task 5: Hover info and docs
 
-**Description:** Add `features: MapFeature[]` to the game state with a `chest` kind (gold 20-60, scaled by distance from the keep). The generator places chests on reachable open ground. Building anything on a chest tile adds its gold and removes it. Chests are drawn as `$`.
+**Description:** Tower hover info shows facing and arc (`Archer (on wall), facing east, 90° arc`), and turning towers add `turns 90°/s`. README: a "Facing and arcs" note, `R` rotates towers as well as wall spikes, and arcs and turn speeds in the structures table. `SPEC.md` gets a pointer to `SPEC-tower-aiming.md`.
 
 **Acceptance criteria:**
-- [x] Building on a chest tile pays its gold once and removes the chest
-- [x] Enemies walking over a chest leave it untouched
-- [x] Chests further from the keep are worth more. Every chest is reachable (500 seeds).
+- [ ] Hover info shows facing, arc and (for turning towers) turn speed
+- [ ] README and `SPEC.md` describe facing, arcs and turning accurately
 
 **Verification:**
-- [x] `npm test` (`tests/sim/mapgen.test.ts`, `tests/sim/economy.test.ts`)
-- [x] Manual: build a wall on a `$` and watch gold jump
+- [ ] `npm run build`
+- [ ] Manual: hover each tower type
 
-**Dependencies:** Task 3
+**Dependencies:** Task 4
 
-**Files likely touched:** `src/sim/types.ts`, `src/sim/mapgen.ts`, `src/sim/game.ts` (or `grid.ts` placement), `src/render/canvas.ts` (+ tests)
+**Files likely touched:** `src/ui/tileInfo.ts`, `README.md`, `SPEC.md`
 
 **Estimated scope:** S
 
 ---
 
-## Task 7: Seed display, terrain hover info and docs
-
-**Description:** Hover info describes terrain ("River - bridge it to cross", "Tree - X to clear for 1g", "Ford"), ruins (salvage value) and chests (gold). The seed is shown in the panel (from Task 3) and on the game-over dialog. README gains a "The map" section (terrain table, bridges, trees, ruins, chests) and key `8`. `SPEC.md` gets a pointer to `SPEC-map-gen.md`.
-
-**Acceptance criteria:**
-- [x] Hovering every terrain type and feature gives a helpful description
-- [x] The seed is visible during play and on game over
-- [x] README and `SPEC.md` describe the map accurately
-
-**Verification:**
-- [x] `npm run build`
-- [x] Manual: hover each terrain and feature type (swept in the browser); screenshot a generated map for review
-- [ ] Manual: seed on the game-over dialog (not seen in the browser; covered by typecheck and build only)
-
-**Dependencies:** Tasks 4, 5, 6
-
-**Files likely touched:** `src/ui/tileInfo.ts`, `src/ui/gameOver.ts`, `src/ui/panel.ts`, `README.md`, `SPEC.md`
-
-**Estimated scope:** M
-
----
-
-### Checkpoint D: map-gen complete
-- [x] All 7 success criteria in `SPEC-map-gen.md` met
-- [x] `npm run coverage` passes (99.3% lines for `src/sim/`)
-- [ ] Review with human, then move this file to `tasks/map-gen/` and start the `tower-aiming` spec
+### Checkpoint F: tower-aiming complete
+- [ ] All 6 success criteria in `SPEC-tower-aiming.md` met
+- [ ] `npm run coverage` passes (80% lines or more for `src/sim/`)
+- [ ] Review with human, then move this file to `tasks/tower-aiming/` and start `line-of-sight`

@@ -1,16 +1,16 @@
 # Implementation Plan: Post-MVP Phases
 
 Capability map: [`CAPABILITIES.md`](../CAPABILITIES.md)
-Current module spec: [`SPEC-map-gen.md`](../SPEC-map-gen.md)
+Current module spec: [`SPEC-tower-aiming.md`](../SPEC-tower-aiming.md)
 Task list (current module only): [`tasks/todo.md`](todo.md)
-Finished modules: [`tasks/tile-layers/`](tile-layers/todo.md)
+Finished modules: [`tasks/tile-layers/`](tile-layers/todo.md), [`tasks/map-gen/`](map-gen/todo.md)
 Previous plan (MVP, complete except a Firefox/Safari smoke test): [`tasks/mvp/`](mvp/plan.md)
 
 ## How this plan works
 
 Modules are built one at a time in the approved order. Each module goes spec -> plan -> tasks -> build:
 
-- **The current module** (`tile-layers`) has an approved spec, so its tasks are fully written in `tasks/todo.md`.
+- **The current module** has an approved spec, so its tasks are fully written in `tasks/todo.md`.
 - **Later modules** have a provisional outline below. Each outline is refined into real tasks only after that module's spec is written and approved. Outlines will change as earlier modules teach us things.
 - When a module is finished, its `todo.md` moves to `tasks/<module-id>/` (as the MVP's did), and the next module's tasks take its place.
 
@@ -19,10 +19,10 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | Phase | Module | Status |
 |---|---|---|
 | 1. Basics | `tile-layers` | Done |
-| | `map-gen` | **Built, awaiting review** |
-| | `tower-aiming` | Spec needed |
-| | `line-of-sight` | Spec needed |
-| | `units` | Spec needed |
+| | `map-gen` | Done |
+| | `tower-aiming` | **Tasks ready** (spec still marked draft) |
+| | `line-of-sight` | Spec drafted |
+| | `units` | Spec drafted |
 | 2. Setup and modes | `game-setup` | Spec needed |
 | | `mode-ramparts` | Spec needed |
 | 3. Economy | `resources` | Spec needed |
@@ -74,7 +74,7 @@ T4 and T5 both depend only on T3.
 **Checkpoint B: module complete**
 - [x] All 7 success criteria in `SPEC-tile-layers.md` met
 - [x] Coverage of 80% lines or more for `src/sim/` (98.7%)
-- [ ] Review with human
+- [x] Review with human
 
 ### Risks and mitigations
 
@@ -87,7 +87,7 @@ T4 and T5 both depend only on T3.
 
 ---
 
-## Module 2: `map-gen` (current)
+## Module 2: `map-gen` (done)
 
 Spec: [`SPEC-map-gen.md`](../SPEC-map-gen.md)
 
@@ -127,7 +127,7 @@ T4, T5 and T6 each depend only on T3.
 **Checkpoint C: generated maps**
 - [x] All tests pass, including 500-seed guarantee tests
 - [x] Browser: several seeds show a coast and a river; enemies use fords or bridges and never cross water
-- [ ] Review with human
+- [x] Review with human
 
 - [x] Task 4: Rocks, forests and clearing trees
 - [x] Task 5: Ruins
@@ -137,7 +137,7 @@ T4, T5 and T6 each depend only on T3.
 **Checkpoint D: module complete**
 - [x] All 7 success criteria in `SPEC-map-gen.md` met
 - [x] Coverage of 80% lines or more for `src/sim/` (99.3%)
-- [ ] Review with human
+- [x] Review with human
 
 ### Risks and mitigations
 
@@ -152,15 +152,66 @@ T4, T5 and T6 each depend only on T3.
 
 ---
 
+## Module 3: `tower-aiming` (current)
+
+Spec: [`SPEC-tower-aiming.md`](../SPEC-tower-aiming.md)
+
+### Overview
+
+Every tower is placed facing N, E, S or W (`R` to rotate, as for wall spikes) and can only fire inside its arc. Archers are fixed with a 90° arc. Cannons (90°/s) and catapults (30°/s) can face anywhere but have to turn onto a target, firing only once their aim is within 5°. The placement overlay shows exactly the tiles a tower could hit for its current facing.
+
+### Architecture decisions
+
+- **One source of truth for angles.** A pure `src/sim/aiming.ts` (`facingAngle`, `angleTo`, `angleBetween`, `inArc`, `turnTowards`) is used by tower targeting *and* the overlay, so what you see is what the tower can hit. It's built and tested first, on its own.
+- **Fixed and turning towers share one path.** Targeting filters by range and minimum range as today, plus "inside the arc" for fixed towers. Turning towers (360°) can target anything in range, then turn their `aim` towards the chosen target and only fire inside the aim tolerance. Target choice (closest to the keep) is unchanged.
+- **Facing is recorded for every tower, but only traps draw as arrows.** `glyphFor` currently turns *any* faced structure into `▲▶▼◀`. It changes to use arrows only for directional traps, and towers show their facing with a small notch on the tile edge instead. Without this, archers would turn into arrows.
+- **Tests express intent, not geometry.** Existing tests that placed archers with the default facing (N) and an enemy to the east get an explicit facing towards the enemy, so they keep testing what they tested before.
+
+### Dependency graph
+
+```
+T1 Angle maths (aiming.ts)
+ └─ T2 Facing on every tower, arc-limited targeting (fixed towers)
+     └─ T3 Turning towers (aim, turn speed, aim tolerance)
+         └─ T4 Arc overlay, facing notch, aim line
+              └─ T5 Hover info and docs
+```
+
+### Task list
+
+- [ ] Task 1: Angle maths module
+- [ ] Task 2: Facing on every tower and arc-limited targeting
+- [ ] Task 3: Turning towers
+
+**Checkpoint E: aiming works**
+- [ ] All tests pass (existing tower tests updated to face their targets)
+- [ ] Browser: an archer ignores enemies behind it; a cannon visibly swings onto targets before firing
+- [ ] Review with human
+
+- [ ] Task 4: Arc overlay, facing notch and aim line
+- [ ] Task 5: Hover info and docs
+
+**Checkpoint F: module complete**
+- [ ] All 6 success criteria in `SPEC-tower-aiming.md` met
+- [ ] Coverage of 80% lines or more for `src/sim/`
+- [ ] Review with human
+
+### Risks and mitigations
+
+| Risk | Impact | Mitigation |
+|---|---|---|
+| Towers silently turn into arrow glyphs once they have a facing | Med | `glyphFor` restricted to directional traps in Task 2, with a render check at Checkpoint E |
+| Turning maths flips direction or jitters across 0°/360° | Med | `turnTowards` tested across the wrap-around, never overshooting; a turning tower settles exactly on its target angle |
+| The overlay disagrees with what towers can actually hit | Med | The overlay calls the same `inArc`/range checks as targeting, never its own maths |
+| Existing tests break because archers now face N by default | Low | Update those tests to give an explicit facing towards their enemy (same intent). Count the touched tests in the commit message. |
+| A fixed 90° archer feels too weak in play | Low | Arc and turn numbers live in config. Tune them at Checkpoint E. |
+
+
+---
+
 ## Later modules: provisional outlines
 
 These are rough vertical slices, not tasks. Each becomes a proper task list after its spec is approved.
-
-### `tower-aiming`
-1. Facing at placement for all towers (reusing `R` rotation) and an arc per tower type
-2. Targeting limited to the arc
-3. Turn speed: rotating towers turn towards targets over time and fire once aligned
-4. Arc overlay (simple now, red highlight later)
 
 ### `line-of-sight`
 1. Grid line-of-sight check between tower and target
