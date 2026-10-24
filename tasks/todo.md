@@ -110,12 +110,12 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** Add a test that plays the same seed with two players and a fixed list of `(tick, playerId, command)` entries twice and gets identical state. That's the guarantee `game-server` relies on. Update `SPEC.md` (a "Since `players`" note on gold and commands) and the README (gold and pause are per player and vote-based in multiplayer; single-player unchanged).
 
 **Acceptance criteria:**
-- [ ] The two-player replay test passes and compares the full state
-- [ ] `SPEC.md` and the README describe the player rules accurately
+- [x] The two-player replay test passes and compares the full state
+- [x] `SPEC.md` and the README describe the player rules accurately
 
 **Verification:**
-- [ ] `npm run coverage` (80% lines or more for `src/sim/`)
-- [ ] Manual: read through the README changes
+- [x] `npm run coverage` (80% lines or more for `src/sim/`)
+- [x] Manual: read through the README changes
 
 **Dependencies:** Tasks 3, 4
 
@@ -126,6 +126,6 @@ Standard verification for every task (in addition to task-specific checks):
 ---
 
 ### Checkpoint F: players complete
-- [ ] All 7 success criteria in `SPEC-players.md` met
-- [ ] `npm run coverage` passes
+- [x] All 7 success criteria in `SPEC-players.md` met (criterion 1's manual playthrough: pause and fast-forward still to recheck in the browser after Task 4)
+- [x] `npm run coverage` passes (99.3% lines for `src/sim/`)
 - [ ] Review with human, then move this file to `tasks/players/` and write the `game-server` spec

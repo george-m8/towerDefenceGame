@@ -20,7 +20,7 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 |---|---|---|
 | 1. Basics | `tile-layers` | Done |
 | | `map-gen` | Done (merged in PR #4) |
-| 1b. Multiplayer (co-op) | `players` | **Spec approved, tasks written** |
+| 1b. Multiplayer (co-op) | `players` | **Built, awaiting review** |
 | | `game-server` | Spec needed |
 | | `net-client` | Spec needed |
 | | `lobby` | Spec needed |
@@ -195,11 +195,11 @@ T3 and T4 each depend only on T2.
 
 - [x] Task 3: Ownership rules for selling and mounting
 - [x] Task 4: Votes and connections
-- [ ] Task 5: Determinism check and docs
+- [x] Task 5: Determinism check and docs
 
 **Checkpoint F: module complete**
-- [ ] All 7 success criteria in `SPEC-players.md` met
-- [ ] Coverage of 80% lines or more for `src/sim/`
+- [x] All 7 success criteria in `SPEC-players.md` met
+- [x] Coverage of 80% lines or more for `src/sim/` (99.3%)
 - [ ] Review with human, then move `todo.md` to `tasks/players/` and write the `game-server` spec
 
 ### Risks and mitigations

@@ -239,3 +239,43 @@ describe("rejoining", () => {
     expect(goldOf(state, B)).toBe(gold + income.gold);
   });
 });
+
+describe("multiplayer determinism", () => {
+  it("the same seed and player command log give identical state", () => {
+    type Entry = { tick: number; player: number; command: Parameters<typeof applyCommand>[2] };
+    const play = () => {
+      const state = createGame(99, { players: ["A", "B"] });
+      const { keep } = state;
+      const log: Entry[] = [
+        { tick: 5, player: A, command: { type: "build", kind: "wall", x: keep.x - 2, y: keep.y } },
+        { tick: 5, player: B, command: { type: "build", kind: "wall", x: keep.x - 2, y: keep.y } },
+        {
+          tick: 6,
+          player: A,
+          command: { type: "build", kind: "archer", x: keep.x - 2, y: keep.y },
+        },
+        {
+          tick: 7,
+          player: B,
+          command: { type: "build", kind: "cannon", x: keep.x - 2, y: keep.y + 2 },
+        },
+        { tick: 8, player: B, command: { type: "build", kind: "house", x: keep.x + 4, y: keep.y } },
+        { tick: 10, player: A, command: { type: "sendWave" } },
+        { tick: 120, player: A, command: { type: "toggleFastForward" } },
+        { tick: 121, player: B, command: { type: "toggleFastForward" } },
+        { tick: 300, player: B, command: { type: "sell", x: keep.x - 2, y: keep.y } },
+      ];
+      for (let t = 0; t < 600; t++) {
+        for (const e of log.filter((e) => e.tick === t)) applyCommand(state, e.player, e.command);
+        tick(state);
+      }
+      return state;
+    };
+    const first = play();
+    expect(JSON.stringify(play())).toBe(JSON.stringify(first));
+    // Make sure the run exercised both players, not just an idle map.
+    expect(first.wave.number).toBeGreaterThan(0);
+    const owners = new Set(Object.values(first.structures).map((s) => s.owner));
+    expect(owners).toEqual(new Set([null, A, B]));
+  });
+});

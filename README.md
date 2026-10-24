@@ -114,13 +114,16 @@ src/sim/              Pure, deterministic game simulation (no DOM, seeded RNG)
   traps.ts            Spike trap cycles
   waves.ts            Wave formulas and scheduling
   economy.ts          Bounties, house income, selling
+  players.ts          Players, per-player gold, pause/fast-forward votes
 src/render/           Canvas drawing (reads state, never changes it)
 src/ui/               Side panel, input, hover info, game-over dialog
 src/styles.css        System 6/7 style window chrome
 tests/sim/            Unit tests for the simulation
 ```
 
-The UI never changes game state directly. Input is turned into commands (`build`, `sell`, `togglePause`, `sendWave`) that `applyCommand` validates, which keeps the simulation testable and leaves a clean seam for multiplayer later.
+The UI never changes game state directly. Input is turned into commands (`build`, `sell`, `togglePause`, `sendWave`) that `applyCommand(state, playerId, command)` validates, which keeps the simulation testable and is the seam for multiplayer.
+
+The simulation already supports several players on one map (see [`SPEC-players.md`](SPEC-players.md)): each has their own gold and structures, can only sell their own, and pause and fast-forward only happen when every connected player votes for them. Online play itself comes with the `game-server`, `net-client` and `lobby` modules in [`CAPABILITIES.md`](CAPABILITIES.md). Offline, you are player 1 and the game plays exactly as before.
 
 ## Tuning
 
