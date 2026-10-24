@@ -59,6 +59,12 @@ function describeStructure(structure: Structure, placement?: string): string[] {
     const reach = minRange > 0 ? `${minRange}-${range}` : `${range}`;
     const splash = splashRadius > 0 ? `, splash ${splashRadius}` : "";
     lines.push(`Range ${reach}, ${damage} dmg / ${fireIntervalSeconds}s${splash}`);
+    const { arcDegrees, turnDegreesPerSecond } = stats.tower;
+    lines.push(
+      turnDegreesPerSecond > 0
+        ? `${arcDegrees}° arc, turns ${turnDegreesPerSecond}°/s`
+        : `${arcDegrees}° arc, fixed`,
+    );
   }
   if (stats.trap) lines.push(`${stats.trap.damage} dmg / ${stats.trap.fireIntervalSeconds}s`);
   if (stats.income) lines.push(`+${stats.income.gold}g / ${stats.income.intervalSeconds}s`);

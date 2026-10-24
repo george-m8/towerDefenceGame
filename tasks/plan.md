@@ -20,7 +20,7 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 |---|---|---|
 | 1. Basics | `tile-layers` | Done |
 | | `map-gen` | Done |
-| | `tower-aiming` | **Tasks ready** (spec still marked draft) |
+| | `tower-aiming` | **Built, awaiting review** |
 | | `line-of-sight` | Spec drafted |
 | | `units` | Spec drafted |
 | 2. Setup and modes | `game-setup` | Spec needed |
@@ -189,11 +189,11 @@ T1 Angle maths (aiming.ts)
 - [ ] Review with human
 
 - [x] Task 4: Arc overlay, facing notch and aim line
-- [ ] Task 5: Hover info and docs
+- [x] Task 5: Hover info and docs
 
 **Checkpoint F: module complete**
-- [ ] All 6 success criteria in `SPEC-tower-aiming.md` met
-- [ ] Coverage of 80% lines or more for `src/sim/`
+- [x] All 6 success criteria in `SPEC-tower-aiming.md` met
+- [x] Coverage of 80% lines or more for `src/sim/` (99.3%)
 - [ ] Review with human
 
 ### Risks and mitigations

@@ -118,12 +118,12 @@ No game changes yet.
 **Description:** Tower hover info shows facing and arc (`Archer (on wall), facing east, 90° arc`), and turning towers add `turns 90°/s`. README: a "Facing and arcs" note, `R` rotates towers as well as wall spikes, and arcs and turn speeds in the structures table. `SPEC.md` gets a pointer to `SPEC-tower-aiming.md`.
 
 **Acceptance criteria:**
-- [ ] Hover info shows facing, arc and (for turning towers) turn speed
-- [ ] README and `SPEC.md` describe facing, arcs and turning accurately
+- [x] Hover info shows facing, arc and (for turning towers) turn speed
+- [x] README and `SPEC.md` describe facing, arcs and turning accurately
 
 **Verification:**
-- [ ] `npm run build`
-- [ ] Manual: hover each tower type
+- [x] `npm run build`
+- [x] Manual: hover each tower type
 
 **Dependencies:** Task 4
 
@@ -134,6 +134,6 @@ No game changes yet.
 ---
 
 ### Checkpoint F: tower-aiming complete
-- [ ] All 6 success criteria in `SPEC-tower-aiming.md` met
-- [ ] `npm run coverage` passes (80% lines or more for `src/sim/`)
+- [x] All 6 success criteria in `SPEC-tower-aiming.md` met
+- [x] `npm run coverage` passes (99.3% lines for `src/sim/`)
 - [ ] Review with human, then move this file to `tasks/tower-aiming/` and start `line-of-sight`
