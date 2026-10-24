@@ -35,12 +35,12 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** `src/net/protocol.ts` with `ClientMessage`, `ServerMessage`, `ClientState` and `StateUpdate` types, plus `parseClientMessage(raw: string): ClientMessage | { error: string }`. It checks the JSON shape, field types, known message and command types, known structure kinds and facings, integer coordinates in range, `seq` as a non-negative integer, 4-letter room codes from the allowed alphabet, and names (trimmed, 1-16 characters). `debugSpawn` is not a valid online command. Also `uniqueName(existing, name)` (adds " 2", " 3"...). No Node or DOM imports.
 
 **Acceptance criteria:**
-- [ ] Every valid message form parses to the right type
-- [ ] Malformed input (bad JSON, missing or wrong-typed fields, unknown types, out-of-range or fractional coordinates, bad codes, long or empty names, `debugSpawn`) returns an error and never throws
-- [ ] `uniqueName` makes duplicates unique
+- [x] Every valid message form parses to the right type
+- [x] Malformed input (bad JSON, missing or wrong-typed fields, unknown types, out-of-range or fractional coordinates, bad codes, long or empty names, `debugSpawn`) returns an error and never throws
+- [x] `uniqueName` makes duplicates unique
 
 **Verification:**
-- [ ] `tests/server/protocol.test.ts`
+- [x] `tests/server/protocol.test.ts`
 
 **Dependencies:** Task 1
 
