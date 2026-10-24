@@ -2,7 +2,15 @@
 import type { WebSocket } from "ws";
 import type { PlayerId } from "../src/sim/types";
 import { parseClientMessage, type ClientMessage, type ServerMessage } from "../src/net/protocol";
-import { applyRoomCommand, joinRoom, leaveRoom, rejoinRoom, restartRoom, type Room } from "./room";
+import {
+  applyRoomCommand,
+  joinRoom,
+  leaveRoom,
+  rejoinRoom,
+  restartRoom,
+  startRoom,
+  type Room,
+} from "./room";
 import { MAX_MESSAGES_PER_SECOND } from "./config";
 import { createRegistry, findRoom, openRoom, randomSeed, type Registry } from "./rooms";
 
@@ -86,6 +94,12 @@ export function handleConnection(hub: Hub, socket: WebSocket): void {
         if (!seat) return send({ type: "error", reason: "Join a room first" });
         applyRoomCommand(seat.room, seat.playerId, message.seq, message.command);
         return;
+      case "start": {
+        if (!seat) return send({ type: "error", reason: "Join a room first" });
+        const result = startRoom(seat.room, seat.playerId);
+        if (!result.ok) send({ type: "error", reason: result.reason });
+        return;
+      }
       case "restart": {
         if (!seat) return send({ type: "error", reason: "Join a room first" });
         const result = restartRoom(seat.room, randomSeed());

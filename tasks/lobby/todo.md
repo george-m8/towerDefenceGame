@@ -11,9 +11,9 @@ Standard verification for every task: `npm run typecheck && npm test && npm run 
 **Description:** `start` message and `LobbyInfo` in the protocol. Rooms start waiting: no ticks, commands refused. The host is the lowest-id connected player. `start` from the host begins the game. Welcome and updates carry `lobby`. Restart starts straight away.
 
 **Acceptance criteria:**
-- [ ] A waiting room doesn't tick and refuses commands with "The game hasn't started"
-- [ ] Only the host can start; a non-host gets "Only the host can start"; the host passes on when the host leaves
-- [ ] `lobby: { started, host }` is in every welcome and update
+- [x] A waiting room doesn't tick and refuses commands with "The game hasn't started"
+- [x] Only the host can start; a non-host gets "Only the host can start"; the host passes on when the host leaves
+- [x] `lobby: { started, host }` is in every welcome and update
 
 **Verification:** `tests/server/room.test.ts`, `tests/server/protocol.test.ts`, `tests/server/integration.test.ts`
 
@@ -25,7 +25,7 @@ Standard verification for every task: `npm run typecheck && npm test && npm run 
 
 **Acceptance criteria:**
 - [ ] `readJoinIntent("")` is `menu`; `?room=abcd` without a name is `menu` with room `ABCD`; named links still go straight in
-- [ ] Against a real server, both sessions see `lobby.started` turn true after the host's `start()`
+- [x] Against a real server, both sessions see `lobby.started` turn true after the host's `start()`
 
 **Verification:** `tests/net/join.test.ts`, `tests/net/networkSession.test.ts`
 

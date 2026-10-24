@@ -5,7 +5,7 @@ import { STARTING_GOLD, TICK_RATE } from "../src/sim/config";
 import { applyCommand, createGame, tick } from "../src/sim/game";
 import { addPlayer, setConnected, updateVotes } from "../src/sim/players";
 import type { Command, CommandResult, GameState, PlayerId } from "../src/sim/types";
-import { uniqueName, type ServerMessage } from "../src/net/protocol";
+import { uniqueName, type LobbyInfo, type ServerMessage } from "../src/net/protocol";
 import { toClientState, toUpdate } from "../src/net/snapshot";
 import { MAX_PLAYERS, MAX_TICKS_PER_ADVANCE, UPDATE_EVERY_TICKS } from "./config";
 
@@ -25,6 +25,8 @@ export interface Room {
   sentGridVersion: number;
   /** How long nobody has been connected; the registry deletes the room after a while. */
   emptyMs: number;
+  /** False while in the waiting room: no ticks, no commands, until the host starts. */
+  started: boolean;
 }
 
 export type JoinResult =
@@ -42,7 +44,24 @@ export function createRoom(code: string, seed: number, send: SendFn): Room {
     ticksSinceUpdate: 0,
     sentGridVersion: state.gridVersion,
     emptyMs: 0,
+    started: false,
   };
+}
+
+/** The connected player with the lowest id: they can start the game. */
+export function hostOf(room: Room): PlayerId | null {
+  const connected = Object.values(room.state.players).filter((p) => p.connected);
+  return connected.length > 0 ? Math.min(...connected.map((p) => p.id)) : null;
+}
+
+/** The host leaves the waiting room and starts the game for everyone. Starting twice does nothing. */
+export function startRoom(room: Room, playerId: PlayerId): CommandResult {
+  if (room.started) return { ok: true };
+  if (playerId !== hostOf(room)) return { ok: false, reason: "Only the host can start" };
+  room.started = true;
+  room.accumulatorMs = 0;
+  broadcastUpdate(room);
+  return { ok: true };
 }
 
 /**
@@ -100,8 +119,9 @@ export function applyRoomCommand(
   seq: number,
   command: Command,
 ): CommandResult {
-  const result: CommandResult =
-    command.type === "debugSpawn"
+  const result: CommandResult = !room.started
+    ? { ok: false, reason: "The game hasn't started" }
+    : command.type === "debugSpawn"
       ? { ok: false, reason: "Not allowed online" }
       : applyCommand(room.state, playerId, command);
   room.send(playerId, { type: "result", seq, result });
@@ -112,7 +132,7 @@ export function applyRoomCommand(
 /** Runs whole ticks for the elapsed time (scaled by game speed), sending updates on cadence. */
 export function advanceRoom(room: Room, elapsedMs: number): void {
   const { state } = room;
-  if (state.paused || state.gameOver) {
+  if (!room.started || state.paused || state.gameOver) {
     room.accumulatorMs = 0;
     return;
   }
@@ -160,7 +180,12 @@ function welcome(room: Room, playerId: PlayerId) {
     playerId,
     token: room.tokens[playerId],
     state: toClientState(room.state),
+    lobby: lobbyInfo(room),
   });
+}
+
+function lobbyInfo(room: Room): LobbyInfo {
+  return { started: room.started, host: hostOf(room) };
 }
 
 /** Sends everyone connected the latest update. */
@@ -168,6 +193,7 @@ function broadcastUpdate(room: Room) {
   const message: ServerMessage = {
     type: "update",
     update: toUpdate(room.state, room.sentGridVersion),
+    lobby: lobbyInfo(room),
   };
   room.sentGridVersion = room.state.gridVersion;
   room.ticksSinceUpdate = 0;

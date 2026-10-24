@@ -45,6 +45,8 @@ async function twoInARoom() {
   const b = await client();
   b.send({ type: "join", room: aWelcome.room, name: "Bo" });
   const bWelcome = await b.next("welcome");
+  a.send({ type: "start" }); // A created the room, so A is the host
+  await b.next("update", (m) => m.lobby.started);
   return { a, b, aWelcome, bWelcome, room: aWelcome.room };
 }
 
@@ -126,7 +128,7 @@ describe("hardening", () => {
     // Give the server a moment to process everything it accepted.
     await new Promise((r) => setTimeout(r, 100));
     const results = a.messages.filter((m) => m.type === "result");
-    expect(results.length).toBeGreaterThanOrEqual(39); // 40 per burst, one already spent on "create"
+    expect(results.length).toBeGreaterThanOrEqual(38); // 40 per burst, two spent on "create" and "start"
     expect(results.length).toBeLessThan(50);
     expect(a.messages.filter((m) => m.type === "error")).toHaveLength(1);
   });
@@ -162,5 +164,18 @@ describe("hardening", () => {
     const late = await client();
     late.send({ type: "join", room, name: "Ed" });
     expect(await late.next("error")).toEqual({ type: "error", reason: "Room is full" });
+  });
+});
+
+describe("waiting room over sockets", () => {
+  it("refuses a start from anyone but the host", async () => {
+    const a = await client();
+    a.send({ type: "create", name: "Ann" });
+    const { room } = await a.next("welcome");
+    const b = await client();
+    b.send({ type: "join", room, name: "Bo" });
+    expect((await b.next("welcome")).lobby).toEqual({ started: false, host: 1 });
+    b.send({ type: "start" });
+    expect(await b.next("error")).toEqual({ type: "error", reason: "Only the host can start" });
   });
 });

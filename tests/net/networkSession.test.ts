@@ -72,6 +72,8 @@ async function twoSessions() {
   const bStorage = memoryStorage();
   const b = open({ mode: "join", room: a.room!, name: "Bo" }, bStorage);
   await waitFor(() => b.state, "B's welcome");
+  a.start(); // A created the room, so A is the host
+  await waitFor(() => a.lobby?.started && b.lobby?.started, "the game to start");
   return { a, b, bStorage };
 }
 
@@ -217,5 +219,18 @@ describe("connection", () => {
     expect(b.status).toBe("Opened in another tab");
     expect(other.playerId).toBe(2);
     expect(a.state!.players[2].connected).toBe(true);
+  });
+});
+
+describe("lobby", () => {
+  it("both sessions see the waiting room, then the host's start", async () => {
+    const a = open({ mode: "create", name: "Ann" });
+    await waitFor(() => a.state);
+    const b = open({ mode: "join", room: a.room!, name: "Bo" });
+    await waitFor(() => b.state);
+    expect(b.lobby).toEqual({ started: false, host: 1 });
+    a.start();
+    await waitFor(() => b.lobby?.started, "B to see the start");
+    expect(a.lobby).toEqual({ started: true, host: 1 });
   });
 });
