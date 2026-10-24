@@ -35,13 +35,13 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** Create the pure simulation skeleton: `types.ts`, `config.ts`, seeded `rng.ts`, and `game.ts` with `createGame(seed)`, `tick(state)` and `applyCommand(state, cmd)`. The state contains the grid, a 3x3 keep at the centre with HP, a spawn zone on the left edge, gold, tick count and paused flag. `main.ts` runs a fixed-timestep loop (20 ticks/s, capped catch-up). The renderer draws the keep (`K`) and spawn zone from state. Space toggles pause.
 
 **Acceptance criteria:**
-- [ ] `createGame` produces a grid with the keep centred and the spawn zone marked, and starting gold of 150
-- [ ] `tick` advances the tick count only when not paused. The `togglePause` command works.
-- [ ] Same seed + same commands -> identical state (determinism test)
+- [x] `createGame` produces a grid with the keep centred and the spawn zone marked, and starting gold of 150
+- [x] `tick` advances the tick count only when not paused. The `togglePause` command works.
+- [x] Same seed + same commands -> identical state (determinism test)
 
 **Verification:**
-- [ ] `npm test` (tests in `tests/sim/game.test.ts`, `tests/sim/rng.test.ts`)
-- [ ] Manual: keep and spawn zone render, and a tick counter in the panel stops when Space is pressed
+- [x] `npm test` (tests in `tests/sim/game.test.ts`, `tests/sim/rng.test.ts`)
+- [x] Manual: keep and spawn zone render, and a tick counter in the panel stops when Space is pressed
 
 **Dependencies:** Task 1
 

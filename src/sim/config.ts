@@ -2,3 +2,12 @@
 
 export const GRID_WIDTH = 48;
 export const GRID_HEIGHT = 32;
+export const TICK_RATE = 20; // simulation ticks per second
+
+export const KEEP_SIZE = 3;
+export const KEEP_HP = 100;
+
+// Spawn zone: a strip on the left edge of the map.
+export const SPAWN_ZONE = { x: 0, y: 10, width: 2, height: 12 };
+
+export const STARTING_GOLD = 150;

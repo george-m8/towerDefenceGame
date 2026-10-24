@@ -60,3 +60,24 @@ body {
 .panel {
   padding: 8px 12px 12px;
 }
+
+.stats {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 12px;
+  margin: 0 0 8px;
+}
+
+.stats dt::after {
+  content: ":";
+}
+
+.stats dd {
+  margin: 0;
+  text-align: right;
+}
+
+.status {
+  min-height: 1.2em;
+  margin: 8px 0 0;
+}
