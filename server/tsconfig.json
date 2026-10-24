@@ -4,6 +4,13 @@
     "lib": ["ES2022"],
     "types": ["node"]
   },
-  "include": ["./**/*.ts", "../src/sim", "../src/net", "../tests/server", "../vite.config.ts"],
+  "include": [
+    "./**/*.ts",
+    "../src/sim",
+    "../src/net",
+    "../tests/server",
+    "../tests/net",
+    "../vite.config.ts"
+  ],
   "exclude": []
 }

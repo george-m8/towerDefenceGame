@@ -14,12 +14,12 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** `src/net/view.ts`. `fromClientState(client)` builds a full `GameState`: enemies get default movement fields (`tx`/`ty`/`px`/`py` = position, `bounty` 0, `killedBy` null, `attackCooldown` 0), structures get `cooldown` 0, `flow` null, `rngState` 0. `applyUpdate(view, update)` copies the dynamic fields and the grid fields when present. `interpolateEnemies(previous, next, t)` returns enemies at fraction `t` between two updates, by id. New enemies appear at their position, and enemies missing from `next` are dropped.
 
 **Acceptance criteria:**
-- [ ] Sim helpers (`topAt`, `canBuild`, `getFlowField`, `describeTile`) work on a view built from a welcome
-- [ ] `applyUpdate` changes the grid only when the update carries it
-- [ ] Interpolation gives the midpoint at `t = 0.5`, handles new and removed enemies, and clamps `t` to 0-1
+- [x] Sim helpers (`topAt`, `canBuild`, `getFlowField`, `describeTile`) work on a view built from a welcome
+- [x] `applyUpdate` changes the grid only when the update carries it
+- [x] Interpolation gives the midpoint at `t = 0.5`, handles new and removed enemies, and clamps `t` to 0-1
 
 **Verification:**
-- [ ] `tests/net/view.test.ts`
+- [x] `tests/net/view.test.ts`
 
 **Dependencies:** None
 
