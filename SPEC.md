@@ -65,10 +65,13 @@ A browser-based, top-down, grid-based tower defence game where the player grows 
 | Damage to keep | 5 | constant |
 | Damage to structures | 5 per second | constant |
 | Bounty | 2 gold | +1 every 5 waves |
+| Wander chance | 10% per tile | constant |
 
 **Pathfinding**
 - A single flow field (Dijkstra from the keep outwards) is recomputed whenever the grid changes. Every enemy follows it, so cost does not grow with enemy count.
 - Open tiles and floor spikes cost 1. Blocking structures (walls, wall spikes, towers, houses) cost a very large value (greater than the total number of tiles), so any open route, however long, always wins.
+- Wandering: at each tile, with chance `wanderChance` (`ENEMY.wanderChance`, copied onto the game state so it can be changed mid-game), an enemy steps sideways (at right angles to its path step) onto a random open tile. It never steps backwards (opposite its path step) or into a blocking structure; if neither sideways tile is open it follows the path.
+- No doubling back: enemies remember the tile they just left. Wandering never returns to it, and when two path steps are equally short they take the other one. They only step back onto it if it is the only shortest step.
 - If the only route to the keep goes through structures, enemies follow it and attack the first blocking structure in their way until it is destroyed, then the field is recomputed.
 - Diagonal movement is not allowed (4-directional) for the MVP, which keeps wall-building intuitive.
 

@@ -25,6 +25,7 @@ Enemies (`g`) spawn from the red strip on the left edge and walk to your keep (`
 - Kill enemies with towers and traps to earn gold.
 - Build houses for steady income.
 - Enemies always take an open route if one exists, however long. They only break through your walls when the keep is completely sealed off, and then they attack the weakest point on their route.
+- Enemies mostly stick to that route, but at each tile there is a small chance (10% by default, `ENEMY.wanderChance` in `src/sim/config.ts`) that one drifts sideways onto an open tile instead. They never step backwards, double back onto the tile they just left, or wander into structures.
 
 ### Structures
 
