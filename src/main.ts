@@ -14,6 +14,9 @@ import { createOnlinePanel } from "./ui/players";
 import { createWaitingRoom } from "./ui/waitingRoom";
 import { rememberedName, showStartScreen } from "./ui/startScreen";
 import { showIntro } from "./ui/intro";
+import { createWebAudioEngine, unlockOnFirstGesture } from "./audio/engine";
+import { loadAudioSettings, saveAudioSettings } from "./audio/settings";
+import { createSoundControls } from "./ui/soundControls";
 import { showNotice } from "./ui/notice";
 import type { Command, GameState } from "./sim/types";
 
@@ -63,6 +66,17 @@ const gameOver = createGameOverDialog(element("#game-over"), () => {
   ui.tool = null;
 });
 bindInput(canvas, ui, dispatch);
+
+// Sound: silent until the first click or key press (browsers require a gesture).
+const audio = createWebAudioEngine();
+const audioStorage = deviceStorage();
+const audioSettings = loadAudioSettings(audioStorage);
+audio.setVolumes(audioSettings);
+unlockOnFirstGesture(audio);
+createSoundControls(element("#sound"), audioSettings, (settings) => {
+  audio.setVolumes(settings);
+  saveAudioSettings(audioStorage, settings);
+});
 
 /** Starts playing: offline, or in a room on the game server. */
 function startSession(intent: Exclude<PageIntent, { mode: "menu" }>) {
@@ -148,5 +162,14 @@ function tabStorage(): NetworkDeps["storage"] {
   } catch {
     const memory = new Map<string, string>();
     return { getItem: (k) => memory.get(k) ?? null, setItem: (k, v) => void memory.set(k, v) };
+  }
+}
+
+/** localStorage (shared by every tab on this device), or null if it's blocked. */
+function deviceStorage(): Storage | null {
+  try {
+    return localStorage;
+  } catch {
+    return null;
   }
 }

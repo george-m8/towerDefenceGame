@@ -43,13 +43,13 @@ Add `src/audio/synth.ts`: a Web Audio voice with pulse (duty cycle and optional 
 - A speaker button with the two volume sliders in the side panel.
 
 **Acceptance criteria:**
-- [ ] Nothing can play before `unlock()`, and unlocking twice is harmless. Audio errors never reach the game.
-- [ ] Mute and volumes round-trip through storage; blocked storage gives defaults with no error
-- [ ] The speaker button mutes and unmutes, and the sliders change the bus volumes
+- [x] Nothing can play before `unlock()`, and unlocking twice is harmless. Audio errors never reach the game.
+- [x] Mute and volumes round-trip through storage; blocked storage gives defaults with no error
+- [x] The speaker button mutes and unmutes, and the sliders change the bus volumes
 
 **Verification:**
-- [ ] `npm test` (`tests/audio/settings.test.ts`, engine-lock behaviour on the fake)
-- [ ] Manual: speaker button and sliders in the panel; nothing audible yet except a click test in the console
+- [x] `npm test` (`tests/audio/settings.test.ts`, engine-lock behaviour on the fake)
+- [x] Manual: sound button and sliders in the panel; mute saved and restored across a reload (nothing audible until Task 3)
 
 **Dependencies:** Task 1
 

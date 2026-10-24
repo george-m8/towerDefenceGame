@@ -418,3 +418,21 @@ a.button {
   min-width: 0;
   padding: 0 10px;
 }
+
+/* Sound controls, at the bottom of the panel */
+.sound .sound-toggle {
+  width: 100%;
+  margin-bottom: 6px;
+}
+
+.slider {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.slider input {
+  width: 100%;
+  accent-color: var(--ink);
+}
