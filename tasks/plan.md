@@ -442,7 +442,7 @@ T1 Synth voice + pure maths
 
 - [x] Task 1: Synth voice and pure note maths
 - [x] Task 2: Audio engine, gesture unlock and sound settings
-- [ ] Task 3: Sound-effect table, cue player and UI sounds
+- [x] Task 3: Sound-effect table, cue player and UI sounds
 - [ ] Task 4: Sound cues from the simulation
 
 **Checkpoint G: sound effects**

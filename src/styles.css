@@ -436,3 +436,15 @@ a.button {
   width: 100%;
   accent-color: var(--ink);
 }
+
+/* Dev sound test page */
+.sound-test {
+  padding: 16px 24px;
+  text-align: center;
+}
+
+.sound-test-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}

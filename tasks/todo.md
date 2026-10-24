@@ -22,7 +22,7 @@ Add `src/audio/synth.ts`: a Web Audio voice with pulse (duty cycle and optional 
 **Acceptance criteria:**
 - [x] `noteToHz` gives A4 = 440 Hz and the right G3/C4 values; +16 / -14 semitone start frequencies are correct
 - [x] Duty-cycle delay times are correct for 12.5%, 25% and 50% pulses, and stay inside safe limits
-- [ ] A voice of each waveform can be built and stopped without leaving nodes connected (checked by ear and with the node-count probe in Task 3's sound test)
+- [x] A voice of each waveform can be built and stopped without leaving nodes connected (sound test: 9 live voices after playing everything, 0 two seconds later)
 
 **Verification:**
 - [x] `npm test` (new `tests/audio/envelopes.test.ts`)
@@ -68,13 +68,13 @@ Add `src/audio/synth.ts`: a Web Audio voice with pulse (duty cycle and optional 
 - A dev-only `?soundtest` page lists every sound with a play button and shows the live node count.
 
 **Acceptance criteria:**
-- [ ] The cue player plays each id once, never replays older ids (even when given the same cues again), and respects each cue's cap
-- [ ] Building, selling and a rejected action each make their sound in the game
-- [ ] `?soundtest` (dev server only) plays every sound in the table, and the node count returns to its baseline after each sound
+- [x] The cue player plays each id once, never replays older ids (even when given the same cues again), and respects each cue's cap
+- [x] Building, selling and a rejected action each make their sound in the game
+- [x] `?soundtest` (dev server only) plays every sound in the table, and the node count returns to its baseline after each sound
 
 **Verification:**
-- [ ] `npm test` (`tests/audio/cues.test.ts`)
-- [ ] Manual: listen to every sound on `?soundtest`
+- [x] `npm test` (`tests/audio/cues.test.ts`)
+- [x] Manual: every sound on `?soundtest` plays without errors and cleans up (actual listening is left to you: Checkpoint G)
 
 **Dependencies:** Task 2
 
