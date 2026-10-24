@@ -1,9 +1,20 @@
-import { TILE_SIZE } from "../render/palette";
 import type { Command, Point } from "../sim/types";
+import { screenToTile, zoomAt, zoomBy } from "./camera";
 import { TOOLS, rotateFacing, type UiState } from "./state";
 
 /** Dev-only stress test: M spawns this many enemies at once. */
 const STRESS_TEST_ENEMIES = 200;
+/** Zoom step for the + and - keys (and the panel buttons). */
+export const ZOOM_STEP = 1.25;
+/** How much one notch of the mouse wheel (about 100 deltaY) zooms. */
+const WHEEL_ZOOM_PER_PIXEL = 0.0015;
+
+const PAN_KEYS: Record<string, keyof UiState["panKeys"]> = {
+  ArrowLeft: "left",
+  ArrowRight: "right",
+  ArrowUp: "up",
+  ArrowDown: "down",
+};
 
 export function bindInput(
   canvas: HTMLCanvasElement,
@@ -13,13 +24,35 @@ export function bindInput(
   let painting = false;
   let lastPainted: Point | null = null;
 
+  /** The tile under the mouse, through the camera's scroll and zoom. */
   function tileFromEvent(e: MouseEvent): Point {
     const rect = canvas.getBoundingClientRect();
-    return {
-      x: Math.floor(((e.clientX - rect.left) / rect.width) * (canvas.width / TILE_SIZE)),
-      y: Math.floor(((e.clientY - rect.top) / rect.height) * (canvas.height / TILE_SIZE)),
-    };
+    const p = screenToTile(ui.camera, e.clientX - rect.left, e.clientY - rect.top);
+    return { x: Math.floor(p.x), y: Math.floor(p.y) };
   }
+
+  // Wheel zooms around the cursor, so the tile under it stays put.
+  canvas.addEventListener(
+    "wheel",
+    (e) => {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const factor = Math.exp(-e.deltaY * WHEEL_ZOOM_PER_PIXEL);
+      zoomAt(ui.camera, factor, e.clientX - rect.left, e.clientY - rect.top);
+    },
+    { passive: false },
+  );
+
+  // Arrow keys pan while held (main.ts moves the camera each frame).
+  window.addEventListener("keyup", (e) => {
+    const direction = PAN_KEYS[e.code];
+    if (direction) ui.panKeys[direction] = false;
+  });
+  window.addEventListener("blur", () => {
+    for (const key of Object.keys(ui.panKeys) as (keyof UiState["panKeys"])[]) {
+      ui.panKeys[key] = false;
+    }
+  });
 
   function useToolAt(p: Point) {
     if (!ui.tool) return;
@@ -34,7 +67,15 @@ export function bindInput(
   window.addEventListener("keydown", (e) => {
     // Typing a name or room code must not trigger game shortcuts.
     if (e.target instanceof HTMLInputElement) return;
-    if (e.code === "Space") {
+    const direction = PAN_KEYS[e.code];
+    if (direction) {
+      e.preventDefault(); // don't scroll the page
+      ui.panKeys[direction] = true;
+    } else if (e.code === "Equal" || e.code === "NumpadAdd") {
+      zoomBy(ui.camera, ZOOM_STEP);
+    } else if (e.code === "Minus" || e.code === "NumpadSubtract") {
+      zoomBy(ui.camera, 1 / ZOOM_STEP);
+    } else if (e.code === "Space") {
       e.preventDefault();
       dispatch({ type: "togglePause" });
     } else if (e.code === "KeyF") {

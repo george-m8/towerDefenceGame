@@ -32,11 +32,11 @@ Enemies (`g`) spawn from the red strip on the left edge and walk to your keep (`
 | Key | Structure | Glyph | Cost | What it does |
 |---|---|---|---|---|
 | `1` | Wall | `#` | 5 | Blocks movement. 50 HP. Towers can be built on top. |
-| `2` | Archer | `A` | 25 | Range 5, 6 damage every 1s, single target. Fixed 90° arc. |
+| `2` | Archer | fletched arrow, pointing where it faces | 25 | Range 5, 6 damage every 1s, single target. Fixed 90° arc. |
 | `3` | Cannon | `C` | 50 | Range 4, 15 damage every 2.5s, hits a 3x3 area. Turns 90°/s. |
 | `4` | Catapult | `P` | 80 | Range 3-9, 30 damage every 5s, hits a 5x5 area. Can't hit enemies closer than 3 tiles. Turns 30°/s. |
 | `5` | Floor spikes | `^` | 15 | Walkable. Every 1.5s spikes come up and deal 15 damage to every enemy on the tile. |
-| `6` | Wall spikes | `▲▶▼◀` | 20 | A wall section that fires every 2s, dealing 20 damage to the one tile it faces. Press `R` to rotate before placing. |
+| `6` | Wall spikes | arrow `↑→↓←` | 20 | A wall section that fires every 2s, dealing 20 damage to the one tile it faces. Press `R` to rotate before placing. |
 | `7` | House | `h` | 40 | +2 gold every 5s. Blocks movement. |
 | `8` | Bridge | `=` | 10 | Only on river tiles. Makes the river walkable there (for enemies too). |
 | `X` | Sell | `$` | - | Refunds 50% of cost, less if damaged. Sells the top layer first (a tower before the wall under it). Also clears trees. |
@@ -91,6 +91,10 @@ Towers always shoot the enemy closest to the keep. Traps fire on a fixed timer f
 | Send wave button | Start the next wave now, for +1 gold per second skipped |
 | `D` | Toggle the path overlay (arrows show where enemies will walk; red means "will attack this") |
 | Hover a tile | Show its details in the Info box, and a tower's range |
+| Arrow keys | Move the view around the map |
+| Mouse wheel, or `+` / `-` | Zoom in and out (the wheel zooms around the cursor) |
+| Minimap (top of the panel) | Click or drag to move the view there; the white box is what you're looking at |
+| `-` / `+` / `Fit` buttons | Zoom out, zoom in, or show the whole map |
 
 Dev server only: `E` spawns one enemy and `M` spawns 200 (stress test).
 

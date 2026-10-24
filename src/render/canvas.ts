@@ -17,8 +17,12 @@ import { hitTile } from "../sim/traps";
 import type { Facing, GameState, Point, Structure, StructureKind } from "../sim/types";
 import type { PendingBuild } from "../net/session";
 import { isBuildTool, type UiState } from "../ui/state";
+import { visibleTiles, type VisibleTiles } from "../ui/camera";
 import {
   AIM_LINE_TILES,
+  ARROWS,
+  ARROW_SYMBOLS,
+  type ArrowStyle,
   COLOURS,
   NOTCH_DEPTH_PX,
   NOTCH_LENGTH_PX,
@@ -43,13 +47,16 @@ function isTower(kind: StructureKind): boolean {
   return stats.tower !== undefined;
 }
 
-export function createRenderer(canvas: HTMLCanvasElement, width: number, height: number) {
-  canvas.width = width * TILE_SIZE;
-  canvas.height = height * TILE_SIZE;
+/**
+ * Draws the game through the camera in `ui.camera`. Everything below draws in map pixels
+ * (TILE_SIZE per tile); the canvas transform turns that into the zoomed, scrolled view, and
+ * only tiles on screen are drawn. The canvas's own size is set by main.ts to fit the window.
+ */
+export function createRenderer(canvas: HTMLCanvasElement) {
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas 2D context not available");
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
+  /** The tiles on screen this frame. */
+  let view: VisibleTiles = { x0: 0, y0: 0, x1: -1, y1: -1 };
 
   function drawTile(x: number, y: number, bg: string, glyph?: string, fg?: string) {
     ctx!.fillStyle = bg;
@@ -77,9 +84,10 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
   }
 
   function drawGrid(state: GameState) {
+    const { x0, y0, x1, y1 } = view;
     const showOwners = Object.keys(state.players).length > 1;
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
         const base = baseAt(state, x, y);
         if (base) drawStructure(base);
         else if (isKeepTile(state, x, y)) drawKeepTile(state, x, y);
@@ -128,11 +136,71 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
     }
   }
 
+  /**
+   * An arrow pointing `angle` (compass degrees), drawn as a vector shape so every direction
+   * looks the same on every system (font arrows vary, and some turn into emoji).
+   */
+  function drawArrow(x: number, y: number, angle: number, colour: string, style: ArrowStyle) {
+    const { headHalfWidth, headLength, shaftHalfWidth, reach, fletchWidth, fletchLength } =
+      ARROWS[style];
+    ctx!.save();
+    ctx!.translate((x + 0.5) * TILE_SIZE, (y + 0.5) * TILE_SIZE);
+    ctx!.rotate((angle * Math.PI) / 180); // drawn pointing north, then turned
+    ctx!.fillStyle = colour;
+    ctx!.strokeStyle = colour;
+    if (fletchLength > 0) {
+      // Two pairs of feathers angled back from the tail.
+      ctx!.lineWidth = 1.5;
+      ctx!.beginPath();
+      for (const along of [reach - fletchLength, reach - fletchLength / 2]) {
+        ctx!.moveTo(-fletchWidth, along + fletchLength / 2);
+        ctx!.lineTo(0, along);
+        ctx!.lineTo(fletchWidth, along + fletchLength / 2);
+      }
+      ctx!.stroke();
+    }
+    ctx!.beginPath();
+    ctx!.moveTo(0, -reach); // tip
+    ctx!.lineTo(headHalfWidth, -reach + headLength);
+    ctx!.lineTo(shaftHalfWidth, -reach + headLength);
+    ctx!.lineTo(shaftHalfWidth, reach);
+    ctx!.lineTo(-shaftHalfWidth, reach);
+    ctx!.lineTo(-shaftHalfWidth, -reach + headLength);
+    ctx!.lineTo(-headHalfWidth, -reach + headLength);
+    ctx!.closePath();
+    ctx!.fill();
+    ctx!.restore();
+  }
+
+  /**
+   * A structure's symbol: arrow-drawn structures (wall spikes, archers) point where they aim, or
+   * else where they face; everything else draws its letter.
+   */
+  function drawSymbol(
+    x: number,
+    y: number,
+    kind: StructureKind,
+    facing: Facing | undefined,
+    colour: string,
+    aim?: number,
+  ) {
+    const style = ARROW_SYMBOLS[kind];
+    const angle = aim ?? (facing ? facingAngle(facing) : undefined);
+    if (style && angle !== undefined) drawArrow(x, y, angle, colour, style);
+    else drawGlyph(x, y, glyphFor(kind), colour);
+  }
+
+  /** Towers drawn as an arrow already show their facing; the rest get the edge notch. */
+  function needsNotch(kind: StructureKind): boolean {
+    return isTower(kind) && !ARROW_SYMBOLS[kind];
+  }
+
   function drawStructure(structure: Structure) {
     const { x, y } = structure;
     const colours = STRUCTURE_COLOURS[structure.kind];
-    drawTile(x, y, colours.bg, glyphFor(structure.kind, structure.facing), colours.fg);
-    if (isTower(structure.kind)) drawFacingNotch(x, y, structure.facing);
+    drawTile(x, y, colours.bg);
+    drawSymbol(x, y, structure.kind, structure.facing, colours.fg, structure.aim);
+    if (needsNotch(structure.kind)) drawFacingNotch(x, y, structure.facing);
     if (structure.hp < structure.maxHp) drawHpBar(x, y, structure.hp / structure.maxHp);
   }
 
@@ -140,10 +208,11 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
   function drawMountOnWall(tower: Structure, wall: Structure) {
     const { x, y } = tower;
     const towerColour = STRUCTURE_COLOURS[tower.kind].bg;
-    drawTile(x, y, STRUCTURE_COLOURS[wall.kind].bg, glyphFor(tower.kind), towerColour);
+    drawTile(x, y, STRUCTURE_COLOURS[wall.kind].bg);
+    drawSymbol(x, y, tower.kind, tower.facing, towerColour, tower.aim);
     ctx!.fillStyle = towerColour;
     ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, BATTLEMENT_PX);
-    drawFacingNotch(x, y, tower.facing);
+    if (needsNotch(tower.kind)) drawFacingNotch(x, y, tower.facing);
     if (wall.hp < wall.maxHp) drawHpBar(x, y, wall.hp / wall.maxHp);
   }
 
@@ -161,10 +230,10 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
     ctx!.fillStyle = ok ? COLOURS.ghostOk : COLOURS.ghostBad;
     ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
     const stats: StructureStats = STRUCTURES[ui.tool];
-    const facing = stats.directional ? ui.facing : undefined;
-    drawGlyph(x, y, glyphFor(ui.tool, facing), "#ffffff");
-    if (stats.tower) drawFacingNotch(x, y, ui.facing);
-    if (facing) {
+    drawSymbol(x, y, ui.tool, ui.facing, "#ffffff");
+    if (needsNotch(ui.tool)) drawFacingNotch(x, y, ui.facing);
+    if (stats.directional) {
+      const facing = ui.facing;
       const target = hitTile({ x, y, facing });
       ctx!.fillStyle = COLOURS.trapTarget;
       ctx!.fillRect(target.x * TILE_SIZE, target.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
@@ -281,8 +350,8 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
   }
 
   function drawFlow(state: GameState) {
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
+    for (let y = view.y0; y <= view.y1; y++) {
+      for (let x = view.x0; x <= view.x1; x++) {
         if (topAt(state, x, y) || !isWalkable(state, x, y)) continue;
         const next = nextStep(state, x, y);
         if (!next) continue;
@@ -315,12 +384,22 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
     for (const build of pending) {
       ctx!.fillStyle = COLOURS.ghostPending;
       ctx!.fillRect(build.x * TILE_SIZE, build.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-      drawGlyph(build.x, build.y, glyphFor(build.kind, build.facing), COLOURS.ghostPendingGlyph);
+      drawSymbol(build.x, build.y, build.kind, build.facing, COLOURS.ghostPendingGlyph);
     }
   }
 
   return {
     render(state: GameState, ui: UiState, pending: readonly PendingBuild[] = []) {
+      const cam = ui.camera;
+      // Clear to the "off the map" colour, then draw the map scrolled and zoomed.
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = COLOURS.offMap;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      const scale = cam.zoom * (canvas.width / cam.viewWidth); // includes the device pixel ratio
+      ctx.setTransform(scale, 0, 0, scale, -cam.x * TILE_SIZE * scale, -cam.y * TILE_SIZE * scale);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      view = visibleTiles(cam);
       drawGrid(state);
       drawFeatures(state);
       if (ui.showFlow) drawFlow(state);

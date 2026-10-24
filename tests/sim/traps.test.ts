@@ -53,7 +53,9 @@ describe("floor spikes", () => {
     const y = state.keep.y + 1;
     for (let x = 5; x < 15; x++) placeStructure(state, "floorSpikes", x, y);
     spawnEnemy(state, 0, y, TOUGH);
-    for (let i = 0; i < 600; i++) tick(state);
+    // Long enough to walk to the keep, whatever the map size.
+    const ticks = Math.ceil((2 * state.keep.x * TICK_RATE) / ENEMY.speed);
+    for (let i = 0; i < ticks; i++) tick(state);
     expect(state.enemies).toHaveLength(0);
     expect(state.keep.hp).toBe(state.keep.maxHp - ENEMY.keepDamage);
     for (let x = 5; x < 15; x++) expect(topAt(state, x, y)?.kind).toBe("floorSpikes");

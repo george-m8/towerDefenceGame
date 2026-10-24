@@ -1,5 +1,8 @@
 import { GRID_HEIGHT, GRID_WIDTH } from "./sim/config";
 import { createRenderer } from "./render/canvas";
+import { centerOn, panBy, setViewport, tilePixels, zoomBy } from "./ui/camera";
+import { ZOOM_STEP } from "./ui/input";
+import { createMinimap } from "./ui/minimap";
 import { readJoinIntent, serverUrl, tokenKey, type PageIntent } from "./net/join";
 import { createNetworkSession, type NetworkDeps } from "./net/networkSession";
 import { createLocalSession, type Session } from "./net/session";
@@ -24,9 +27,36 @@ const onlineViews: { update(state: GameState | null): void }[] = [];
 
 const dispatch = (command: Command) => session?.send(command);
 const canvas = element<HTMLCanvasElement>("#map");
-// Sized for the default map now, so the start screen has a window to sit in.
-let renderer = createRenderer(canvas, GRID_WIDTH, GRID_HEIGHT);
-let rendererSize = `${GRID_WIDTH}x${GRID_HEIGHT}`;
+const renderer = createRenderer(canvas);
+const minimap = createMinimap(element<HTMLCanvasElement>("#minimap"), ui);
+/** Arrow-key panning speed, in screen pixels per second (so it feels the same at any zoom). */
+const PAN_PIXELS_PER_SECOND = 900;
+/** The map the camera was last centred for, so a new game re-centres on its keep. */
+let centredFor = "";
+
+/** Fits the canvas to the space CSS gives it, at the screen's pixel density. */
+function fitCanvas(mapWidth: number, mapHeight: number) {
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  const width = Math.max(1, Math.round(rect.width * dpr));
+  const height = Math.max(1, Math.round(rect.height * dpr));
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+  }
+  setViewport(ui.camera, rect.width, rect.height, mapWidth, mapHeight);
+}
+fitCanvas(GRID_WIDTH, GRID_HEIGHT);
+
+for (const button of document.querySelectorAll<HTMLButtonElement>("[data-zoom]")) {
+  button.addEventListener("click", () => {
+    button.blur();
+    const action = button.dataset.zoom;
+    // "fit" zooms all the way out; the camera clamps it to the whole map.
+    zoomBy(ui.camera, action === "in" ? ZOOM_STEP : action === "out" ? 1 / ZOOM_STEP : 0);
+  });
+}
+
 const panel = createPanel(element("#panel"), ui, dispatch);
 const gameOver = createGameOverDialog(element("#game-over"), () => {
   session?.restart();
@@ -71,19 +101,28 @@ if (intent.mode !== "menu") {
   );
 }
 
+let lastFrame = performance.now();
+
 function frame(now: number) {
+  const seconds = Math.min(0.1, (now - lastFrame) / 1000);
+  lastFrame = now;
   if (session) {
     session.frame(now);
     ui.playerId = session.playerId;
     const state = session.state;
     for (const view of onlineViews) view.update(state);
     if (state) {
-      const size = `${state.width}x${state.height}`;
-      if (size !== rendererSize) {
-        renderer = createRenderer(canvas, state.width, state.height);
-        rendererSize = size;
+      fitCanvas(state.width, state.height);
+      // A new map (first game, restart, or joining a room): start looking at the keep.
+      const mapKey = `${state.seed}:${state.width}x${state.height}`;
+      if (mapKey !== centredFor) {
+        ui.camera.zoom = 1;
+        centerOn(ui.camera, state.keep.x + state.keep.size / 2, state.keep.y + state.keep.size / 2);
+        centredFor = mapKey;
       }
+      panWithKeys(seconds);
       renderer.render(state, ui, session.pending);
+      minimap.update(state);
       panel.update(state);
       gameOver.update(state);
     }
@@ -91,6 +130,15 @@ function frame(now: number) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+
+/** Moves the view while arrow keys are held. */
+function panWithKeys(seconds: number) {
+  const { left, right, up, down } = ui.panKeys;
+  const step = (PAN_PIXELS_PER_SECOND * seconds) / tilePixels(ui.camera);
+  const dx = (right ? 1 : 0) - (left ? 1 : 0);
+  const dy = (down ? 1 : 0) - (up ? 1 : 0);
+  if (dx || dy) panBy(ui.camera, dx * step, dy * step);
+}
 
 /** sessionStorage (per tab, so each tab is its own player), or memory if it's unavailable. */
 function tabStorage(): NetworkDeps["storage"] {
