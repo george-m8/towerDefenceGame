@@ -1,15 +1,11 @@
 import { SELL_REFUND, STRUCTURES, TICK_RATE } from "../sim/config";
 import { incomePerMinute } from "../sim/economy";
-import type { Command, CommandResult, GameState } from "../sim/types";
+import type { Command, GameState } from "../sim/types";
 import { GLYPHS } from "../render/palette";
-import { TOOLS, isBuildTool, showMessage, type UiState } from "./state";
+import { TOOLS, isBuildTool, type UiState } from "./state";
 import { describeTile } from "./tileInfo";
 
-export function createPanel(
-  root: HTMLElement,
-  ui: UiState,
-  dispatch: (command: Command) => CommandResult,
-) {
+export function createPanel(root: HTMLElement, ui: UiState, dispatch: (command: Command) => void) {
   root.innerHTML = `
     <dl class="stats">
       <dt>Gold</dt><dd data-stat="gold"></dd>
@@ -59,10 +55,7 @@ export function createPanel(
   root.addEventListener("click", (e) => {
     (e.target as HTMLElement).closest("button")?.blur();
   });
-  sendWaveButton.addEventListener("click", () => {
-    const result = dispatch({ type: "sendWave" });
-    if (!result.ok) showMessage(ui, result.reason);
-  });
+  sendWaveButton.addEventListener("click", () => dispatch({ type: "sendWave" }));
   pauseButton.addEventListener("click", () => dispatch({ type: "togglePause" }));
   fastForwardButton.addEventListener("click", () => dispatch({ type: "toggleFastForward" }));
   for (const button of toolButtons) {

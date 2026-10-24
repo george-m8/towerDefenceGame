@@ -34,12 +34,12 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** `src/net/session.ts` with the `Session` interface (`state`, `playerId`, `send`, `restart`, `frame(now)`, `status`, `onResult`) and `createLocalSession(seed)`, holding today's fixed-step loop from `main.ts`. `main.ts`, the panel and input dispatch through the session. Results come back through `onResult`, which shows refusals with `showMessage`. The panel and input no longer read return values. Restart calls `session.restart()`.
 
 **Acceptance criteria:**
-- [ ] Offline play is unchanged: building, selling, refusals shown, pause, fast-forward, send wave, restart, debug keys
-- [ ] `main.ts` no longer touches `tick` or `applyCommand` directly
-- [ ] A `LocalSession` test checks ticking by elapsed time, speed, the catch-up cap and synchronous results
+- [ ] Offline play is unchanged: building, selling, refusals shown, pause, fast-forward, send wave, restart, debug keys (manual)
+- [x] `main.ts` no longer touches `tick` or `applyCommand` directly
+- [x] A `LocalSession` test checks ticking by elapsed time, speed, the catch-up cap and synchronous results
 
 **Verification:**
-- [ ] `tests/net/session.test.ts` (local part)
+- [x] `tests/net/session.test.ts` (local part)
 - [ ] Manual: browser smoke test offline
 
 **Dependencies:** Task 1

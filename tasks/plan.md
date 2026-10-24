@@ -313,7 +313,7 @@ T1 View state from server messages, interpolation
 ### Task list
 
 - [x] Task 1: View state from server messages
-- [ ] Task 2: Sessions, with offline unchanged
+- [x] Task 2: Sessions, with offline unchanged
 - [ ] Task 3: NetworkSession
 
 **Checkpoint J: offline unchanged, network session tested**
