@@ -48,19 +48,37 @@ export const GLYPHS: Record<StructureKind, string> = {
   cannon: "C",
   catapult: "P",
   floorSpikes: "^",
-  wallSpikes: "▲",
+  wallSpikes: "↑",
   house: "h",
   bridge: "=",
   ruin: "#",
 };
 
-const FACING_GLYPHS: Record<Facing, string> = { N: "▲", E: "▶", S: "▼", W: "◀" };
+/** Plain-text arrows (U+2190-2193). Shapes like ▶ and ◀ turn into emoji on some systems. */
+const FACING_ARROWS: Record<Facing, string> = { N: "↑", E: "→", S: "↓", W: "←" };
 
-/** Directional traps draw as arrows; towers keep their letter (their facing is shown separately). */
+export function facingArrow(facing: Facing): string {
+  return FACING_ARROWS[facing];
+}
+
+/**
+ * The text symbol for a structure: directional traps get the arrow for their facing; towers
+ * keep their letter (their facing is shown separately). On the map, directional traps are
+ * drawn as a vector arrow instead (see drawArrow in canvas.ts).
+ */
 export function glyphFor(kind: StructureKind, facing?: Facing): string {
   const stats: StructureStats = STRUCTURES[kind];
-  return facing && stats.directional ? FACING_GLYPHS[facing] : GLYPHS[kind];
+  return facing && stats.directional ? FACING_ARROWS[facing] : GLYPHS[kind];
 }
+
+/** The drawn arrow on a directional trap, in pixels: an arrowhead on a short shaft. */
+export const ARROW = {
+  headHalfWidth: 6,
+  headLength: 7,
+  shaftHalfWidth: 1.5,
+  /** Distance from the tile centre to the tip; the tail sits the same distance behind. */
+  reach: 7,
+};
 
 export const STRUCTURE_COLOURS: Record<StructureKind, { bg: string; fg: string }> = {
   wall: { bg: "#8a7a5c", fg: "#3b3226" },

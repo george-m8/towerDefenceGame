@@ -47,7 +47,7 @@ A browser-based, top-down, grid-based tower defence game where the player grows 
 | Cannon | `C` | 50 | 60 | Range 4, slow (0.4/s), small splash (radius 1). Blocks movement. |
 | Catapult | `P` | 80 | 40 | Range 9, min range 3, very slow (0.2/s), large splash (radius 2). Blocks movement. |
 | Floor spikes | `^` | 15 | - | Walkable. Fires every 1.5s: spikes come up from the floor and deal 15 damage to every enemy on its tile. Does not block. Never attacked. |
-| Wall spikes | `▲▶▼◀` | 20 | 50 | A wall section with spikes facing one direction (chosen before placing). Fires every 2s, dealing 20 damage to every enemy on the one adjacent tile it faces. Blocks movement. |
+| Wall spikes | arrow `↑→↓←` | 20 | 50 | A wall section with spikes facing one direction (chosen before placing). Fires every 2s, dealing 20 damage to every enemy on the one adjacent tile it faces. Blocks movement. |
 | House | `h` | 40 | 30 | Generates +2 gold every 5s. Blocks movement. |
 
 - Towers target the enemy closest to the keep (by path distance) within range. Projectiles are instant hit for the MVP (no travel time); splash is applied at the target tile.

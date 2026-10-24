@@ -19,6 +19,7 @@ import type { PendingBuild } from "../net/session";
 import { isBuildTool, type UiState } from "../ui/state";
 import {
   AIM_LINE_TILES,
+  ARROW,
   COLOURS,
   NOTCH_DEPTH_PX,
   NOTCH_LENGTH_PX,
@@ -128,10 +129,47 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
     }
   }
 
+  /**
+   * A directional trap pointing `facing`: drawn as a vector arrow, so every direction looks the
+   * same on every system (font arrows vary, and some turn into emoji).
+   */
+  function drawArrow(x: number, y: number, facing: Facing, colour: string) {
+    const { headHalfWidth, headLength, shaftHalfWidth, reach } = ARROW;
+    ctx!.save();
+    ctx!.translate((x + 0.5) * TILE_SIZE, (y + 0.5) * TILE_SIZE);
+    ctx!.rotate((facingAngle(facing) * Math.PI) / 180); // drawn pointing north, then turned
+    ctx!.fillStyle = colour;
+    ctx!.beginPath();
+    ctx!.moveTo(0, -reach); // tip
+    ctx!.lineTo(headHalfWidth, -reach + headLength);
+    ctx!.lineTo(shaftHalfWidth, -reach + headLength);
+    ctx!.lineTo(shaftHalfWidth, reach);
+    ctx!.lineTo(-shaftHalfWidth, reach);
+    ctx!.lineTo(-shaftHalfWidth, -reach + headLength);
+    ctx!.lineTo(-headHalfWidth, -reach + headLength);
+    ctx!.closePath();
+    ctx!.fill();
+    ctx!.restore();
+  }
+
+  /** A structure's symbol: the arrow for directional traps, otherwise its glyph. */
+  function drawSymbol(
+    x: number,
+    y: number,
+    kind: StructureKind,
+    facing: Facing | undefined,
+    colour: string,
+  ) {
+    const stats: StructureStats = STRUCTURES[kind];
+    if (stats.directional && facing) drawArrow(x, y, facing, colour);
+    else drawGlyph(x, y, glyphFor(kind), colour);
+  }
+
   function drawStructure(structure: Structure) {
     const { x, y } = structure;
     const colours = STRUCTURE_COLOURS[structure.kind];
-    drawTile(x, y, colours.bg, glyphFor(structure.kind, structure.facing), colours.fg);
+    drawTile(x, y, colours.bg);
+    drawSymbol(x, y, structure.kind, structure.facing, colours.fg);
     if (isTower(structure.kind)) drawFacingNotch(x, y, structure.facing);
     if (structure.hp < structure.maxHp) drawHpBar(x, y, structure.hp / structure.maxHp);
   }
@@ -162,7 +200,7 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
     ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
     const stats: StructureStats = STRUCTURES[ui.tool];
     const facing = stats.directional ? ui.facing : undefined;
-    drawGlyph(x, y, glyphFor(ui.tool, facing), "#ffffff");
+    drawSymbol(x, y, ui.tool, facing, "#ffffff");
     if (stats.tower) drawFacingNotch(x, y, ui.facing);
     if (facing) {
       const target = hitTile({ x, y, facing });
@@ -315,7 +353,7 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
     for (const build of pending) {
       ctx!.fillStyle = COLOURS.ghostPending;
       ctx!.fillRect(build.x * TILE_SIZE, build.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-      drawGlyph(build.x, build.y, glyphFor(build.kind, build.facing), COLOURS.ghostPendingGlyph);
+      drawSymbol(build.x, build.y, build.kind, build.facing, COLOURS.ghostPendingGlyph);
     }
   }
 

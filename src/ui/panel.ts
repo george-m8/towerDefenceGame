@@ -1,7 +1,7 @@
-import { SELL_REFUND, STRUCTURES, TICK_RATE } from "../sim/config";
+import { SELL_REFUND, STRUCTURES, TICK_RATE, type StructureStats } from "../sim/config";
 import { incomePerMinute } from "../sim/economy";
 import type { Command, GameState } from "../sim/types";
-import { GLYPHS } from "../render/palette";
+import { GLYPHS, glyphFor } from "../render/palette";
 import { TOOLS, isBuildTool, type UiState } from "./state";
 import { describeTile } from "./tileInfo";
 import { hasVoted, voteLabel } from "./votes";
@@ -87,6 +87,13 @@ export function createPanel(root: HTMLElement, ui: UiState, dispatch: (command: 
       fastForwardButton.classList.toggle("selected", hasVoted(state, ui.playerId, "fastForward"));
       for (const button of toolButtons) {
         const tool = button.dataset.tool as UiState["tool"];
+        // Directional tools show the way they'll face (R rotates).
+        const stats: StructureStats | null = isBuildTool(tool) ? STRUCTURES[tool] : null;
+        if (isBuildTool(tool) && stats?.directional) {
+          const glyph = button.querySelector<HTMLElement>(".glyph")!;
+          const arrow = glyphFor(tool, ui.facing);
+          if (glyph.textContent !== arrow) glyph.textContent = arrow;
+        }
         button.classList.toggle("selected", tool === ui.tool);
         button.disabled = isBuildTool(tool) && player.gold < STRUCTURES[tool].cost;
       }
