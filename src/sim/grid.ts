@@ -144,7 +144,12 @@ function initialCooldown(stats: StructureStats): number {
   return seconds * TICK_RATE;
 }
 
+/** Removing a base also removes any tower standing on it: it falls with its wall. */
 export function removeStructure(state: GameState, structure: Structure): void {
+  if (STRUCTURES[structure.kind].layer === "base") {
+    const mount = mountAt(state, structure.x, structure.y);
+    if (mount) removeStructure(state, mount);
+  }
   delete state.structures[structure.id];
   layerOf(state, structure.kind)[tileIndex(state, structure.x, structure.y)] = EMPTY;
   state.gridVersion++;

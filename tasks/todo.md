@@ -102,13 +102,13 @@ The placement ghost already calls `canBuild`, so wall tiles show green for tower
 - `removeStructure` on a base removes its mount too, which bumps `gridVersion` so enemies reroute
 
 **Acceptance criteria:**
-- [ ] With the keep sealed by a wall carrying an archer, the wall takes all the damage and the archer keeps full HP until the wall falls
-- [ ] When that wall falls, the archer is removed in the same tick, with no refund, and enemies continue through
-- [ ] A ground tower sealing the route is attacked directly, and ground towers with an open route around them take no damage
+- [x] With the keep sealed by a wall carrying an archer, the wall takes all the damage and the archer keeps full HP until the wall falls
+- [x] When that wall falls, the archer is removed in the same tick, with no refund, and enemies continue through
+- [x] A ground tower sealing the route is attacked directly, and ground towers with an open route around them take no damage
 
 **Verification:**
-- [ ] `npm test` (`tests/sim/layers.test.ts` combat cases; extended "no damage when an open route exists" test in `tests/sim/enemies.test.ts`)
-- [ ] Manual: wall in the keep with archers on the wall, then watch the wall break and the archer vanish with it
+- [x] `npm test` (`tests/sim/layers.test.ts` combat cases; extended "no damage when an open route exists" test in `tests/sim/enemies.test.ts`)
+- [x] Manual: wall in the keep with archers on the wall, then watch the wall break and the archer vanish with it
 
 **Dependencies:** Task 3
 

@@ -66,7 +66,7 @@ T4 and T5 both depend only on T3.
 - [x] Browser smoke test: build, waves, towers, selling all behave exactly as before
 
 - [x] Task 3: Towers can be placed on walls
-- [ ] Task 4: Walls protect, and drop, their towers
+- [x] Task 4: Walls protect, and drop, their towers
 - [ ] Task 5: Selling takes the top layer first
 - [ ] Task 6: Wall-mounted visuals, hover info and docs
 
