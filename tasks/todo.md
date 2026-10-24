@@ -242,13 +242,13 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** Add the Wall spikes config row (cost 20, HP 50, blocks movement, fires every 2s for 20 damage to every enemy on the one adjacent tile it faces). The structure stores `facing` (N/E/S/W) and is drawn as `▲▶▼◀`. `R` cycles the facing of the selected tool, and the build command carries the facing. The placement ghost shows the facing and highlights the target tile. It can be attacked and destroyed like a wall.
 
 **Acceptance criteria:**
-- [ ] Wall spikes hit only enemies on the faced adjacent tile, on a 40-tick cycle
-- [ ] `R` rotates the facing before placement, and the ghost preview reflects it
-- [ ] Wall spikes block movement and can be breached like walls
+- [x] Wall spikes hit only enemies on the faced adjacent tile, on a 40-tick cycle
+- [x] `R` rotates the facing before placement, and the ghost preview reflects it
+- [x] Wall spikes block movement and can be breached like walls
 
 **Verification:**
-- [ ] `npm test` (`tests/sim/traps.test.ts`: each facing hits the right tile, no hits on other sides, cycle timing, blocks path)
-- [ ] Manual: line a corridor with wall spikes facing inwards and watch enemies get hit as they pass
+- [x] `npm test` (`tests/sim/traps.test.ts`: each facing hits the right tile, no hits on other sides, cycle timing, blocks path)
+- [x] Manual: line a corridor with wall spikes facing inwards and watch enemies get hit as they pass
 
 **Dependencies:** Task 10a
 

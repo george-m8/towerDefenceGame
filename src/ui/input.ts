@@ -1,6 +1,6 @@
 import { TILE_SIZE } from "../render/palette";
 import type { Command, CommandResult, Point } from "../sim/types";
-import { TOOLS, showMessage, type UiState } from "./state";
+import { TOOLS, rotateFacing, showMessage, type UiState } from "./state";
 
 export function bindInput(
   canvas: HTMLCanvasElement,
@@ -20,7 +20,7 @@ export function bindInput(
 
   function useToolAt(p: Point) {
     if (!ui.tool) return;
-    const result = dispatch({ type: "build", kind: ui.tool, x: p.x, y: p.y });
+    const result = dispatch({ type: "build", kind: ui.tool, x: p.x, y: p.y, facing: ui.facing });
     if (!result.ok) showMessage(ui, result.reason);
   }
 
@@ -28,6 +28,8 @@ export function bindInput(
     if (e.code === "Space") {
       e.preventDefault();
       dispatch({ type: "togglePause" });
+    } else if (e.code === "KeyR") {
+      rotateFacing(ui);
     } else if (e.code === "KeyD") {
       ui.showFlow = !ui.showFlow;
     } else if (e.code === "KeyE" && import.meta.env.DEV) {

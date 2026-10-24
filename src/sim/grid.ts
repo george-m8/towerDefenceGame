@@ -1,5 +1,5 @@
 import { STRUCTURES, TICK_RATE, type StructureStats } from "./config";
-import type { CommandResult, Enemy, GameState, Structure, StructureKind } from "./types";
+import type { CommandResult, Enemy, Facing, GameState, Structure, StructureKind } from "./types";
 
 export const EMPTY = 0;
 export const KEEP_TILE = -1;
@@ -58,8 +58,9 @@ export function placeStructure(
   kind: StructureKind,
   x: number,
   y: number,
+  facing: Facing = "N",
 ): Structure {
-  const stats = STRUCTURES[kind];
+  const stats: StructureStats = STRUCTURES[kind];
   const structure: Structure = {
     id: state.nextId++,
     kind,
@@ -69,6 +70,7 @@ export function placeStructure(
     maxHp: stats.maxHp,
     cooldown: initialCooldown(stats),
   };
+  if (stats.directional) structure.facing = facing;
   state.structures[structure.id] = structure;
   state.tiles[tileIndex(state, x, y)] = structure.id;
   state.gridVersion++;

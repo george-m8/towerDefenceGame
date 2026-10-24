@@ -1,9 +1,10 @@
 import { canBuild, isKeepTile, isSpawnTile, structureAt } from "../sim/grid";
 import { nextStep } from "../sim/pathfinding";
 import { STRUCTURES, type StructureStats } from "../sim/config";
+import { hitTile } from "../sim/traps";
 import type { GameState, Point, StructureKind } from "../sim/types";
 import type { UiState } from "../ui/state";
-import { COLOURS, GLYPHS, GLYPH_FONT, STRUCTURE_COLOURS, TILE_SIZE } from "./palette";
+import { COLOURS, GLYPH_FONT, STRUCTURE_COLOURS, TILE_SIZE, glyphFor } from "./palette";
 
 export function createRenderer(canvas: HTMLCanvasElement, width: number, height: number) {
   canvas.width = width * TILE_SIZE;
@@ -31,7 +32,7 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
         const structure = structureAt(state, x, y);
         if (structure) {
           const colours = STRUCTURE_COLOURS[structure.kind];
-          drawTile(x, y, colours.bg, GLYPHS[structure.kind], colours.fg);
+          drawTile(x, y, colours.bg, glyphFor(structure.kind, structure.facing), colours.fg);
           if (structure.hp < structure.maxHp) drawHpBar(x, y, structure.hp / structure.maxHp);
         } else if (isKeepTile(state, x, y)) drawTile(x, y, COLOURS.keep, "K", COLOURS.keepGlyph);
         else if (isSpawnTile(state, x, y)) drawTile(x, y, COLOURS.spawn, ".", COLOURS.spawnGlyph);
@@ -46,7 +47,14 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
     const ok = canBuild(state, ui.tool, x, y).ok;
     ctx!.fillStyle = ok ? COLOURS.ghostOk : COLOURS.ghostBad;
     ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-    drawGlyph(x, y, GLYPHS[ui.tool], "#ffffff");
+    const stats: StructureStats = STRUCTURES[ui.tool];
+    const facing = stats.directional ? ui.facing : undefined;
+    drawGlyph(x, y, glyphFor(ui.tool, facing), "#ffffff");
+    if (facing) {
+      const target = hitTile({ x, y, facing });
+      ctx!.fillStyle = COLOURS.trapTarget;
+      ctx!.fillRect(target.x * TILE_SIZE, target.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    }
   }
 
   /** Range of the tower being placed, or of the tower under the cursor. */

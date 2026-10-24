@@ -34,6 +34,8 @@ export interface StructureStats {
   blocksMovement: boolean;
   tower?: TowerStats;
   trap?: TrapStats;
+  /** Placed facing one direction (traps hit the tile they face). */
+  directional?: boolean;
 }
 
 export const STRUCTURES = {
@@ -65,6 +67,14 @@ export const STRUCTURES = {
     maxHp: 0, // walkable and never attacked
     blocksMovement: false,
     trap: { damage: 15, fireIntervalSeconds: 1.5 },
+  },
+  wallSpikes: {
+    name: "Wall spikes",
+    cost: 20,
+    maxHp: 50,
+    blocksMovement: true,
+    directional: true,
+    trap: { damage: 20, fireIntervalSeconds: 2 },
   },
 } satisfies Record<string, StructureStats>;
 

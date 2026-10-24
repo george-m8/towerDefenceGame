@@ -1,4 +1,4 @@
-import type { Point, StructureKind } from "../sim/types";
+import type { Facing, Point, StructureKind } from "../sim/types";
 
 export type Tool = StructureKind;
 
@@ -16,6 +16,7 @@ export const TOOLS: ToolDef[] = [
   { tool: "cannon", key: "Digit3", label: "3", paintable: false },
   { tool: "catapult", key: "Digit4", label: "4", paintable: false },
   { tool: "floorSpikes", key: "Digit5", label: "5", paintable: true },
+  { tool: "wallSpikes", key: "Digit6", label: "6", paintable: true },
 ];
 
 export interface UiState {
@@ -25,10 +26,25 @@ export interface UiState {
   messageUntil: number;
   /** Debug overlay: show the flow field direction on every tile. */
   showFlow: boolean;
+  /** Facing for directional structures, rotated with R. */
+  facing: Facing;
 }
 
 export function createUiState(): UiState {
-  return { tool: null, hover: null, message: "", messageUntil: 0, showFlow: false };
+  return {
+    tool: null,
+    hover: null,
+    message: "",
+    messageUntil: 0,
+    showFlow: false,
+    facing: "N",
+  };
+}
+
+const ROTATION: Facing[] = ["N", "E", "S", "W"];
+
+export function rotateFacing(ui: UiState) {
+  ui.facing = ROTATION[(ROTATION.indexOf(ui.facing) + 1) % ROTATION.length];
 }
 
 const MESSAGE_MS = 2000;

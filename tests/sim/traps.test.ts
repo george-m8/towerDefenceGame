@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { ENEMY, STRUCTURES, TICK_RATE } from "../../src/sim/config";
 import { spawnEnemy } from "../../src/sim/enemies";
-import { tick } from "../../src/sim/game";
+import { applyCommand, tick } from "../../src/sim/game";
 import { placeStructure, structureAt } from "../../src/sim/grid";
-import { getFlowField } from "../../src/sim/pathfinding";
+import { getFlowField, nextStep } from "../../src/sim/pathfinding";
 import { updateTraps } from "../../src/sim/traps";
 import { createGameWithoutWaves } from "./helpers";
 
@@ -57,5 +57,46 @@ describe("floor spikes", () => {
     expect(state.enemies).toHaveLength(0);
     expect(state.keep.hp).toBe(state.keep.maxHp - ENEMY.keepDamage);
     for (let x = 5; x < 15; x++) expect(structureAt(state, x, y)?.kind).toBe("floorSpikes");
+  });
+});
+
+describe("wall spikes", () => {
+  const WALL = STRUCTURES.wallSpikes.trap;
+  const wallInterval = WALL.fireIntervalSeconds * TICK_RATE;
+  const offsets = { N: [0, -1], E: [1, 0], S: [0, 1], W: [-1, 0] } as const;
+
+  it.each(["N", "E", "S", "W"] as const)(
+    "facing %s hits only the faced adjacent tile",
+    (facing) => {
+      const state = createGameWithoutWaves();
+      expect(
+        applyCommand(state, { type: "build", kind: "wallSpikes", x: 10, y: 10, facing }),
+      ).toEqual({
+        ok: true,
+      });
+      const neighbours = Object.entries(offsets).map(([dir, [dx, dy]]) => ({
+        dir,
+        enemy: spawnEnemy(state, 10 + dx, 10 + dy, TOUGH),
+      }));
+      runTraps(state, wallInterval - 1);
+      for (const { enemy } of neighbours) expect(enemy.hp).toBe(TOUGH);
+      runTraps(state, 1);
+      for (const { dir, enemy } of neighbours) {
+        expect(enemy.hp).toBe(dir === facing ? TOUGH - WALL.damage : TOUGH);
+      }
+    },
+  );
+
+  it("defaults to facing north", () => {
+    const state = createGameWithoutWaves();
+    applyCommand(state, { type: "build", kind: "wallSpikes", x: 10, y: 10 });
+    expect(structureAt(state, 10, 10)?.facing).toBe("N");
+  });
+
+  it("blocks movement like a wall", () => {
+    const state = createGameWithoutWaves();
+    const y = state.keep.y + 1;
+    placeStructure(state, "wallSpikes", 10, y, "E");
+    expect(nextStep(state, 9, y)).not.toEqual({ x: 10, y });
   });
 });

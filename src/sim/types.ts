@@ -7,6 +7,8 @@ export interface Point {
 
 export type StructureKind = keyof typeof STRUCTURES;
 
+export type Facing = "N" | "E" | "S" | "W";
+
 export interface Structure {
   id: number;
   kind: StructureKind;
@@ -16,6 +18,8 @@ export interface Structure {
   maxHp: number;
   /** Ticks until a tower can fire again. */
   cooldown: number;
+  /** Only for directional structures (wall spikes). */
+  facing?: Facing;
 }
 
 export interface Enemy {
@@ -89,7 +93,7 @@ export interface GameState {
 
 export type Command =
   | { type: "togglePause" }
-  | { type: "build"; kind: StructureKind; x: number; y: number }
+  | { type: "build"; kind: StructureKind; x: number; y: number; facing?: Facing }
   /** Dev only: spawn enemies at random spawn tiles. */
   | { type: "debugSpawn"; count: number }
   | { type: "sendWave" };

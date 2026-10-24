@@ -75,7 +75,7 @@ export function applyCommand(state: GameState, command: Command): CommandResult 
       const check = canBuild(state, command.kind, command.x, command.y);
       if (!check.ok) return check;
       state.gold -= STRUCTURES[command.kind].cost;
-      placeStructure(state, command.kind, command.x, command.y);
+      placeStructure(state, command.kind, command.x, command.y, command.facing);
       return { ok: true };
     }
     case "sendWave":

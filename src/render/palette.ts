@@ -1,4 +1,4 @@
-import type { StructureKind } from "../sim/types";
+import type { Facing, StructureKind } from "../sim/types";
 
 export const TILE_SIZE = 20;
 export const GLYPH_FONT = `bold ${TILE_SIZE - 4}px Menlo, Consolas, monospace`;
@@ -23,6 +23,7 @@ export const COLOURS = {
   splash: "rgba(255, 150, 40, 0.45)",
   spikesUp: "#c8c8c8",
   spikesUpGlyph: "#ffffff",
+  trapTarget: "rgba(255, 200, 200, 0.35)",
 };
 
 export const GLYPHS: Record<StructureKind, string> = {
@@ -31,7 +32,14 @@ export const GLYPHS: Record<StructureKind, string> = {
   cannon: "C",
   catapult: "P",
   floorSpikes: "^",
+  wallSpikes: "▲",
 };
+
+const FACING_GLYPHS: Record<Facing, string> = { N: "▲", E: "▶", S: "▼", W: "◀" };
+
+export function glyphFor(kind: StructureKind, facing?: Facing): string {
+  return facing ? FACING_GLYPHS[facing] : GLYPHS[kind];
+}
 
 export const STRUCTURE_COLOURS: Record<StructureKind, { bg: string; fg: string }> = {
   wall: { bg: "#8a7a5c", fg: "#3b3226" },
@@ -39,4 +47,5 @@ export const STRUCTURE_COLOURS: Record<StructureKind, { bg: string; fg: string }
   cannon: { bg: "#3a3f4a", fg: "#e8e8e8" },
   catapult: { bg: "#6b4a2a", fg: "#ffe0b0" },
   floorSpikes: { bg: "#3a3122", fg: "#a89878" },
+  wallSpikes: { bg: "#8a7a5c", fg: "#e8e8e8" },
 };
