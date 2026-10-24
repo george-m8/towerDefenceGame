@@ -54,6 +54,7 @@ A browser-based, top-down, grid-based tower defence game where the player grows 
 - Spike traps run on a fixed cycle from the moment they're built, whether or not an enemy is there, so timing matters. A brief "spikes up" visual shows each time they fire.
 - Sell refunds 50% of cost. Damaged structures refund proportionally less. Floor spikes always refund 50%.
 - **Since `tile-layers`:** towers (archer, cannon, catapult) can also be built on top of walls. A wall-mounted tower is shielded by its wall and falls with it; selling removes the tower before the wall. See [`SPEC-tile-layers.md`](SPEC-tile-layers.md).
+- **Since `map-gen`:** the map is no longer an empty field. Each game is generated from a seed with a coast, a river with fords, rocks, forests, ruins and treasure chests; bridges cross rivers and trees can be cleared. See [`SPEC-map-gen.md`](SPEC-map-gen.md).
 
 **Enemies** (one type for the MVP)
 

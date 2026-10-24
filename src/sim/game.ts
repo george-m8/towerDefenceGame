@@ -3,41 +3,45 @@ import {
   GRID_HEIGHT,
   GRID_WIDTH,
   KEEP_HP,
-  KEEP_SIZE,
-  SPAWN_ZONE,
   STARTING_GOLD,
   STRUCTURES,
 } from "./config";
 import { spawnEnemy, updateEnemies } from "./enemies";
 import { EMPTY, KEEP_TILE, canBuild, placeStructure } from "./grid";
-import { awardBounties, collectIncome, sellStructure } from "./economy";
+import { awardBounties, claimChest, collectIncome, sellStructure } from "./economy";
 import { updateEffects } from "./effects";
+import { generateTerrain, layoutFor } from "./mapgen";
 import { randomInt } from "./rng";
 import { updateTowers } from "./towers";
 import { updateTraps } from "./traps";
 import { createWaveState, sendWaveEarly, updateWaves } from "./waves";
-import type { Command, CommandResult, GameState, Point, Terrain } from "./types";
+import type { Command, CommandResult, GameState, Terrain } from "./types";
 
-export function createGame(seed: number): GameState {
+export interface GameOptions {
+  /** Skip map generation and start on open ground (used by tests). */
+  blankMap?: boolean;
+}
+
+export function createGame(seed: number, options: GameOptions = {}): GameState {
   const width = GRID_WIDTH;
   const height = GRID_HEIGHT;
+  const layout = layoutFor(width, height);
+  const { keep, spawnTiles } = layout;
+
   const base = new Array<number>(width * height).fill(EMPTY);
-
-  const keepX = Math.floor(width / 2) - Math.floor(KEEP_SIZE / 2);
-  const keepY = Math.floor(height / 2) - Math.floor(KEEP_SIZE / 2);
-  for (let y = keepY; y < keepY + KEEP_SIZE; y++) {
-    for (let x = keepX; x < keepX + KEEP_SIZE; x++) base[y * width + x] = KEEP_TILE;
+  for (let y = keep.y; y < keep.y + keep.size; y++) {
+    for (let x = keep.x; x < keep.x + keep.size; x++) base[y * width + x] = KEEP_TILE;
   }
 
-  const spawnTiles: Point[] = [];
-  for (let y = SPAWN_ZONE.y; y < SPAWN_ZONE.y + SPAWN_ZONE.height; y++) {
-    for (let x = SPAWN_ZONE.x; x < SPAWN_ZONE.x + SPAWN_ZONE.width; x++) spawnTiles.push({ x, y });
-  }
+  const map = options.blankMap
+    ? { terrain: new Array<Terrain>(width * height).fill("ground"), ruins: [], chests: [] }
+    : generateTerrain(layout, seed);
 
-  return {
+  const state: GameState = {
+    seed,
     width,
     height,
-    terrain: new Array<Terrain>(width * height).fill("ground"),
+    terrain: map.terrain,
     base,
     mount: new Array<number>(width * height).fill(EMPTY),
     structures: {},
@@ -45,9 +49,10 @@ export function createGame(seed: number): GameState {
     gridVersion: 0,
     flow: null,
     enemies: [],
+    features: map.chests.map((c) => ({ kind: "chest" as const, ...c })),
     effects: [],
     spawnTiles,
-    keep: { x: keepX, y: keepY, size: KEEP_SIZE, hp: KEEP_HP, maxHp: KEEP_HP },
+    keep: { ...keep, hp: KEEP_HP, maxHp: KEEP_HP },
     wave: createWaveState(),
     gold: STARTING_GOLD,
     tick: 0,
@@ -56,6 +61,11 @@ export function createGame(seed: number): GameState {
     gameOver: false,
     rngState: seed,
   };
+  for (const spot of map.ruins) {
+    const ruin = placeStructure(state, "ruin", spot.x, spot.y);
+    ruin.hp = Math.round(ruin.maxHp * spot.hpFraction);
+  }
+  return state;
 }
 
 export function tick(state: GameState): void {
@@ -84,6 +94,7 @@ export function applyCommand(state: GameState, command: Command): CommandResult 
       if (!check.ok) return check;
       state.gold -= STRUCTURES[command.kind].cost;
       placeStructure(state, command.kind, command.x, command.y, command.facing);
+      claimChest(state, command.x, command.y);
       return { ok: true };
     }
     case "sell":

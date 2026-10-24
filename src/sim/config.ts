@@ -8,8 +8,8 @@ export const FAST_FORWARD_SPEED = 2; // game-speed multiplier while fast-forward
 export const KEEP_SIZE = 3;
 export const KEEP_HP = 99;
 
-// Spawn zone: a strip on the left edge of the map.
-export const SPAWN_ZONE = { x: 0, y: 10, width: 2, height: 12 };
+// Spawn zone: a strip on the left edge of the map, centred vertically.
+export const SPAWN_ZONE = { x: 0, width: 2, height: 12 };
 
 export const STARTING_GOLD = 250;
 
@@ -47,6 +47,12 @@ export interface StructureStats {
   /** Placed facing one direction (traps hit the tile they face). */
   directional?: boolean;
   income?: IncomeStats;
+  /** Can only be built on rivers, and makes them walkable. */
+  spansWater?: boolean;
+  /** False for map features the player can't build (ruins). */
+  buildable?: boolean;
+  /** Gold when sold at full HP, instead of the usual share of cost. */
+  salvageGold?: number;
 }
 
 export const STRUCTURES = {
@@ -107,6 +113,24 @@ export const STRUCTURES = {
     blocksMovement: true,
     income: { gold: 2, intervalSeconds: 5 },
   },
+  bridge: {
+    name: "Bridge",
+    layer: "base",
+    cost: 10,
+    maxHp: 0, // walkable and never attacked
+    blocksMovement: false,
+    spansWater: true,
+  },
+  ruin: {
+    name: "Ruin",
+    layer: "base",
+    acceptsMount: true,
+    cost: 0,
+    maxHp: 50,
+    blocksMovement: true,
+    buildable: false, // only placed by the map generator
+    salvageGold: 2,
+  },
 } satisfies Record<string, StructureStats>;
 
 /** How long shot and splash effects stay on screen. */
@@ -132,3 +156,40 @@ export const WAVES = {
 
 /** Selling refunds this fraction of cost, scaled by remaining HP. */
 export const SELL_REFUND = 0.5;
+
+export interface TerrainStats {
+  name: string;
+  walkable: boolean;
+  /** What can be built on it: anything, only bridges, or nothing. */
+  buildable: "any" | "bridgeOnly" | "none";
+}
+
+export const TERRAIN = {
+  ground: { name: "Ground", walkable: true, buildable: "any" },
+  ford: { name: "Ford", walkable: true, buildable: "any" },
+  river: { name: "River", walkable: false, buildable: "bridgeOnly" },
+  sea: { name: "Sea", walkable: false, buildable: "none" },
+  rock: { name: "Rock", walkable: false, buildable: "none" },
+  tree: { name: "Tree", walkable: false, buildable: "none" },
+} satisfies Record<string, TerrainStats>;
+
+export const MAP_GEN = {
+  maxAttempts: 20, // regenerate (deterministically) this many times before falling back to open ground
+  keepClearRadius: 4, // open ground this far around the keep
+  spawnClearColumns: 2, // open ground this many columns in front of the spawn zone
+  coastDepth: [2, 5] as [number, number],
+  riverFords: [1, 2] as [number, number],
+  riverMeander: 0.35, // chance per step that the river shifts sideways
+  // Counts are per 1,000 tiles so bigger maps get proportionally more.
+  rockClustersPer1000: [2, 4] as [number, number],
+  rockClusterSize: [2, 8] as [number, number],
+  forestsPer1000: [2, 3.3] as [number, number],
+  forestSize: [4, 15] as [number, number],
+  ruinsPer1000: [2.6, 5.2] as [number, number],
+  ruinHp: [0.4, 0.8] as [number, number], // fraction of full HP each ruin fragment starts with
+  chestsPer1000: [2, 4] as [number, number],
+  chestGold: [20, 60] as [number, number], // nearest the keep pays the least
+};
+
+/** Gold of timber for clearing one tree with the sell tool. */
+export const TREE_CLEAR_GOLD = 1;

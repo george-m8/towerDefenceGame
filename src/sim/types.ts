@@ -1,4 +1,4 @@
-import type { STRUCTURES } from "./config";
+import type { STRUCTURES, TERRAIN } from "./config";
 
 export interface Point {
   x: number;
@@ -9,8 +9,8 @@ export type StructureKind = keyof typeof STRUCTURES;
 
 export type Facing = "N" | "E" | "S" | "W";
 
-/** Natural ground type under any structures. map-gen adds more. */
-export type Terrain = "ground";
+/** Natural ground type under any structures. */
+export type Terrain = keyof typeof TERRAIN;
 
 export interface Structure {
   id: number;
@@ -46,6 +46,9 @@ export type Effect =
   | { kind: "splash"; x: number; y: number; radius: number; ttl: number }
   | { kind: "spikes"; x: number; y: number; ttl: number };
 
+/** Things lying on the map that aren't terrain or structures. `resources` adds deposits and animals. */
+export type MapFeature = { kind: "chest"; x: number; y: number; gold: number };
+
 export interface FlowField {
   /** gridVersion this field was computed for. */
   version: number;
@@ -73,6 +76,8 @@ export interface Keep {
 }
 
 export interface GameState {
+  /** The seed this game was created from (map and waves). */
+  seed: number;
   width: number;
   height: number;
   // Per-tile layers, index = y * width + x. Read them through the grid.ts helpers only.
@@ -87,6 +92,7 @@ export interface GameState {
   gridVersion: number;
   flow: FlowField | null;
   enemies: Enemy[];
+  features: MapFeature[];
   effects: Effect[];
   spawnTiles: Point[];
   keep: Keep;

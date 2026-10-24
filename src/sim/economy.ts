@@ -1,5 +1,5 @@
-import { SELL_REFUND, STRUCTURES, TICK_RATE, type StructureStats } from "./config";
-import { isKeepTile, removeStructure, topAt } from "./grid";
+import { SELL_REFUND, STRUCTURES, TICK_RATE, TREE_CLEAR_GOLD, type StructureStats } from "./config";
+import { enemyOccupies, isKeepTile, removeStructure, setTerrain, terrainAt, topAt } from "./grid";
 import type { CommandResult, GameState, Structure } from "./types";
 
 /** Removes dead enemies and pays out their bounties. */
@@ -35,7 +35,11 @@ export function sellStructure(state: GameState, x: number, y: number): CommandRe
   if (state.gameOver) return { ok: false, reason: "Game over" };
   if (isKeepTile(state, x, y)) return { ok: false, reason: "Can't sell the keep" };
   const structure = topAt(state, x, y);
-  if (!structure) return { ok: false, reason: "Nothing to sell" };
+  if (!structure) return clearTerrain(state, x, y);
+  const stats: StructureStats = STRUCTURES[structure.kind];
+  if (stats.spansWater && state.enemies.some((e) => enemyOccupies(e, x, y))) {
+    return { ok: false, reason: "An enemy is on the bridge" };
+  }
   state.gold += refundFor(structure);
   removeStructure(state, structure);
   return { ok: true };
@@ -43,5 +47,27 @@ export function sellStructure(state: GameState, x: number, y: number): CommandRe
 
 export function refundFor(structure: Structure): number {
   const condition = structure.maxHp > 0 ? structure.hp / structure.maxHp : 1;
-  return Math.floor(STRUCTURES[structure.kind].cost * SELL_REFUND * condition);
+  const stats: StructureStats = STRUCTURES[structure.kind];
+  const fullValue = stats.salvageGold ?? stats.cost * SELL_REFUND;
+  return Math.floor(fullValue * condition);
+}
+
+/** The sell tool on bare terrain: trees are cleared for timber; rock stays. */
+function clearTerrain(state: GameState, x: number, y: number): CommandResult {
+  const terrain = terrainAt(state, x, y);
+  if (terrain === "tree") {
+    setTerrain(state, x, y, "ground");
+    state.gold += TREE_CLEAR_GOLD;
+    return { ok: true };
+  }
+  if (terrain === "rock") return { ok: false, reason: "Rock can't be cleared" };
+  return { ok: false, reason: "Nothing to sell" };
+}
+
+/** Building on a treasure chest's tile claims its gold. */
+export function claimChest(state: GameState, x: number, y: number): void {
+  const chest = state.features.find((f) => f.kind === "chest" && f.x === x && f.y === y);
+  if (!chest) return;
+  state.gold += chest.gold;
+  state.features = state.features.filter((f) => f !== chest);
 }

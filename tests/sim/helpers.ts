@@ -1,6 +1,6 @@
 import { createGame } from "../../src/sim/game";
 import { placeStructure } from "../../src/sim/grid";
-import type { GameState, Point, StructureKind } from "../../src/sim/types";
+import type { GameState, Point, StructureKind, Terrain } from "../../src/sim/types";
 
 /** Place structures directly, bypassing gold and placement rules. */
 export function buildAt(state: GameState, points: Point[], kind: StructureKind = "wall") {
@@ -17,7 +17,19 @@ export function ring(x0: number, y0: number, x1: number, y1: number): Point[] {
 
 /** A game whose wave countdown never runs out, for testing other systems in isolation. */
 export function createGameWithoutWaves(seed = 1): GameState {
-  const state = createGame(seed);
+  const state = createGame(seed, { blankMap: true });
   state.wave.countdown = Infinity;
   return state;
+}
+
+/** Paint terrain directly, for terrain-rule tests on an otherwise blank map. */
+export function paintTerrain(state: GameState, points: Point[], terrain: Terrain) {
+  for (const p of points) state.terrain[p.y * state.width + p.x] = terrain;
+}
+
+/** A full column of tiles at x, optionally leaving some rows out. */
+export function column(state: GameState, x: number, except: number[] = []): Point[] {
+  return Array.from({ length: state.height }, (_, y) => ({ x, y })).filter(
+    (p) => !except.includes(p.y),
+  );
 }

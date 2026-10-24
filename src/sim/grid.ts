@@ -1,5 +1,13 @@
-import { STRUCTURES, TICK_RATE, type StructureStats } from "./config";
-import type { CommandResult, Enemy, Facing, GameState, Structure, StructureKind } from "./types";
+import { STRUCTURES, TERRAIN, TICK_RATE, type StructureStats, type TerrainStats } from "./config";
+import type {
+  CommandResult,
+  Enemy,
+  Facing,
+  GameState,
+  Structure,
+  StructureKind,
+  Terrain,
+} from "./types";
 
 export const EMPTY = 0;
 export const KEEP_TILE = -1;
@@ -18,6 +26,29 @@ export function isKeepTile(state: GameState, x: number, y: number): boolean {
 
 export function isSpawnTile(state: GameState, x: number, y: number): boolean {
   return state.spawnTiles.some((p) => p.x === x && p.y === y);
+}
+
+export function terrainAt(state: GameState, x: number, y: number): Terrain {
+  return state.terrain[tileIndex(state, x, y)];
+}
+
+/** Changes terrain at runtime (e.g. clearing a tree), so pathfinding recomputes. */
+export function setTerrain(state: GameState, x: number, y: number, terrain: Terrain): void {
+  state.terrain[tileIndex(state, x, y)] = terrain;
+  state.gridVersion++;
+}
+
+/** Whether enemies (and later units) can stand here at all. Sea, river, rock and trees are impassable. */
+export function isWalkable(state: GameState, x: number, y: number): boolean {
+  if (!inBounds(state, x, y)) return false;
+  if (TERRAIN[terrainAt(state, x, y)].walkable) return true;
+  return isBridge(baseAt(state, x, y));
+}
+
+function isBridge(structure: Structure | undefined): boolean {
+  if (!structure) return false;
+  const stats: StructureStats = STRUCTURES[structure.kind];
+  return stats.spansWater === true;
 }
 
 function structureIn(state: GameState, layer: number[], x: number, y: number) {
@@ -75,13 +106,39 @@ export function canBuild(
   y: number,
 ): CommandResult {
   if (state.gameOver) return { ok: false, reason: "Game over" };
+  const stats: StructureStats = STRUCTURES[kind];
+  if (stats.buildable === false) return { ok: false, reason: `${stats.name}s can't be built` };
   if (!inBounds(state, x, y)) return { ok: false, reason: "Out of bounds" };
   if (isKeepTile(state, x, y)) return { ok: false, reason: "Can't build on the keep" };
   if (isSpawnTile(state, x, y)) return { ok: false, reason: "Can't build in the spawn zone" };
+  const terrainCheck = canBuildOnTerrain(state, kind, x, y);
+  if (!terrainCheck.ok) return terrainCheck;
   const layerCheck =
     STRUCTURES[kind].layer === "mount" ? canMount(state, x, y) : canBuildBase(state, x, y);
   if (!layerCheck.ok) return layerCheck;
   if (state.gold < STRUCTURES[kind].cost) return { ok: false, reason: "Not enough gold" };
+  return { ok: true };
+}
+
+function canBuildOnTerrain(
+  state: GameState,
+  kind: StructureKind,
+  x: number,
+  y: number,
+): CommandResult {
+  const terrain: TerrainStats = TERRAIN[terrainAt(state, x, y)];
+  const stats: StructureStats = STRUCTURES[kind];
+  const spansWater = stats.spansWater === true;
+  if (terrain.buildable === "none") {
+    return { ok: false, reason: `Can't build on ${terrain.name.toLowerCase()}` };
+  }
+  // Once a river is bridged, the layer rules decide (no towers on bridges, no stacking).
+  if (terrain.buildable === "bridgeOnly" && !spansWater && !baseAt(state, x, y)) {
+    return { ok: false, reason: "Only bridges can be built on rivers" };
+  }
+  if (terrain.buildable === "any" && spansWater) {
+    return { ok: false, reason: "Bridges can only be built on rivers" };
+  }
   return { ok: true };
 }
 

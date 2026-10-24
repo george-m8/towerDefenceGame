@@ -30,7 +30,7 @@ function manhattanToKeep(state: GameState, p: Point): number {
 
 describe("flow field", () => {
   it("on an open grid, every tile is its Manhattan distance from the keep", () => {
-    const state = createGame(1);
+    const state = createGame(1, { blankMap: true });
     const field = getFlowField(state);
     for (const p of [
       { x: 0, y: 0 },
@@ -44,7 +44,7 @@ describe("flow field", () => {
   });
 
   it("prefers a long open detour over a short route through a wall", () => {
-    const state = createGame(1);
+    const state = createGame(1, { blankMap: true });
     // Vertical wall at x = 10, with a single gap at the very bottom row.
     buildAt(
       state,
@@ -56,7 +56,7 @@ describe("flow field", () => {
   });
 
   it("when the keep is fully enclosed, the path crosses exactly one structure", () => {
-    const state = createGame(1);
+    const state = createGame(1, { blankMap: true });
     const { keep } = state;
     buildAt(state, ring(keep.x - 1, keep.y - 1, keep.x + keep.size, keep.y + keep.size));
     const path = pathToKeep(state, state.spawnTiles[0]);
@@ -64,7 +64,7 @@ describe("flow field", () => {
   });
 
   it("with two rings, the path crosses exactly two structures", () => {
-    const state = createGame(1);
+    const state = createGame(1, { blankMap: true });
     const { keep } = state;
     buildAt(state, ring(keep.x - 1, keep.y - 1, keep.x + keep.size, keep.y + keep.size));
     buildAt(state, ring(keep.x - 3, keep.y - 3, keep.x + keep.size + 2, keep.y + keep.size + 2));
@@ -72,7 +72,7 @@ describe("flow field", () => {
   });
 
   it("recomputes after the grid changes", () => {
-    const state = createGame(1);
+    const state = createGame(1, { blankMap: true });
     const start = { x: 0, y: 16 };
     const before = pathToKeep(state, start);
     const blocker = before[5];
@@ -83,18 +83,18 @@ describe("flow field", () => {
   });
 
   it("does not recompute when nothing changed", () => {
-    const state = createGame(1);
+    const state = createGame(1, { blankMap: true });
     expect(getFlowField(state)).toBe(getFlowField(state));
   });
 
   it("breaks ties in a fixed N, E, S, W order", () => {
-    const state = createGame(1);
+    const state = createGame(1, { blankMap: true });
     // From the top-left corner, moving E or S is equally good; E comes first.
     expect(nextStep(state, 0, 0)).toEqual({ x: 1, y: 0 });
   });
 
   it("returns null when already on the keep", () => {
-    const state = createGame(1);
+    const state = createGame(1, { blankMap: true });
     expect(nextStep(state, state.keep.x, state.keep.y)).toBeNull();
   });
 });

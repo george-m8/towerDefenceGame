@@ -146,3 +146,41 @@ describe("selling across layers", () => {
     expect(topAt(state, 10, 10)).toBeUndefined();
   });
 });
+
+describe("ruin salvage", () => {
+  it("sells for its salvage value scaled by HP", () => {
+    const state = createGameWithoutWaves();
+    const ruin = placeStructure(state, "ruin", 10, 10);
+    ruin.hp = ruin.maxHp / 2;
+    const gold = state.gold;
+    applyCommand(state, { type: "sell", x: 10, y: 10 });
+    expect(state.gold).toBe(gold + Math.floor(STRUCTURES.ruin.salvageGold * 0.5));
+    expect(topAt(state, 10, 10)).toBeUndefined();
+  });
+});
+
+describe("treasure chests", () => {
+  function withChest() {
+    const state = createGameWithoutWaves();
+    state.features.push({ kind: "chest", x: 10, y: 10, gold: 37 });
+    return state;
+  }
+
+  it("pays its gold once when something is built on it, then disappears", () => {
+    const state = withChest();
+    const gold = state.gold;
+    applyCommand(state, { type: "build", kind: "wall", x: 10, y: 10 });
+    expect(state.gold).toBe(gold - STRUCTURES.wall.cost + 37);
+    expect(state.features).toEqual([]);
+    applyCommand(state, { type: "sell", x: 10, y: 10 });
+    applyCommand(state, { type: "build", kind: "wall", x: 10, y: 10 });
+    expect(state.gold).toBe(gold - STRUCTURES.wall.cost + 37 + 2 - STRUCTURES.wall.cost);
+  });
+
+  it("is untouched by enemies walking over it", () => {
+    const state = withChest();
+    spawnEnemy(state, 8, 10);
+    for (let i = 0; i < 100; i++) tick(state);
+    expect(state.features).toHaveLength(1);
+  });
+});

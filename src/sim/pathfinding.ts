@@ -1,4 +1,4 @@
-import { blocksAt, inBounds, isKeepTile, tileIndex } from "./grid";
+import { blocksAt, inBounds, isKeepTile, isWalkable, tileIndex } from "./grid";
 import type { FlowField, GameState, Point } from "./types";
 
 // Neighbour order doubles as the tie-break order: N, E, S, W.
@@ -69,7 +69,7 @@ function computeDistances(state: GameState): number[] {
     for (const dir of DIRECTIONS) {
       const nx = x + dir.x;
       const ny = y + dir.y;
-      if (!inBounds(state, nx, ny)) continue;
+      if (!isWalkable(state, nx, ny)) continue;
       const cost = blocksAt(state, nx, ny) ? blockedCost : 1;
       const ni = tileIndex(state, nx, ny);
       if (d + cost < dist[ni]) {

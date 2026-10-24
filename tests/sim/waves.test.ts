@@ -34,7 +34,7 @@ describe("wave formulas", () => {
 
 describe("wave schedule", () => {
   it("starts wave 1 after the first countdown", () => {
-    const state = createGame(1);
+    const state = createGame(1, { blankMap: true });
     run(state, countdownTicks - 1);
     expect(state.wave.number).toBe(0);
     tick(state);
@@ -45,7 +45,7 @@ describe("wave schedule", () => {
   });
 
   it("staggers spawns and gives them the wave's HP and bounty", () => {
-    const state = createGame(1);
+    const state = createGame(1, { blankMap: true });
     run(state, countdownTicks);
     run(state, intervalTicks);
     expect(state.enemies).toHaveLength(2);
@@ -58,7 +58,7 @@ describe("wave schedule", () => {
   });
 
   it("starts the next countdown once spawning finishes, then the next wave", () => {
-    const state = createGame(1);
+    const state = createGame(1, { blankMap: true });
     run(state, countdownTicks); // wave 1 starts, first enemy spawned
     run(state, intervalTicks * (waveEnemyCount(1) - 1)); // last enemy spawned
     expect(state.wave.toSpawn).toBe(0);
@@ -71,7 +71,7 @@ describe("wave schedule", () => {
 
 describe("send wave early", () => {
   it("starts the next wave now and pays 1 gold per full second skipped", () => {
-    const state = createGame(1);
+    const state = createGame(1, { blankMap: true });
     run(state, TICK_RATE * 5 + 7); // 14.65s left
     const gold = state.gold;
     expect(applyCommand(state, { type: "sendWave" })).toEqual({ ok: true });
@@ -82,7 +82,7 @@ describe("send wave early", () => {
   });
 
   it("is rejected while a wave is still spawning", () => {
-    const state = createGame(1);
+    const state = createGame(1, { blankMap: true });
     applyCommand(state, { type: "sendWave" });
     expect(applyCommand(state, { type: "sendWave" })).toEqual({
       ok: false,
