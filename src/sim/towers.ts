@@ -25,18 +25,36 @@ function updateTower(state: GameState, structure: Structure, tower: TowerStats) 
 
   const target = findTarget(state, structure, tower);
   if (!target) return;
-  const aligned = turns ? turnTowardsTarget(structure, tower, target) : true;
-  if (!aligned || structure.cooldown > 0) return;
+  if (turns) {
+    const wanted = angleTo(structure, target);
+    structure.aim = turnTowards(
+      structure.aim ?? wanted,
+      wanted,
+      tower.turnDegreesPerSecond / TICK_RATE,
+    );
+  }
+  if (structure.cooldown > 0) return;
+  const impact = turns ? landingPoint(structure, target) : target;
+  if (turns && !shotWouldHit(structure, tower, target, impact)) return;
+  fire(state, structure, tower, target, impact);
+}
 
+function fire(
+  state: GameState,
+  structure: Structure,
+  tower: TowerStats,
+  target: Enemy,
+  impact: Point,
+) {
   if (tower.splashRadius > 0) {
     for (const enemy of state.enemies) {
-      const spread = Math.max(Math.abs(enemy.x - target.x), Math.abs(enemy.y - target.y));
+      const spread = Math.max(Math.abs(enemy.x - impact.x), Math.abs(enemy.y - impact.y));
       if (spread <= tower.splashRadius) enemy.hp -= tower.damage;
     }
     state.effects.push({
       kind: "splash",
-      x: target.x,
-      y: target.y,
+      x: impact.x,
+      y: impact.y,
       radius: tower.splashRadius,
       ttl: EFFECT_TICKS,
     });
@@ -47,20 +65,35 @@ function updateTower(state: GameState, structure: Structure, tower: TowerStats) 
     kind: "shot",
     fromX: structure.x,
     fromY: structure.y,
-    toX: target.x,
-    toY: target.y,
+    toX: impact.x,
+    toY: impact.y,
     ttl: EFFECT_TICKS,
   });
   structure.cooldown = tower.fireIntervalSeconds * TICK_RATE;
 }
 
-/** Turns the tower's aim towards the target; true once it is within the aim tolerance. */
-function turnTowardsTarget(structure: Structure, tower: TowerStats, target: Enemy): boolean {
-  const wanted = angleTo(structure, target);
-  const aim = structure.aim ?? wanted;
-  structure.aim = turnTowards(aim, wanted, tower.turnDegreesPerSecond / TICK_RATE);
-  return angleBetween(structure.aim, wanted) <= AIM_TOLERANCE_DEGREES;
+/** Where a shot from a turning tower lands: along its barrel, at the target's distance. */
+function landingPoint(structure: Structure, target: Enemy): Point {
+  const distance = Math.hypot(target.x - structure.x, target.y - structure.y);
+  const radians = ((structure.aim ?? 0) * Math.PI) / 180;
+  return {
+    x: structure.x + Math.sin(radians) * distance,
+    y: structure.y - Math.cos(radians) * distance,
+  };
 }
+
+/**
+ * Splash weapons fire once the shell would land close enough for the blast to catch the
+ * target; others need their aim within the aim tolerance.
+ */
+function shotWouldHit(structure: Structure, tower: TowerStats, target: Enemy, impact: Point) {
+  if (tower.splashRadius > 0) {
+    return Math.hypot(impact.x - target.x, impact.y - target.y) <= tower.splashRadius + EPSILON;
+  }
+  return angleBetween(structure.aim ?? 0, angleTo(structure, target)) <= AIM_TOLERANCE_DEGREES;
+}
+
+const EPSILON = 1e-9;
 
 /**
  * Whether a tower at `origin` with `facing` could ever fire at `point`: in range, outside its
@@ -79,18 +112,35 @@ export function canTarget(
   return inArc(facingAngle(facing), tower.arcDegrees, angleTo(origin, point));
 }
 
-/** The living, in-range enemy closest to the keep by path distance (ties: lowest id). */
+/**
+ * Fixed towers: the enemy closest to the keep. Turning towers: the enemy needing the least
+ * turning from their current aim, so they keep firing at whatever is in front of them.
+ * Ties go to the enemy closest to the keep, then the lowest id.
+ */
 function findTarget(state: GameState, structure: Structure, tower: TowerStats): Enemy | undefined {
+  const turns = tower.turnDegreesPerSecond > 0;
   let best: Enemy | undefined;
-  let bestDist = Infinity;
+  let bestKey: [number, number, number] | undefined;
   for (const enemy of state.enemies) {
     if (enemy.hp <= 0) continue;
     if (!canTarget(tower, structure, structure.facing, enemy)) continue;
-    const dist = distanceAt(state, Math.round(enemy.x), Math.round(enemy.y));
-    if (dist < bestDist || (dist === bestDist && best && enemy.id < best.id)) {
+    const turn = turns ? angleBetween(structure.aim ?? 0, angleTo(structure, enemy)) : 0;
+    const key: [number, number, number] = [
+      turn,
+      distanceAt(state, Math.round(enemy.x), Math.round(enemy.y)),
+      enemy.id,
+    ];
+    if (!bestKey || isLess(key, bestKey)) {
       best = enemy;
-      bestDist = dist;
+      bestKey = key;
     }
   }
   return best;
+}
+
+function isLess(a: [number, number, number], b: [number, number, number]): boolean {
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return a[i] < b[i];
+  }
+  return false;
 }

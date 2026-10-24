@@ -133,7 +133,28 @@ No game changes yet.
 
 ---
 
+## Task 6: Play-test fixes for turning towers
+
+**Description:** From play-testing: turning towers kept swinging round after each kill and rarely fired. They now pick the in-range enemy needing the least turning (ties: closest to the keep, then id). Splash towers fire once the shell, landing where the barrel points at the target's distance, would land within splash radius of the target, and the blast is centred on that landing point. See the revised rules in the spec.
+
+**Acceptance criteria:**
+- [x] A cannon picks an enemy just off its barrel over a more urgent one behind it
+- [x] A cannon fires at an off-axis target sooner than the old 5° rule allowed, and the target is still caught in the blast
+- [x] Blasts are centred where the shell lands. Archers are unchanged.
+
+**Verification:**
+- [x] `npm test` (`tests/sim/towers.test.ts`)
+- [x] Manual: a cannon fired at an off-axis enemy during a wave, the blast landing beside it and still catching it
+
+**Dependencies:** Task 5
+
+**Files likely touched:** `src/sim/towers.ts`, `tests/sim/towers.test.ts`, `SPEC-tower-aiming.md`
+
+**Estimated scope:** S
+
+---
+
 ### Checkpoint F: tower-aiming complete
-- [x] All 6 success criteria in `SPEC-tower-aiming.md` met
-- [x] `npm run coverage` passes (99.3% lines for `src/sim/`)
+- [x] All 6 success criteria in `SPEC-tower-aiming.md` met (re-checked after Task 6)
+- [x] `npm run coverage` passes (99.0% lines for `src/sim/`)
 - [ ] Review with human, then move this file to `tasks/tower-aiming/` and start `line-of-sight`

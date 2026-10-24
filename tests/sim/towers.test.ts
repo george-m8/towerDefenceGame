@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { angleTo } from "../../src/sim/aiming";
 import { AIM_TOLERANCE_DEGREES, STRUCTURES, TICK_RATE } from "../../src/sim/config";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand } from "../../src/sim/game";
@@ -141,34 +142,76 @@ describe("facing and arcs", () => {
 });
 
 describe("turning towers", () => {
-  const ticksToTurn = (degrees: number, kind: "cannon" | "catapult") =>
+  const stepFor = (kind: "cannon" | "catapult") =>
+    STRUCTURES[kind].tower.turnDegreesPerSecond / TICK_RATE;
+  /** Largest aim error at which a shell landing at `distance` still lands within `splash` of the target. */
+  const splashTolerance = (distance: number, splash: number) =>
+    (2 * Math.asin(Math.min(1, splash / (2 * distance))) * 180) / Math.PI;
+  const ticksUntilInBlast = (kind: "cannon" | "catapult", degrees: number, distance: number) =>
     Math.ceil(
-      (degrees - AIM_TOLERANCE_DEGREES) / (STRUCTURES[kind].tower.turnDegreesPerSecond / TICK_RATE),
+      (degrees - splashTolerance(distance, STRUCTURES[kind].tower.splashRadius)) / stepFor(kind),
     );
 
-  it("a cannon has to turn onto a target behind it before it fires", () => {
+  it("a cannon turns onto a target behind it, firing once its blast would catch it", () => {
     const state = createGameWithoutWaves();
     const cannon = placeStructure(state, "cannon", 10, 10, "N");
-    const enemy = spawnEnemy(state, 10, 13, TOUGH); // due south
-    const turn = ticksToTurn(180, "cannon"); // about 2 s at 90 degrees/s
+    const enemy = spawnEnemy(state, 10, 13, TOUGH); // due south, 3 tiles
+    const turn = ticksUntilInBlast("cannon", 180, 3);
     for (let i = 0; i < turn - 1; i++) updateTowers(state);
     expect(enemy.hp).toBe(TOUGH);
     updateTowers(state);
     expect(enemy.hp).toBe(TOUGH - STRUCTURES.cannon.tower.damage);
-    expect(turn).toBeGreaterThanOrEqual(TICK_RATE * 1.9);
-    expect(cannon.aim).toBeGreaterThan(170);
+    expect(turn).toBeGreaterThan(TICK_RATE * 1.5); // still a real swing: well over 1.5 s
+    expect(cannon.aim).toBeGreaterThan(150);
   });
 
   it("a catapult takes about three times as long, and keeps its minimum range", () => {
     const state = createGameWithoutWaves();
     placeStructure(state, "catapult", 10, 10, "N");
     const enemy = spawnEnemy(state, 10, 15, TOUGH);
-    const turn = ticksToTurn(180, "catapult");
-    expect(turn).toBeGreaterThanOrEqual(ticksToTurn(180, "cannon") * 2.9);
+    const turn = ticksUntilInBlast("catapult", 180, 5);
+    expect(turn).toBeGreaterThanOrEqual(ticksUntilInBlast("cannon", 180, 3) * 2.5);
     for (let i = 0; i < turn - 1; i++) updateTowers(state);
     expect(enemy.hp).toBe(TOUGH);
     updateTowers(state);
     expect(enemy.hp).toBe(TOUGH - STRUCTURES.catapult.tower.damage);
+  });
+
+  it("fires at an off-axis target sooner than an exact line-up would allow", () => {
+    const state = createGameWithoutWaves();
+    placeStructure(state, "cannon", 10, 10, "N");
+    const enemy = spawnEnemy(state, 12, 7, TOUGH); // about 34 degrees off, 3.6 tiles
+    const offset = 33.69;
+    const exactLineUp = Math.ceil((offset - AIM_TOLERANCE_DEGREES) / stepFor("cannon"));
+    const inBlast = ticksUntilInBlast("cannon", offset, Math.hypot(2, 3));
+    expect(inBlast).toBeLessThan(exactLineUp);
+    for (let i = 0; i < inBlast; i++) updateTowers(state);
+    expect(enemy.hp).toBe(TOUGH - STRUCTURES.cannon.tower.damage);
+  });
+
+  it("centres the blast where the shell lands, along the barrel", () => {
+    const state = createGameWithoutWaves();
+    const cannon = placeStructure(state, "cannon", 10, 10, "N");
+    spawnEnemy(state, 12, 7, TOUGH);
+    for (let i = 0; i < 20 && !state.effects.some((e) => e.kind === "splash"); i++) {
+      updateTowers(state);
+    }
+    const splash = state.effects.find((e) => e.kind === "splash");
+    if (splash?.kind !== "splash") throw new Error("cannon never fired");
+    const distance = Math.hypot(2, 3);
+    const landing = angleTo({ x: 10, y: 10 }, splash);
+    expect(landing).toBeCloseTo(cannon.aim!, 6);
+    expect(Math.hypot(splash.x - 10, splash.y - 10)).toBeCloseTo(distance, 6);
+  });
+
+  it("prefers the enemy nearest its barrel over a more urgent one behind it", () => {
+    const state = createGameWithoutWaves();
+    placeStructure(state, "cannon", 10, 10, "N");
+    const behind = spawnEnemy(state, 10, 13, TOUGH); // due south: closer to the keep
+    const ahead = spawnEnemy(state, 11, 7, TOUGH); // just off the barrel
+    for (let i = 0; i < 10; i++) updateTowers(state);
+    expect(ahead.hp).toBeLessThan(TOUGH);
+    expect(behind.hp).toBe(TOUGH);
   });
 
   it("turns the shorter way round", () => {
@@ -176,10 +219,7 @@ describe("turning towers", () => {
     const cannon = placeStructure(state, "cannon", 10, 10, "N");
     spawnEnemy(state, 7, 10, TOUGH); // due west: anticlockwise is shorter
     updateTowers(state);
-    expect(cannon.aim).toBeCloseTo(
-      360 - STRUCTURES.cannon.tower.turnDegreesPerSecond / TICK_RATE,
-      9,
-    );
+    expect(cannon.aim).toBeCloseTo(360 - stepFor("cannon"), 9);
   });
 
   it("fires straight away at a target it is already facing", () => {

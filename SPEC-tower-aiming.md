@@ -24,8 +24,12 @@ All numbers live in `STRUCTURES[kind].tower` in config.
 - **Facing is permanent.** To change it, sell the tower and rebuild it.
 - **Angles** are measured from the tower's tile centre to the enemy's position. N is up the screen (negative y), and angles increase clockwise (E = 90°).
 - **Fixed towers** (arc under 360°, turn speed 0) can target an enemy only if it is in range **and** inside the arc. An enemy exactly on the arc's edge counts as inside.
-- **Turning towers** have an `aim` angle, which starts on their facing. Each tick they pick a target, turn towards it by at most `turnDegreesPerSecond / TICK_RATE`, taking the shorter way round, and fire only when the target is within the **aim tolerance** (5°, config) of their aim. The fire cooldown keeps counting down while they turn.
-- **Target choice is unchanged:** of the enemies a tower can target, it picks the one closest to the keep by path distance (ties: lowest id). It re-picks every tick, so a turning tower always swings towards the current most urgent enemy.
+- **Turning towers** have an `aim` angle, which starts on their facing. Each tick they pick a target, turn towards it by at most `turnDegreesPerSecond / TICK_RATE`, taking the shorter way round, and fire once their shot would hit (below). The fire cooldown keeps counting down while they turn.
+- **When a turning tower fires** (revised after play-testing): a splash shell lands where the barrel points, at the target's distance. The tower fires as soon as that landing point is within its splash radius of the target, so close targets allow a wider aim error than far ones. The blast is centred on the landing point, not on the target. Turning towers without splash fall back to the **aim tolerance** (5°, config).
+- **Target choice:**
+  - **Fixed towers** pick the in-arc enemy closest to the keep by path distance (ties: lowest id), as before.
+  - **Turning towers** (revised after play-testing) pick the in-range enemy that needs the **least turning** from their current aim (ties: closest to the keep, then lowest id). Chasing the most urgent enemy meant a cannon spent its time swinging round after each kill instead of firing at whatever was in front of it.
+  - Both re-pick every tick.
 - A tower on a wall and a tower on the ground aim the same way. Height only matters in `line-of-sight`.
 
 ### Overlay
@@ -88,7 +92,7 @@ Vitest unit tests in `tests/sim/`, written before each change, on `blankMap` gam
 
 - **Angle maths:** `angleTo` for each compass direction and the diagonals; `inArc` at the centre, on the edge, and just outside; `turnTowards` takes the shorter way round, including across 0°/360°, and never overshoots.
 - **Fixed towers:** an archer facing E fires at an enemy to its east and ignores an equally close enemy to its west, even when the western one is closer to the keep.
-- **Turning towers:** a cannon facing N with an enemy due S doesn't fire until it has turned (about 2 s at 90°/s), then fires. A catapult takes 3x as long.
+- **Turning towers:** a cannon facing N with an enemy due S doesn't fire until it has turned far enough for its blast to catch the enemy (just under 2 s at 90°/s), then fires. A catapult takes about 3x as long. Turning towers pick the enemy nearest their barrel over a more urgent one behind them.
 - **Placement:** every tower gets the facing it was built with, and `aim` starts there.
 - **Regression:** existing tower tests pass. Tests that relied on 360° archers are updated to face the target (their intent stays the same).
 
@@ -104,7 +108,7 @@ Coverage stays at 80% lines or more for `src/sim/`. Check the overlay and turnin
 
 1. Every tower is placed with a facing, chosen with `R`, and shown on its glyph or overlay.
 2. An archer never fires at an enemy outside its 90° arc.
-3. Cannons and catapults visibly turn towards targets at their configured speeds and fire only once aligned within 5°.
+3. Cannons and catapults visibly turn towards targets at their configured speeds, prefer the enemy nearest their barrel, and fire once their blast would catch the target.
 4. The placement overlay shows exactly the tiles the tower could fire at (range, minimum range and arc) for the current facing.
 5. Hover info shows facing, arc and turn speed.
 6. All tests pass. `npm run typecheck`, `npm test` and `npm run coverage` (80% or more for `src/sim/`) pass.
@@ -115,6 +119,7 @@ Coverage stays at 80% lines or more for `src/sim/`. Check the overlay and turnin
 2. **Catapult** turns all the way round, very slowly (30°/s).
 3. **Facing is permanent.** Sell and rebuild to change it.
 4. **Facing stays 4-way** (N, E, S, W), reusing the existing `R` rotation.
+5. **Play-test revision (2026-10-24):** turning towers target the enemy nearest their barrel, and splash towers fire once the blast would catch the target. Turning towers were spending most of their time re-aiming after each kill.
 
 ## Open questions
 

@@ -190,6 +190,7 @@ T1 Angle maths (aiming.ts)
 
 - [x] Task 4: Arc overlay, facing notch and aim line
 - [x] Task 5: Hover info and docs
+- [x] Task 6: Play-test fixes for turning towers (target nearest the barrel; fire once the blast would hit)
 
 **Checkpoint F: module complete**
 - [x] All 6 success criteria in `SPEC-tower-aiming.md` met
