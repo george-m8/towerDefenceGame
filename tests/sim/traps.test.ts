@@ -70,7 +70,7 @@ describe("wall spikes", () => {
     (facing) => {
       const state = createGameWithoutWaves();
       expect(
-        applyCommand(state, { type: "build", kind: "wallSpikes", x: 10, y: 10, facing }),
+        applyCommand(state, 1, { type: "build", kind: "wallSpikes", x: 10, y: 10, facing }),
       ).toEqual({
         ok: true,
       });
@@ -89,7 +89,7 @@ describe("wall spikes", () => {
 
   it("defaults to facing north", () => {
     const state = createGameWithoutWaves();
-    applyCommand(state, { type: "build", kind: "wallSpikes", x: 10, y: 10 });
+    applyCommand(state, 1, { type: "build", kind: "wallSpikes", x: 10, y: 10 });
     expect(topAt(state, 10, 10)?.facing).toBe("N");
   });
 

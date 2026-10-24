@@ -74,8 +74,9 @@ export function createPanel(
 
   return {
     update(state: GameState) {
-      gold.textContent = String(state.gold);
-      income.textContent = `+${incomePerMinute(state)}/min`;
+      const player = state.players[ui.playerId];
+      gold.textContent = String(player.gold);
+      income.textContent = `+${incomePerMinute(state, ui.playerId)}/min`;
       keep.textContent = `${state.keep.hp} / ${state.keep.maxHp}`;
       wave.textContent = String(state.wave.number);
       seed.textContent = String(state.seed);
@@ -87,7 +88,7 @@ export function createPanel(
       for (const button of toolButtons) {
         const tool = button.dataset.tool as UiState["tool"];
         button.classList.toggle("selected", tool === ui.tool);
-        button.disabled = isBuildTool(tool) && state.gold < STRUCTURES[tool].cost;
+        button.disabled = isBuildTool(tool) && player.gold < STRUCTURES[tool].cost;
       }
       info.textContent = ui.hover ? describeTile(state, ui.hover).join("\n") : "";
       if (performance.now() < ui.messageUntil) status.textContent = ui.message;

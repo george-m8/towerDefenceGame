@@ -102,6 +102,7 @@ export function enemyOccupies(enemy: Enemy, x: number, y: number): boolean {
 
 export function canBuild(
   state: GameState,
+  player: PlayerId,
   kind: StructureKind,
   x: number,
   y: number,
@@ -117,7 +118,8 @@ export function canBuild(
   const layerCheck =
     STRUCTURES[kind].layer === "mount" ? canMount(state, x, y) : canBuildBase(state, x, y);
   if (!layerCheck.ok) return layerCheck;
-  if (state.gold < STRUCTURES[kind].cost) return { ok: false, reason: "Not enough gold" };
+  const gold = state.players[player]?.gold ?? 0;
+  if (gold < STRUCTURES[kind].cost) return { ok: false, reason: "Not enough gold" };
   return { ok: true };
 }
 

@@ -1,3 +1,4 @@
+import { goldOf } from "./helpers";
 import { describe, expect, it } from "vitest";
 import { applyCommand, createGame, tick } from "../../src/sim/game";
 import {
@@ -44,7 +45,7 @@ describe("createGame", () => {
   });
 
   it("starts with the configured gold, unpaused", () => {
-    expect(state.gold).toBe(STARTING_GOLD);
+    expect(goldOf(state)).toBe(STARTING_GOLD);
     expect(state.paused).toBe(false);
     expect(state.tick).toBe(0);
   });
@@ -60,10 +61,10 @@ describe("tick and pause", () => {
 
   it("does not advance while paused, and resumes after unpausing", () => {
     const state = createGame(1, { blankMap: true });
-    expect(applyCommand(state, { type: "togglePause" })).toEqual({ ok: true });
+    expect(applyCommand(state, 1, { type: "togglePause" })).toEqual({ ok: true });
     tick(state);
     expect(state.tick).toBe(0);
-    applyCommand(state, { type: "togglePause" });
+    applyCommand(state, 1, { type: "togglePause" });
     tick(state);
     expect(state.tick).toBe(1);
   });
@@ -73,9 +74,9 @@ describe("fast forward", () => {
   it("starts at normal speed and toggles between normal and fast", () => {
     const state = createGame(1, { blankMap: true });
     expect(state.speed).toBe(1);
-    expect(applyCommand(state, { type: "toggleFastForward" })).toEqual({ ok: true });
+    expect(applyCommand(state, 1, { type: "toggleFastForward" })).toEqual({ ok: true });
     expect(state.speed).toBe(FAST_FORWARD_SPEED);
-    applyCommand(state, { type: "toggleFastForward" });
+    applyCommand(state, 1, { type: "toggleFastForward" });
     expect(state.speed).toBe(1);
   });
 });
@@ -85,7 +86,7 @@ describe("determinism", () => {
     const run = () => {
       const s = createGame(99);
       for (let i = 0; i < 50; i++) tick(s);
-      applyCommand(s, { type: "togglePause" });
+      applyCommand(s, 1, { type: "togglePause" });
       tick(s);
       return JSON.stringify(s);
     };
@@ -101,7 +102,9 @@ describe("ownership", () => {
     expect(ruins.every((r) => r.owner === null)).toBe(true);
 
     const blank = createGame(1, { blankMap: true });
-    expect(applyCommand(blank, { type: "build", kind: "wall", x: 5, y: 5 })).toEqual({ ok: true });
+    expect(applyCommand(blank, 1, { type: "build", kind: "wall", x: 5, y: 5 })).toEqual({
+      ok: true,
+    });
     expect(Object.values(blank.structures).map((s) => s.owner)).toEqual([1]);
   });
 });

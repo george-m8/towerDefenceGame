@@ -14,6 +14,12 @@ export type PlayerId = number;
 /** Natural ground type under any structures. */
 export type Terrain = keyof typeof TERRAIN;
 
+export interface Player {
+  id: PlayerId;
+  name: string;
+  gold: number;
+}
+
 export interface Structure {
   id: number;
   kind: StructureKind;
@@ -106,7 +112,8 @@ export interface GameState {
   spawnTiles: Point[];
   keep: Keep;
   wave: WaveState;
-  gold: number;
+  players: Record<PlayerId, Player>;
+  nextPlayerId: PlayerId;
   tick: number;
   paused: boolean;
   /** Game-speed multiplier: 1 normally, FAST_FORWARD_SPEED while fast-forwarding. */

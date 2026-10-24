@@ -122,7 +122,7 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
       drawGlyph(x, y, "$", "#ffffff");
       return;
     }
-    const ok = canBuild(state, ui.tool, x, y).ok;
+    const ok = canBuild(state, ui.playerId, ui.tool, x, y).ok;
     ctx!.fillStyle = ok ? COLOURS.ghostOk : COLOURS.ghostBad;
     ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
     const stats: StructureStats = STRUCTURES[ui.tool];

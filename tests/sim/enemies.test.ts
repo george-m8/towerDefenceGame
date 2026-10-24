@@ -66,13 +66,13 @@ describe("building near enemies", () => {
     const state = createGameWithoutWaves();
     const y = state.keep.y + 1;
     spawnEnemy(state, 10, y);
-    expect(applyCommand(state, { type: "build", kind: "wall", x: 10, y })).toEqual({
+    expect(applyCommand(state, 1, { type: "build", kind: "wall", x: 10, y })).toEqual({
       ok: false,
       reason: "An enemy is in the way",
     });
     tick(state); // now moving from (10, y) towards (11, y)
-    expect(applyCommand(state, { type: "build", kind: "wall", x: 11, y }).ok).toBe(false);
-    expect(applyCommand(state, { type: "build", kind: "wall", x: 12, y }).ok).toBe(true);
+    expect(applyCommand(state, 1, { type: "build", kind: "wall", x: 11, y }).ok).toBe(false);
+    expect(applyCommand(state, 1, { type: "build", kind: "wall", x: 12, y }).ok).toBe(true);
   });
 });
 

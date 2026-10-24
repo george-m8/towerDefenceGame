@@ -36,13 +36,13 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** Add `Player`, `state.players` and `state.nextPlayerId`, and remove `state.gold`. New `src/sim/players.ts` with `addPlayer(state, name)` (starting gold, ids never reused) and `playerName`. `createGame(seed, { players?: string[] })` creates player 1 by default. `applyCommand(state, playerId, command)` rejects unknown players with "Unknown player" and passes the player to `canBuild` (checks their gold) and `placeStructure` (sets the owner). Gold flows per the spec: bounties to `killedBy`, house income to the owner, and build cost, sell refund, tree clearing, ruin salvage, chest claim and early-send bonus to the acting player. `main.ts` defines `LOCAL_PLAYER = 1` and passes it on every dispatch, and the panel shows that player's gold and disables unaffordable tools by it. Existing tests switch mechanically to `goldOf(state, id = 1)` (new helper) and `applyCommand(state, 1, command)`.
 
 **Acceptance criteria:**
-- [ ] `state.gold` no longer exists, and the game plays as before with one player
-- [ ] With two players, each player's gold changes only through their own builds, sales, kills, houses, chests, trees and early sends
-- [ ] A command from an unknown player id is rejected and changes nothing
+- [x] `state.gold` no longer exists, and the game plays as before with one player
+- [x] With two players, each player's gold changes only through their own builds, sales, kills, houses, chests, trees and early sends
+- [x] A command from an unknown player id is rejected and changes nothing
 
 **Verification:**
-- [ ] New `tests/sim/players.test.ts`: two-player gold separation for every gold source, unknown player, `addPlayer` ids and starting gold
-- [ ] All existing tests pass after only the mechanical swap
+- [x] New `tests/sim/players.test.ts`: two-player gold separation for every gold source, unknown player, `addPlayer` ids and starting gold
+- [x] All existing tests pass after only the mechanical swap
 - [ ] Manual: browser game shows gold, bounties and house income as before
 
 **Dependencies:** Task 1
@@ -54,7 +54,7 @@ Standard verification for every task (in addition to task-specific checks):
 ---
 
 ### Checkpoint E: single-player unchanged
-- [ ] All existing tests pass after the mechanical gold swap
+- [x] All existing tests pass after the mechanical gold swap (plus owner `1` on three tests that place a paying structure directly)
 - [ ] Browser smoke test: build, sell, waves, bounties, houses, chests, trees, pause and fast-forward all behave as before
 - [ ] Review with human
 

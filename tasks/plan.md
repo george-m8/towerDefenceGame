@@ -187,10 +187,10 @@ T3 and T4 each depend only on T2.
 ### Task list
 
 - [x] Task 1: Ownership and kill-credit data
-- [ ] Task 2: Players with their own gold
+- [x] Task 2: Players with their own gold
 
 **Checkpoint E: single-player unchanged**
-- [ ] All existing tests pass after the mechanical gold swap
+- [x] All existing tests pass after the mechanical gold swap
 - [ ] Browser smoke test: build, sell, waves, bounties, houses, chests, trees, pause and fast-forward all behave as before
 
 - [ ] Task 3: Ownership rules for selling and mounting
