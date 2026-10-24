@@ -263,12 +263,12 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** Add the House config row (cost 40, HP 30, `h`, blocks movement). `economy.ts` makes each house add +2 gold every 5s (100 ticks). Houses can be attacked like walls. The panel shows income per wave/minute.
 
 **Acceptance criteria:**
-- [ ] Each house pays +2 gold every 100 ticks, and not while paused
-- [ ] Destroyed houses stop paying
+- [x] Each house pays +2 gold every 100 ticks, and not while paused
+- [x] Destroyed houses stop paying
 
 **Verification:**
-- [ ] `npm test` (`tests/sim/economy.test.ts`: income timing, pause, destroyed house)
-- [ ] Manual: build houses and watch gold tick up
+- [x] `npm test` (`tests/sim/economy.test.ts`: income timing, pause, destroyed house)
+- [x] Manual: build houses and watch gold tick up
 
 **Dependencies:** Task 8
 

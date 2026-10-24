@@ -77,9 +77,10 @@ export function placeStructure(
   return structure;
 }
 
-/** Traps start their cycle when built; towers can fire straight away. */
+/** Traps and income start their cycle when built; towers can fire straight away. */
 function initialCooldown(stats: StructureStats): number {
-  return stats.trap ? stats.trap.fireIntervalSeconds * TICK_RATE : 0;
+  const seconds = stats.trap?.fireIntervalSeconds ?? stats.income?.intervalSeconds ?? 0;
+  return seconds * TICK_RATE;
 }
 
 export function removeStructure(state: GameState, structure: Structure): void {

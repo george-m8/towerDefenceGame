@@ -33,6 +33,7 @@ export const GLYPHS: Record<StructureKind, string> = {
   catapult: "P",
   floorSpikes: "^",
   wallSpikes: "▲",
+  house: "h",
 };
 
 const FACING_GLYPHS: Record<Facing, string> = { N: "▲", E: "▶", S: "▼", W: "◀" };
@@ -48,4 +49,5 @@ export const STRUCTURE_COLOURS: Record<StructureKind, { bg: string; fg: string }
   catapult: { bg: "#6b4a2a", fg: "#ffe0b0" },
   floorSpikes: { bg: "#3a3122", fg: "#a89878" },
   wallSpikes: { bg: "#8a7a5c", fg: "#e8e8e8" },
+  house: { bg: "#7a3b2e", fg: "#ffd28a" },
 };

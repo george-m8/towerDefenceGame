@@ -1,4 +1,5 @@
 import { STRUCTURES, TICK_RATE } from "../sim/config";
+import { incomePerMinute } from "../sim/economy";
 import type { Command, CommandResult, GameState } from "../sim/types";
 import { GLYPHS } from "../render/palette";
 import { TOOLS, showMessage, type UiState } from "./state";
@@ -11,6 +12,7 @@ export function createPanel(
   root.innerHTML = `
     <dl class="stats">
       <dt>Gold</dt><dd data-stat="gold"></dd>
+      <dt>Income</dt><dd data-stat="income"></dd>
       <dt>Keep</dt><dd data-stat="keep"></dd>
       <dt>Wave</dt><dd data-stat="wave"></dd>
       <dt>Next</dt><dd data-stat="next"></dd>
@@ -35,6 +37,7 @@ export function createPanel(
   `;
   const field = (name: string) => root.querySelector<HTMLElement>(`[data-stat="${name}"]`)!;
   const gold = field("gold");
+  const income = field("income");
   const keep = field("keep");
   const wave = field("wave");
   const next = field("next");
@@ -58,6 +61,7 @@ export function createPanel(
   return {
     update(state: GameState) {
       gold.textContent = String(state.gold);
+      income.textContent = `+${incomePerMinute(state)}/min`;
       keep.textContent = `${state.keep.hp} / ${state.keep.maxHp}`;
       wave.textContent = String(state.wave.number);
       const spawning = state.wave.toSpawn > 0;

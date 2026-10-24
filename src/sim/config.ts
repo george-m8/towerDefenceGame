@@ -27,6 +27,11 @@ export interface TrapStats {
   fireIntervalSeconds: number;
 }
 
+export interface IncomeStats {
+  gold: number;
+  intervalSeconds: number;
+}
+
 export interface StructureStats {
   name: string;
   cost: number;
@@ -36,6 +41,7 @@ export interface StructureStats {
   trap?: TrapStats;
   /** Placed facing one direction (traps hit the tile they face). */
   directional?: boolean;
+  income?: IncomeStats;
 }
 
 export const STRUCTURES = {
@@ -75,6 +81,13 @@ export const STRUCTURES = {
     blocksMovement: true,
     directional: true,
     trap: { damage: 20, fireIntervalSeconds: 2 },
+  },
+  house: {
+    name: "House",
+    cost: 40,
+    maxHp: 30,
+    blocksMovement: true,
+    income: { gold: 2, intervalSeconds: 5 },
   },
 } satisfies Record<string, StructureStats>;
 

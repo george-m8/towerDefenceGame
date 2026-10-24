@@ -9,7 +9,7 @@ import {
 } from "./config";
 import { spawnEnemy, updateEnemies } from "./enemies";
 import { EMPTY, KEEP_TILE, canBuild, placeStructure } from "./grid";
-import { awardBounties } from "./economy";
+import { awardBounties, collectIncome } from "./economy";
 import { updateEffects } from "./effects";
 import { randomInt } from "./rng";
 import { updateTowers } from "./towers";
@@ -63,6 +63,7 @@ export function tick(state: GameState): void {
   updateTowers(state);
   updateTraps(state);
   awardBounties(state);
+  collectIncome(state);
   if (state.keep.hp <= 0) state.gameOver = true;
 }
 
