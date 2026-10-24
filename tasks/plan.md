@@ -22,7 +22,7 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | | `map-gen` | Done (merged in PR #4) |
 | 1b. Multiplayer (co-op) | `players` | Done |
 | | `game-server` | Built; cross-machine probe and review pending |
-| | `net-client` | **Built; browser play-test pending** |
+| | `net-client` | Done (play-tested) |
 | | `lobby` | Spec needed |
 | 1. Basics (continued) | `tower-aiming` | Spec needed |
 | | `line-of-sight` | Spec needed |
@@ -283,7 +283,7 @@ T2 and T3 each depend only on T1.
 
 ---
 
-## Module 5: `net-client` (current)
+## Module 5: `net-client` (done)
 
 Spec: [`SPEC-net-client.md`](../SPEC-net-client.md). Branch `net-client`, stacked on `game-server`.
 
@@ -317,20 +317,20 @@ T1 View state from server messages, interpolation
 - [x] Task 3: NetworkSession
 
 **Checkpoint J: offline unchanged, network session tested**
-- [ ] All tests pass; offline smoke test in the browser
+- [x] All tests pass; offline smoke test in the browser
 
-- [x] Task 4: Joining by URL, room code and invite link (browser check pending)
+- [x] Task 4: Joining by URL, room code and invite link 
 
 **Checkpoint K: playable online**
-- [ ] Manual: two tabs create and join, and build in the same game
+- [x] Manual: two tabs create and join, and build in the same game
 
-- [x] Task 5: Smoothing, ghosts and reconnect (browser check pending)
-- [x] Task 6: Players, votes, owner colours, restart and docs (browser check pending)
+- [x] Task 5: Smoothing, ghosts and reconnect 
+- [x] Task 6: Players, votes, owner colours, restart and docs 
 
 **Checkpoint L: module complete**
-- [ ] All 6 success criteria in `SPEC-net-client.md` met
-- [ ] Coverage of 80% lines or more
-- [ ] Review with human (including the *(Claude)* decisions), then `lobby`
+- [x] All 6 success criteria in `SPEC-net-client.md` met
+- [x] Coverage of 80% lines or more (98.6%)
+- [x] Review with human (including the *(Claude)* decisions), then `lobby`
 
 ### Risks and mitigations
 

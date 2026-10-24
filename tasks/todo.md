@@ -34,13 +34,13 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** `src/net/session.ts` with the `Session` interface (`state`, `playerId`, `send`, `restart`, `frame(now)`, `status`, `onResult`) and `createLocalSession(seed)`, holding today's fixed-step loop from `main.ts`. `main.ts`, the panel and input dispatch through the session. Results come back through `onResult`, which shows refusals with `showMessage`. The panel and input no longer read return values. Restart calls `session.restart()`.
 
 **Acceptance criteria:**
-- [ ] Offline play is unchanged: building, selling, refusals shown, pause, fast-forward, send wave, restart, debug keys (manual)
+- [x] Offline play is unchanged: building, selling, refusals shown, pause, fast-forward, send wave, restart, debug keys (manual; confirmed in the user's play-test)
 - [x] `main.ts` no longer touches `tick` or `applyCommand` directly
 - [x] A `LocalSession` test checks ticking by elapsed time, speed, the catch-up cap and synchronous results
 
 **Verification:**
 - [x] `tests/net/session.test.ts` (local part)
-- [ ] Manual: browser smoke test offline
+- [x] Manual: browser smoke test offline (user play-test)
 
 **Dependencies:** Task 1
 
@@ -71,7 +71,7 @@ Standard verification for every task (in addition to task-specific checks):
 ---
 
 ### Checkpoint J: offline unchanged, network session tested
-- [ ] All tests pass; offline smoke test in the browser
+- [x] All tests pass; offline smoke test in the browser (user play-test)
 
 ---
 
@@ -88,7 +88,7 @@ Standard verification for every task (in addition to task-specific checks):
 
 **Verification:**
 - [x] `tests/net/join.test.ts`
-- [ ] Manual: two tabs with `npm run server` and `npm run dev` (the dev proxy path is checked with the probe through port 5173)
+- [x] Manual: two tabs with `npm run server` and `npm run dev` (the dev proxy path is checked with the probe through port 5173) (user play-test)
 
 **Dependencies:** Task 3
 
@@ -99,7 +99,7 @@ Standard verification for every task (in addition to task-specific checks):
 ---
 
 ### Checkpoint K: playable online
-- [ ] Manual: two tabs create and join, and build in the same game
+- [x] Manual: two tabs create and join, and build in the same game (user play-test)
 
 ---
 
@@ -110,13 +110,13 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** `NetworkSession` keeps the previous and newest updates with arrival times. `frame(now)` writes enemies interpolated 100 ms behind into the view. Builds waiting for their result are kept as pending, and the renderer draws them as faint ghosts. On close, it rejoins with backoff (0.5, 1, 2, 4, then 5 s), showing "Reconnecting...". On close code 4000 it shows "Opened in another tab" and stops.
 
 **Acceptance criteria:**
-- [ ] Enemies move smoothly between updates (manual); interpolation uses the buffered updates (tested)
+- [x] Enemies move smoothly between updates (manual; confirmed in the user's play-test); interpolation uses the buffered updates (tested)
 - [x] Pending builds show as ghosts until their result, and refused ones disappear with the reason shown
 - [x] A dropped socket reconnects as the same player, and close code 4000 doesn't retry (tests)
 
 **Verification:**
 - [x] Session tests for reconnect, code 4000 and pending builds; view tests for frame interpolation
-- [ ] Manual: smooth enemies at normal and 2x speed
+- [x] Manual: smooth enemies at normal and 2x speed (user play-test)
 
 **Dependencies:** Task 4
 
@@ -131,13 +131,13 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** The players list in the online panel: swatch, name, "(you)", dimmed when disconnected, and vote marks. The pause and fast-forward buttons show your own vote as selected and the count ("Pause 1/2") when there's more than one connected player. Four player colours in `palette.ts`. With more than one player, owned structures get a corner mark in their owner's colour, and hover info adds "Built by <name>". The game-over Restart button works online. README: a "Playing together" section. `SPEC.md` note.
 
 **Acceptance criteria:**
-- [ ] The players list and vote counts match the server's state in two tabs (manual; vote counting is tested)
-- [ ] Structures show owner marks with two or more players, and none in single-player (manual; "Built by" is tested)
-- [ ] Restart after game over starts a new game for both tabs (manual; restart is tested on the server)
+- [x] The players list and vote counts match the server's state in two tabs (manual; confirmed in the user's play-test)
+- [x] Structures show owner marks with two or more players, and none in single-player (manual; confirmed in the user's play-test)
+- [x] Restart after game over starts a new game for both tabs (manual; confirmed in the user's play-test)
 
 **Verification:**
 - [x] `npm run coverage`
-- [ ] Manual: two tabs, then two machines on the network
+- [x] Manual: two tabs, then two machines on the network (user play-test)
 
 **Dependencies:** Task 5
 
@@ -148,6 +148,6 @@ Standard verification for every task (in addition to task-specific checks):
 ---
 
 ### Checkpoint L: net-client complete
-- [ ] All 6 success criteria in `SPEC-net-client.md` met
+- [x] All 6 success criteria in `SPEC-net-client.md` met
 - [x] `npm run coverage` passes (98.6% lines)
 - [ ] Review with human (including the *(Claude)* decisions), then move this file to `tasks/net-client/` and write the `lobby` spec
