@@ -78,13 +78,13 @@ No rule changes.
 The placement ghost already calls `canBuild`, so wall tiles show green for tower tools automatically.
 
 **Acceptance criteria:**
-- [ ] Placement matrix passes: every kind against ground, wall, wall spikes, floor spikes, house, keep, spawn, and an occupied mount, with the expected result and reason
-- [ ] A tower can be placed on a wall even when an enemy is standing next to it, and the wall still blocks
-- [ ] A wall can't be built under an existing ground tower
+- [x] Placement matrix passes: every kind against ground, wall, wall spikes, floor spikes, house, keep, spawn, and an occupied mount, with the expected result and reason
+- [x] A tower can be placed on a wall even when an enemy is standing next to it, and the wall still blocks
+- [x] A wall can't be built under an existing ground tower
 
 **Verification:**
-- [ ] `npm test` (`tests/sim/layers.test.ts` placement matrix)
-- [ ] Manual: paint a wall line, place archers on it (green ghost), and try a tower on wall spikes (red ghost with a reason)
+- [x] `npm test` (`tests/sim/layers.test.ts` placement matrix)
+- [x] Manual: paint a wall line, place archers on it (green ghost), and try a tower on wall spikes (red ghost with a reason)
 
 **Dependencies:** Task 2
 

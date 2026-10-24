@@ -1,15 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { createGame } from "../../src/sim/game";
+import { spawnEnemy } from "../../src/sim/enemies";
+import { applyCommand, createGame } from "../../src/sim/game";
 import {
   attackTargetAt,
   baseAt,
   blocksAt,
+  canBuild,
   isElevated,
   isKeepTile,
   mountAt,
   placeStructure,
   topAt,
 } from "../../src/sim/grid";
+import { createGameWithoutWaves } from "./helpers";
 
 describe("layer data model", () => {
   it("starts with ground terrain, the keep in the base layer and no mounts", () => {
@@ -80,5 +83,77 @@ describe("blocksAt and attackTargetAt", () => {
     const state = createGame(1);
     expect(topAt(state, -1, 0)).toBeUndefined();
     expect(blocksAt(state, -1, 0)).toBe(false);
+  });
+});
+
+describe("placement rules", () => {
+  // Every tile used below is open ground before setup.
+  function withBase(kind?: "wall" | "wallSpikes" | "floorSpikes" | "house") {
+    const state = createGameWithoutWaves();
+    if (kind) placeStructure(state, kind, 5, 5);
+    return state;
+  }
+
+  it.each([
+    ["open ground", undefined, { ok: true }],
+    ["a wall", "wall", { ok: true }],
+    ["wall spikes", "wallSpikes", { ok: false, reason: "Can't put a tower on wall spikes" }],
+    ["floor spikes", "floorSpikes", { ok: false, reason: "Can't put a tower on floor spikes" }],
+    ["a house", "house", { ok: false, reason: "Can't put a tower on house" }],
+  ] as const)("a tower on %s", (_, base, expected) => {
+    const state = withBase(base);
+    expect(canBuild(state, "archer", 5, 5)).toEqual(expected);
+  });
+
+  it("rejects a second tower on the same tile, on ground or on a wall", () => {
+    const ground = withBase();
+    placeStructure(ground, "archer", 5, 5);
+    expect(canBuild(ground, "cannon", 5, 5)).toEqual({
+      ok: false,
+      reason: "A tower is already here",
+    });
+    const wall = withBase("wall");
+    placeStructure(wall, "archer", 5, 5);
+    expect(canBuild(wall, "cannon", 5, 5)).toEqual({
+      ok: false,
+      reason: "A tower is already here",
+    });
+  });
+
+  it("rejects towers on the keep and in the spawn zone", () => {
+    const state = withBase();
+    expect(canBuild(state, "archer", state.keep.x, state.keep.y).ok).toBe(false);
+    const spawn = state.spawnTiles[0];
+    expect(canBuild(state, "archer", spawn.x, spawn.y).ok).toBe(false);
+  });
+
+  it("rejects a base on any occupied tile, including under a ground tower", () => {
+    const state = withBase("wall");
+    expect(canBuild(state, "wall", 5, 5)).toEqual({ ok: false, reason: "Tile is occupied" });
+    placeStructure(state, "archer", 7, 7);
+    expect(canBuild(state, "wall", 7, 7)).toEqual({ ok: false, reason: "Tile is occupied" });
+  });
+
+  it("ignores enemies when mounting on a wall, but not on open ground", () => {
+    const state = withBase("wall");
+    spawnEnemy(state, 5, 5); // pretend an enemy overlaps the wall tile
+    spawnEnemy(state, 7, 7);
+    expect(canBuild(state, "archer", 5, 5).ok).toBe(true);
+    expect(canBuild(state, "archer", 7, 7)).toEqual({
+      ok: false,
+      reason: "An enemy is in the way",
+    });
+  });
+
+  it("building a tower on a wall keeps the wall blocking and makes the tower elevated", () => {
+    const state = withBase("wall");
+    expect(applyCommand(state, { type: "build", kind: "archer", x: 5, y: 5 })).toEqual({
+      ok: true,
+    });
+    const archer = mountAt(state, 5, 5)!;
+    expect(archer.kind).toBe("archer");
+    expect(baseAt(state, 5, 5)?.kind).toBe("wall");
+    expect(blocksAt(state, 5, 5)).toBe(true);
+    expect(isElevated(state, archer)).toBe(true);
   });
 });

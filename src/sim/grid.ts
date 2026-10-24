@@ -78,11 +78,35 @@ export function canBuild(
   if (!inBounds(state, x, y)) return { ok: false, reason: "Out of bounds" };
   if (isKeepTile(state, x, y)) return { ok: false, reason: "Can't build on the keep" };
   if (isSpawnTile(state, x, y)) return { ok: false, reason: "Can't build in the spawn zone" };
+  const layerCheck =
+    STRUCTURES[kind].layer === "mount" ? canMount(state, x, y) : canBuildBase(state, x, y);
+  if (!layerCheck.ok) return layerCheck;
+  if (state.gold < STRUCTURES[kind].cost) return { ok: false, reason: "Not enough gold" };
+  return { ok: true };
+}
+
+/** A base needs open ground: nothing built there, and no enemy standing on it. */
+function canBuildBase(state: GameState, x: number, y: number): CommandResult {
+  if (topAt(state, x, y)) return { ok: false, reason: "Tile is occupied" };
+  return noEnemyAt(state, x, y);
+}
+
+/** A tower goes on open ground, or on a base that accepts mounts (a wall) with no tower yet. */
+function canMount(state: GameState, x: number, y: number): CommandResult {
+  if (mountAt(state, x, y)) return { ok: false, reason: "A tower is already here" };
+  const base = baseAt(state, x, y);
+  if (!base) return noEnemyAt(state, x, y);
+  const stats: StructureStats = STRUCTURES[base.kind];
+  if (!stats.acceptsMount) {
+    return { ok: false, reason: `Can't put a tower on ${stats.name.toLowerCase()}` };
+  }
+  return { ok: true }; // nothing walks on a wall, so enemies can't be in the way
+}
+
+function noEnemyAt(state: GameState, x: number, y: number): CommandResult {
   if (state.enemies.some((e) => enemyOccupies(e, x, y))) {
     return { ok: false, reason: "An enemy is in the way" };
   }
-  if (topAt(state, x, y)) return { ok: false, reason: "Tile is occupied" };
-  if (state.gold < STRUCTURES[kind].cost) return { ok: false, reason: "Not enough gold" };
   return { ok: true };
 }
 
