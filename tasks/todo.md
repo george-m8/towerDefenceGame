@@ -43,7 +43,7 @@ Standard verification for every task (in addition to task-specific checks):
 **Verification:**
 - [x] New `tests/sim/players.test.ts`: two-player gold separation for every gold source, unknown player, `addPlayer` ids and starting gold
 - [x] All existing tests pass after only the mechanical swap
-- [ ] Manual: browser game shows gold, bounties and house income as before
+- [x] Manual: browser game shows gold, bounties and house income as before
 
 **Dependencies:** Task 1
 
@@ -55,8 +55,8 @@ Standard verification for every task (in addition to task-specific checks):
 
 ### Checkpoint E: single-player unchanged
 - [x] All existing tests pass after the mechanical gold swap (plus owner `1` on three tests that place a paying structure directly)
-- [ ] Browser smoke test: build, sell, waves, bounties, houses, chests, trees, pause and fast-forward all behave as before
-- [ ] Review with human
+- [x] Browser smoke test: build, sell, waves, bounties, houses, chests, trees, pause and fast-forward all behave as before
+- [x] Review with human
 
 ---
 
@@ -67,13 +67,13 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** Selling checks the top structure on the tile: allowed if it's the acting player's or neutral (`owner: null`), otherwise rejected with "That belongs to <name>". Clearing trees is unaffected. Mounting a tower is allowed on open ground, on your own wall, or on a neutral ruin, and rejected on another player's wall with "That wall belongs to <name>". The UI's build ghost already calls `canBuild`, so it shows the same rule.
 
 **Acceptance criteria:**
-- [ ] A can't sell B's structure (the reason names B), and B's gold and structure are unchanged
-- [ ] Anyone can salvage a ruin, unless another player's tower stands on it
-- [ ] A can mount on A's wall or a ruin but not on B's wall
+- [x] A can't sell B's structure (the reason names B), and B's gold and structure are unchanged
+- [x] Anyone can salvage a ruin, unless another player's tower stands on it
+- [x] A can mount on A's wall or a ruin but not on B's wall
 
 **Verification:**
-- [ ] Tests in `tests/sim/players.test.ts` for each case above
-- [ ] Existing sell and layer tests still pass (single player owns everything they build)
+- [x] Tests in `tests/sim/players.test.ts` for each case above
+- [x] Existing sell and layer tests still pass (single player owns everything they build)
 
 **Dependencies:** Task 2
 

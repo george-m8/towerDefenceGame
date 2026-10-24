@@ -1,6 +1,6 @@
 import { SELL_REFUND, STRUCTURES, TICK_RATE, TREE_CLEAR_GOLD, type StructureStats } from "./config";
 import { enemyOccupies, isKeepTile, removeStructure, setTerrain, terrainAt, topAt } from "./grid";
-import { addGold } from "./players";
+import { addGold, playerName } from "./players";
 import type { CommandResult, GameState, PlayerId, Structure } from "./types";
 
 /** Removes dead enemies and pays each bounty to the player who struck the killing blow. */
@@ -43,6 +43,9 @@ export function sellStructure(
   if (isKeepTile(state, x, y)) return { ok: false, reason: "Can't sell the keep" };
   const structure = topAt(state, x, y);
   if (!structure) return clearTerrain(state, player, x, y);
+  if (structure.owner !== null && structure.owner !== player) {
+    return { ok: false, reason: `That belongs to ${playerName(state, structure.owner)}` };
+  }
   const stats: StructureStats = STRUCTURES[structure.kind];
   if (stats.spansWater && state.enemies.some((e) => enemyOccupies(e, x, y))) {
     return { ok: false, reason: "An enemy is on the bridge" };

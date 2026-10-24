@@ -126,3 +126,52 @@ describe("separate gold", () => {
     expect(goldOf(state, A)).toBe(STARTING_GOLD);
   });
 });
+
+describe("ownership rules", () => {
+  it("a player can't sell another player's structure", () => {
+    const state = twoPlayers();
+    applyCommand(state, B, { type: "build", kind: "wall", x: 5, y: 5 });
+    expect(applyCommand(state, A, { type: "sell", x: 5, y: 5 })).toEqual({
+      ok: false,
+      reason: "That belongs to B",
+    });
+    expect(topAt(state, 5, 5)?.owner).toBe(B);
+    expect(goldOf(state, A)).toBe(STARTING_GOLD);
+  });
+
+  it("anyone can salvage a ruin, unless another player's tower stands on it", () => {
+    const state = twoPlayers();
+    placeStructure(state, "ruin", 5, 5);
+    expect(applyCommand(state, A, { type: "sell", x: 5, y: 5 })).toEqual({ ok: true });
+
+    placeStructure(state, "ruin", 7, 7);
+    applyCommand(state, B, { type: "build", kind: "archer", x: 7, y: 7 });
+    expect(applyCommand(state, A, { type: "sell", x: 7, y: 7 })).toEqual({
+      ok: false,
+      reason: "That belongs to B",
+    });
+  });
+
+  it("towers mount on your own wall or a ruin, but not on another player's wall", () => {
+    const state = twoPlayers();
+    applyCommand(state, A, { type: "build", kind: "wall", x: 5, y: 5 });
+    applyCommand(state, B, { type: "build", kind: "wall", x: 7, y: 7 });
+    placeStructure(state, "ruin", 9, 9);
+    expect(applyCommand(state, A, { type: "build", kind: "archer", x: 5, y: 5 })).toEqual({
+      ok: true,
+    });
+    expect(applyCommand(state, A, { type: "build", kind: "archer", x: 9, y: 9 })).toEqual({
+      ok: true,
+    });
+    expect(applyCommand(state, A, { type: "build", kind: "archer", x: 7, y: 7 })).toEqual({
+      ok: false,
+      reason: "That wall belongs to B",
+    });
+  });
+
+  it("clearing trees isn't affected by ownership", () => {
+    const state = twoPlayers();
+    paintTerrain(state, [{ x: 5, y: 5 }], "tree");
+    expect(applyCommand(state, A, { type: "sell", x: 5, y: 5 })).toEqual({ ok: true });
+  });
+});
