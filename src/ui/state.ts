@@ -13,6 +13,8 @@ export interface ToolDef {
 export const TOOLS: ToolDef[] = [
   { tool: "wall", key: "Digit1", label: "1", paintable: true },
   { tool: "archer", key: "Digit2", label: "2", paintable: false },
+  { tool: "cannon", key: "Digit3", label: "3", paintable: false },
+  { tool: "catapult", key: "Digit4", label: "4", paintable: false },
 ];
 
 export interface UiState {

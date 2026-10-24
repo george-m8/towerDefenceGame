@@ -58,12 +58,13 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
     const stats: StructureStats = STRUCTURES[kind];
     if (!stats.tower) return;
     const centre: Point = ui.tool ? ui.hover : { x: hovered!.x, y: hovered!.y };
-    const { range } = stats.tower;
+    const { range, minRange } = stats.tower;
 
     ctx!.fillStyle = COLOURS.range;
     for (let y = Math.floor(centre.y - range); y <= centre.y + range; y++) {
       for (let x = Math.floor(centre.x - range); x <= centre.x + range; x++) {
-        if (Math.hypot(x - centre.x, y - centre.y) <= range) {
+        const d = Math.hypot(x - centre.x, y - centre.y);
+        if (d <= range && d >= minRange) {
           ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
         }
       }
@@ -90,6 +91,15 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
         ctx!.lineTo((effect.toX + 0.5) * TILE_SIZE, (effect.toY + 0.5) * TILE_SIZE);
         ctx!.stroke();
         ctx!.lineWidth = 1;
+      } else {
+        const size = (effect.radius * 2 + 1) * TILE_SIZE;
+        ctx!.fillStyle = COLOURS.splash;
+        ctx!.fillRect(
+          (effect.x - effect.radius) * TILE_SIZE,
+          (effect.y - effect.radius) * TILE_SIZE,
+          size,
+          size,
+        );
       }
     }
   }

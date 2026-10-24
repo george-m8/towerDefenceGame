@@ -34,14 +34,9 @@ export interface Enemy {
 }
 
 /** Short-lived visual events recorded by the simulation for the renderer. */
-export type Effect = {
-  kind: "shot";
-  fromX: number;
-  fromY: number;
-  toX: number;
-  toY: number;
-  ttl: number;
-};
+export type Effect =
+  | { kind: "shot"; fromX: number; fromY: number; toX: number; toY: number; ttl: number }
+  | { kind: "splash"; x: number; y: number; radius: number; ttl: number };
 
 export interface FlowField {
   /** gridVersion this field was computed for. */

@@ -22,7 +22,21 @@ function updateTower(state: GameState, structure: Structure, tower: TowerStats) 
   const target = findTarget(state, structure, tower);
   if (!target) return;
 
-  target.hp -= tower.damage;
+  if (tower.splashRadius > 0) {
+    for (const enemy of state.enemies) {
+      const spread = Math.max(Math.abs(enemy.x - target.x), Math.abs(enemy.y - target.y));
+      if (spread <= tower.splashRadius) enemy.hp -= tower.damage;
+    }
+    state.effects.push({
+      kind: "splash",
+      x: target.x,
+      y: target.y,
+      radius: tower.splashRadius,
+      ttl: EFFECT_TICKS,
+    });
+  } else {
+    target.hp -= tower.damage;
+  }
   state.effects.push({
     kind: "shot",
     fromX: structure.x,
@@ -41,7 +55,7 @@ function findTarget(state: GameState, structure: Structure, tower: TowerStats): 
   for (const enemy of state.enemies) {
     if (enemy.hp <= 0) continue;
     const range = Math.hypot(enemy.x - structure.x, enemy.y - structure.y);
-    if (range > tower.range) continue;
+    if (range > tower.range || range < tower.minRange) continue;
     const dist = distanceAt(state, Math.round(enemy.x), Math.round(enemy.y));
     if (dist < bestDist || (dist === bestDist && best && enemy.id < best.id)) {
       best = enemy;

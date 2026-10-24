@@ -14,8 +14,11 @@ export const STARTING_GOLD = 150;
 
 export interface TowerStats {
   range: number; // tiles, measured centre to centre
+  minRange: number;
   damage: number;
   fireIntervalSeconds: number;
+  /** Splash hits every enemy within this many tiles (Chebyshev) of the target. 0 = single target. */
+  splashRadius: number;
 }
 
 export interface StructureStats {
@@ -33,12 +36,26 @@ export const STRUCTURES = {
     cost: 25,
     maxHp: 40,
     blocksMovement: true,
-    tower: { range: 5, damage: 6, fireIntervalSeconds: 1 },
+    tower: { range: 5, minRange: 0, damage: 6, fireIntervalSeconds: 1, splashRadius: 0 },
+  },
+  cannon: {
+    name: "Cannon",
+    cost: 50,
+    maxHp: 60,
+    blocksMovement: true,
+    tower: { range: 4, minRange: 0, damage: 15, fireIntervalSeconds: 2.5, splashRadius: 1 },
+  },
+  catapult: {
+    name: "Catapult",
+    cost: 80,
+    maxHp: 40,
+    blocksMovement: true,
+    tower: { range: 9, minRange: 3, damage: 30, fireIntervalSeconds: 5, splashRadius: 2 },
   },
 } satisfies Record<string, StructureStats>;
 
-/** How long shot effects stay on screen. */
-export const EFFECT_TICKS = 3;
+/** How long shot and splash effects stay on screen. */
+export const EFFECT_TICKS = 4;
 
 export const ENEMY = {
   baseHp: 20,

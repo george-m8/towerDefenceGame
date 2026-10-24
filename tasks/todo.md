@@ -200,13 +200,13 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** Add the Cannon config row (cost 50, HP 60, range 4, 0.4/s, splash radius 1, `C`) and the Catapult row (cost 80, HP 40, range 9, min range 3, 0.2/s, splash radius 2, `P`). Extend `updateTower` with `splashRadius` and `minRange`. Show a splash flash at the impact tile.
 
 **Acceptance criteria:**
-- [ ] Splash damages every enemy within the radius of the target
-- [ ] The catapult never targets enemies closer than 3 tiles
-- [ ] Both are buildable from the panel and keys
+- [x] Splash damages every enemy within the radius of the target
+- [x] The catapult never targets enemies closer than 3 tiles
+- [x] Both are buildable from the panel and keys
 
 **Verification:**
-- [ ] `npm test` (`tests/sim/towers.test.ts`: splash radius, min range, fire intervals)
-- [ ] Manual: cannons and catapults hit groups, and a catapult ignores adjacent enemies
+- [x] `npm test` (`tests/sim/towers.test.ts`: splash radius, min range, fire intervals)
+- [x] Manual: cannons and catapults hit groups, and a catapult ignores adjacent enemies
 
 **Dependencies:** Task 8
 

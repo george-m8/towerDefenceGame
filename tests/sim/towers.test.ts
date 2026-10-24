@@ -61,3 +61,46 @@ describe("archer targeting", () => {
     );
   });
 });
+
+describe("cannon and catapult", () => {
+  it("splash damages every enemy within the radius of the target, and no others", () => {
+    const state = createGameWithoutWaves();
+    const cannon = STRUCTURES.cannon.tower;
+    placeStructure(state, "cannon", 10, 10);
+    // All three are equally close to the keep; the first spawned is the target.
+    const target = spawnEnemy(state, 12, 10, TOUGH);
+    const neighbour = spawnEnemy(state, 11, 11, TOUGH); // diagonal, within radius 1
+    const outside = spawnEnemy(state, 10, 12, TOUGH); // 2 tiles from the target
+    updateTowers(state);
+    expect(target.hp).toBe(TOUGH - cannon.damage);
+    expect(neighbour.hp).toBe(TOUGH - cannon.damage);
+    expect(outside.hp).toBe(TOUGH);
+    expect(state.effects).toContainEqual(
+      expect.objectContaining({ kind: "splash", x: 12, y: 10, radius: cannon.splashRadius }),
+    );
+  });
+
+  it("the catapult never targets enemies inside its minimum range", () => {
+    const state = createGameWithoutWaves();
+    const catapult = STRUCTURES.catapult.tower;
+    placeStructure(state, "catapult", 10, 10);
+    const tooClose = spawnEnemy(state, 10 + catapult.minRange - 1, 10, TOUGH);
+    updateTowers(state);
+    expect(tooClose.hp).toBe(TOUGH);
+
+    const atMinRange = spawnEnemy(state, 10, 10 - catapult.minRange, TOUGH);
+    updateTowers(state);
+    expect(atMinRange.hp).toBe(TOUGH - catapult.damage);
+  });
+
+  it.each(["archer", "cannon", "catapult"] as const)("%s respects its fire interval", (kind) => {
+    const state = createGameWithoutWaves();
+    const tower = STRUCTURES[kind].tower;
+    placeStructure(state, kind, 10, 10);
+    const enemy = spawnEnemy(state, 10, 14, TOUGH); // 4 tiles: in range of all three
+    for (let i = 0; i < tower.fireIntervalSeconds * TICK_RATE; i++) updateTowers(state);
+    expect(enemy.hp).toBe(TOUGH - tower.damage);
+    updateTowers(state);
+    expect(enemy.hp).toBe(TOUGH - 2 * tower.damage);
+  });
+});

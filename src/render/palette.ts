@@ -20,14 +20,19 @@ export const COLOURS = {
   range: "rgba(255, 255, 160, 0.12)",
   rangeEdge: "rgba(255, 255, 160, 0.6)",
   shot: "#fff6c0",
+  splash: "rgba(255, 150, 40, 0.45)",
 };
 
 export const GLYPHS: Record<StructureKind, string> = {
   wall: "#",
   archer: "A",
+  cannon: "C",
+  catapult: "P",
 };
 
 export const STRUCTURE_COLOURS: Record<StructureKind, { bg: string; fg: string }> = {
   wall: { bg: "#8a7a5c", fg: "#3b3226" },
   archer: { bg: "#3d6b3a", fg: "#d8f5c8" },
+  cannon: { bg: "#3a3f4a", fg: "#e8e8e8" },
+  catapult: { bg: "#6b4a2a", fg: "#ffe0b0" },
 };
