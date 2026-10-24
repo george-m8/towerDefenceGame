@@ -13,6 +13,7 @@ import { createGameOverDialog } from "./ui/gameOver";
 import { createOnlinePanel } from "./ui/players";
 import { createWaitingRoom } from "./ui/waitingRoom";
 import { rememberedName, showStartScreen } from "./ui/startScreen";
+import { showIntro } from "./ui/intro";
 import { showNotice } from "./ui/notice";
 import type { Command, GameState } from "./sim/types";
 
@@ -94,7 +95,10 @@ if (intent.mode !== "menu") {
   // A reload of a room this tab is already in: go straight back in as the same player.
   startSession({ mode: "join", room: intent.room, name: rememberedName() ?? "Player" });
 } else {
-  showStartScreen(element("#start"), { room: intent.room, onChoose: startSession });
+  // Direct room links and rejoins skip the intro; everyone else sees it before the menu.
+  showIntro(element("#intro"), () =>
+    showStartScreen(element("#start"), { room: intent.room, onChoose: startSession }),
+  );
 }
 
 let lastFrame = performance.now();

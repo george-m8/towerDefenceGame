@@ -325,6 +325,76 @@ a.button {
   text-align: left;
 }
 
+/* Intro splash */
+
+@font-face {
+  font-family: "Jacquard 12";
+  src: url("../fonts/Jacquard_12/Jacquard12-Regular.ttf") format("truetype");
+  font-display: block;
+}
+
+.intro {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background-color: var(--desktop);
+  /* The classic 50% grey desktop dither. */
+  background-image: radial-gradient(var(--ink) 0.5px, transparent 0.6px);
+  background-size: 3px 3px;
+  cursor: pointer;
+}
+
+.intro[hidden] {
+  display: none;
+}
+
+.intro-window {
+  width: min(760px, 100%);
+  outline: 1px solid var(--ink);
+  outline-offset: -5px;
+}
+
+.intro-body {
+  padding: 40px 24px 28px;
+  text-align: center;
+}
+
+.intro-title {
+  margin: 0;
+  font-family: "Jacquard 12", "VT323", monospace;
+  font-size: clamp(44px, 9vw, 100px);
+  font-weight: normal;
+  line-height: 1;
+}
+
+.intro-tagline {
+  margin: 12px 0 32px;
+  font-family: "Jacquard 12", "VT323", monospace;
+  font-size: clamp(26px, 5vw, 40px);
+  line-height: 1.1;
+}
+
+.intro-prompt {
+  margin: 0;
+  font-size: 18px;
+  animation: intro-blink 1.2s steps(2, start) infinite;
+}
+
+@keyframes intro-blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .intro-prompt {
+    animation: none;
+  }
+  
 /* Minimap and zoom buttons, at the top of the panel */
 .minimap-box {
   display: grid;
