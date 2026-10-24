@@ -1,7 +1,7 @@
 // All tunable game numbers live here.
 
-export const GRID_WIDTH = 48;
-export const GRID_HEIGHT = 32;
+export const GRID_WIDTH = 108;
+export const GRID_HEIGHT = 72;
 export const TICK_RATE = 20; // simulation ticks per second
 export const FAST_FORWARD_SPEED = 2; // game-speed multiplier while fast-forwarding
 

@@ -39,7 +39,8 @@ describe("enemy movement", () => {
     run(state, Math.ceil(2 * ticksPerTile));
     buildAt(state, [{ x: 10, y }]);
 
-    run(state, 600, () => {
+    // Long enough for the detour plus the walk to the keep, whatever the map size.
+    run(state, Math.ceil(3 * state.keep.x * ticksPerTile), () => {
       for (const e of state.enemies) {
         expect(topAt(state, Math.round(e.x), Math.round(e.y))).toBeUndefined();
       }

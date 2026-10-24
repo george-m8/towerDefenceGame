@@ -142,7 +142,7 @@ describe("generateTerrain", () => {
       expect(count(terrain, "rock"), `seed ${seed}`).toBeGreaterThan(0);
       expect(count(terrain, "tree"), `seed ${seed}`).toBeGreaterThan(0);
     }
-    const big = layoutFor(96, 64);
+    const big = layoutFor(layout.width * 2, layout.height * 2);
     const features = (l: MapLayout) =>
       SEEDS.slice(0, 20).reduce((sum, seed) => {
         const { terrain } = generateTerrain(l, seed);
