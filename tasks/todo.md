@@ -21,12 +21,12 @@ Standard verification for every task (in addition to task-specific checks):
 No game changes yet.
 
 **Acceptance criteria:**
-- [ ] `angleTo` is correct for all four compass directions and the four diagonals
-- [ ] `inArc` is true at the centre and exactly on the edge, false just outside, and always true for 360°
-- [ ] `turnTowards` takes the shorter way across 0°/360°, stops exactly on the target, and never overshoots
+- [x] `angleTo` is correct for all four compass directions and the four diagonals
+- [x] `inArc` is true at the centre and exactly on the edge, false just outside, and always true for 360°
+- [x] `turnTowards` takes the shorter way across 0°/360°, stops exactly on the target, and never overshoots
 
 **Verification:**
-- [ ] `npm test` (new `tests/sim/aiming.test.ts`)
+- [x] `npm test` (new `tests/sim/aiming.test.ts`)
 
 **Dependencies:** None
 

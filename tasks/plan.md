@@ -179,7 +179,7 @@ T1 Angle maths (aiming.ts)
 
 ### Task list
 
-- [ ] Task 1: Angle maths module
+- [x] Task 1: Angle maths module
 - [ ] Task 2: Facing on every tower and arc-limited targeting
 - [ ] Task 3: Turning towers
 
