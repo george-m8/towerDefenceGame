@@ -16,7 +16,7 @@ npm install
 npm run dev
 ```
 
-Then open http://localhost:5173.
+Then open http://localhost:5173. To play with friends, see [Playing together](#playing-together).
 
 ## How to play
 
@@ -103,9 +103,86 @@ Dev server only: `E` spawns one enemy and `M` spawns 200 (stress test).
 | `npm run preview` | Serve the production build locally |
 | `npm test` | Run the unit tests once |
 | `npm run test:watch` | Run the unit tests in watch mode |
-| `npm run coverage` | Run the tests with coverage (fails under 80% lines in `src/sim/`; HTML report in `coverage/`) |
-| `npm run typecheck` | Typecheck without building |
+| `npm run coverage` | Run the tests with coverage (fails under 80% lines in `src/sim/`, `src/net/` and `server/`; HTML report in `coverage/`) |
+| `npm run typecheck` | Typecheck the client and the server without building |
+| `npm run server` | Start the multiplayer game server (restarts on change) |
+| `npm run server:probe -- <host[:port]> [seconds]` | Check a game server is reachable: creates a room and prints updates |
+| `npm run build:server` | Bundle the game server into `dist-server/` |
+| `npm run start` | Run the bundled server, serving `dist/` and `/ws` on one port |
 | `npm run format` | Format all files with Prettier |
+
+## Playing together
+
+Up to 4 players can defend the same keep, each with their own gold and structures.
+
+**1. The host starts the server and the game** (on one computer):
+
+```sh
+npm run server            # the game server
+npm run dev -- --host     # the game page, reachable from other computers
+```
+
+**2. The host creates a room** by opening:
+
+```
+http://localhost:5173/?create&name=YourName
+```
+
+The panel shows the room code (e.g. `RUVM`) and a **Copy invite link** button.
+
+**3. Friends join** by opening the invite link in their browser (they don't need to install anything):
+
+```
+http://<host's address>:5173/?room=RUVM
+```
+
+`npm run server` prints the host's address (e.g. `192.168.1.20`). Friends must be on the same network. If they can't connect, the host's firewall is probably blocking it: on macOS, allow `node` to accept incoming connections (System Settings > Network > Firewall). A second tab on the host also works as a second player, for trying it alone.
+
+**Playing:**
+- Gold is your own: you earn bounties for kills by your towers and traps, and income from your houses.
+- You can only sell what you built (ruins are anyone's). Towers go on your own walls or on ruins.
+- Each structure has a corner mark in its owner's colour; the panel lists players, and hover info says who built what.
+- **Pause** and **fast-forward** are votes: they happen when every connected player has pressed them, and the buttons show the count (e.g. `Pause 1/2`). Press again to take your vote back.
+- Builds show faintly until the server confirms them.
+- If your connection drops, the game reconnects you; reloading the page rejoins as the same player.
+- When the keep falls, anyone can press **Restart** for a new game in the same room.
+
+Open the page with no `?room` or `?create` to play on your own, offline.
+
+## Running the multiplayer server
+
+**On your machine (development):**
+
+```sh
+npm run server            # game server on port 8787
+npm run dev -- --host     # the game, reachable from other machines; forwards /ws to the server
+```
+
+The server prints the address other people on your network should use, for example `http://192.168.1.20:5173`.
+
+**Check it's reachable** from another machine on the same network (with this repo checked out and `npm install` done):
+
+```sh
+npm run server:probe -- 192.168.1.20
+```
+
+It should print a welcome and a line per update. If it can't connect, check that the host's firewall allows incoming connections on port 8787.
+
+**Friends outside your network** need a tunnel or a port forward to your machine until the game is hosted somewhere.
+
+**Production (one process, one port):**
+
+```sh
+npm run build && npm run build:server
+PORT=8080 npm run start   # serves the game and /ws on port 8080
+```
+
+| Environment variable | Default | Meaning |
+|---|---|---|
+| `HOST` | `0.0.0.0` | Interface to listen on (all, so other machines can connect) |
+| `PORT` | `8787` | Port for the game server (and the page, in production) |
+
+Rooms live in memory: restarting the server ends every game. See [`SPEC-game-server.md`](SPEC-game-server.md) for the protocol.
 
 ## Project structure
 
@@ -122,13 +199,19 @@ src/sim/              Pure, deterministic game simulation (no DOM, seeded RNG)
   traps.ts            Spike trap cycles
   waves.ts            Wave formulas and scheduling
   economy.ts          Bounties, house income, selling
+  players.ts          Players, per-player gold, pause/fast-forward votes
+src/net/              Message types and state snapshots, shared by browser and server
 src/render/           Canvas drawing (reads state, never changes it)
 src/ui/               Side panel, input, hover info, game-over dialog
 src/styles.css        System 6/7 style window chrome
+server/               Multiplayer game server (Node): rooms, connections, static files, probe
 tests/sim/            Unit tests for the simulation
+tests/server/         Protocol, room and socket integration tests
 ```
 
-The UI never changes game state directly. Input is turned into commands (`build`, `sell`, `togglePause`, `sendWave`) that `applyCommand` validates, which keeps the simulation testable and leaves a clean seam for multiplayer later.
+The UI never changes game state directly. Input is turned into commands (`build`, `sell`, `togglePause`, `sendWave`) that `applyCommand(state, playerId, command)` validates, which keeps the simulation testable and is the seam for multiplayer.
+
+The simulation already supports several players on one map (see [`SPEC-players.md`](SPEC-players.md)): each has their own gold and structures, can only sell their own, and pause and fast-forward only happen when every connected player votes for them. Online play itself comes with the `game-server`, `net-client` and `lobby` modules in [`CAPABILITIES.md`](CAPABILITIES.md). Offline, you are player 1 and the game plays exactly as before.
 
 ## Tuning
 

@@ -3,14 +3,14 @@
 Capability map: [`CAPABILITIES.md`](../CAPABILITIES.md)
 Current module spec: [`SPEC-tower-aiming.md`](../SPEC-tower-aiming.md)
 Task list (current module only): [`tasks/todo.md`](todo.md)
-Finished modules: [`tasks/tile-layers/`](tile-layers/todo.md), [`tasks/map-gen/`](map-gen/todo.md)
+Finished modules: [`tasks/tile-layers/`](tile-layers/todo.md), [`tasks/map-gen/`](map-gen/todo.md), [`tasks/players/`](players/todo.md), [`tasks/game-server/`](game-server/todo.md) (awaiting the cross-machine probe and review), [`tasks/net-client/`](net-client/todo.md)
 Previous plan (MVP, complete except a Firefox/Safari smoke test): [`tasks/mvp/`](mvp/plan.md)
 
 ## How this plan works
 
 Modules are built one at a time in the approved order. Each module goes spec -> plan -> tasks -> build:
 
-- **The current module** has an approved spec, so its tasks are fully written in `tasks/todo.md`.
+- **The current module** (`tower-aiming`) has an approved spec, so its tasks are fully written in `tasks/todo.md`.
 - **Later modules** have a provisional outline below. Each outline is refined into real tasks only after that module's spec is written and approved. Outlines will change as earlier modules teach us things.
 - When a module is finished, its `todo.md` moves to `tasks/<module-id>/` (as the MVP's did), and the next module's tasks take its place.
 
@@ -19,8 +19,12 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | Phase | Module | Status |
 |---|---|---|
 | 1. Basics | `tile-layers` | Done |
-| | `map-gen` | Done |
-| | `tower-aiming` | **Built, awaiting review** |
+| | `map-gen` | Done (merged in PR #4) |
+| 1b. Multiplayer (co-op) | `players` | Done |
+| | `game-server` | Built; cross-machine probe and review pending |
+| | `net-client` | Done (play-tested) |
+| | `lobby` | Spec needed |
+| 1. Basics (continued) | `tower-aiming` | **Built, awaiting review** |
 | | `line-of-sight` | Spec drafted |
 | | `units` | Spec drafted |
 | 2. Setup and modes | `game-setup` | Spec needed |
@@ -74,7 +78,7 @@ T4 and T5 both depend only on T3.
 **Checkpoint B: module complete**
 - [x] All 7 success criteria in `SPEC-tile-layers.md` met
 - [x] Coverage of 80% lines or more for `src/sim/` (98.7%)
-- [x] Review with human
+- [ ] Review with human
 
 ### Risks and mitigations
 
@@ -127,7 +131,7 @@ T4, T5 and T6 each depend only on T3.
 **Checkpoint C: generated maps**
 - [x] All tests pass, including 500-seed guarantee tests
 - [x] Browser: several seeds show a coast and a river; enemies use fords or bridges and never cross water
-- [x] Review with human
+- [ ] Review with human
 
 - [x] Task 4: Rocks, forests and clearing trees
 - [x] Task 5: Ruins
@@ -137,7 +141,7 @@ T4, T5 and T6 each depend only on T3.
 **Checkpoint D: module complete**
 - [x] All 7 success criteria in `SPEC-map-gen.md` met
 - [x] Coverage of 80% lines or more for `src/sim/` (99.3%)
-- [x] Review with human
+- [ ] Review with human
 
 ### Risks and mitigations
 
@@ -152,7 +156,195 @@ T4, T5 and T6 each depend only on T3.
 
 ---
 
-## Module 3: `tower-aiming` (current)
+## Module 3: `players` (done)
+
+Spec: [`SPEC-players.md`](../SPEC-players.md). First module of the Multiplayer map in [`CAPABILITIES.md`](../CAPABILITIES.md).
+
+### Overview
+
+The simulation learns about several players: own gold, owned structures, kill credit, and unanimous votes for pause and fast-forward. It's pure `src/sim/` work with no networking. A one-player game must behave exactly as today.
+
+### Architecture decisions
+
+- **Data first, behaviour second.** Task 1 adds `owner`, `killedBy` and a single `damageEnemy` helper while gold is still shared, so kill credit is wired through towers and traps before anything depends on it. Nothing visible changes.
+- **Remove `state.gold` outright** rather than keeping an alias. The compiler then lists every place that used the shared pool, and none is missed.
+- **The player is an argument, not part of the command.** `applyCommand(state, playerId, command)` lets `game-server` stamp the sender's id, so a client can never act as someone else.
+- **`paused` and `speed` stay as fields but are derived** from votes and connections by one function in `players.ts`. `main.ts`, the panel and the renderer keep reading them unchanged.
+- **Single-player is the regression test.** `createGame` makes player 1 by default, and the existing suite (after a mechanical `goldOf(state)` swap) must pass untouched otherwise.
+
+### Dependency graph
+
+```
+T1 Ownership and kill-credit data (gold still shared)
+ └─ T2 Players with their own gold
+     ├─ T3 Ownership rules (sell and mount)
+     └─ T4 Votes and connections
+          └─ T5 Determinism check and docs
+```
+
+T3 and T4 each depend only on T2.
+
+### Task list
+
+- [x] Task 1: Ownership and kill-credit data
+- [x] Task 2: Players with their own gold
+
+**Checkpoint E: single-player unchanged**
+- [x] All existing tests pass after the mechanical gold swap
+- [x] Browser smoke test: build, sell, waves, bounties, houses, chests, trees, pause and fast-forward all behave as before
+
+- [x] Task 3: Ownership rules for selling and mounting
+- [x] Task 4: Votes and connections
+- [x] Task 5: Determinism check and docs
+
+**Checkpoint F: module complete**
+- [x] All 7 success criteria in `SPEC-players.md` met
+- [x] Coverage of 80% lines or more for `src/sim/` (99.3%)
+- [x] Review with human, then move `todo.md` to `tasks/players/` and write the `game-server` spec
+
+### Risks and mitigations
+
+| Risk | Impact | Mitigation |
+|---|---|---|
+| The gold refactor quietly changes single-player behaviour | High | Task 2 removes `state.gold` so the compiler finds every use; the full existing suite must stay green; browser smoke test at Checkpoint E. |
+| A damage path skips `damageEnemy`, so some kills pay nobody | Med | Task 1 routes every `enemy.hp -=` through it and adds a test per damage source (single target, splash, trap). A grep for `hp -=` on enemies in review. |
+| Splash hits an already-dead enemy and steals the credit | Med | `damageEnemy` ignores enemies at 0 HP or below; tested with two towers on one target. |
+| Derived `paused` disagrees with what the UI shows | Low | One function computes it and is called on every vote, connection or player change; the panel only reads it. |
+| Task 2 touches many test files | Low | The test changes are mechanical (`state.gold` -> `goldOf(state)`, and `applyCommand(state, cmd)` -> `applyCommand(state, 1, cmd)`); behaviour changes stay in their own tests. |
+
+---
+
+## Module 4: `game-server` (built)
+
+Spec: [`SPEC-game-server.md`](../SPEC-game-server.md). Branch `game-server`, stacked on `multiplayer-players` (PR #5) until that merges.
+
+### Overview
+
+A Node WebSocket server that hosts rooms, runs one simulation per room at 20 Hz, applies each connection's commands as its own player, and sends snapshots and 10 Hz updates. It runs locally and is reachable on the LAN. The browser doesn't use it until `net-client`; until then it's proven by unit tests, socket integration tests and a probe script.
+
+### Architecture decisions
+
+- **Shared, pure message code in `src/net/`.** Message types, validation and the state-to-update conversion have no Node or DOM, so `net-client` imports the same code. The server's Node-only code lives in `server/`.
+- **Rooms are driven, not timed.** `advanceRoom(room, elapsedMs)` and an injected `send` function make room logic testable without sockets or sleeping. `server/main.ts` owns the only real timer.
+- **Validate at the edge.** `connection.ts` turns raw socket data into a typed `ClientMessage` or an error before anything reaches a room. Rooms trust only typed messages and the connection's own player id.
+- **Grid only when it changes.** Updates carry tile layers and features only when `gridVersion` moved since the last update, which keeps 10 Hz updates small without a diffing system.
+- **Same origin in dev.** Vite proxies `/ws` to the game server, so the client will never need a server address. Production serves `dist/` and `/ws` from one process.
+
+### Dependency graph
+
+```
+T1 Tooling and a bare server
+ ├─ T2 Message types and validation
+ └─ T3 Snapshots and updates
+      └─ T4 A room: players, commands, ticks, restart   (needs T2 too)
+           └─ T5 Rooms, connections and sockets
+                └─ T6 Hardening: limits, tokens, expiry
+                     └─ T7 Probe script, production start, docs
+```
+
+T2 and T3 each depend only on T1.
+
+### Task list
+
+- [x] Task 1: Tooling and a bare server
+- [x] Task 2: Message types and validation
+- [x] Task 3: Snapshots and updates
+
+**Checkpoint G: shared pieces**
+- [x] All tests pass; the update size test is under 30 KB (about 21 KB)
+- [x] `npm run server` starts and logs its LAN address
+
+- [x] Task 4: A room: players, commands, ticks and restart
+- [x] Task 5: Rooms, connections and sockets
+
+**Checkpoint H: two clients play over sockets**
+- [x] Integration test: two clients create and join, B's build is owned by B and both see it
+- [x] Review with human
+
+- [x] Task 6: Hardening: limits, tokens and expiry
+- [x] Task 7: Probe script, production start and docs
+
+**Checkpoint I: module complete**
+- [ ] All 7 success criteria in `SPEC-game-server.md` met
+- [x] Coverage of 80% lines or more for `src/sim/`, `src/net/` and `server/` (except `main.ts`) (98.7%)
+- [ ] Manual: probe from another machine on the network
+- [ ] Review with human, then move `todo.md` to `tasks/game-server/` and write the `net-client` spec
+
+### Risks and mitigations
+
+| Risk | Impact | Mitigation |
+|---|---|---|
+| Sim code doesn't run under Node (DOM types, `import.meta.env`, extensionless imports) | High | Task 1 runs `createGame` and `tick` from `server/main.ts` under `tsx` before anything else is built; a separate server tsconfig without DOM catches accidental DOM use in `src/sim`. |
+| Updates too big at 10 Hz | Med | Task 3 has the 200-enemy / 150-structure size test; grid fields only on change. |
+| Timer drift or a slow tick stalls a room | Med | `advanceRoom` uses elapsed time with the same catch-up cap as `main.ts`; tested with large elapsed values. |
+| A malformed or hostile message crashes the server | High | Validation in `connection.ts` before any room code; every handler wrapped so one bad socket can't throw out of the event loop; tests for malformed, oversized and flooded input. |
+| Socket tests are flaky (ports, timing) | Med | Port 0 per test, await explicit messages instead of sleeping, close everything in `afterEach`. |
+| Integration with the browser is unproven until `net-client` | Med | The message types are shared code, and the probe script exercises the real protocol from another machine. |
+
+---
+
+## Module 5: `net-client` (done)
+
+Spec: [`SPEC-net-client.md`](../SPEC-net-client.md). Branch `net-client`, stacked on `game-server`.
+
+### Overview
+
+The browser plays online through the game server, with a minimal URL-based create/join so it's playable before `lobby`. Offline play is unchanged.
+
+### Architecture decisions
+
+- **A `Session` between `main.ts` and the game.** `LocalSession` is today's loop; `NetworkSession` speaks the protocol. `main.ts`, the panel and input only see a session, so offline and online share all UI code.
+- **The view is a real `GameState`.** Server messages are expanded into a full `GameState` (missing fields defaulted), so the renderer, panel, hover info and sim helpers (`canBuild` for ghosts, `getFlowField` for the debug overlay) work unchanged.
+- **Results through one callback.** Commands no longer return results synchronously to their callers; both sessions report through `onResult`, which shows refusals. Offline it fires immediately.
+- **Dependencies injected.** `NetworkSession` takes the WebSocket constructor, storage and clock, so it's tested in Node against a real server with the `ws` client.
+- **Smoothing is presentation only.** Interpolated enemy positions are written into the view each frame from the two buffered updates; the buffered server data is never changed.
+
+### Dependency graph
+
+```
+T1 View state from server messages, interpolation
+ └─ T2 Session interface; LocalSession; main.ts on sessions (offline unchanged)
+     └─ T3 NetworkSession: join, updates, commands, results
+         └─ T4 Joining by URL; room code and invite link     -> playable
+             └─ T5 Smoothing, ghosts, reconnect
+                 └─ T6 Players list, votes, owner colours, restart, docs
+```
+
+### Task list
+
+- [x] Task 1: View state from server messages
+- [x] Task 2: Sessions, with offline unchanged
+- [x] Task 3: NetworkSession
+
+**Checkpoint J: offline unchanged, network session tested**
+- [x] All tests pass; offline smoke test in the browser
+
+- [x] Task 4: Joining by URL, room code and invite link 
+
+**Checkpoint K: playable online**
+- [x] Manual: two tabs create and join, and build in the same game
+
+- [x] Task 5: Smoothing, ghosts and reconnect 
+- [x] Task 6: Players, votes, owner colours, restart and docs 
+
+**Checkpoint L: module complete**
+- [x] All 6 success criteria in `SPEC-net-client.md` met
+- [x] Coverage of 80% lines or more (98.6%)
+- [x] Review with human (including the *(Claude)* decisions), then `lobby`
+
+### Risks and mitigations
+
+| Risk | Impact | Mitigation |
+|---|---|---|
+| Moving `main.ts` onto sessions changes offline play | High | Task 2 is a refactor with no behaviour change; existing tests plus a browser smoke test before any network code is wired in. |
+| Defaulted fields in the view mislead UI code (e.g. a ghost says buildable but the server refuses) | Med | The server's result is final and shown; ghosts are advisory. `canBuild` only uses fields the view has. |
+| Enemies jitter or jump | Med | Interpolate one update behind with a buffered previous update; unit tests for midpoint, spawn and removal; manual check at 2x speed. |
+| Reconnect loops or duplicate players | Med | Rejoin by token only; code 4000 stops retrying; backoff capped at 5 s; tested against a real server. |
+| A malformed server message crashes the page | Low | Parse in one place with try/catch; ignore unknown message types. |
+
+---
+
+## Module 6: `tower-aiming` (current)
 
 Spec: [`SPEC-tower-aiming.md`](../SPEC-tower-aiming.md)
 
@@ -214,6 +406,10 @@ T1 Angle maths (aiming.ts)
 
 These are rough vertical slices, not tasks. Each becomes a proper task list after its spec is approved.
 
+### `lobby`
+1. Create or join a room by code or link, with a player name
+2. See who's in; start the game
+
 ### `line-of-sight`
 1. Grid line-of-sight check between tower and target
 2. Ground towers blocked by walls. Elevated towers see over walls and ground towers. Lobbed weapons ignore line of sight.
@@ -252,4 +448,4 @@ These are rough vertical slices, not tasks. Each becomes a proper task list afte
 
 ## Open questions
 
-None for `tile-layers`. Each later module's questions are settled in its spec.
+None for `tower-aiming`. Each later module's questions are settled in its spec.

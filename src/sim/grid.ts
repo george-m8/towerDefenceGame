@@ -1,10 +1,12 @@
 import { facingAngle } from "./aiming";
 import { STRUCTURES, TERRAIN, TICK_RATE, type StructureStats, type TerrainStats } from "./config";
+import { playerName } from "./players";
 import type {
   CommandResult,
   Enemy,
   Facing,
   GameState,
+  PlayerId,
   Structure,
   StructureKind,
   Terrain,
@@ -102,6 +104,7 @@ export function enemyOccupies(enemy: Enemy, x: number, y: number): boolean {
 
 export function canBuild(
   state: GameState,
+  player: PlayerId,
   kind: StructureKind,
   x: number,
   y: number,
@@ -115,9 +118,10 @@ export function canBuild(
   const terrainCheck = canBuildOnTerrain(state, kind, x, y);
   if (!terrainCheck.ok) return terrainCheck;
   const layerCheck =
-    STRUCTURES[kind].layer === "mount" ? canMount(state, x, y) : canBuildBase(state, x, y);
+    STRUCTURES[kind].layer === "mount" ? canMount(state, player, x, y) : canBuildBase(state, x, y);
   if (!layerCheck.ok) return layerCheck;
-  if (state.gold < STRUCTURES[kind].cost) return { ok: false, reason: "Not enough gold" };
+  const gold = state.players[player]?.gold ?? 0;
+  if (gold < STRUCTURES[kind].cost) return { ok: false, reason: "Not enough gold" };
   return { ok: true };
 }
 
@@ -149,14 +153,20 @@ function canBuildBase(state: GameState, x: number, y: number): CommandResult {
   return noEnemyAt(state, x, y);
 }
 
-/** A tower goes on open ground, or on a base that accepts mounts (a wall) with no tower yet. */
-function canMount(state: GameState, x: number, y: number): CommandResult {
+/**
+ * A tower goes on open ground, or on a base that accepts mounts (a wall) with no tower yet.
+ * The wall must be the player's own or neutral (a ruin).
+ */
+function canMount(state: GameState, player: PlayerId, x: number, y: number): CommandResult {
   if (mountAt(state, x, y)) return { ok: false, reason: "A tower is already here" };
   const base = baseAt(state, x, y);
   if (!base) return noEnemyAt(state, x, y);
   const stats: StructureStats = STRUCTURES[base.kind];
   if (!stats.acceptsMount) {
     return { ok: false, reason: `Can't put a tower on ${stats.name.toLowerCase()}` };
+  }
+  if (base.owner !== null && base.owner !== player) {
+    return { ok: false, reason: `That wall belongs to ${playerName(state, base.owner)}` };
   }
   return { ok: true }; // nothing walks on a wall, so enemies can't be in the way
 }
@@ -178,6 +188,7 @@ export function placeStructure(
   x: number,
   y: number,
   facing: Facing = "N",
+  owner: PlayerId | null = null,
 ): Structure {
   const stats: StructureStats = STRUCTURES[kind];
   const structure: Structure = {
@@ -188,6 +199,7 @@ export function placeStructure(
     hp: stats.maxHp,
     maxHp: stats.maxHp,
     cooldown: initialCooldown(stats),
+    owner,
   };
   if (stats.directional || stats.tower) structure.facing = facing;
   if (stats.tower && stats.tower.turnDegreesPerSecond > 0) structure.aim = facingAngle(facing);

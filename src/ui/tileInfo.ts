@@ -1,4 +1,5 @@
 import { STRUCTURES, TREE_CLEAR_GOLD, type StructureStats } from "../sim/config";
+import { playerName } from "../sim/players";
 import { refundFor } from "../sim/economy";
 import { baseAt, inBounds, isKeepTile, isSpawnTile, mountAt, terrainAt, topAt } from "../sim/grid";
 import type { GameState, Point, Structure, Terrain } from "../sim/types";
@@ -25,8 +26,12 @@ export function describeTile(state: GameState, p: Point): string[] {
   } else if (top) {
     const mount = mountAt(state, p.x, p.y);
     const base = baseAt(state, p.x, p.y);
-    if (mount) lines.push(...describeStructure(mount, base ? "on wall" : "ground"));
-    if (base) lines.push(...describeStructure(base));
+    if (mount)
+      lines.push(
+        ...describeStructure(mount, base ? "on wall" : "ground"),
+        ...builtBy(state, mount),
+      );
+    if (base) lines.push(...describeStructure(base), ...builtBy(state, base));
     lines.push(`Sells for ${refundFor(top)}g`);
   } else if (isSpawnTile(state, p.x, p.y)) {
     lines.push("Spawn zone");
@@ -46,6 +51,12 @@ export function describeTile(state: GameState, p: Point): string[] {
   }
   if (enemies.length > 3) lines.push(`...and ${enemies.length - 3} more`);
   return lines;
+}
+
+/** "Built by Bo", only in games with more than one player. */
+function builtBy(state: GameState, structure: Structure): string[] {
+  if (structure.owner === null || Object.keys(state.players).length < 2) return [];
+  return [`Built by ${playerName(state, structure.owner)}`];
 }
 
 function describeStructure(structure: Structure, placement?: string): string[] {

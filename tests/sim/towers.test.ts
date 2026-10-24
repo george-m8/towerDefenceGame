@@ -111,8 +111,8 @@ describe("cannon and catapult", () => {
 describe("facing and arcs", () => {
   it("records the facing every tower was built with, and turning towers aim along it", () => {
     const state = createGameWithoutWaves();
-    applyCommand(state, { type: "build", kind: "archer", x: 10, y: 10, facing: "E" });
-    applyCommand(state, { type: "build", kind: "cannon", x: 12, y: 10, facing: "S" });
+    applyCommand(state, 1, { type: "build", kind: "archer", x: 10, y: 10, facing: "E" });
+    applyCommand(state, 1, { type: "build", kind: "cannon", x: 12, y: 10, facing: "S" });
     expect(topAt(state, 10, 10)?.facing).toBe("E");
     expect(topAt(state, 12, 10)?.facing).toBe("S");
     expect(topAt(state, 12, 10)?.aim).toBe(180);
@@ -244,5 +244,50 @@ describe("canTarget (shared by targeting and the overlay)", () => {
     const catapult = STRUCTURES.catapult.tower;
     expect(canTarget(catapult, at, "N", { x: 10, y: 15 })).toBe(true); // behind it
     expect(canTarget(catapult, at, "N", { x: 11, y: 10 })).toBe(false); // too close
+  });
+});
+
+describe("kill credit", () => {
+  it("a single-target kill is credited to the tower's owner", () => {
+    const state = createGameWithoutWaves();
+    placeStructure(state, "archer", 10, 10, "E", 2);
+    const enemy = spawnEnemy(state, 12, 10, ARCHER.damage);
+    updateTowers(state);
+    expect(enemy.killedBy).toBe(2);
+  });
+
+  it("every enemy killed by a splash is credited to the tower's owner", () => {
+    const state = createGameWithoutWaves();
+    const cannon = STRUCTURES.cannon.tower;
+    placeStructure(state, "cannon", 10, 10, "E", 3); // already aimed at the target
+    const target = spawnEnemy(state, 12, 10, cannon.damage);
+    const neighbour = spawnEnemy(state, 12, 11, cannon.damage);
+    updateTowers(state);
+    expect(target.killedBy).toBe(3);
+    expect(neighbour.killedBy).toBe(3);
+  });
+
+  it("a splash landing on an already-dead enemy doesn't take the credit", () => {
+    const state = createGameWithoutWaves();
+    const cannon = STRUCTURES.cannon.tower;
+    // The archer (built first, so it fires first) faces east and kills `enemy`, the nearer of
+    // the two to the keep. The cannon faces north along x = 13, so it targets the neighbour
+    // without turning, and its splash also covers the dead enemy's tile.
+    placeStructure(state, "archer", 10, 10, "E", 1);
+    placeStructure(state, "cannon", 13, 14, "N", 2);
+    const enemy = spawnEnemy(state, 13, 11, ARCHER.damage);
+    const neighbour = spawnEnemy(state, 13, 10, cannon.damage * 10);
+    updateTowers(state);
+    expect(enemy.killedBy).toBe(1);
+    expect(neighbour.hp).toBe(cannon.damage * 9);
+  });
+
+  it("structures built on behalf of no one credit nobody", () => {
+    const state = createGameWithoutWaves();
+    placeStructure(state, "archer", 10, 10, "E");
+    const enemy = spawnEnemy(state, 12, 10, ARCHER.damage);
+    updateTowers(state);
+    expect(enemy.hp).toBeLessThanOrEqual(0);
+    expect(enemy.killedBy).toBeNull();
   });
 });

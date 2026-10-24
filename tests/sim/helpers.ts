@@ -1,6 +1,6 @@
 import { createGame } from "../../src/sim/game";
 import { placeStructure } from "../../src/sim/grid";
-import type { GameState, Point, StructureKind, Terrain } from "../../src/sim/types";
+import type { GameState, PlayerId, Point, StructureKind, Terrain } from "../../src/sim/types";
 
 /** Place structures directly, bypassing gold and placement rules. */
 export function buildAt(state: GameState, points: Point[], kind: StructureKind = "wall") {
@@ -36,4 +36,9 @@ export function column(state: GameState, x: number, except: number[] = []): Poin
   return Array.from({ length: state.height }, (_, y) => ({ x, y })).filter(
     (p) => !except.includes(p.y),
   );
+}
+
+/** A player's gold (player 1, the single-player default, unless given). */
+export function goldOf(state: GameState, id: PlayerId = 1): number {
+  return state.players[id].gold;
 }

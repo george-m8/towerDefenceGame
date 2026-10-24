@@ -1,4 +1,4 @@
-import type { Facing, Point, StructureKind } from "../sim/types";
+import type { Facing, PlayerId, Point, StructureKind } from "../sim/types";
 
 export type Tool = StructureKind | "sell";
 
@@ -35,6 +35,8 @@ export interface UiState {
   showFlow: boolean;
   /** Facing for directional structures, rotated with R. */
   facing: Facing;
+  /** The player this screen acts as. Always 1 offline. */
+  playerId: PlayerId;
 }
 
 export function createUiState(): UiState {
@@ -45,6 +47,7 @@ export function createUiState(): UiState {
     messageUntil: 0,
     showFlow: false,
     facing: "N",
+    playerId: 1,
   };
 }
 

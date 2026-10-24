@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ENEMY, STRUCTURES, TICK_RATE } from "../../src/sim/config";
-import { spawnEnemy } from "../../src/sim/enemies";
+import { damageEnemy, spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand, tick } from "../../src/sim/game";
 import { topAt } from "../../src/sim/grid";
 import { nextStep } from "../../src/sim/pathfinding";
@@ -66,13 +66,13 @@ describe("building near enemies", () => {
     const state = createGameWithoutWaves();
     const y = state.keep.y + 1;
     spawnEnemy(state, 10, y);
-    expect(applyCommand(state, { type: "build", kind: "wall", x: 10, y })).toEqual({
+    expect(applyCommand(state, 1, { type: "build", kind: "wall", x: 10, y })).toEqual({
       ok: false,
       reason: "An enemy is in the way",
     });
     tick(state); // now moving from (10, y) towards (11, y)
-    expect(applyCommand(state, { type: "build", kind: "wall", x: 11, y }).ok).toBe(false);
-    expect(applyCommand(state, { type: "build", kind: "wall", x: 12, y }).ok).toBe(true);
+    expect(applyCommand(state, 1, { type: "build", kind: "wall", x: 11, y }).ok).toBe(false);
+    expect(applyCommand(state, 1, { type: "build", kind: "wall", x: 12, y }).ok).toBe(true);
   });
 });
 
@@ -186,5 +186,26 @@ describe("breaking through", () => {
       const s = topAt(state, p.x, p.y)!;
       expect(s.hp).toBe(s.maxHp);
     }
+  });
+});
+
+describe("damageEnemy", () => {
+  it("records who struck the killing blow, not who hit first", () => {
+    const state = createGameWithoutWaves();
+    const enemy = spawnEnemy(state, 5, 5, 10);
+    damageEnemy(enemy, 6, 1);
+    expect(enemy.killedBy).toBeNull();
+    damageEnemy(enemy, 4, 2);
+    expect(enemy.hp).toBe(0);
+    expect(enemy.killedBy).toBe(2);
+  });
+
+  it("ignores hits on an enemy that is already dead", () => {
+    const state = createGameWithoutWaves();
+    const enemy = spawnEnemy(state, 5, 5, 10);
+    damageEnemy(enemy, 15, 1);
+    damageEnemy(enemy, 15, 2);
+    expect(enemy.hp).toBe(-5);
+    expect(enemy.killedBy).toBe(1);
   });
 });

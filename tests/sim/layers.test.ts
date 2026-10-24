@@ -12,7 +12,7 @@ import {
   placeStructure,
   topAt,
 } from "../../src/sim/grid";
-import { buildAt, createGameWithoutWaves, ring } from "./helpers";
+import { buildAt, createGameWithoutWaves, ring, goldOf } from "./helpers";
 
 describe("layer data model", () => {
   it("starts with ground terrain, the keep in the base layer and no mounts", () => {
@@ -102,19 +102,19 @@ describe("placement rules", () => {
     ["a house", "house", { ok: false, reason: "Can't put a tower on house" }],
   ] as const)("a tower on %s", (_, base, expected) => {
     const state = withBase(base);
-    expect(canBuild(state, "archer", 5, 5)).toEqual(expected);
+    expect(canBuild(state, 1, "archer", 5, 5)).toEqual(expected);
   });
 
   it("rejects a second tower on the same tile, on ground or on a wall", () => {
     const ground = withBase();
     placeStructure(ground, "archer", 5, 5);
-    expect(canBuild(ground, "cannon", 5, 5)).toEqual({
+    expect(canBuild(ground, 1, "cannon", 5, 5)).toEqual({
       ok: false,
       reason: "A tower is already here",
     });
     const wall = withBase("wall");
     placeStructure(wall, "archer", 5, 5);
-    expect(canBuild(wall, "cannon", 5, 5)).toEqual({
+    expect(canBuild(wall, 1, "cannon", 5, 5)).toEqual({
       ok: false,
       reason: "A tower is already here",
     });
@@ -122,24 +122,24 @@ describe("placement rules", () => {
 
   it("rejects towers on the keep and in the spawn zone", () => {
     const state = withBase();
-    expect(canBuild(state, "archer", state.keep.x, state.keep.y).ok).toBe(false);
+    expect(canBuild(state, 1, "archer", state.keep.x, state.keep.y).ok).toBe(false);
     const spawn = state.spawnTiles[0];
-    expect(canBuild(state, "archer", spawn.x, spawn.y).ok).toBe(false);
+    expect(canBuild(state, 1, "archer", spawn.x, spawn.y).ok).toBe(false);
   });
 
   it("rejects a base on any occupied tile, including under a ground tower", () => {
     const state = withBase("wall");
-    expect(canBuild(state, "wall", 5, 5)).toEqual({ ok: false, reason: "Tile is occupied" });
+    expect(canBuild(state, 1, "wall", 5, 5)).toEqual({ ok: false, reason: "Tile is occupied" });
     placeStructure(state, "archer", 7, 7);
-    expect(canBuild(state, "wall", 7, 7)).toEqual({ ok: false, reason: "Tile is occupied" });
+    expect(canBuild(state, 1, "wall", 7, 7)).toEqual({ ok: false, reason: "Tile is occupied" });
   });
 
   it("ignores enemies when mounting on a wall, but not on open ground", () => {
     const state = withBase("wall");
     spawnEnemy(state, 5, 5); // pretend an enemy overlaps the wall tile
     spawnEnemy(state, 7, 7);
-    expect(canBuild(state, "archer", 5, 5).ok).toBe(true);
-    expect(canBuild(state, "archer", 7, 7)).toEqual({
+    expect(canBuild(state, 1, "archer", 5, 5).ok).toBe(true);
+    expect(canBuild(state, 1, "archer", 7, 7)).toEqual({
       ok: false,
       reason: "An enemy is in the way",
     });
@@ -147,7 +147,7 @@ describe("placement rules", () => {
 
   it("building a tower on a wall keeps the wall blocking and makes the tower elevated", () => {
     const state = withBase("wall");
-    expect(applyCommand(state, { type: "build", kind: "archer", x: 5, y: 5 })).toEqual({
+    expect(applyCommand(state, 1, { type: "build", kind: "archer", x: 5, y: 5 })).toEqual({
       ok: true,
     });
     const archer = mountAt(state, 5, 5)!;
@@ -177,7 +177,7 @@ describe("combat across layers", () => {
     const { state, y, target } = sealedKeep();
     const archer = placeStructure(state, "archer", target.x, target.y);
     spawnEnemy(state, target.x - 2, y, TOUGH);
-    const gold = state.gold;
+    const gold = goldOf(state);
 
     run(state, 100);
     const wall = baseAt(state, target.x, target.y)!;
@@ -189,7 +189,7 @@ describe("combat across layers", () => {
     expect(baseAt(state, target.x, target.y)).toBeUndefined();
     expect(mountAt(state, target.x, target.y)).toBeUndefined();
     expect(state.structures[archer.id]).toBeUndefined();
-    expect(state.gold).toBe(gold); // no refund for a fallen tower
+    expect(goldOf(state)).toBe(gold); // no refund for a fallen tower
   });
 
   it("a ground tower sealing the route is attacked directly", () => {
@@ -224,11 +224,11 @@ describe("ruins", () => {
     const state = createGameWithoutWaves();
     placeStructure(state, "ruin", 5, 5);
     expect(blocksAt(state, 5, 5)).toBe(true);
-    expect(canBuild(state, "archer", 5, 5)).toEqual({ ok: true });
+    expect(canBuild(state, 1, "archer", 5, 5)).toEqual({ ok: true });
   });
 
   it("can't be built by the player", () => {
     const state = createGameWithoutWaves();
-    expect(canBuild(state, "ruin", 5, 5)).toEqual({ ok: false, reason: "Ruins can't be built" });
+    expect(canBuild(state, 1, "ruin", 5, 5)).toEqual({ ok: false, reason: "Ruins can't be built" });
   });
 });

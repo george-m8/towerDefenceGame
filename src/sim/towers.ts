@@ -7,6 +7,7 @@ import {
   type TowerStats,
 } from "./config";
 import { angleBetween, angleTo, facingAngle, inArc, turnTowards } from "./aiming";
+import { damageEnemy } from "./enemies";
 import { distanceAt } from "./pathfinding";
 import type { Enemy, Facing, GameState, Point, Structure } from "./types";
 
@@ -49,7 +50,7 @@ function fire(
   if (tower.splashRadius > 0) {
     for (const enemy of state.enemies) {
       const spread = Math.max(Math.abs(enemy.x - impact.x), Math.abs(enemy.y - impact.y));
-      if (spread <= tower.splashRadius) enemy.hp -= tower.damage;
+      if (spread <= tower.splashRadius) damageEnemy(enemy, tower.damage, structure.owner);
     }
     state.effects.push({
       kind: "splash",
@@ -59,7 +60,7 @@ function fire(
       ttl: EFFECT_TICKS,
     });
   } else {
-    target.hp -= tower.damage;
+    damageEnemy(target, tower.damage, structure.owner);
   }
   state.effects.push({
     kind: "shot",
