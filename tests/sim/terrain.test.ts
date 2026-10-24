@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { STRUCTURES } from "../../src/sim/config";
+import { STRUCTURES, TREE_CLEAR_GOLD } from "../../src/sim/config";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand } from "../../src/sim/game";
 import { canBuild, isKeepTile, isWalkable, placeStructure, terrainAt } from "../../src/sim/grid";
@@ -115,5 +115,28 @@ describe("bridges", () => {
     expect(applyCommand(state, { type: "sell", x: 10, y: 5 })).toEqual({ ok: true });
     expect(state.gold).toBe(gold + Math.floor(STRUCTURES.bridge.cost * 0.5));
     expect(isWalkable(state, 10, 5)).toBe(false);
+  });
+});
+
+describe("clearing trees", () => {
+  it("pays timber, turns the tree into ground and opens it to enemies", () => {
+    const state = createGameWithoutWaves();
+    paintTerrain(state, [{ x: 10, y: 10 }], "tree");
+    const gold = state.gold;
+    const version = state.gridVersion;
+    expect(applyCommand(state, { type: "sell", x: 10, y: 10 })).toEqual({ ok: true });
+    expect(state.gold).toBe(gold + TREE_CLEAR_GOLD);
+    expect(terrainAt(state, 10, 10)).toBe("ground");
+    expect(isWalkable(state, 10, 10)).toBe(true);
+    expect(state.gridVersion).toBe(version + 1);
+  });
+
+  it("can't clear rock", () => {
+    const state = createGameWithoutWaves();
+    paintTerrain(state, [{ x: 10, y: 10 }], "rock");
+    expect(applyCommand(state, { type: "sell", x: 10, y: 10 })).toEqual({
+      ok: false,
+      reason: "Rock can't be cleared",
+    });
   });
 });

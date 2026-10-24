@@ -48,7 +48,8 @@ export function generateTerrain(
   for (let attempt = 0; attempt < config.maxAttempts; attempt++) {
     const rng = { rngState: (seed + Math.imul(attempt, 0x9e3779b9)) | 0 };
     const terrain = buildTerrain(layout, rng, config);
-    if (isValid(layout, terrain)) return { terrain, attempts: attempt + 1, fallback: false };
+    if (isValid(layout, terrain, config))
+      return { terrain, attempts: attempt + 1, fallback: false };
   }
   return { terrain: blankTerrain(layout), attempts: config.maxAttempts, fallback: true };
 }
@@ -63,10 +64,26 @@ function buildTerrain(layout: MapLayout, rng: Rng, config: MapGenConfig): Terrai
     if (x >= 0 && y >= 0 && x < layout.width && y < layout.height)
       terrain[y * layout.width + x] = t;
   };
+  const reserved = clearZoneMask(layout, config);
   const vertical = carveRiver(layout, rng, config, set);
   carveCoast(layout, rng, config, set);
-  clearZones(layout, config, set);
+  // Whatever the river or coast carved, the keep and spawn surroundings are open ground.
+  reserved.forEach((r, i) => {
+    if (r) terrain[i] = "ground";
+  });
+  const open = (i: number) => terrain[i] === "ground" && !reserved[i];
+  scatterClumps(
+    layout,
+    rng,
+    terrain,
+    open,
+    "rock",
+    config.rockClustersPer1000,
+    config.rockClusterSize,
+  );
+  scatterClumps(layout, rng, terrain, open, "tree", config.forestsPer1000, config.forestSize);
   placeFords(layout, rng, config, terrain, vertical);
+  fillSealedPockets(layout, terrain, reserved);
   return terrain;
 }
 
@@ -140,16 +157,67 @@ function carveCoast(layout: MapLayout, rng: Rng, config: MapGenConfig, set: Sett
   }
 }
 
-/** Open ground around the keep and in front of the spawn, whatever was carved there. */
-function clearZones(layout: MapLayout, config: MapGenConfig, set: Setter) {
-  const { keep } = layout;
+/**
+ * Irregular clumps of one terrain (rock clusters, forests) grown outwards from random seeds
+ * over open ground. The clear-zone pass afterwards keeps them away from the keep and spawn.
+ */
+function scatterClumps(
+  layout: MapLayout,
+  rng: Rng,
+  terrain: Terrain[],
+  open: (i: number) => boolean,
+  kind: Terrain,
+  per1000: [number, number],
+  size: [number, number],
+) {
+  const { width, height } = layout;
+  const area = (width * height) / 1000;
+  const clumps = randomInt(rng, Math.round(per1000[0] * area), Math.round(per1000[1] * area));
+  for (let c = 0; c < clumps; c++) {
+    let start = randomInt(rng, 0, terrain.length - 1);
+    for (let tries = 0; !open(start) && tries < START_TRIES; tries++) {
+      start = randomInt(rng, 0, terrain.length - 1);
+    }
+    if (!open(start)) continue;
+    const clump = [start];
+    terrain[start] = kind;
+    const target = randomInt(rng, ...size);
+    for (let tries = 0; clump.length < target && tries < target * 4; tries++) {
+      const from = clump[randomInt(rng, 0, clump.length - 1)];
+      const x = from % width;
+      const [dx, dy] = [
+        [0, -1],
+        [1, 0],
+        [0, 1],
+        [-1, 0],
+      ][randomInt(rng, 0, 3)];
+      const nx = x + dx;
+      const ny = (from - x) / width + dy;
+      const next = ny * width + nx;
+      if (nx < 0 || ny < 0 || nx >= width || ny >= height || !open(next)) continue;
+      terrain[next] = kind;
+      clump.push(next);
+    }
+  }
+}
+
+const START_TRIES = 20;
+
+/** Tiles that must stay open ground: around the keep and in front of the spawn. */
+function clearZoneMask(layout: MapLayout, config: MapGenConfig): boolean[] {
+  const { width, height, keep } = layout;
+  const mask = new Array<boolean>(width * height).fill(false);
+  const reserve = (x: number, y: number) => {
+    if (x >= 0 && y >= 0 && x < width && y < height) mask[y * width + x] = true;
+  };
   const r = config.keepClearRadius;
   for (let y = keep.y - r; y < keep.y + keep.size + r; y++) {
-    for (let x = keep.x - r; x < keep.x + keep.size + r; x++) set(x, y, "ground");
+    for (let x = keep.x - r; x < keep.x + keep.size + r; x++) reserve(x, y);
   }
   for (const p of layout.spawnTiles) {
-    for (let dx = 0; dx <= config.spawnClearColumns; dx++) set(p.x + dx, p.y, "ground");
+    for (let dx = 0; dx <= config.spawnClearColumns; dx++) reserve(p.x + dx, p.y);
   }
+  return mask;
 }
 
 /**
@@ -169,7 +237,16 @@ function placeFords(
     Array.from({ length: vertical ? width : height }, (_, a) =>
       vertical ? line * width + a : a * width + line,
     ).filter((i) => terrain[i] === "river");
-  const lines = Array.from({ length: lineCount }, (_, l) => l).filter((l) => tilesOn(l).length > 0);
+  // A crossing needs open ground on both banks, or it leads nowhere.
+  const bankOpen = (i: number) => i >= 0 && i < terrain.length && TERRAIN[terrain[i]].walkable;
+  const step = vertical ? 1 : width;
+  const crossable = (l: number) => {
+    const tiles = tilesOn(l);
+    return (
+      tiles.length > 0 && bankOpen(tiles[0] - step) && bankOpen(tiles[tiles.length - 1] + step)
+    );
+  };
+  const lines = Array.from({ length: lineCount }, (_, l) => l).filter(crossable);
   const fords = Math.min(lines.length, randomInt(rng, ...config.riverFords));
   for (let n = 0; n < fords; n++) {
     const pick = randomInt(rng, n, lines.length - 1);
@@ -178,9 +255,32 @@ function placeFords(
   }
 }
 
-/** Playable: there is a river, and every walkable tile (spawn included) can reach the keep. */
-function isValid(layout: MapLayout, terrain: Terrain[]): boolean {
-  if (!terrain.includes("river")) return false;
+/**
+ * Walkable pockets sealed off from the keep (inside a forest, between rocks and the coast)
+ * take on the impassable terrain around them, so a hole in a forest becomes forest.
+ * Clear-zone tiles are never filled: if those are sealed off, validation rejects the map.
+ */
+function fillSealedPockets(layout: MapLayout, terrain: Terrain[], reserved: boolean[]) {
+  const { width } = layout;
+  const reached = walkableFromKeep(layout, terrain);
+  terrain.forEach((t, i) => {
+    if (!TERRAIN[t].walkable || reached.has(i) || reserved[i]) return;
+    const neighbours = [
+      i - width,
+      i + width,
+      i % width > 0 ? i - 1 : -1,
+      i % width < width - 1 ? i + 1 : -1,
+    ];
+    terrain[i] = neighbours.some((n) => terrain[n] === "tree") ? "tree" : "rock";
+  });
+}
+
+/** Playable: a real river with its fords, and every walkable tile (spawn included) can reach the keep. */
+function isValid(layout: MapLayout, terrain: Terrain[], config: MapGenConfig): boolean {
+  // A real river (not one swallowed by the coast or clear zones) with its fords intact.
+  const river = terrain.filter((t) => t === "river").length;
+  if (river < Math.min(layout.width, layout.height) / 2) return false;
+  if (config.riverFords[0] > 0 && !terrain.includes("ford")) return false;
   const reached = walkableFromKeep(layout, terrain);
   return terrain.every((t, i) => !TERRAIN[t].walkable || reached.has(i));
 }

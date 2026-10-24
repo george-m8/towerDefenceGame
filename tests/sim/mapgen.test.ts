@@ -42,19 +42,23 @@ function reachableFromKeep(layout: MapLayout, terrain: Terrain[]): Set<number> {
 function expectGuarantees(layout: MapLayout, terrain: Terrain[]) {
   const { keep, width } = layout;
   const reach = reachableFromKeep(layout, terrain);
-  for (const p of layout.spawnTiles) expect(reach.has(p.y * width + p.x)).toBe(true);
-
+  const problems: string[] = [];
+  for (const p of layout.spawnTiles) {
+    if (!reach.has(p.y * width + p.x)) problems.push(`spawn ${p.x},${p.y} cut off`);
+  }
   const r = MAP_GEN.keepClearRadius;
   for (let y = keep.y - r; y < keep.y + keep.size + r; y++) {
     for (let x = keep.x - r; x < keep.x + keep.size + r; x++) {
-      expect(at(layout, terrain, x, y)).toBe("ground");
+      if (at(layout, terrain, x, y) !== "ground") problems.push(`keep ring ${x},${y}`);
     }
   }
   for (const p of layout.spawnTiles) {
     for (let dx = 0; dx <= MAP_GEN.spawnClearColumns; dx++) {
-      expect(at(layout, terrain, p.x + dx, p.y)).toBe("ground");
+      if (at(layout, terrain, p.x + dx, p.y) !== "ground")
+        problems.push(`spawn area ${p.x + dx},${p.y}`);
     }
   }
+  expect(problems).toEqual([]);
 }
 
 /** Edges that are at least half sea: a coast hugs exactly one. */
@@ -126,10 +130,25 @@ describe("generateTerrain", () => {
     for (const seed of SEEDS) {
       const { terrain } = generateTerrain(layout, seed);
       const reach = reachableFromKeep(layout, terrain);
-      terrain.forEach((t, i) => {
-        if (TERRAIN[t].walkable) expect(reach.has(i), `seed ${seed} tile ${i}`).toBe(true);
-      });
+      const cutOff = terrain.flatMap((t, i) => (TERRAIN[t].walkable && !reach.has(i) ? [i] : []));
+      expect(cutOff, `seed ${seed}`).toEqual([]);
     }
+  });
+
+  it("scatters rock clusters and forests, more of them on bigger maps", () => {
+    for (const seed of SEEDS) {
+      const { terrain } = generateTerrain(layout, seed);
+      expect(count(terrain, "rock"), `seed ${seed}`).toBeGreaterThan(0);
+      expect(count(terrain, "tree"), `seed ${seed}`).toBeGreaterThan(0);
+    }
+    const big = layoutFor(96, 64);
+    const features = (l: MapLayout) =>
+      SEEDS.slice(0, 20).reduce((sum, seed) => {
+        const { terrain } = generateTerrain(l, seed);
+        return sum + count(terrain, "rock") + count(terrain, "tree");
+      }, 0);
+    // 4x the area should give well over twice the rocks and trees.
+    expect(features(big)).toBeGreaterThan(2.5 * features(layout));
   });
 
   it("works on a much larger map", () => {

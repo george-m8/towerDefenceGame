@@ -32,6 +32,12 @@ export function terrainAt(state: GameState, x: number, y: number): Terrain {
   return state.terrain[tileIndex(state, x, y)];
 }
 
+/** Changes terrain at runtime (e.g. clearing a tree), so pathfinding recomputes. */
+export function setTerrain(state: GameState, x: number, y: number, terrain: Terrain): void {
+  state.terrain[tileIndex(state, x, y)] = terrain;
+  state.gridVersion++;
+}
+
 /** Whether enemies (and later units) can stand here at all. Sea, river, rock and trees are impassable. */
 export function isWalkable(state: GameState, x: number, y: number): boolean {
   if (!inBounds(state, x, y)) return false;

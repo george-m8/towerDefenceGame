@@ -166,4 +166,12 @@ export const MAP_GEN = {
   coastDepth: [2, 5] as [number, number],
   riverFords: [1, 2] as [number, number],
   riverMeander: 0.35, // chance per step that the river shifts sideways
+  // Counts are per 1,000 tiles so bigger maps get proportionally more.
+  rockClustersPer1000: [2, 4] as [number, number],
+  rockClusterSize: [2, 8] as [number, number],
+  forestsPer1000: [2, 3.3] as [number, number],
+  forestSize: [4, 15] as [number, number],
 };
+
+/** Gold of timber for clearing one tree with the sell tool. */
+export const TREE_CLEAR_GOLD = 1;

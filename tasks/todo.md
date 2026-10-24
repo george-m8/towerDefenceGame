@@ -92,13 +92,13 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** Generator passes for rock clusters (2-8 tiles) and forest patches (4-15 trees), with counts from per-1,000-tile densities, outside the clear zones and without breaking the route guarantee. The X tool on a tree clears it for `TREE_CLEAR_GOLD`, turning it into ground (bumps `gridVersion`). Rocks can't be cleared.
 
 **Acceptance criteria:**
-- [ ] Maps contain rock clusters and forests, and guarantees still hold for 500 seeds
-- [ ] Clearing a tree pays its gold, makes the tile ground and lets enemies use it. Clearing rock is rejected.
-- [ ] Feature counts scale with map area (96x64 has noticeably more than 48x32)
+- [x] Maps contain rock clusters and forests, and guarantees still hold for 500 seeds
+- [x] Clearing a tree pays its gold, makes the tile ground and lets enemies use it. Clearing rock is rejected.
+- [x] Feature counts scale with map area (96x64 has noticeably more than 48x32)
 
 **Verification:**
-- [ ] `npm test` (`tests/sim/mapgen.test.ts`, `tests/sim/terrain.test.ts`)
-- [ ] Manual: clear a line of trees with X and watch the path overlay change
+- [x] `npm test` (`tests/sim/mapgen.test.ts`, `tests/sim/terrain.test.ts`)
+- [x] Manual: clear a line of trees with X and watch the path overlay change
 
 **Dependencies:** Task 3
 
