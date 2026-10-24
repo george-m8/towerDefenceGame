@@ -86,7 +86,7 @@ No game changes yet.
 ### Checkpoint E: aiming works
 - [x] All tests pass, build clean
 - [x] Browser: an archer ignores enemies behind it; a cannon visibly swings onto targets before firing (checked with Task 4)
-- [ ] Review with human (including whether the arc and turn numbers feel right)
+- [x] Review with human (including whether the arc and turn numbers feel right)
 
 ---
 
@@ -157,4 +157,4 @@ No game changes yet.
 ### Checkpoint F: tower-aiming complete
 - [x] All 6 success criteria in `SPEC-tower-aiming.md` met (re-checked after Task 6)
 - [x] `npm run coverage` passes (99.0% lines for `src/sim/`)
-- [ ] Review with human, then move this file to `tasks/tower-aiming/` and start `line-of-sight`
+- [x] Review with human, then move this file to `tasks/tower-aiming/` and start `line-of-sight`
