@@ -12,6 +12,7 @@ node_modules/
 
 # Build directories
 dist/
+dist-server/
 build/
 
 # Tests

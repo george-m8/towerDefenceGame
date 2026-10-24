@@ -56,6 +56,7 @@ A browser-based, top-down, grid-based tower defence game where the player grows 
 - **Since `tile-layers`:** towers (archer, cannon, catapult) can also be built on top of walls. A wall-mounted tower is shielded by its wall and falls with it; selling removes the tower before the wall. See [`SPEC-tile-layers.md`](SPEC-tile-layers.md).
 - **Since `map-gen`:** the map is no longer an empty field. Each game is generated from a seed with a coast, a river with fords, rocks, forests, ruins and treasure chests; bridges cross rivers and trees can be cleared. See [`SPEC-map-gen.md`](SPEC-map-gen.md).
 - **Since `players`:** the simulation supports several players sharing one keep. Gold is per player (a single-player game has just player 1), every structure has an owner (ruins are neutral), and only the owner can sell it. Bounties pay the player who struck the killing blow. Pause and fast-forward are unanimous votes of connected players. See [`SPEC-players.md`](SPEC-players.md).
+- **Since `game-server`:** a Node WebSocket server (`npm run server`) hosts rooms, each running this simulation at 20 Hz, applying each connection's commands as its own player and sending 10 Hz updates. `ws` is the first runtime dependency (server only). See [`SPEC-game-server.md`](SPEC-game-server.md).
 
 **Enemies** (one type for the MVP)
 
