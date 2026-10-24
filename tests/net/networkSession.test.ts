@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { WebSocket } from "ws";
-import { createHub, handleConnection } from "../../server/connection";
+import { createHub, handleConnection, type Hub } from "../../server/connection";
+import { advanceAll } from "../../server/rooms";
 import { startServer, type GameServer } from "../../server/server";
 import { EMPTY } from "../../src/sim/grid";
 import type { CommandResult, GameState } from "../../src/sim/types";
@@ -13,10 +14,11 @@ import {
 } from "../../src/net/networkSession";
 
 let server: GameServer;
+let hub: Hub;
 const sessions: NetworkSession[] = [];
 
 beforeEach(async () => {
-  const hub = createHub();
+  hub = createHub();
   server = await startServer("127.0.0.1", 0, (socket) => handleConnection(hub, socket));
 });
 
@@ -108,9 +110,10 @@ describe("NetworkSession", () => {
     const { b } = await twoSessions();
     const results: CommandResult[] = [];
     b.onResult = (r) => results.push(r);
-    b.send({ type: "sell", x: 0, y: 0 });
+    const { keep } = b.state!; // maps are random, but the keep can never be sold
+    b.send({ type: "sell", x: keep.x, y: keep.y });
     await waitFor(() => results.length > 0);
-    expect(results[0].ok).toBe(false);
+    expect(results[0]).toEqual({ ok: false, reason: "Can't sell the keep" });
   });
 
   it("keeps the token for the room, and a new session with it rejoins as the same player", async () => {
@@ -151,5 +154,68 @@ describe("NetworkSession", () => {
     a.send({ type: "debugSpawn", count: 5 });
     await new Promise((r) => setTimeout(r, 50));
     expect(results).toHaveLength(1);
+  });
+});
+
+describe("feel", () => {
+  it("shows a build as pending until the server's update has it", async () => {
+    const { b } = await twoSessions();
+    const { x, y } = openTile(b.state!);
+    b.send({ type: "build", kind: "wall", x, y });
+    expect(b.pending).toEqual([{ kind: "wall", x, y, facing: undefined, confirmed: false }]);
+    await waitFor(() => b.pending.length === 0, "pending to clear");
+    expect(Object.values(b.state!.structures).some((s) => s.x === x && s.y === y)).toBe(true);
+  });
+
+  it("drops a refused build from pending", async () => {
+    const { b } = await twoSessions();
+    const { keep } = b.state!;
+    b.send({ type: "build", kind: "wall", x: keep.x, y: keep.y });
+    expect(b.pending).toHaveLength(1);
+    await waitFor(() => b.pending.length === 0, "pending to clear");
+  });
+
+  it("smooths enemies between the last two ticks it heard about", async () => {
+    const { a } = await twoSessions();
+    a.send({ type: "sendWave" });
+    // Advance the room by hand (tests run no room timer): 2 ticks per call.
+    for (let i = 1; i <= 8; i++) {
+      advanceAll(hub.registry, 100);
+      await waitFor(() => a.state!.tick >= i * 2, `tick ${i * 2}`);
+    }
+    await waitFor(() => a.state!.enemies.length > 0, "enemies");
+    const positions = () => a.state!.enemies.map((e) => ({ id: e.id, x: e.x, y: e.y }));
+    const newest = positions(); // what the latest update said
+    a.frame(Number.NEGATIVE_INFINITY); // as the newest update arrived: still the previous tick
+    const earlier = positions();
+    a.frame(Number.POSITIVE_INFINITY); // a full interval later: the newest tick
+    expect(positions()).toEqual(newest);
+    expect(earlier).not.toEqual(newest);
+  });
+});
+
+describe("connection", () => {
+  it("reconnects after a drop and rejoins as the same players", async () => {
+    const { a, b } = await twoSessions();
+    for (const client of server.wss.clients) client.terminate();
+    await waitFor(() => a.status === "Reconnecting...", "A to notice the drop");
+    await waitFor(
+      () => a.status === `Room ${a.room}` && b.status === `Room ${b.room}`,
+      "both back",
+    );
+    expect(a.playerId).toBe(1);
+    expect(b.playerId).toBe(2);
+    await waitFor(() => a.state!.players[2]?.connected === true, "B connected again");
+  });
+
+  it("stops when the same player opens another tab", async () => {
+    const { b, bStorage, a } = await twoSessions();
+    const other = open({ mode: "join", room: a.room!, name: "Bo" }, bStorage);
+    await waitFor(() => other.state);
+    await waitFor(() => b.status === "Opened in another tab", "B to be replaced");
+    await new Promise((r) => setTimeout(r, 700)); // longer than the first reconnect delay
+    expect(b.status).toBe("Opened in another tab");
+    expect(other.playerId).toBe(2);
+    expect(a.state!.players[2].connected).toBe(true);
   });
 });

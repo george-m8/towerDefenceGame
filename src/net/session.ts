@@ -1,7 +1,22 @@
 // What main.ts plays through: the local simulation, or a game on the server (networkSession.ts).
 import { TICK_RATE } from "../sim/config";
 import { applyCommand, createGame, tick } from "../sim/game";
-import type { Command, CommandResult, GameState, PlayerId } from "../sim/types";
+import type {
+  Command,
+  CommandResult,
+  Facing,
+  GameState,
+  PlayerId,
+  StructureKind,
+} from "../sim/types";
+
+/** A build sent to the server and not yet confirmed, drawn as a faint ghost. */
+export interface PendingBuild {
+  kind: StructureKind;
+  x: number;
+  y: number;
+  facing?: Facing;
+}
 
 export interface Session {
   /** The game to draw. Null until an online session has been welcomed. */
@@ -10,6 +25,8 @@ export interface Session {
   readonly online: boolean;
   /** A short connection status for the panel ("" offline). */
   readonly status: string;
+  /** Builds waiting for the server (always empty offline). */
+  readonly pending: readonly PendingBuild[];
   send(command: Command): void;
   /** Start a new game after game over. */
   restart(): void;
@@ -40,6 +57,7 @@ export function createLocalSession(
     playerId: LOCAL_PLAYER,
     online: false,
     status: "",
+    pending: [],
     onResult: () => {},
     send(command) {
       this.onResult(applyCommand(state, LOCAL_PLAYER, command));

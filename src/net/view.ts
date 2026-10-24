@@ -47,8 +47,23 @@ export function interpolateEnemies(
   return next.map((e) => {
     const from = before.get(e.id);
     if (!from) return toEnemy(e);
-    return toEnemy({ ...e, x: from.x + (e.x - from.x) * f, y: from.y + (e.y - from.y) * f });
+    return toEnemy({ ...e, x: lerp(from.x, e.x, f), y: lerp(from.y, e.y, f) });
   });
+}
+
+/**
+ * How far to draw between the previous and newest update, rendering one update interval
+ * behind: 0 when the newest update has just arrived, 1 one interval later.
+ */
+export function interpolationFraction(previousAt: number, newestAt: number, now: number): number {
+  const interval = newestAt - previousAt;
+  if (interval <= 0) return 1;
+  return Math.min(1, Math.max(0, (now - newestAt) / interval));
+}
+
+/** Exact at both ends (unlike a + (b - a) * t), so t = 1 lands precisely on the server's value. */
+function lerp(a: number, b: number, t: number): number {
+  return a * (1 - t) + b * t;
 }
 
 function toEnemy(e: ClientEnemy): Enemy {

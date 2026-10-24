@@ -30,9 +30,10 @@ describe("LocalSession", () => {
     const session = createLocalSession(1);
     const results: CommandResult[] = [];
     session.onResult = (r) => results.push(r);
-    session.send({ type: "sell", x: 0, y: 0 });
+    const { keep } = session.state!;
+    session.send({ type: "sell", x: keep.x, y: keep.y });
     session.send({ type: "togglePause" });
-    expect(results).toEqual([{ ok: false, reason: expect.any(String) }, { ok: true }]);
+    expect(results).toEqual([{ ok: false, reason: "Can't sell the keep" }, { ok: true }]);
     expect(session.state!.paused).toBe(true);
     expect(session.playerId).toBe(1);
     expect(session.online).toBe(false);

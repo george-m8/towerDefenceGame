@@ -324,7 +324,7 @@ T1 View state from server messages, interpolation
 **Checkpoint K: playable online**
 - [ ] Manual: two tabs create and join, and build in the same game
 
-- [ ] Task 5: Smoothing, ghosts and reconnect
+- [x] Task 5: Smoothing, ghosts and reconnect (browser check pending)
 - [ ] Task 6: Players, votes, owner colours, restart and docs
 
 **Checkpoint L: module complete**

@@ -13,6 +13,7 @@ import { nextStep } from "../sim/pathfinding";
 import { STRUCTURES, type StructureStats } from "../sim/config";
 import { hitTile } from "../sim/traps";
 import type { GameState, Point, Structure, StructureKind } from "../sim/types";
+import type { PendingBuild } from "../net/session";
 import { isBuildTool, type UiState } from "../ui/state";
 import {
   COLOURS,
@@ -223,13 +224,23 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
     ctx!.fillRect(left, top, Math.max(1, barWidth * fraction), 3);
   }
 
+  /** Builds sent to the server but not confirmed yet: faint, so they read as "on the way". */
+  function drawPending(pending: readonly PendingBuild[]) {
+    for (const build of pending) {
+      ctx!.fillStyle = COLOURS.ghostPending;
+      ctx!.fillRect(build.x * TILE_SIZE, build.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      drawGlyph(build.x, build.y, glyphFor(build.kind, build.facing), COLOURS.ghostPendingGlyph);
+    }
+  }
+
   return {
-    render(state: GameState, ui: UiState) {
+    render(state: GameState, ui: UiState, pending: readonly PendingBuild[] = []) {
       drawGrid(state);
       drawFeatures(state);
       if (ui.showFlow) drawFlow(state);
       drawEffects(state);
       drawEnemies(state);
+      drawPending(pending);
       drawRange(state, ui);
       drawGhost(state, ui);
     },

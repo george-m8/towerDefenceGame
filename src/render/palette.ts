@@ -17,6 +17,8 @@ export const COLOURS = {
   ghostOk: "rgba(255, 255, 255, 0.35)",
   ghostBad: "rgba(255, 60, 60, 0.45)",
   ghostSell: "rgba(255, 210, 60, 0.55)",
+  ghostPending: "rgba(255, 255, 255, 0.2)",
+  ghostPendingGlyph: "rgba(255, 255, 255, 0.6)",
   enemy: "#ff5f4a",
   hpBack: "#000000",
   hpFront: "#5fdc5f",

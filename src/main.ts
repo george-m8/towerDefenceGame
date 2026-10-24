@@ -54,7 +54,7 @@ function frame(now: number) {
   if (state) {
     // Online, the map size is only known once the server has welcomed us.
     renderer ??= createRenderer(canvas, state.width, state.height);
-    renderer.render(state, ui);
+    renderer.render(state, ui, session.pending);
     panel.update(state);
     gameOver.update(state);
   }

@@ -110,12 +110,12 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** `NetworkSession` keeps the previous and newest updates with arrival times. `frame(now)` writes enemies interpolated 100 ms behind into the view. Builds waiting for their result are kept as pending, and the renderer draws them as faint ghosts. On close, it rejoins with backoff (0.5, 1, 2, 4, then 5 s), showing "Reconnecting...". On close code 4000 it shows "Opened in another tab" and stops.
 
 **Acceptance criteria:**
-- [ ] Enemies move smoothly between updates (manual), and interpolation uses the buffered updates (test)
-- [ ] Pending builds show as ghosts until their result, and refused ones disappear with the reason shown
-- [ ] A dropped socket reconnects as the same player, and close code 4000 doesn't retry (tests)
+- [ ] Enemies move smoothly between updates (manual); interpolation uses the buffered updates (tested)
+- [x] Pending builds show as ghosts until their result, and refused ones disappear with the reason shown
+- [x] A dropped socket reconnects as the same player, and close code 4000 doesn't retry (tests)
 
 **Verification:**
-- [ ] Session tests for reconnect, code 4000 and pending builds; view tests for frame interpolation
+- [x] Session tests for reconnect, code 4000 and pending builds; view tests for frame interpolation
 - [ ] Manual: smooth enemies at normal and 2x speed
 
 **Dependencies:** Task 4

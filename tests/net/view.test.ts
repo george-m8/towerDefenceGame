@@ -4,7 +4,12 @@ import { applyCommand, createGame, tick } from "../../src/sim/game";
 import { canBuild, topAt } from "../../src/sim/grid";
 import { getFlowField } from "../../src/sim/pathfinding";
 import { toClientState, toUpdate } from "../../src/net/snapshot";
-import { applyUpdate, fromClientState, interpolateEnemies } from "../../src/net/view";
+import {
+  applyUpdate,
+  fromClientState,
+  interpolateEnemies,
+  interpolationFraction,
+} from "../../src/net/view";
 import { describeTile } from "../../src/ui/tileInfo";
 import type { ClientEnemy } from "../../src/net/protocol";
 
@@ -82,8 +87,26 @@ describe("interpolateEnemies", () => {
     expect(result[1]).toMatchObject({ x: 9, y: 9 });
   });
 
+  it("lands exactly on the newest position at t = 1", () => {
+    const [end] = interpolateEnemies([e(1, 1, 16.1)], [e(1, 1, 16.03)], 1);
+    expect(end.y).toBe(16.03);
+  });
+
   it("uses the newest hp", () => {
     const [mid] = interpolateEnemies([{ ...e(1, 0, 0), hp: 10 }], [{ ...e(1, 1, 0), hp: 4 }], 0.5);
     expect(mid.hp).toBe(4);
+  });
+});
+
+describe("interpolationFraction", () => {
+  it("draws one update behind: 0 as the newest arrives, 1 an interval later", () => {
+    expect(interpolationFraction(1000, 1100, 1100)).toBe(0);
+    expect(interpolationFraction(1000, 1100, 1150)).toBe(0.5);
+    expect(interpolationFraction(1000, 1100, 1200)).toBe(1);
+    expect(interpolationFraction(1000, 1100, 5000)).toBe(1);
+  });
+
+  it("shows the newest positions when two updates arrived together", () => {
+    expect(interpolationFraction(1000, 1000, 1000)).toBe(1);
   });
 });
