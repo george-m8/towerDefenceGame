@@ -58,7 +58,7 @@ T4 and T5 both depend only on T3.
 
 ### Task list
 
-- [ ] Task 1: Layer data model behind grid helpers
+- [x] Task 1: Layer data model behind grid helpers
 - [ ] Task 2: Move callers to explicit layer helpers
 
 **Checkpoint A: refactor complete, no behaviour change**

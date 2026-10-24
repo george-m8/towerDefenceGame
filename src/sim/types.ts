@@ -9,6 +9,9 @@ export type StructureKind = keyof typeof STRUCTURES;
 
 export type Facing = "N" | "E" | "S" | "W";
 
+/** Natural ground type under any structures. map-gen adds more. */
+export type Terrain = "ground";
+
 export interface Structure {
   id: number;
   kind: StructureKind;
@@ -72,8 +75,12 @@ export interface Keep {
 export interface GameState {
   width: number;
   height: number;
-  /** Per-tile occupant: EMPTY, KEEP_TILE, or a structure id. Index = y * width + x. */
-  tiles: number[];
+  // Per-tile layers, index = y * width + x. Read them through the grid.ts helpers only.
+  terrain: Terrain[];
+  /** What the tile is: EMPTY, KEEP_TILE, or a base structure id. */
+  base: number[];
+  /** A tower standing on the tile: EMPTY or a mount structure id. */
+  mount: number[];
   structures: Record<number, Structure>;
   nextId: number;
   /** Incremented whenever tile occupancy changes, so pathfinding can recompute lazily. */

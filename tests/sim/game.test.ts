@@ -9,7 +9,9 @@ describe("createGame", () => {
   it("creates a grid of the configured size", () => {
     expect(state.width).toBe(GRID_WIDTH);
     expect(state.height).toBe(GRID_HEIGHT);
-    expect(state.tiles).toHaveLength(GRID_WIDTH * GRID_HEIGHT);
+    for (const layer of [state.terrain, state.base, state.mount]) {
+      expect(layer).toHaveLength(GRID_WIDTH * GRID_HEIGHT);
+    }
   });
 
   it("places a 3x3 keep at the centre with full HP", () => {

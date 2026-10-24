@@ -15,17 +15,17 @@ import { randomInt } from "./rng";
 import { updateTowers } from "./towers";
 import { updateTraps } from "./traps";
 import { createWaveState, sendWaveEarly, updateWaves } from "./waves";
-import type { Command, CommandResult, GameState, Point } from "./types";
+import type { Command, CommandResult, GameState, Point, Terrain } from "./types";
 
 export function createGame(seed: number): GameState {
   const width = GRID_WIDTH;
   const height = GRID_HEIGHT;
-  const tiles = new Array<number>(width * height).fill(EMPTY);
+  const base = new Array<number>(width * height).fill(EMPTY);
 
   const keepX = Math.floor(width / 2) - Math.floor(KEEP_SIZE / 2);
   const keepY = Math.floor(height / 2) - Math.floor(KEEP_SIZE / 2);
   for (let y = keepY; y < keepY + KEEP_SIZE; y++) {
-    for (let x = keepX; x < keepX + KEEP_SIZE; x++) tiles[y * width + x] = KEEP_TILE;
+    for (let x = keepX; x < keepX + KEEP_SIZE; x++) base[y * width + x] = KEEP_TILE;
   }
 
   const spawnTiles: Point[] = [];
@@ -36,7 +36,9 @@ export function createGame(seed: number): GameState {
   return {
     width,
     height,
-    tiles,
+    terrain: new Array<Terrain>(width * height).fill("ground"),
+    base,
+    mount: new Array<number>(width * height).fill(EMPTY),
     structures: {},
     nextId: 1,
     gridVersion: 0,

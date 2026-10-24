@@ -13,17 +13,54 @@ export function tileIndex(state: GameState, x: number, y: number): number {
 }
 
 export function isKeepTile(state: GameState, x: number, y: number): boolean {
-  return inBounds(state, x, y) && state.tiles[tileIndex(state, x, y)] === KEEP_TILE;
+  return inBounds(state, x, y) && state.base[tileIndex(state, x, y)] === KEEP_TILE;
 }
 
 export function isSpawnTile(state: GameState, x: number, y: number): boolean {
   return state.spawnTiles.some((p) => p.x === x && p.y === y);
 }
 
-export function structureAt(state: GameState, x: number, y: number): Structure | undefined {
+function structureIn(state: GameState, layer: number[], x: number, y: number) {
   if (!inBounds(state, x, y)) return undefined;
-  const id = state.tiles[tileIndex(state, x, y)];
+  const id = layer[tileIndex(state, x, y)];
   return id > 0 ? state.structures[id] : undefined;
+}
+
+/** What the tile is built from: a wall, spikes, a house. */
+export function baseAt(state: GameState, x: number, y: number): Structure | undefined {
+  return structureIn(state, state.base, x, y);
+}
+
+/** The tower standing on the tile, on a wall or on open ground. */
+export function mountAt(state: GameState, x: number, y: number): Structure | undefined {
+  return structureIn(state, state.mount, x, y);
+}
+
+/** The topmost structure: what you see, hover and sell first. */
+export function topAt(state: GameState, x: number, y: number): Structure | undefined {
+  return mountAt(state, x, y) ?? baseAt(state, x, y);
+}
+
+/** @deprecated Temporary alias while callers move to the explicit layer helpers. */
+export const structureAt = topAt;
+
+/** True if enemies can't walk onto the tile: a blocking base, or any tower. */
+export function blocksAt(state: GameState, x: number, y: number): boolean {
+  if (mountAt(state, x, y)) return true;
+  const base = baseAt(state, x, y);
+  return base !== undefined && STRUCTURES[base.kind].blocksMovement;
+}
+
+/** What an enemy hits when this tile blocks its route: the wall first, so it shields its tower. */
+export function attackTargetAt(state: GameState, x: number, y: number): Structure | undefined {
+  const base = baseAt(state, x, y);
+  if (base && STRUCTURES[base.kind].blocksMovement) return base;
+  return mountAt(state, x, y);
+}
+
+/** A tower is elevated when it stands on a wall rather than open ground. */
+export function isElevated(state: GameState, tower: Structure): boolean {
+  return baseAt(state, tower.x, tower.y) !== undefined;
 }
 
 /** True if the enemy is on, or moving between, tiles that include (x, y). */
@@ -47,10 +84,13 @@ export function canBuild(
   if (state.enemies.some((e) => enemyOccupies(e, x, y))) {
     return { ok: false, reason: "An enemy is in the way" };
   }
-  if (state.tiles[tileIndex(state, x, y)] !== EMPTY)
-    return { ok: false, reason: "Tile is occupied" };
+  if (topAt(state, x, y)) return { ok: false, reason: "Tile is occupied" };
   if (state.gold < STRUCTURES[kind].cost) return { ok: false, reason: "Not enough gold" };
   return { ok: true };
+}
+
+function layerOf(state: GameState, kind: StructureKind): number[] {
+  return STRUCTURES[kind].layer === "mount" ? state.mount : state.base;
 }
 
 export function placeStructure(
@@ -72,7 +112,7 @@ export function placeStructure(
   };
   if (stats.directional) structure.facing = facing;
   state.structures[structure.id] = structure;
-  state.tiles[tileIndex(state, x, y)] = structure.id;
+  layerOf(state, kind)[tileIndex(state, x, y)] = structure.id;
   state.gridVersion++;
   return structure;
 }
@@ -85,7 +125,7 @@ function initialCooldown(stats: StructureStats): number {
 
 export function removeStructure(state: GameState, structure: Structure): void {
   delete state.structures[structure.id];
-  state.tiles[tileIndex(state, structure.x, structure.y)] = EMPTY;
+  layerOf(state, structure.kind)[tileIndex(state, structure.x, structure.y)] = EMPTY;
   state.gridVersion++;
 }
 

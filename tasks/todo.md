@@ -14,13 +14,13 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** Replace `GameState.tiles` with `terrain: Terrain[]` (all `"ground"` for now), `base: number[]` and `mount: number[]`. Add `layer: "base" | "mount"` to every structure kind in `config.ts` (archer, cannon and catapult are mounts; everything else is base) and `acceptsMount: true` on walls. Add the grid helpers `baseAt`, `mountAt`, `topAt`, `blocksAt`, `attackTargetAt` and `isElevated`. `placeStructure` writes to the layer from config. Keep `structureAt` as a temporary alias for `topAt`, so no caller changes yet.
 
 **Acceptance criteria:**
-- [ ] `createGame` builds `terrain`, `base` and `mount`. The keep lives in `base`. `tiles` no longer exists.
-- [ ] Towers placed on empty ground go into `mount`. Walls, spikes and houses go into `base`.
-- [ ] New helper unit tests pass, and all 73 existing tests pass unchanged (apart from tests that read `tiles` directly, if any)
+- [x] `createGame` builds `terrain`, `base` and `mount`. The keep lives in `base`. `tiles` no longer exists.
+- [x] Towers placed on empty ground go into `mount`. Walls, spikes and houses go into `base`.
+- [x] New helper unit tests pass, and all 73 existing tests pass unchanged (apart from tests that read `tiles` directly, if any)
 
 **Verification:**
-- [ ] `npm test` (new `tests/sim/layers.test.ts` for the helpers)
-- [ ] `npm run typecheck && npm run build`
+- [x] `npm test` (new `tests/sim/layers.test.ts` for the helpers)
+- [x] `npm run typecheck && npm run build`
 
 **Dependencies:** None
 

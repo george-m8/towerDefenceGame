@@ -50,10 +50,10 @@ export function distanceAt(state: GameState, x: number, y: number): number {
  */
 function computeDistances(state: GameState): number[] {
   const blockedCost = state.width * state.height + 1;
-  const dist = new Array<number>(state.tiles.length).fill(Infinity);
+  const dist = new Array<number>(state.base.length).fill(Infinity);
   const heap = new MinHeap();
 
-  state.tiles.forEach((occupant, i) => {
+  state.base.forEach((occupant, i) => {
     if (occupant === KEEP_TILE) {
       dist[i] = 0;
       heap.push(0, i);

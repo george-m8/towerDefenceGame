@@ -34,6 +34,10 @@ export interface IncomeStats {
 
 export interface StructureStats {
   name: string;
+  /** Base: what the tile is (walls, spikes, houses). Mount: a tower standing on ground or a wall. */
+  layer: "base" | "mount";
+  /** A tower can be mounted on top (walls only). */
+  acceptsMount?: boolean;
   cost: number;
   maxHp: number;
   blocksMovement: boolean;
@@ -45,9 +49,17 @@ export interface StructureStats {
 }
 
 export const STRUCTURES = {
-  wall: { name: "Wall", cost: 5, maxHp: 50, blocksMovement: true },
+  wall: {
+    name: "Wall",
+    layer: "base",
+    acceptsMount: true,
+    cost: 5,
+    maxHp: 50,
+    blocksMovement: true,
+  },
   archer: {
     name: "Archer",
+    layer: "mount",
     cost: 25,
     maxHp: 40,
     blocksMovement: true,
@@ -55,6 +67,7 @@ export const STRUCTURES = {
   },
   cannon: {
     name: "Cannon",
+    layer: "mount",
     cost: 50,
     maxHp: 60,
     blocksMovement: true,
@@ -62,6 +75,7 @@ export const STRUCTURES = {
   },
   catapult: {
     name: "Catapult",
+    layer: "mount",
     cost: 80,
     maxHp: 40,
     blocksMovement: true,
@@ -69,6 +83,7 @@ export const STRUCTURES = {
   },
   floorSpikes: {
     name: "Floor spikes",
+    layer: "base",
     cost: 15,
     maxHp: 0, // walkable and never attacked
     blocksMovement: false,
@@ -76,6 +91,7 @@ export const STRUCTURES = {
   },
   wallSpikes: {
     name: "Wall spikes",
+    layer: "base",
     cost: 20,
     maxHp: 50,
     blocksMovement: true,
@@ -84,6 +100,7 @@ export const STRUCTURES = {
   },
   house: {
     name: "House",
+    layer: "base",
     cost: 40,
     maxHp: 30,
     blocksMovement: true,
