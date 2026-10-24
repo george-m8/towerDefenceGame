@@ -246,7 +246,7 @@ T2 and T3 each depend only on T1.
 
 ### Task list
 
-- [ ] Task 1: Tooling and a bare server
+- [x] Task 1: Tooling and a bare server
 - [ ] Task 2: Message types and validation
 - [ ] Task 3: Snapshots and updates
 

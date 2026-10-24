@@ -14,17 +14,17 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** Add `ws` (runtime) and `tsx`, `@types/ws`, `@types/node` (dev). Add `server/tsconfig.json` (Node types, no DOM) covering `server/`, `src/sim/` and `src/net/`, and make `npm run typecheck` check both configs. Add `server/config.ts` (host/port defaults and the other tunables from the spec) and a bare `server/main.ts`: it reads `HOST`/`PORT`, starts an HTTP server with a WebSocket endpoint at `/ws`, creates and ticks one throwaway game to prove the sim runs under Node, and logs the LAN address. Scripts: `server` (`tsx watch server/main.ts`). Vite proxies `/ws` to the server in dev. Vitest also picks up `tests/server/`.
 
 **Acceptance criteria:**
-- [ ] `npm run server` starts, logs `http://<lan-ip>:5173` and the WebSocket port, and runs the sim under Node without errors
-- [ ] `npm run typecheck` checks `server/` with Node types and no DOM, and still checks the client with DOM
-- [ ] With `PORT=9000 npm run server`, the server listens on 9000
+- [x] `npm run server` starts, logs `http://<lan-ip>:5173` and the WebSocket port, and runs the sim under Node without errors
+- [x] `npm run typecheck` checks `server/` with Node types and no DOM, and still checks the client with DOM
+- [x] With `PORT=9000 npm run server`, the server listens on 9000
 
 **Verification:**
-- [ ] Manual: start the server, see the log, stop it
-- [ ] A smoke test in `tests/server/main.test.ts` starts the HTTP/WS server on port 0 and connects a `ws` client
+- [x] Manual: start the server, see the log, stop it
+- [x] A smoke test in `tests/server/server.test.ts` starts the HTTP/WS server on port 0 and connects a `ws` client
 
 **Dependencies:** None
 
-**Files likely touched:** `package.json`, `server/tsconfig.json`, `server/config.ts`, `server/main.ts`, `vite.config.ts`, `tests/server/main.test.ts`
+**Files likely touched:** `package.json`, `server/tsconfig.json`, `server/config.ts`, `server/main.ts`, `vite.config.ts`, `tests/server/server.test.ts`
 
 **Estimated scope:** M
 
