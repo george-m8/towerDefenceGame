@@ -15,7 +15,7 @@ let state = createGame(Date.now() >>> 0);
 const ui = createUiState();
 const canvas = document.querySelector<HTMLCanvasElement>("#map")!;
 const renderer = createRenderer(canvas, state.width, state.height);
-const dispatch = (command: Command) => applyCommand(state, command);
+const dispatch = (command: Command) => applyCommand(state, ui.playerId, command);
 const panel = createPanel(document.querySelector<HTMLElement>("#panel")!, ui, dispatch);
 const gameOver = createGameOverDialog(document.querySelector<HTMLElement>("#game-over")!, () => {
   state = createGame(Date.now() >>> 0);

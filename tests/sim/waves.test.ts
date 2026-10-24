@@ -1,3 +1,4 @@
+import { goldOf } from "./helpers";
 import { describe, expect, it } from "vitest";
 import { TICK_RATE, WAVES } from "../../src/sim/config";
 import { applyCommand, createGame, tick } from "../../src/sim/game";
@@ -73,9 +74,9 @@ describe("send wave early", () => {
   it("starts the next wave now and pays 1 gold per full second skipped", () => {
     const state = createGame(1, { blankMap: true });
     run(state, TICK_RATE * 5 + 7); // 14.65s left
-    const gold = state.gold;
-    expect(applyCommand(state, { type: "sendWave" })).toEqual({ ok: true });
-    expect(state.gold).toBe(gold + 14 * WAVES.earlySendGoldPerSecond);
+    const gold = goldOf(state);
+    expect(applyCommand(state, 1, { type: "sendWave" })).toEqual({ ok: true });
+    expect(goldOf(state)).toBe(gold + 14 * WAVES.earlySendGoldPerSecond);
     expect(state.wave.number).toBe(1);
     tick(state);
     expect(state.enemies).toHaveLength(1);
@@ -83,8 +84,8 @@ describe("send wave early", () => {
 
   it("is rejected while a wave is still spawning", () => {
     const state = createGame(1, { blankMap: true });
-    applyCommand(state, { type: "sendWave" });
-    expect(applyCommand(state, { type: "sendWave" })).toEqual({
+    applyCommand(state, 1, { type: "sendWave" });
+    expect(applyCommand(state, 1, { type: "sendWave" })).toEqual({
       ok: false,
       reason: "Wave still spawning",
     });

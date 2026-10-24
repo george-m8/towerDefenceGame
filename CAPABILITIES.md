@@ -61,3 +61,42 @@ Ramparts comes before the economy because it only needs the existing gold and ho
 ## Open questions
 
 None at map level. Module-level questions live in each `SPEC-<module-id>.md`.
+
+---
+
+# Capability Map: Multiplayer (co-op)
+
+Status: APPROVED (2026-10-24)
+Last updated: 2026-10-24
+
+Several players connect over the web, see the same level and fight the same enemies together. Later game modes build on this. Single-player keeps working offline.
+
+**Architecture:** the server runs the game. A Node process runs the existing `src/sim/` (no DOM, deterministic) once per room. Clients send commands over a WebSocket. The server checks them, applies them in order, ticks at 20 Hz and sends state updates to everyone. Clients only draw what the server sends and smooth enemy movement between updates. A tick-stamped command log can later support lockstep or replays, but it isn't needed now.
+
+| Module id | Responsibility | Depends on |
+|---|---|---|
+| `players` | Multiple players inside the sim, tested fully offline. Each player has their own gold. Every structure has an owner, and only the owner can sell it. Every command carries a `playerId`. Bounties go to the player whose tower or trap made the kill, house income to the house's owner, and the early-send bonus to whoever sent the wave. Pause and fast-forward are votes: they only take effect when every connected player has voted for them, and any player can withdraw their vote to undo it. Anyone can send the next wave early. A one-player game behaves exactly as today (their single vote decides). | core |
+| `game-server` | Node WebSocket server (`ws`). Rooms, one sim per room, a typed message format shared with the client, server-side command checks, a `playerId` assigned by the server and never trusted from the client, join/leave. Runs locally first, reachable from other machines on the LAN. Port and host come from env vars so it can move to a real host later without code changes. | players |
+| `net-client` | A session interface (`LocalSession` for offline play, `NetworkSession` for online play) so `main.ts` doesn't care which is running. Applies state updates, smooths enemy movement, shows ghosts for placements waiting on the server, and connection status. | game-server |
+| `lobby` | Create or join a room by code/link, enter a player name, see who's in, start the game. | net-client |
+
+Build order: `players` -> `game-server` -> `net-client` -> `lobby`
+
+### Decisions captured
+
+- Server runs the game, not lockstep: no browser-to-browser drift, late joining becomes easy, cheating is hard, and AI factions can later run on the server.
+- Separate resources and structures for now: own gold, own structures, sell only your own.
+- Hosting: develop and run locally, with friends connecting over the LAN (or through a tunnel/port forward). Hosted somewhere else eventually, so nothing may hard-code localhost or a port.
+- No accounts: players just enter a name.
+- Pause and fast-forward are unanimous votes among connected players.
+- Rejoin is allowed: a dropped player gets their own structures and gold back.
+- `ws` becomes the first runtime dependency (server only). Approved as part of this map.
+
+### Relationship to the post-MVP map
+
+- `game-setup` may later absorb the lobby's mode/options screen.
+- `mode-barbarians` ("fake IO game against AI") could become partly real multiplayer on top of `game-server`. Revisit when it's specced.
+
+### Open questions (map level)
+
+None at map level. Module-level questions live in each `SPEC-<module-id>.md`. Priority: straight after `map-gen` (merged in PR #4), before `tower-aiming`.

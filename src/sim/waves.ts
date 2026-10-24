@@ -1,7 +1,8 @@
 import { ENEMY, TICK_RATE, WAVES } from "./config";
 import { spawnEnemy } from "./enemies";
 import { randomInt } from "./rng";
-import type { CommandResult, GameState, WaveState } from "./types";
+import { addGold } from "./players";
+import type { CommandResult, GameState, PlayerId, WaveState } from "./types";
 
 const COUNTDOWN_TICKS = WAVES.countdownSeconds * TICK_RATE;
 const SPAWN_INTERVAL_TICKS = WAVES.spawnIntervalSeconds * TICK_RATE;
@@ -40,10 +41,11 @@ export function updateWaves(state: GameState): void {
 }
 
 /** Skip the countdown, paying a bonus for each full second skipped. */
-export function sendWaveEarly(state: GameState): CommandResult {
+export function sendWaveEarly(state: GameState, player: PlayerId): CommandResult {
   if (state.gameOver) return { ok: false, reason: "Game over" };
   if (state.wave.toSpawn > 0) return { ok: false, reason: "Wave still spawning" };
-  state.gold += Math.floor(state.wave.countdown / TICK_RATE) * WAVES.earlySendGoldPerSecond;
+  const skipped = Math.floor(state.wave.countdown / TICK_RATE);
+  addGold(state, player, skipped * WAVES.earlySendGoldPerSecond);
   startWave(state);
   return { ok: true };
 }

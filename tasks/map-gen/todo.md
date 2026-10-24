@@ -1,6 +1,6 @@
 # Tasks: map-gen
 
-Spec: [`SPEC-map-gen.md`](../SPEC-map-gen.md) | Plan: [`plan.md`](plan.md) | Map: [`CAPABILITIES.md`](../CAPABILITIES.md)
+Spec: [`SPEC-map-gen.md`](../../SPEC-map-gen.md) | Plan: [`plan.md`](../plan.md) | Map: [`CAPABILITIES.md`](../../CAPABILITIES.md)
 
 Standard verification for every task (in addition to task-specific checks):
 `npm run typecheck && npm test && npm run build`

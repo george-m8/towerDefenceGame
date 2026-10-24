@@ -9,8 +9,19 @@ export type StructureKind = keyof typeof STRUCTURES;
 
 export type Facing = "N" | "E" | "S" | "W";
 
+export type PlayerId = number;
+
 /** Natural ground type under any structures. */
 export type Terrain = keyof typeof TERRAIN;
+
+export interface Player {
+  id: PlayerId;
+  name: string;
+  gold: number;
+  /** False while dropped out; they keep their gold and structures. */
+  connected: boolean;
+  votes: { pause: boolean; fastForward: boolean };
+}
 
 export interface Structure {
   id: number;
@@ -23,6 +34,8 @@ export interface Structure {
   cooldown: number;
   /** Only for directional structures (wall spikes). */
   facing?: Facing;
+  /** Who built it; null for neutral map structures (ruins). */
+  owner: PlayerId | null;
 }
 
 export interface Enemy {
@@ -39,6 +52,8 @@ export interface Enemy {
   hp: number;
   maxHp: number;
   bounty: number;
+  /** The player whose structure struck the killing blow, once hp <= 0. */
+  killedBy: PlayerId | null;
   /** Ticks until it can hit a blocking structure again. */
   attackCooldown: number;
 }
@@ -100,10 +115,12 @@ export interface GameState {
   spawnTiles: Point[];
   keep: Keep;
   wave: WaveState;
-  gold: number;
+  players: Record<PlayerId, Player>;
+  nextPlayerId: PlayerId;
   tick: number;
+  /** Derived from votes by updateVotes; never set directly. */
   paused: boolean;
-  /** Game-speed multiplier: 1 normally, FAST_FORWARD_SPEED while fast-forwarding. */
+  /** Game-speed multiplier: 1 normally, FAST_FORWARD_SPEED while fast-forwarding. Derived from votes. */
   speed: number;
   /** Chance (0-1) at each tile that an enemy wanders off the path. Starts at ENEMY.wanderChance. */
   wanderChance: number;

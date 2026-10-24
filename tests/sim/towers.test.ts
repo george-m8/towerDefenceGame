@@ -104,3 +104,47 @@ describe("cannon and catapult", () => {
     expect(enemy.hp).toBe(TOUGH - 2 * tower.damage);
   });
 });
+
+describe("kill credit", () => {
+  it("a single-target kill is credited to the tower's owner", () => {
+    const state = createGameWithoutWaves();
+    placeStructure(state, "archer", 10, 10, "N", 2);
+    const enemy = spawnEnemy(state, 12, 10, ARCHER.damage);
+    updateTowers(state);
+    expect(enemy.killedBy).toBe(2);
+  });
+
+  it("every enemy killed by a splash is credited to the tower's owner", () => {
+    const state = createGameWithoutWaves();
+    const cannon = STRUCTURES.cannon.tower;
+    placeStructure(state, "cannon", 10, 10, "N", 3);
+    const target = spawnEnemy(state, 12, 10, cannon.damage);
+    const neighbour = spawnEnemy(state, 12, 11, cannon.damage);
+    updateTowers(state);
+    expect(target.killedBy).toBe(3);
+    expect(neighbour.killedBy).toBe(3);
+  });
+
+  it("a splash landing on an already-dead enemy doesn't take the credit", () => {
+    const state = createGameWithoutWaves();
+    const cannon = STRUCTURES.cannon.tower;
+    placeStructure(state, "archer", 10, 9, "N", 1);
+    placeStructure(state, "cannon", 10, 11, "N", 2);
+    const enemy = spawnEnemy(state, 12, 10, ARCHER.damage);
+    // Further from the keep, so the archer picks `enemy`; the cannon then targets the
+    // neighbour and its splash also covers the dead enemy's tile.
+    const neighbour = spawnEnemy(state, 12, 9, cannon.damage * 10);
+    updateTowers(state); // the archer (built first) fires first
+    expect(enemy.killedBy).toBe(1);
+    expect(neighbour.hp).toBe(cannon.damage * 9);
+  });
+
+  it("structures built on behalf of no one credit nobody", () => {
+    const state = createGameWithoutWaves();
+    placeStructure(state, "archer", 10, 10);
+    const enemy = spawnEnemy(state, 12, 10, ARCHER.damage);
+    updateTowers(state);
+    expect(enemy.hp).toBeLessThanOrEqual(0);
+    expect(enemy.killedBy).toBeNull();
+  });
+});

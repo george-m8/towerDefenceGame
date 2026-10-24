@@ -5,7 +5,7 @@ import { applyCommand } from "../../src/sim/game";
 import { canBuild, isKeepTile, isWalkable, placeStructure, terrainAt } from "../../src/sim/grid";
 import { nextStep } from "../../src/sim/pathfinding";
 import type { GameState, Point } from "../../src/sim/types";
-import { column, createGameWithoutWaves, paintTerrain } from "./helpers";
+import { column, createGameWithoutWaves, paintTerrain, goldOf } from "./helpers";
 
 function pathToKeep(state: GameState, start: Point): Point[] | null {
   const path = [start];
@@ -56,14 +56,14 @@ describe("building on terrain", () => {
   ] as const)("rejects building on %s", (terrain, reason) => {
     const state = createGameWithoutWaves();
     paintTerrain(state, [{ x: 10, y: 10 }], terrain);
-    expect(canBuild(state, "wall", 10, 10)).toEqual({ ok: false, reason });
-    expect(canBuild(state, "archer", 10, 10)).toEqual({ ok: false, reason });
+    expect(canBuild(state, 1, "wall", 10, 10)).toEqual({ ok: false, reason });
+    expect(canBuild(state, 1, "archer", 10, 10)).toEqual({ ok: false, reason });
   });
 
   it("allows building on fords like ground", () => {
     const state = createGameWithoutWaves();
     paintTerrain(state, [{ x: 10, y: 10 }], "ford");
-    expect(canBuild(state, "wall", 10, 10)).toEqual({ ok: true });
+    expect(canBuild(state, 1, "wall", 10, 10)).toEqual({ ok: true });
   });
 });
 
@@ -76,8 +76,8 @@ describe("bridges", () => {
 
   it("can only be built on river tiles", () => {
     const state = riverMap();
-    expect(canBuild(state, "bridge", 10, 5)).toEqual({ ok: true });
-    expect(canBuild(state, "bridge", 12, 5)).toEqual({
+    expect(canBuild(state, 1, "bridge", 10, 5)).toEqual({ ok: true });
+    expect(canBuild(state, 1, "bridge", 12, 5)).toEqual({
       ok: false,
       reason: "Bridges can only be built on rivers",
     });
@@ -86,7 +86,7 @@ describe("bridges", () => {
   it("opens a route across a river that blocked the only way", () => {
     const state = riverMap();
     expect(pathToKeep(state, { x: 2, y: 5 })).toBeNull();
-    expect(applyCommand(state, { type: "build", kind: "bridge", x: 10, y: 5 })).toEqual({
+    expect(applyCommand(state, 1, { type: "build", kind: "bridge", x: 10, y: 5 })).toEqual({
       ok: true,
     });
     expect(isWalkable(state, 10, 5)).toBe(true);
@@ -96,7 +96,7 @@ describe("bridges", () => {
   it("can't hold a tower", () => {
     const state = riverMap();
     placeStructure(state, "bridge", 10, 5);
-    expect(canBuild(state, "archer", 10, 5)).toEqual({
+    expect(canBuild(state, 1, "archer", 10, 5)).toEqual({
       ok: false,
       reason: "Can't put a tower on bridge",
     });
@@ -106,14 +106,14 @@ describe("bridges", () => {
     const state = riverMap();
     placeStructure(state, "bridge", 10, 5);
     spawnEnemy(state, 10, 5);
-    expect(applyCommand(state, { type: "sell", x: 10, y: 5 })).toEqual({
+    expect(applyCommand(state, 1, { type: "sell", x: 10, y: 5 })).toEqual({
       ok: false,
       reason: "An enemy is on the bridge",
     });
     state.enemies = [];
-    const gold = state.gold;
-    expect(applyCommand(state, { type: "sell", x: 10, y: 5 })).toEqual({ ok: true });
-    expect(state.gold).toBe(gold + Math.floor(STRUCTURES.bridge.cost * 0.5));
+    const gold = goldOf(state);
+    expect(applyCommand(state, 1, { type: "sell", x: 10, y: 5 })).toEqual({ ok: true });
+    expect(goldOf(state)).toBe(gold + Math.floor(STRUCTURES.bridge.cost * 0.5));
     expect(isWalkable(state, 10, 5)).toBe(false);
   });
 });
@@ -122,10 +122,10 @@ describe("clearing trees", () => {
   it("pays timber, turns the tree into ground and opens it to enemies", () => {
     const state = createGameWithoutWaves();
     paintTerrain(state, [{ x: 10, y: 10 }], "tree");
-    const gold = state.gold;
+    const gold = goldOf(state);
     const version = state.gridVersion;
-    expect(applyCommand(state, { type: "sell", x: 10, y: 10 })).toEqual({ ok: true });
-    expect(state.gold).toBe(gold + TREE_CLEAR_GOLD);
+    expect(applyCommand(state, 1, { type: "sell", x: 10, y: 10 })).toEqual({ ok: true });
+    expect(goldOf(state)).toBe(gold + TREE_CLEAR_GOLD);
     expect(terrainAt(state, 10, 10)).toBe("ground");
     expect(isWalkable(state, 10, 10)).toBe(true);
     expect(state.gridVersion).toBe(version + 1);
@@ -134,7 +134,7 @@ describe("clearing trees", () => {
   it("can't clear rock", () => {
     const state = createGameWithoutWaves();
     paintTerrain(state, [{ x: 10, y: 10 }], "rock");
-    expect(applyCommand(state, { type: "sell", x: 10, y: 10 })).toEqual({
+    expect(applyCommand(state, 1, { type: "sell", x: 10, y: 10 })).toEqual({
       ok: false,
       reason: "Rock can't be cleared",
     });

@@ -1,4 +1,5 @@
 import { EFFECT_TICKS, STRUCTURES, TICK_RATE, type StructureStats, type TrapStats } from "./config";
+import { damageEnemy } from "./enemies";
 import type { Facing, GameState, Point, Structure } from "./types";
 
 export function updateTraps(state: GameState): void {
@@ -16,7 +17,7 @@ function updateTrap(state: GameState, structure: Structure, trap: TrapStats) {
   const target = hitTile(structure);
   for (const enemy of state.enemies) {
     if (Math.round(enemy.x) === target.x && Math.round(enemy.y) === target.y) {
-      enemy.hp -= trap.damage;
+      damageEnemy(enemy, trap.damage, structure.owner);
     }
   }
   state.effects.push({ kind: "spikes", x: target.x, y: target.y, ttl: EFFECT_TICKS });

@@ -2,7 +2,7 @@ import { ENEMY, TICK_RATE } from "./config";
 import { attackTargetAt, blocksAt, damageStructure, inBounds, isKeepTile } from "./grid";
 import { DIRECTIONS, nextStep } from "./pathfinding";
 import { nextRandom, randomInt } from "./rng";
-import type { Enemy, GameState, Point, Structure } from "./types";
+import type { Enemy, GameState, PlayerId, Point, Structure } from "./types";
 
 const STEP = ENEMY.speed / TICK_RATE;
 const EPSILON = 1e-9;
@@ -25,10 +25,18 @@ export function spawnEnemy(
     hp,
     maxHp: hp,
     bounty,
+    killedBy: null,
     attackCooldown: 0,
   };
   state.enemies.push(enemy);
   return enemy;
+}
+
+/** Deals damage and records who struck the killing blow. */
+export function damageEnemy(enemy: Enemy, amount: number, by: PlayerId | null): void {
+  if (enemy.hp <= 0) return;
+  enemy.hp -= amount;
+  if (enemy.hp <= 0) enemy.killedBy = by;
 }
 
 export function updateEnemies(state: GameState): void {
