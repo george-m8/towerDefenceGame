@@ -225,12 +225,12 @@ body {
   color: #bbb;
 }
 
-/* Scale the map down to fit smaller windows; input maps clicks through the scale. */
+/* The map view fills the space beside the panel; the camera scrolls and zooms inside it. */
 #map {
-  max-width: calc(100vw - 300px);
-  max-height: calc(100vh - 70px);
-  width: auto;
-  height: auto;
+  width: calc(100vw - 300px);
+  height: calc(100vh - 70px);
+  cursor: crosshair;
+  touch-action: none;
 }
 
 @media (max-width: 900px) {
@@ -239,7 +239,8 @@ body {
   }
 
   #map {
-    max-width: calc(100vw - 40px);
+    width: calc(100vw - 40px);
+    height: 60vh;
   }
 
   .panel-window {
@@ -322,4 +323,27 @@ a.button {
   margin: 10px auto;
   width: max-content;
   text-align: left;
+}
+
+/* Minimap and zoom buttons, at the top of the panel */
+.minimap-box {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  border-bottom: 1px dotted var(--ink);
+}
+#minimap {
+  display: block;
+  border: 1px solid var(--ink);
+  cursor: pointer;
+  image-rendering: pixelated;
+  touch-action: none;
+}
+.zoom-controls {
+  display: flex;
+  gap: 6px;
+}
+.zoom-controls .button {
+  min-width: 0;
+  padding: 0 10px;
 }

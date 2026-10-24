@@ -26,7 +26,8 @@ A browser-based, top-down, grid-based tower defence game where the player grows 
 ### Game rules (MVP)
 
 **Map**
-- Fixed-size grid, default 48 x 32 tiles (configurable).
+- Fixed-size grid, default 153 x 102 tiles (configurable; was 48 x 32 until the map controls arrived).
+- The map view scrolls and zooms: arrow keys pan, the mouse wheel and `+`/`-` zoom (from the whole map up to 3x), and a minimap in the panel shows the whole map, enemies and the current view, and moves the view when clicked or dragged.
 - Keep: 3x3 footprint at map centre, has HP (default 99).
 - Spawn zone: a marked strip on the map edge. MVP has a single fixed zone on the left edge. Nothing can be built inside it.
 - Terrain: all tiles are open ground for the MVP (no rocks/water yet).

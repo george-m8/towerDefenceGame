@@ -17,6 +17,7 @@ import { hitTile } from "../sim/traps";
 import type { Facing, GameState, Point, Structure, StructureKind } from "../sim/types";
 import type { PendingBuild } from "../net/session";
 import { isBuildTool, type UiState } from "../ui/state";
+import { visibleTiles, type VisibleTiles } from "../ui/camera";
 import {
   AIM_LINE_TILES,
   ARROWS,
@@ -46,13 +47,16 @@ function isTower(kind: StructureKind): boolean {
   return stats.tower !== undefined;
 }
 
-export function createRenderer(canvas: HTMLCanvasElement, width: number, height: number) {
-  canvas.width = width * TILE_SIZE;
-  canvas.height = height * TILE_SIZE;
+/**
+ * Draws the game through the camera in `ui.camera`. Everything below draws in map pixels
+ * (TILE_SIZE per tile); the canvas transform turns that into the zoomed, scrolled view, and
+ * only tiles on screen are drawn. The canvas's own size is set by main.ts to fit the window.
+ */
+export function createRenderer(canvas: HTMLCanvasElement) {
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas 2D context not available");
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
+  /** The tiles on screen this frame. */
+  let view: VisibleTiles = { x0: 0, y0: 0, x1: -1, y1: -1 };
 
   function drawTile(x: number, y: number, bg: string, glyph?: string, fg?: string) {
     ctx!.fillStyle = bg;
@@ -80,9 +84,10 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
   }
 
   function drawGrid(state: GameState) {
+    const { x0, y0, x1, y1 } = view;
     const showOwners = Object.keys(state.players).length > 1;
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
         const base = baseAt(state, x, y);
         if (base) drawStructure(base);
         else if (isKeepTile(state, x, y)) drawKeepTile(state, x, y);
@@ -345,8 +350,8 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
   }
 
   function drawFlow(state: GameState) {
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
+    for (let y = view.y0; y <= view.y1; y++) {
+      for (let x = view.x0; x <= view.x1; x++) {
         if (topAt(state, x, y) || !isWalkable(state, x, y)) continue;
         const next = nextStep(state, x, y);
         if (!next) continue;
@@ -385,6 +390,16 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
 
   return {
     render(state: GameState, ui: UiState, pending: readonly PendingBuild[] = []) {
+      const cam = ui.camera;
+      // Clear to the "off the map" colour, then draw the map scrolled and zoomed.
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = COLOURS.offMap;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      const scale = cam.zoom * (canvas.width / cam.viewWidth); // includes the device pixel ratio
+      ctx.setTransform(scale, 0, 0, scale, -cam.x * TILE_SIZE * scale, -cam.y * TILE_SIZE * scale);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      view = visibleTiles(cam);
       drawGrid(state);
       drawFeatures(state);
       if (ui.showFlow) drawFlow(state);

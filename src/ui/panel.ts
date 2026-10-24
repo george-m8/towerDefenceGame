@@ -36,7 +36,7 @@ export function createPanel(root: HTMLElement, ui: UiState, dispatch: (command: 
     <p class="status" data-stat="status"></p>
     <h2 class="section">Info</h2>
     <p class="info" data-stat="info"></p>
-    <p class="help">Space pause · F fast · R rotate · D paths · Esc cancel · drag to paint</p>
+    <p class="help">Space pause · F fast · R rotate · D paths · Esc cancel · drag to paint · arrows move · wheel or +/- zoom</p>
   `;
   const field = (name: string) => root.querySelector<HTMLElement>(`[data-stat="${name}"]`)!;
   const gold = field("gold");
