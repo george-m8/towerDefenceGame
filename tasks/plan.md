@@ -131,7 +131,7 @@ T4, T5 and T6 each depend only on T3.
 
 - [x] Task 4: Rocks, forests and clearing trees
 - [x] Task 5: Ruins
-- [ ] Task 6: Treasure chests
+- [x] Task 6: Treasure chests
 - [ ] Task 7: Seed display, terrain hover info and docs
 
 **Checkpoint D: module complete**

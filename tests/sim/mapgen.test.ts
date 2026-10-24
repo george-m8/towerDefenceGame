@@ -169,6 +169,36 @@ describe("generateTerrain", () => {
     }
   });
 
+  it("places treasure chests on reachable open ground, worth more further from the keep", () => {
+    const { keep } = layout;
+    const centre = { x: keep.x + 1, y: keep.y + 1 };
+    for (const seed of SEEDS) {
+      const { terrain, ruins, chests } = generateTerrain(layout, seed);
+      expect(chests.length, `seed ${seed}`).toBeGreaterThan(0);
+      const reach = reachableFromKeep(layout, terrain);
+      const ruinTiles = new Set(ruins.map((r) => `${r.x},${r.y}`));
+      const problems = chests.flatMap((c) => {
+        const i = c.y * layout.width + c.x;
+        if (terrain[i] !== "ground") return [`chest on ${terrain[i]}`];
+        if (!reach.has(i)) return ["chest cut off"];
+        if (ruinTiles.has(`${c.x},${c.y}`)) return ["chest under a ruin"];
+        if (c.gold < MAP_GEN.chestGold[0] || c.gold > MAP_GEN.chestGold[1])
+          return [`gold ${c.gold}`];
+        return [];
+      });
+      expect(problems, `seed ${seed}`).toEqual([]);
+      const byDistance = [...chests].sort(
+        (p, q) =>
+          Math.abs(p.x - centre.x) +
+          Math.abs(p.y - centre.y) -
+          (Math.abs(q.x - centre.x) + Math.abs(q.y - centre.y)),
+      );
+      for (let i = 1; i < byDistance.length; i++) {
+        expect(byDistance[i].gold).toBeGreaterThanOrEqual(byDistance[i - 1].gold);
+      }
+    }
+  });
+
   it("works on a much larger map", () => {
     const big = layoutFor(96, 64);
     for (const seed of SEEDS.slice(0, 50)) {
@@ -212,6 +242,12 @@ describe("createGame map generation", () => {
       expect(ruin.hp).toBeLessThan(ruin.maxHp);
       expect(ruin.hp).toBeGreaterThanOrEqual(ruin.maxHp * 0.4);
     }
+  });
+
+  it("puts the generated chests in the features list", () => {
+    const state = createGame(42);
+    expect(state.features.length).toBeGreaterThan(0);
+    expect(state.features.every((f) => f.kind === "chest")).toBe(true);
   });
 
   it("gives an open field with blankMap", () => {

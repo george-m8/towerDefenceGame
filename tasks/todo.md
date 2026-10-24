@@ -134,13 +134,13 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** Add `features: MapFeature[]` to the game state with a `chest` kind (gold 20-60, scaled by distance from the keep). The generator places chests on reachable open ground. Building anything on a chest tile adds its gold and removes it. Chests are drawn as `$`.
 
 **Acceptance criteria:**
-- [ ] Building on a chest tile pays its gold once and removes the chest
-- [ ] Enemies walking over a chest leave it untouched
-- [ ] Chests further from the keep are worth more. Every chest is reachable (500 seeds).
+- [x] Building on a chest tile pays its gold once and removes the chest
+- [x] Enemies walking over a chest leave it untouched
+- [x] Chests further from the keep are worth more. Every chest is reachable (500 seeds).
 
 **Verification:**
-- [ ] `npm test` (`tests/sim/mapgen.test.ts`, `tests/sim/economy.test.ts`)
-- [ ] Manual: build a wall on a `$` and watch gold jump
+- [x] `npm test` (`tests/sim/mapgen.test.ts`, `tests/sim/economy.test.ts`)
+- [x] Manual: build a wall on a `$` and watch gold jump
 
 **Dependencies:** Task 3
 

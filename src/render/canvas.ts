@@ -89,6 +89,12 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
     drawTile(x, y, style.bg, style.glyph, style.fg);
   }
 
+  function drawFeatures(state: GameState) {
+    for (const feature of state.features) {
+      if (feature.kind === "chest") drawGlyph(feature.x, feature.y, "$", COLOURS.chest);
+    }
+  }
+
   function drawStructure(structure: Structure) {
     const { x, y } = structure;
     const colours = STRUCTURE_COLOURS[structure.kind];
@@ -220,6 +226,7 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
   return {
     render(state: GameState, ui: UiState) {
       drawGrid(state);
+      drawFeatures(state);
       if (ui.showFlow) drawFlow(state);
       drawEffects(state);
       drawEnemies(state);

@@ -20,9 +20,16 @@ export interface RuinSpot {
   hpFraction: number;
 }
 
+export interface ChestSpot {
+  x: number;
+  y: number;
+  gold: number;
+}
+
 export interface MapGenResult {
   terrain: Terrain[];
   ruins: RuinSpot[];
+  chests: ChestSpot[];
   /** How many generations it took (1 = first try). */
   attempts: number;
   /** True if every attempt failed and the map is open ground. */
@@ -58,9 +65,16 @@ export function generateTerrain(
     const terrain = buildTerrain(layout, rng, config);
     if (!isValid(layout, terrain, config)) continue;
     const ruins = placeRuins(layout, rng, config, terrain);
-    return { terrain, ruins, attempts: attempt + 1, fallback: false };
+    const chests = placeChests(layout, rng, config, terrain, ruins);
+    return { terrain, ruins, chests, attempts: attempt + 1, fallback: false };
   }
-  return { terrain: blankTerrain(layout), ruins: [], attempts: config.maxAttempts, fallback: true };
+  return {
+    terrain: blankTerrain(layout),
+    ruins: [],
+    chests: [],
+    attempts: config.maxAttempts,
+    fallback: true,
+  };
 }
 
 function blankTerrain(layout: MapLayout): Terrain[] {
@@ -323,6 +337,41 @@ function placeRuins(
     }
   }
   return ruins;
+}
+
+/** Treasure chests on open ground; the further from the keep, the more gold. */
+function placeChests(
+  layout: MapLayout,
+  rng: Rng,
+  config: MapGenConfig,
+  terrain: Terrain[],
+  ruins: RuinSpot[],
+): ChestSpot[] {
+  const { width, height, keep } = layout;
+  const reserved = clearZoneMask(layout, config);
+  const taken = new Set(ruins.map((r) => r.y * width + r.x));
+  const centre = { x: keep.x + Math.floor(keep.size / 2), y: keep.y + Math.floor(keep.size / 2) };
+  const farthest =
+    Math.max(centre.x, width - 1 - centre.x) + Math.max(centre.y, height - 1 - centre.y);
+  const [minGold, maxGold] = config.chestGold;
+  const area = (width * height) / 1000;
+  const [lo, hi] = config.chestsPer1000;
+  const count = randomInt(rng, Math.round(lo * area), Math.round(hi * area));
+  const chests: ChestSpot[] = [];
+  for (let c = 0; c < count; c++) {
+    for (let tries = 0; tries < START_TRIES; tries++) {
+      const i = randomInt(rng, 0, terrain.length - 1);
+      if (terrain[i] !== "ground" || reserved[i] || taken.has(i)) continue;
+      const x = i % width;
+      const y = (i - x) / width;
+      const distance = Math.abs(x - centre.x) + Math.abs(y - centre.y);
+      const gold = Math.round(minGold + ((maxGold - minGold) * distance) / farthest);
+      taken.add(i);
+      chests.push({ x, y, gold });
+      break;
+    }
+  }
+  return chests;
 }
 
 /** Tile offsets for one ruin fragment. */

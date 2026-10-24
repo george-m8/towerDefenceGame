@@ -63,3 +63,11 @@ function clearTerrain(state: GameState, x: number, y: number): CommandResult {
   if (terrain === "rock") return { ok: false, reason: "Rock can't be cleared" };
   return { ok: false, reason: "Nothing to sell" };
 }
+
+/** Building on a treasure chest's tile claims its gold. */
+export function claimChest(state: GameState, x: number, y: number): void {
+  const chest = state.features.find((f) => f.kind === "chest" && f.x === x && f.y === y);
+  if (!chest) return;
+  state.gold += chest.gold;
+  state.features = state.features.filter((f) => f !== chest);
+}

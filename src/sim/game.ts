@@ -8,7 +8,7 @@ import {
 } from "./config";
 import { spawnEnemy, updateEnemies } from "./enemies";
 import { EMPTY, KEEP_TILE, canBuild, placeStructure } from "./grid";
-import { awardBounties, collectIncome, sellStructure } from "./economy";
+import { awardBounties, claimChest, collectIncome, sellStructure } from "./economy";
 import { updateEffects } from "./effects";
 import { generateTerrain, layoutFor } from "./mapgen";
 import { randomInt } from "./rng";
@@ -34,7 +34,7 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
   }
 
   const map = options.blankMap
-    ? { terrain: new Array<Terrain>(width * height).fill("ground"), ruins: [] }
+    ? { terrain: new Array<Terrain>(width * height).fill("ground"), ruins: [], chests: [] }
     : generateTerrain(layout, seed);
 
   const state: GameState = {
@@ -49,6 +49,7 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     gridVersion: 0,
     flow: null,
     enemies: [],
+    features: map.chests.map((c) => ({ kind: "chest" as const, ...c })),
     effects: [],
     spawnTiles,
     keep: { ...keep, hp: KEEP_HP, maxHp: KEEP_HP },
@@ -93,6 +94,7 @@ export function applyCommand(state: GameState, command: Command): CommandResult 
       if (!check.ok) return check;
       state.gold -= STRUCTURES[command.kind].cost;
       placeStructure(state, command.kind, command.x, command.y, command.facing);
+      claimChest(state, command.x, command.y);
       return { ok: true };
     }
     case "sell":

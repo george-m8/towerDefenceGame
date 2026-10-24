@@ -25,6 +25,7 @@ export const COLOURS = {
   range: "rgba(255, 255, 160, 0.12)",
   rangeEdge: "rgba(255, 255, 160, 0.6)",
   shot: "#fff6c0",
+  chest: "#ffcc33",
   splash: "rgba(255, 150, 40, 0.45)",
   spikesUp: "#c8c8c8",
   spikesUpGlyph: "#ffffff",

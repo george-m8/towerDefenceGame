@@ -187,6 +187,8 @@ export const MAP_GEN = {
   forestSize: [4, 15] as [number, number],
   ruinsPer1000: [2.6, 5.2] as [number, number],
   ruinHp: [0.4, 0.8] as [number, number], // fraction of full HP each ruin fragment starts with
+  chestsPer1000: [2, 4] as [number, number],
+  chestGold: [20, 60] as [number, number], // nearest the keep pays the least
 };
 
 /** Gold of timber for clearing one tree with the sell tool. */

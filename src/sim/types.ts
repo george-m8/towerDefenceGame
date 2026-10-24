@@ -46,6 +46,9 @@ export type Effect =
   | { kind: "splash"; x: number; y: number; radius: number; ttl: number }
   | { kind: "spikes"; x: number; y: number; ttl: number };
 
+/** Things lying on the map that aren't terrain or structures. `resources` adds deposits and animals. */
+export type MapFeature = { kind: "chest"; x: number; y: number; gold: number };
+
 export interface FlowField {
   /** gridVersion this field was computed for. */
   version: number;
@@ -89,6 +92,7 @@ export interface GameState {
   gridVersion: number;
   flow: FlowField | null;
   enemies: Enemy[];
+  features: MapFeature[];
   effects: Effect[];
   spawnTiles: Point[];
   keep: Keep;
