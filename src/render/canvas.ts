@@ -91,6 +91,8 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
         ctx!.lineTo((effect.toX + 0.5) * TILE_SIZE, (effect.toY + 0.5) * TILE_SIZE);
         ctx!.stroke();
         ctx!.lineWidth = 1;
+      } else if (effect.kind === "spikes") {
+        drawTile(effect.x, effect.y, COLOURS.spikesUp, "^", COLOURS.spikesUpGlyph);
       } else {
         const size = (effect.radius * 2 + 1) * TILE_SIZE;
         ctx!.fillStyle = COLOURS.splash;
@@ -138,8 +140,8 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
     render(state: GameState, ui: UiState) {
       drawGrid(state);
       if (ui.showFlow) drawFlow(state);
-      drawEnemies(state);
       drawEffects(state);
+      drawEnemies(state);
       drawRange(state, ui);
       drawGhost(state, ui);
     },

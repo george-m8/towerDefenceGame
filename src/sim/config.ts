@@ -21,12 +21,19 @@ export interface TowerStats {
   splashRadius: number;
 }
 
+/** Spike traps fire on a fixed cycle from the moment they are built. */
+export interface TrapStats {
+  damage: number;
+  fireIntervalSeconds: number;
+}
+
 export interface StructureStats {
   name: string;
   cost: number;
   maxHp: number;
   blocksMovement: boolean;
   tower?: TowerStats;
+  trap?: TrapStats;
 }
 
 export const STRUCTURES = {
@@ -51,6 +58,13 @@ export const STRUCTURES = {
     maxHp: 40,
     blocksMovement: true,
     tower: { range: 9, minRange: 3, damage: 30, fireIntervalSeconds: 5, splashRadius: 2 },
+  },
+  floorSpikes: {
+    name: "Floor spikes",
+    cost: 15,
+    maxHp: 0, // walkable and never attacked
+    blocksMovement: false,
+    trap: { damage: 15, fireIntervalSeconds: 1.5 },
   },
 } satisfies Record<string, StructureStats>;
 

@@ -21,6 +21,8 @@ export const COLOURS = {
   rangeEdge: "rgba(255, 255, 160, 0.6)",
   shot: "#fff6c0",
   splash: "rgba(255, 150, 40, 0.45)",
+  spikesUp: "#c8c8c8",
+  spikesUpGlyph: "#ffffff",
 };
 
 export const GLYPHS: Record<StructureKind, string> = {
@@ -28,6 +30,7 @@ export const GLYPHS: Record<StructureKind, string> = {
   archer: "A",
   cannon: "C",
   catapult: "P",
+  floorSpikes: "^",
 };
 
 export const STRUCTURE_COLOURS: Record<StructureKind, { bg: string; fg: string }> = {
@@ -35,4 +38,5 @@ export const STRUCTURE_COLOURS: Record<StructureKind, { bg: string; fg: string }
   archer: { bg: "#3d6b3a", fg: "#d8f5c8" },
   cannon: { bg: "#3a3f4a", fg: "#e8e8e8" },
   catapult: { bg: "#6b4a2a", fg: "#ffe0b0" },
+  floorSpikes: { bg: "#3a3122", fg: "#a89878" },
 };

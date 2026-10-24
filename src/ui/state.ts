@@ -15,6 +15,7 @@ export const TOOLS: ToolDef[] = [
   { tool: "archer", key: "Digit2", label: "2", paintable: false },
   { tool: "cannon", key: "Digit3", label: "3", paintable: false },
   { tool: "catapult", key: "Digit4", label: "4", paintable: false },
+  { tool: "floorSpikes", key: "Digit5", label: "5", paintable: true },
 ];
 
 export interface UiState {

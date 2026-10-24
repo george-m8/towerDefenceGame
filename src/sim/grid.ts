@@ -1,4 +1,4 @@
-import { STRUCTURES } from "./config";
+import { STRUCTURES, TICK_RATE, type StructureStats } from "./config";
 import type { CommandResult, Enemy, GameState, Structure, StructureKind } from "./types";
 
 export const EMPTY = 0;
@@ -67,12 +67,17 @@ export function placeStructure(
     y,
     hp: stats.maxHp,
     maxHp: stats.maxHp,
-    cooldown: 0,
+    cooldown: initialCooldown(stats),
   };
   state.structures[structure.id] = structure;
   state.tiles[tileIndex(state, x, y)] = structure.id;
   state.gridVersion++;
   return structure;
+}
+
+/** Traps start their cycle when built; towers can fire straight away. */
+function initialCooldown(stats: StructureStats): number {
+  return stats.trap ? stats.trap.fireIntervalSeconds * TICK_RATE : 0;
 }
 
 export function removeStructure(state: GameState, structure: Structure): void {

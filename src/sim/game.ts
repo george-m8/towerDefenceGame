@@ -13,6 +13,7 @@ import { awardBounties } from "./economy";
 import { updateEffects } from "./effects";
 import { randomInt } from "./rng";
 import { updateTowers } from "./towers";
+import { updateTraps } from "./traps";
 import { createWaveState, sendWaveEarly, updateWaves } from "./waves";
 import type { Command, CommandResult, GameState, Point } from "./types";
 
@@ -60,6 +61,7 @@ export function tick(state: GameState): void {
   updateEnemies(state);
   updateWaves(state);
   updateTowers(state);
+  updateTraps(state);
   awardBounties(state);
   if (state.keep.hp <= 0) state.gameOver = true;
 }

@@ -221,13 +221,13 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** Add `traps.ts` with `updateTrap`: a fixed fire cycle that starts when the trap is built and runs whether or not an enemy is there. Add the Floor spikes config row (cost 15, `^`, walkable, `blocksMovement: false`, no HP, fires every 1.5s for 15 damage to every enemy on its own tile). The flow field treats floor spikes as cost 1. Drag-painting works. A brief "spikes up" visual shows when they fire.
 
 **Acceptance criteria:**
-- [ ] Floor spikes fire every 30 ticks and damage every enemy on their tile, and no others
-- [ ] Floor spikes don't change enemy routing and are never attacked
-- [ ] The spikes-up visual is shown when they fire
+- [x] Floor spikes fire every 30 ticks and damage every enemy on their tile, and no others
+- [x] Floor spikes don't change enemy routing and are never attacked
+- [x] The spikes-up visual is shown when they fire
 
 **Verification:**
-- [ ] `npm test` (`tests/sim/traps.test.ts`: cycle timing, own-tile only, multiple enemies on a tile, path unchanged)
-- [ ] Manual: paint a spike strip across the path and watch enemies take damage in pulses
+- [x] `npm test` (`tests/sim/traps.test.ts`: cycle timing, own-tile only, multiple enemies on a tile, path unchanged)
+- [x] Manual: paint a spike strip across the path and watch enemies take damage in pulses
 
 **Dependencies:** Task 8
 
