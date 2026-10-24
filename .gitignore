@@ -1,4 +1,29 @@
+# Environments and Secrets
+.env
+creds/*
+creds.json
+
+# Python virtual environments
+.venv/
+venv/
+
+# Node
 node_modules/
+
+# Build directories
 dist/
+build/
+
+# Tests
 coverage/
+
+# MacOS and System files
 .DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Editor directories and files
+.vscode/
+.idea/
