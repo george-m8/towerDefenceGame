@@ -1,7 +1,7 @@
 // A Session backed by the game server: sends commands, draws what the server sends.
 import type { Command, CommandResult, GameState, PlayerId } from "../sim/types";
 import { tokenKey } from "./join";
-import type { ClientEnemy, ClientMessage, ServerMessage } from "./protocol";
+import type { ClientEnemy, ClientMessage, LobbyInfo, ServerMessage } from "./protocol";
 import type { PendingBuild, Session } from "./session";
 import { applyUpdate, fromClientState, interpolateEnemies, interpolationFraction } from "./view";
 
@@ -33,6 +33,10 @@ const REPLACED_CODE = 4000;
 export interface NetworkSession extends Session {
   /** The room code, once welcomed. */
   readonly room: string | null;
+  /** The waiting room's state, once welcomed. */
+  readonly lobby: LobbyInfo | null;
+  /** Host only: start the game for everyone. */
+  start(): void;
   /** Called with errors the player should see (e.g. an unknown room). */
   onError: (reason: string) => void;
   /** Called after each welcome (first join, rejoin or restart). */
@@ -52,6 +56,7 @@ export function createNetworkSession(
   let playerId: PlayerId = 0;
   let room: string | null = intent.mode === "join" ? intent.room : null;
   let welcomed = false;
+  let lobby: LobbyInfo | null = null;
   let triedRejoin = false;
   let seq = 0;
   let closedByUs = false;
@@ -73,6 +78,12 @@ export function createNetworkSession(
     },
     get room() {
       return room;
+    },
+    get lobby() {
+      return lobby;
+    },
+    start() {
+      send({ type: "start" });
     },
     online: true,
     get status() {
@@ -139,6 +150,7 @@ export function createNetworkSession(
         view = fromClientState(message.state);
         playerId = message.playerId;
         room = message.room;
+        lobby = message.lobby;
         welcomed = true;
         reconnects = 0;
         previous = newest = null;
@@ -149,6 +161,7 @@ export function createNetworkSession(
       case "update": {
         if (!view) return;
         const { update } = message;
+        lobby = message.lobby;
         applyUpdate(view, update);
         const at = deps.now();
         // Updates sent straight after a command repeat the same tick: refresh, don't shift.

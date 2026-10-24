@@ -17,6 +17,7 @@ describe("parseClientMessage", () => {
     parses({ type: "join", room: "ABCD", name: "Bo" });
     parses({ type: "rejoin", room: "WXYZ", token: "a".repeat(32) });
     parses({ type: "restart" });
+    parses({ type: "start" });
     parses({ type: "command", seq: 0, command: { type: "togglePause" } });
     parses({ type: "command", seq: 1, command: { type: "toggleFastForward" } });
     parses({ type: "command", seq: 2, command: { type: "sendWave" } });

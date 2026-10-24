@@ -23,7 +23,7 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | 1b. Multiplayer (co-op) | `players` | Done |
 | | `game-server` | Built; cross-machine probe and review pending |
 | | `net-client` | Done (play-tested) |
-| | `lobby` | Spec needed |
+| | `lobby` | **Spec approved; tasks in [`tasks/lobby/`](lobby/todo.md)** |
 | 1. Basics (continued) | `tower-aiming` | **Built, awaiting review** |
 | | `line-of-sight` | Spec drafted |
 | | `units` | Spec drafted |
@@ -402,13 +402,17 @@ T1 Angle maths (aiming.ts)
 
 ---
 
+## Module 7: `lobby` (in progress)
+
+Spec: [`SPEC-lobby.md`](../SPEC-lobby.md). Tasks: [`tasks/lobby/todo.md`](lobby/todo.md) (kept apart while `tower-aiming`'s list in `tasks/todo.md` awaits review).
+
+A start screen (name, Play solo, Create room, Join by code) and a waiting room where the host starts the game. The server gains a waiting phase: no ticks and no commands until the host's `start`, with the host passing to the next connected player if they leave.
+
+---
+
 ## Later modules: provisional outlines
 
 These are rough vertical slices, not tasks. Each becomes a proper task list after its spec is approved.
-
-### `lobby`
-1. Create or join a room by code or link, with a player name
-2. See who's in; start the game
 
 ### `line-of-sight`
 1. Grid line-of-sight check between tower and target

@@ -1,25 +1,21 @@
-// How a page joins a game: offline, or a room on the game server, chosen by the URL.
-// (A proper create/join screen comes with the lobby module.)
+// How a page joins a game: from the URL, or the start screen when the URL doesn't say.
 import { MAX_NAME_LENGTH } from "./protocol";
 import type { JoinIntent } from "./networkSession";
 
-export type PageIntent = { mode: "offline" } | JoinIntent;
-
-const DEFAULT_NAME = "Player";
+export type PageIntent = { mode: "menu"; room?: string } | { mode: "offline" } | JoinIntent;
 
 /**
- * `?create&name=Ann` creates a room, `?room=ABCD&name=Bo` joins one, anything else is offline.
- * A missing name is asked for with `ask` (window.prompt in the browser).
+ * `?create&name=Ann` creates a room and `?room=ABCD&name=Bo` joins one; `?solo` plays offline.
+ * Anything else, or a missing name, opens the start screen (with the room code filled in).
  */
-export function readJoinIntent(
-  search: string,
-  ask: (question: string) => string | null,
-): PageIntent {
+export function readJoinIntent(search: string): PageIntent {
   const params = new URLSearchParams(search);
-  const room = params.get("room");
-  if (!room && !params.has("create")) return { mode: "offline" };
-  const name = cleanName(params.get("name") || ask("Your name?"));
-  return room ? { mode: "join", room: room.toUpperCase(), name } : { mode: "create", name };
+  if (params.has("solo")) return { mode: "offline" };
+  const room = params.get("room")?.toUpperCase();
+  const name = cleanName(params.get("name"));
+  if (room && name) return { mode: "join", room, name };
+  if (params.has("create") && name) return { mode: "create", name };
+  return room ? { mode: "menu", room } : { mode: "menu" };
 }
 
 export function inviteLink(origin: string, room: string): string {
@@ -36,7 +32,8 @@ export function tokenKey(room: string): string {
   return `keep-defence-token-${room}`;
 }
 
-function cleanName(name: string | null): string {
+/** A usable player name, or null if there isn't one. */
+export function cleanName(name: string | null | undefined): string | null {
   const trimmed = (name ?? "").trim().slice(0, MAX_NAME_LENGTH);
-  return trimmed || DEFAULT_NAME;
+  return trimmed || null;
 }

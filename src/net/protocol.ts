@@ -27,7 +27,16 @@ export type ClientMessage =
   | { type: "join"; room: string; name: string }
   | { type: "rejoin"; room: string; token: string }
   | { type: "command"; seq: number; command: OnlineCommand }
-  | { type: "restart" };
+  | { type: "restart" }
+  /** Host only: leave the waiting room and start the game. */
+  | { type: "start" };
+
+/** The waiting room: whether the game has started, and who can start it. */
+export interface LobbyInfo {
+  started: boolean;
+  /** The connected player with the lowest id; null while nobody is connected. */
+  host: PlayerId | null;
+}
 
 /** The enemy fields a client draws with. Positions are rounded to 2 decimals. */
 export type ClientEnemy = Pick<Enemy, "id" | "x" | "y" | "hp" | "maxHp">;
@@ -61,8 +70,15 @@ type DynamicFields =
 export type StateUpdate = Pick<ClientState, DynamicFields> & Partial<Pick<ClientState, GridFields>>;
 
 export type ServerMessage =
-  | { type: "welcome"; room: string; playerId: PlayerId; token: string; state: ClientState }
-  | { type: "update"; update: StateUpdate }
+  | {
+      type: "welcome";
+      room: string;
+      playerId: PlayerId;
+      token: string;
+      state: ClientState;
+      lobby: LobbyInfo;
+    }
+  | { type: "update"; update: StateUpdate; lobby: LobbyInfo }
   | { type: "result"; seq: number; result: CommandResult }
   | { type: "error"; reason: string };
 
@@ -102,6 +118,8 @@ export function parseClientMessage(raw: string): ParseResult {
     }
     case "restart":
       return ok({ type: "restart" });
+    case "start":
+      return ok({ type: "start" });
     default:
       return fail("Unknown message type");
   }

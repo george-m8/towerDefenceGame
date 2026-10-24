@@ -8,18 +8,21 @@ import {
   joinRoom,
   leaveRoom,
   rejoinRoom,
+  hostOf,
   restartRoom,
+  startRoom,
   type Room,
 } from "../../server/room";
 import { MAX_PLAYERS } from "../../server/config";
 
 const TICK_MS = 1000 / TICK_RATE;
 
-/** A room whose messages are collected per player instead of sent. */
-function testRoom() {
+/** A room whose messages are collected per player instead of sent. Already started unless `waiting`. */
+function testRoom({ waiting = false } = {}) {
   const sent: Record<number, ServerMessage[]> = {};
   const room = createRoom("ABCD", 7, (id, message) => (sent[id] ??= []).push(message));
   room.state.wave.countdown = Infinity; // keep waves out of the way
+  room.started = !waiting;
   const last = (id: number) => sent[id].at(-1)!;
   const ofType = <T extends ServerMessage["type"]>(id: number, type: T) =>
     (sent[id] ?? []).filter((m): m is Extract<ServerMessage, { type: T }> => m.type === type);
@@ -197,5 +200,59 @@ describe("restart", () => {
     expect(last(1)).toMatchObject({ type: "welcome", playerId: 1, token: ann.token });
     expect(rejoinRoom(room, bo.token)).toEqual({ ok: true, playerId: 2 });
     expect(join(room, "Cy").playerId).toBe(3);
+  });
+});
+
+describe("waiting room", () => {
+  it("a new room is waiting: it doesn't tick and refuses commands", () => {
+    const { room, ofType } = testRoom({ waiting: true });
+    const ann = join(room, "Ann");
+    advanceRoom(room, 1000);
+    expect(room.state.tick).toBe(0);
+    applyRoomCommand(room, ann.playerId, 1, { type: "build", kind: "wall", x: 5, y: 5 });
+    expect(ofType(1, "result").at(-1)?.result).toEqual({
+      ok: false,
+      reason: "The game hasn't started",
+    });
+  });
+
+  it("the host is the lowest-id connected player, and passes on when they leave", () => {
+    const { room } = testRoom({ waiting: true });
+    expect(hostOf(room)).toBeNull();
+    const ann = join(room, "Ann");
+    const bo = join(room, "Bo");
+    expect(hostOf(room)).toBe(ann.playerId);
+    leaveRoom(room, ann.playerId);
+    expect(hostOf(room)).toBe(bo.playerId);
+  });
+
+  it("only the host can start, and then the game runs", () => {
+    const { room, ofType } = testRoom({ waiting: true });
+    const ann = join(room, "Ann");
+    const bo = join(room, "Bo");
+    expect(startRoom(room, bo.playerId)).toEqual({ ok: false, reason: "Only the host can start" });
+    expect(room.started).toBe(false);
+    expect(startRoom(room, ann.playerId)).toEqual({ ok: true });
+    expect(room.started).toBe(true);
+    expect(ofType(2, "update").at(-1)?.lobby).toEqual({ started: true, host: 1 });
+    advanceRoom(room, TICK_MS);
+    expect(room.state.tick).toBe(1);
+    expect(startRoom(room, ann.playerId)).toEqual({ ok: true }); // a second start does nothing
+  });
+
+  it("welcomes and updates carry the lobby info", () => {
+    const { room, ofType } = testRoom({ waiting: true });
+    join(room, "Ann");
+    join(room, "Bo");
+    expect(ofType(2, "welcome").at(-1)?.lobby).toEqual({ started: false, host: 1 });
+    expect(ofType(1, "update").at(-1)?.lobby).toEqual({ started: false, host: 1 });
+  });
+
+  it("restart starts the new game straight away", () => {
+    const { room } = testRoom();
+    join(room, "Ann");
+    room.state.gameOver = true;
+    restartRoom(room, 5);
+    expect(room.started).toBe(true);
   });
 });
