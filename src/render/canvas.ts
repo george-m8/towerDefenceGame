@@ -1,4 +1,13 @@
-import { baseAt, blocksAt, canBuild, isKeepTile, isSpawnTile, mountAt, topAt } from "../sim/grid";
+import {
+  baseAt,
+  blocksAt,
+  canBuild,
+  isKeepTile,
+  isSpawnTile,
+  mountAt,
+  terrainAt,
+  topAt,
+} from "../sim/grid";
 import { nextStep } from "../sim/pathfinding";
 import { STRUCTURES, type StructureStats } from "../sim/config";
 import { hitTile } from "../sim/traps";
@@ -10,6 +19,7 @@ import {
   BATTLEMENT_PX,
   GLYPH_FONT,
   STRUCTURE_COLOURS,
+  TERRAIN_STYLES,
   TILE_SIZE,
   glyphFor,
 } from "./palette";
@@ -41,7 +51,7 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
         if (base) drawStructure(base);
         else if (isKeepTile(state, x, y)) drawKeepTile(state, x, y);
         else if (isSpawnTile(state, x, y)) drawTile(x, y, COLOURS.spawn, ".", COLOURS.spawnGlyph);
-        else drawTile(x, y, (x + y) % 2 === 0 ? COLOURS.ground : COLOURS.groundAlt);
+        else drawTerrain(state, x, y);
         const mount = mountAt(state, x, y);
         if (mount && base) drawMountOnWall(mount, base);
         else if (mount) drawStructure(mount);
@@ -66,6 +76,16 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
       (y + 0.5) * TILE_SIZE + 1,
       TILE_SIZE - 2,
     );
+  }
+
+  function drawTerrain(state: GameState, x: number, y: number) {
+    const terrain = terrainAt(state, x, y);
+    if (terrain === "ground") {
+      drawTile(x, y, (x + y) % 2 === 0 ? COLOURS.ground : COLOURS.groundAlt);
+      return;
+    }
+    const style = TERRAIN_STYLES[terrain];
+    drawTile(x, y, style.bg, style.glyph, style.fg);
   }
 
   function drawStructure(structure: Structure) {

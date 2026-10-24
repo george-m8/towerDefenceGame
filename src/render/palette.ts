@@ -1,4 +1,4 @@
-import type { Facing, StructureKind } from "../sim/types";
+import type { Facing, StructureKind, Terrain } from "../sim/types";
 
 export const TILE_SIZE = 20;
 /** Height of the strip drawn along the top of a wall-mounted tower. */
@@ -55,4 +55,16 @@ export const STRUCTURE_COLOURS: Record<StructureKind, { bg: string; fg: string }
   floorSpikes: { bg: "#3a3122", fg: "#a89878" },
   wallSpikes: { bg: "#8a7a5c", fg: "#e8e8e8" },
   house: { bg: "#7a3b2e", fg: "#ffd28a" },
+};
+
+/** Ground keeps its checkerboard; every other terrain has a fixed look. */
+export const TERRAIN_STYLES: Record<
+  Exclude<Terrain, "ground">,
+  { bg: string; glyph?: string; fg?: string }
+> = {
+  ford: { bg: "#5c4f33" },
+  river: { bg: "#2d5f8a", glyph: "~", fg: "#8fc3ea" },
+  sea: { bg: "#1a3550", glyph: "≈", fg: "#4f7fae" },
+  rock: { bg: "#4a4a4a", glyph: "o", fg: "#9a9a9a" },
+  tree: { bg: "#1f3d1f", glyph: "♣", fg: "#5fae5f" },
 };

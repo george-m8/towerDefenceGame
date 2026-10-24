@@ -132,3 +132,19 @@ export const WAVES = {
 
 /** Selling refunds this fraction of cost, scaled by remaining HP. */
 export const SELL_REFUND = 0.5;
+
+export interface TerrainStats {
+  name: string;
+  walkable: boolean;
+  /** What can be built on it: anything, only bridges, or nothing. */
+  buildable: "any" | "bridgeOnly" | "none";
+}
+
+export const TERRAIN = {
+  ground: { name: "Ground", walkable: true, buildable: "any" },
+  ford: { name: "Ford", walkable: true, buildable: "any" },
+  river: { name: "River", walkable: false, buildable: "bridgeOnly" },
+  sea: { name: "Sea", walkable: false, buildable: "none" },
+  rock: { name: "Rock", walkable: false, buildable: "none" },
+  tree: { name: "Tree", walkable: false, buildable: "none" },
+} satisfies Record<string, TerrainStats>;

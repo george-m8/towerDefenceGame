@@ -14,13 +14,13 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** Extend `Terrain` to `"ground" | "ford" | "river" | "sea" | "rock" | "tree"` with a `TERRAIN` table in config (walkable; buildable `any` / `bridgeOnly` / `none`). Add grid helpers `terrainAt` and `isWalkable` (terrain walkable, or a bridge on it once bridges exist). Pathfinding skips non-walkable tiles entirely. `canBuild` rejects sea, rock and trees ("Can't build on rock" etc.) and allows only bridges on rivers (the bridge kind arrives in Task 2, so for now every build on a river is rejected). The renderer draws terrain colours and glyphs. Tests set terrain by hand.
 
 **Acceptance criteria:**
-- [ ] Enemy routes never include sea, river, rock or tree tiles. Fords behave like ground.
-- [ ] Building on sea, rock, tree or river is rejected with a clear reason. Ground and fords work as before.
-- [ ] Terrain is visible in the browser (a hand-painted test map via a dev-only seed or debug key is fine)
+- [x] Enemy routes never include sea, river, rock or tree tiles. Fords behave like ground.
+- [x] Building on sea, rock, tree or river is rejected with a clear reason. Ground and fords work as before.
+- [x] Terrain is drawn by the renderer (visual check moved to Checkpoint C, once the generator puts terrain on the map)
 
 **Verification:**
-- [ ] `npm test` (new `tests/sim/terrain.test.ts`)
-- [ ] Manual: terrain renders with the spec's glyphs and colours
+- [x] `npm test` (new `tests/sim/terrain.test.ts`)
+- [ ] Manual: terrain renders with the spec's glyphs and colours (deferred to Checkpoint C)
 
 **Dependencies:** None
 

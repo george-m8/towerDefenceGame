@@ -1,4 +1,4 @@
-import type { STRUCTURES } from "./config";
+import type { STRUCTURES, TERRAIN } from "./config";
 
 export interface Point {
   x: number;
@@ -9,8 +9,8 @@ export type StructureKind = keyof typeof STRUCTURES;
 
 export type Facing = "N" | "E" | "S" | "W";
 
-/** Natural ground type under any structures. map-gen adds more. */
-export type Terrain = "ground";
+/** Natural ground type under any structures. */
+export type Terrain = keyof typeof TERRAIN;
 
 export interface Structure {
   id: number;
