@@ -42,8 +42,15 @@ export function createRoom(code: string, seed: number, send: SendFn): Room {
   };
 }
 
-/** Adds a new player (name made unique), welcomes them and tells everyone else. */
-export function joinRoom(room: Room, name: string): JoinResult {
+/**
+ * Adds a new player (name made unique), welcomes them and tells everyone else.
+ * `attach` runs once the id is known, before any message is sent (to route their socket).
+ */
+export function joinRoom(
+  room: Room,
+  name: string,
+  attach?: (playerId: PlayerId) => void,
+): JoinResult {
   const players = Object.values(room.state.players);
   if (players.length >= MAX_PLAYERS) return { ok: false, reason: "Room is full" };
   const playerId = addPlayer(
@@ -55,16 +62,22 @@ export function joinRoom(room: Room, name: string): JoinResult {
   );
   const token = randomBytes(16).toString("hex");
   room.tokens[playerId] = token;
+  attach?.(playerId);
   welcome(room, playerId);
   broadcastUpdate(room);
   return { ok: true, playerId, token };
 }
 
-/** Reconnects the player holding `token`. */
-export function rejoinRoom(room: Room, token: string): RejoinResult {
+/** Reconnects the player holding `token`. `attach` works as in joinRoom. */
+export function rejoinRoom(
+  room: Room,
+  token: string,
+  attach?: (playerId: PlayerId) => void,
+): RejoinResult {
   const entry = Object.entries(room.tokens).find(([, t]) => t === token);
   if (!entry) return { ok: false, reason: "Unknown player" };
   const playerId = Number(entry[0]);
+  attach?.(playerId);
   setConnected(room.state, playerId, true);
   welcome(room, playerId);
   broadcastUpdate(room);

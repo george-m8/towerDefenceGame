@@ -255,10 +255,10 @@ T2 and T3 each depend only on T1.
 - [x] `npm run server` starts and logs its LAN address
 
 - [x] Task 4: A room: players, commands, ticks and restart
-- [ ] Task 5: Rooms, connections and sockets
+- [x] Task 5: Rooms, connections and sockets
 
 **Checkpoint H: two clients play over sockets**
-- [ ] Integration test: two clients create and join, B's build is owned by B and both see it
+- [x] Integration test: two clients create and join, B's build is owned by B and both see it
 - [ ] Review with human
 
 - [ ] Task 6: Hardening: limits, tokens and expiry

@@ -7,6 +7,8 @@ export const WS_PATH = "/ws";
 export const DEV_CLIENT_PORT = 5173;
 
 export const MAX_PLAYERS = 4;
+/** How often the server advances every room (they tick by elapsed time, not by this). */
+export const ROOM_TIMER_MS = 25;
 export const UPDATE_EVERY_TICKS = 2; // 20 Hz sim -> 10 Hz updates
 /** Catch-up cap per advance at normal speed, as in main.ts. */
 export const MAX_TICKS_PER_ADVANCE = 5;

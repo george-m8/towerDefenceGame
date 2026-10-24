@@ -103,12 +103,12 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** `server/rooms.ts`: a registry that creates rooms with unique codes and random seeds, and finds rooms by code. `server/connection.ts`: for each socket, parse messages with `parseClientMessage`. Then route `create`, `join` and `rejoin` to the registry and room (sending `welcome` with a snapshot), `command` to `applyRoomCommand` (sending `result`), and `restart`. A closed socket marks its player disconnected. `server/main.ts` wires this up and runs one timer that advances every room and broadcasts updates.
 
 **Acceptance criteria:**
-- [ ] Two real `ws` clients: A creates, B joins with the code, both get `welcome` and then updates
-- [ ] B's build is owned by B, and A's next update shows it
-- [ ] Closing B's socket marks B disconnected in A's updates
+- [x] Two real `ws` clients: A creates, B joins with the code, both get `welcome` and then updates
+- [x] B's build is owned by B, and A's next update shows it
+- [x] Closing B's socket marks B disconnected in A's updates
 
 **Verification:**
-- [ ] `tests/server/integration.test.ts` (port 0, awaits messages, no sleeps)
+- [x] `tests/server/integration.test.ts` (port 0, awaits messages, no sleeps)
 
 **Dependencies:** Task 4
 
@@ -119,7 +119,7 @@ Standard verification for every task (in addition to task-specific checks):
 ---
 
 ### Checkpoint H: two clients play over sockets
-- [ ] Integration test: two clients create and join, B's build is owned by B and both see it
+- [x] Integration test: two clients create and join, B's build is owned by B and both see it
 - [ ] Review with human
 
 ---
