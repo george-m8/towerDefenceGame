@@ -184,6 +184,17 @@ body {
 .actions .button {
   min-width: 0;
   flex: 1;
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+
+.actions .button[data-action="fastForward"] {
+  flex: 0 0 auto;
+}
+
+.actions .button.selected {
+  color: var(--paper);
+  background: var(--ink);
 }
 
 .button:disabled {

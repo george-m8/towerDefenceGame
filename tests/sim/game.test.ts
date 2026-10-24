@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { applyCommand, createGame, tick } from "../../src/sim/game";
-import { GRID_HEIGHT, GRID_WIDTH, KEEP_HP, KEEP_SIZE, STARTING_GOLD } from "../../src/sim/config";
+import {
+  FAST_FORWARD_SPEED,
+  GRID_HEIGHT,
+  GRID_WIDTH,
+  KEEP_HP,
+  KEEP_SIZE,
+  STARTING_GOLD,
+} from "../../src/sim/config";
 import { isKeepTile, isSpawnTile } from "../../src/sim/grid";
 
 describe("createGame", () => {
@@ -59,6 +66,17 @@ describe("tick and pause", () => {
     applyCommand(state, { type: "togglePause" });
     tick(state);
     expect(state.tick).toBe(1);
+  });
+});
+
+describe("fast forward", () => {
+  it("starts at normal speed and toggles between normal and fast", () => {
+    const state = createGame(1);
+    expect(state.speed).toBe(1);
+    expect(applyCommand(state, { type: "toggleFastForward" })).toEqual({ ok: true });
+    expect(state.speed).toBe(FAST_FORWARD_SPEED);
+    applyCommand(state, { type: "toggleFastForward" });
+    expect(state.speed).toBe(1);
   });
 });
 

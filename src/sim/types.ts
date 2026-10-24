@@ -94,12 +94,15 @@ export interface GameState {
   gold: number;
   tick: number;
   paused: boolean;
+  /** Game-speed multiplier: 1 normally, FAST_FORWARD_SPEED while fast-forwarding. */
+  speed: number;
   gameOver: boolean;
   rngState: number;
 }
 
 export type Command =
   | { type: "togglePause" }
+  | { type: "toggleFastForward" }
   | { type: "build"; kind: StructureKind; x: number; y: number; facing?: Facing }
   /** Dev only: spawn enemies at random spawn tiles. */
   | { type: "debugSpawn"; count: number }

@@ -35,6 +35,8 @@ export function bindInput(
     if (e.code === "Space") {
       e.preventDefault();
       dispatch({ type: "togglePause" });
+    } else if (e.code === "KeyF") {
+      dispatch({ type: "toggleFastForward" });
     } else if (e.code === "KeyR") {
       rotateFacing(ui);
     } else if (e.code === "KeyD") {

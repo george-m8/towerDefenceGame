@@ -21,6 +21,7 @@ export function createPanel(
     <div class="actions">
       <button class="button" data-action="sendWave">Send wave</button>
       <button class="button" data-action="pause">Pause</button>
+      <button class="button" data-action="fastForward" title="Fast forward (F)">&gt;&gt;</button>
     </div>
     <h2 class="section">Build</h2>
     <div class="tools">
@@ -37,7 +38,7 @@ export function createPanel(
     <p class="status" data-stat="status"></p>
     <h2 class="section">Info</h2>
     <p class="info" data-stat="info"></p>
-    <p class="help">Space pause · R rotate · D paths · Esc cancel · drag to paint</p>
+    <p class="help">Space pause · F fast · R rotate · D paths · Esc cancel · drag to paint</p>
   `;
   const field = (name: string) => root.querySelector<HTMLElement>(`[data-stat="${name}"]`)!;
   const gold = field("gold");
@@ -49,6 +50,7 @@ export function createPanel(
   const info = field("info");
   const sendWaveButton = root.querySelector<HTMLButtonElement>('[data-action="sendWave"]')!;
   const pauseButton = root.querySelector<HTMLButtonElement>('[data-action="pause"]')!;
+  const fastForwardButton = root.querySelector<HTMLButtonElement>('[data-action="fastForward"]')!;
   const toolButtons = [...root.querySelectorAll<HTMLButtonElement>("[data-tool]")];
 
   // Drop focus after a click so Space only ever toggles pause, never re-presses a button.
@@ -60,6 +62,7 @@ export function createPanel(
     if (!result.ok) showMessage(ui, result.reason);
   });
   pauseButton.addEventListener("click", () => dispatch({ type: "togglePause" }));
+  fastForwardButton.addEventListener("click", () => dispatch({ type: "toggleFastForward" }));
   for (const button of toolButtons) {
     button.addEventListener("click", () => {
       const tool = button.dataset.tool as UiState["tool"];
@@ -77,6 +80,7 @@ export function createPanel(
       next.textContent = spawning ? "incoming!" : `${Math.ceil(state.wave.countdown / TICK_RATE)}s`;
       sendWaveButton.disabled = spawning || state.gameOver;
       pauseButton.textContent = state.paused ? "Resume" : "Pause";
+      fastForwardButton.classList.toggle("selected", state.speed > 1);
       for (const button of toolButtons) {
         const tool = button.dataset.tool as UiState["tool"];
         button.classList.toggle("selected", tool === ui.tool);

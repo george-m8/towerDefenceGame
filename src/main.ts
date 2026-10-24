@@ -27,15 +27,16 @@ let lastTime = performance.now();
 let accumulator = 0;
 
 function frame(now: number) {
-  accumulator += now - lastTime;
+  accumulator += (now - lastTime) * state.speed;
   lastTime = now;
+  const maxTicks = MAX_TICKS_PER_FRAME * state.speed;
   let ticks = 0;
-  while (accumulator >= TICK_MS && ticks < MAX_TICKS_PER_FRAME) {
+  while (accumulator >= TICK_MS && ticks < maxTicks) {
     tick(state);
     accumulator -= TICK_MS;
     ticks++;
   }
-  if (ticks === MAX_TICKS_PER_FRAME) accumulator = 0;
+  if (ticks === maxTicks) accumulator = 0;
 
   renderer.render(state, ui);
   panel.update(state);
