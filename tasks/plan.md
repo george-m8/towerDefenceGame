@@ -19,7 +19,7 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | Phase | Module | Status |
 |---|---|---|
 | 1. Basics | `tile-layers` | Done |
-| | `map-gen` | **Spec approved, tasks ready** |
+| | `map-gen` | **Built, awaiting review** |
 | | `tower-aiming` | Spec needed |
 | | `line-of-sight` | Spec needed |
 | | `units` | Spec needed |
@@ -132,11 +132,11 @@ T4, T5 and T6 each depend only on T3.
 - [x] Task 4: Rocks, forests and clearing trees
 - [x] Task 5: Ruins
 - [x] Task 6: Treasure chests
-- [ ] Task 7: Seed display, terrain hover info and docs
+- [x] Task 7: Seed display, terrain hover info and docs
 
 **Checkpoint D: module complete**
-- [ ] All 7 success criteria in `SPEC-map-gen.md` met
-- [ ] Coverage of 80% lines or more for `src/sim/`
+- [x] All 7 success criteria in `SPEC-map-gen.md` met
+- [x] Coverage of 80% lines or more for `src/sim/` (99.3%)
 - [ ] Review with human
 
 ### Risks and mitigations

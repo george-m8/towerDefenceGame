@@ -37,7 +37,25 @@ Enemies (`g`) spawn from the red strip on the left edge and walk to your keep (`
 | `5` | Floor spikes | `^` | 15 | Walkable. Every 1.5s spikes come up and deal 15 damage to every enemy on the tile. |
 | `6` | Wall spikes | `▲▶▼◀` | 20 | A wall section that fires every 2s, dealing 20 damage to the one tile it faces. Press `R` to rotate before placing. |
 | `7` | House | `h` | 40 | +2 gold every 5s. Blocks movement. |
-| `X` | Sell | `$` | - | Refunds 50% of cost, less if damaged. Sells the top layer first (a tower before the wall under it). |
+| `8` | Bridge | `=` | 10 | Only on river tiles. Makes the river walkable there (for enemies too). |
+| `X` | Sell | `$` | - | Refunds 50% of cost, less if damaged. Sells the top layer first (a tower before the wall under it). Also clears trees. |
+
+### The map
+
+Every game starts on a new, randomly generated map (the seed is shown in the panel and on the game-over screen).
+
+| Terrain | Look | Walk | Build | Notes |
+|---|---|---|---|---|
+| Ground | dark checker | yes | yes | |
+| Ford | sandy | yes | yes | A shallow crossing of the river |
+| River | `~` light blue | no | bridges only | Build a bridge (`8`) to cross it anywhere else |
+| Sea | `≈` dark blue | no | no | Coastline along one edge |
+| Rock | `o` grey | no | no | Can't be cleared |
+| Tree | `♣` green | no | no | Clear with `X` for 1 gold of timber |
+
+- **Ruins** (`#` in dark stone) are old, damaged walls. They block enemies, can hold a tower, and sell for a little salvage. You can't build new ones.
+- **Treasure chests** (`$` in gold) are piles of gold lying on the map (20-60, more the further from the keep). Build anything on one to claim it.
+- There is always a walkable route from the spawn to the keep, and nothing walkable is ever cut off.
 
 ### Towers on walls
 
@@ -54,9 +72,9 @@ Towers always shoot the enemy closest to the keep. Traps fire on a fixed timer f
 
 | Input | Action |
 |---|---|
-| `1`-`7`, `X` or click a tool | Select a build tool / sell |
+| `1`-`8`, `X` or click a tool | Select a build tool / sell |
 | Left click | Place (or sell) |
-| Left drag | Paint walls, spikes, or sell along the dragged tiles |
+| Left drag | Paint walls, spikes, bridges, or sell/clear along the dragged tiles |
 | Right click or `Esc` | Clear the selected tool |
 | `R` | Rotate wall spikes |
 | `Space` or Pause button | Pause / resume (you can still build while paused) |

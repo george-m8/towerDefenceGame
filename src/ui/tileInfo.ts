@@ -1,9 +1,18 @@
-import { STRUCTURES, type StructureStats } from "../sim/config";
+import { STRUCTURES, TREE_CLEAR_GOLD, type StructureStats } from "../sim/config";
 import { refundFor } from "../sim/economy";
-import { baseAt, inBounds, isKeepTile, isSpawnTile, mountAt, topAt } from "../sim/grid";
-import type { GameState, Point, Structure } from "../sim/types";
+import { baseAt, inBounds, isKeepTile, isSpawnTile, mountAt, terrainAt, topAt } from "../sim/grid";
+import type { GameState, Point, Structure, Terrain } from "../sim/types";
 
 const FACING_NAMES = { N: "north", E: "east", S: "south", W: "west" };
+
+const TERRAIN_DESCRIPTIONS: Record<Terrain, string> = {
+  ground: "Open ground",
+  ford: "Ford - a shallow river crossing",
+  river: "River - build a bridge to cross",
+  sea: "Sea",
+  rock: "Rock - impassable",
+  tree: `Tree - X to clear for ${TREE_CLEAR_GOLD}g`,
+};
 
 /** Human-readable lines describing what is on a tile, for the hover info box. */
 export function describeTile(state: GameState, p: Point): string[] {
@@ -22,7 +31,13 @@ export function describeTile(state: GameState, p: Point): string[] {
   } else if (isSpawnTile(state, p.x, p.y)) {
     lines.push("Spawn zone");
   } else {
-    lines.push("Open ground");
+    lines.push(TERRAIN_DESCRIPTIONS[terrainAt(state, p.x, p.y)]);
+  }
+
+  for (const feature of state.features) {
+    if (feature.kind === "chest" && feature.x === p.x && feature.y === p.y) {
+      lines.push(`Treasure chest: ${feature.gold}g`, "Build here to claim it");
+    }
   }
 
   const enemies = state.enemies.filter((e) => Math.round(e.x) === p.x && Math.round(e.y) === p.y);

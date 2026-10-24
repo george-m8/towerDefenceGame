@@ -155,13 +155,14 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** Hover info describes terrain ("River - bridge it to cross", "Tree - X to clear for 1g", "Ford"), ruins (salvage value) and chests (gold). The seed is shown in the panel (from Task 3) and on the game-over dialog. README gains a "The map" section (terrain table, bridges, trees, ruins, chests) and key `8`. `SPEC.md` gets a pointer to `SPEC-map-gen.md`.
 
 **Acceptance criteria:**
-- [ ] Hovering every terrain type and feature gives a helpful description
-- [ ] The seed is visible during play and on game over
-- [ ] README and `SPEC.md` describe the map accurately
+- [x] Hovering every terrain type and feature gives a helpful description
+- [x] The seed is visible during play and on game over
+- [x] README and `SPEC.md` describe the map accurately
 
 **Verification:**
-- [ ] `npm run build`
-- [ ] Manual: hover each terrain and feature type; screenshot a generated map for review
+- [x] `npm run build`
+- [x] Manual: hover each terrain and feature type (swept in the browser); screenshot a generated map for review
+- [ ] Manual: seed on the game-over dialog (not seen in the browser; covered by typecheck and build only)
 
 **Dependencies:** Tasks 4, 5, 6
 
@@ -172,6 +173,6 @@ Standard verification for every task (in addition to task-specific checks):
 ---
 
 ### Checkpoint D: map-gen complete
-- [ ] All 7 success criteria in `SPEC-map-gen.md` met
-- [ ] `npm run coverage` passes (80% lines or more for `src/sim/`)
+- [x] All 7 success criteria in `SPEC-map-gen.md` met
+- [x] `npm run coverage` passes (99.3% lines for `src/sim/`)
 - [ ] Review with human, then move this file to `tasks/map-gen/` and start the `tower-aiming` spec
