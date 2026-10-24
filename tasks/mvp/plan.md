@@ -1,6 +1,6 @@
 # Implementation Plan: Tower Defence MVP - Endless Keep
 
-Source spec: [`SPEC.md`](../SPEC.md)
+Source spec: [`SPEC.md`](../../SPEC.md)
 Task list: [`tasks/todo.md`](todo.md)
 
 ## Overview

@@ -1,6 +1,6 @@
 # Tasks: Tower Defence MVP - Endless Keep
 
-Spec: [`SPEC.md`](../SPEC.md) | Plan: [`plan.md`](plan.md)
+Spec: [`SPEC.md`](../../SPEC.md) | Plan: [`plan.md`](plan.md)
 
 Standard verification for every task (in addition to task-specific checks):
 `npm run typecheck && npm test && npm run build`
