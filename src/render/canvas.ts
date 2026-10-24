@@ -31,6 +31,7 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
         if (structure) {
           const colours = STRUCTURE_COLOURS[structure.kind];
           drawTile(x, y, colours.bg, GLYPHS[structure.kind], colours.fg);
+          if (structure.hp < structure.maxHp) drawHpBar(x, y, structure.hp / structure.maxHp);
         } else if (isKeepTile(state, x, y)) drawTile(x, y, COLOURS.keep, "K", COLOURS.keepGlyph);
         else if (isSpawnTile(state, x, y)) drawTile(x, y, COLOURS.spawn, ".", COLOURS.spawnGlyph);
         else drawTile(x, y, (x + y) % 2 === 0 ? COLOURS.ground : COLOURS.groundAlt);

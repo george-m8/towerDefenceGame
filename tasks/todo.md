@@ -128,13 +128,13 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** When an enemy's next tile holds a blocking structure, it stops and deals 5 damage/s to it. At 0 HP the structure is removed, `gridVersion` bumps, the field recomputes and enemies continue. Damaged structures render with a visual cue (dimmed colour or HP shading).
 
 **Acceptance criteria:**
-- [ ] With the keep fully enclosed, enemies attack the structure on the cheapest route and nothing else
-- [ ] A destroyed structure is removed, and enemies continue through the gap
-- [ ] With any open route available, no structure takes damage
+- [x] With the keep fully enclosed, enemies attack the structure on the cheapest route and nothing else
+- [x] A destroyed structure is removed, and enemies continue through the gap
+- [x] With any open route available, no structure takes damage
 
 **Verification:**
-- [ ] `npm test` (`tests/sim/enemies.test.ts`: enclosed keep breach timing, no damage when an open route exists)
-- [ ] Manual: fully wall in the keep, spawn enemies, watch them breach one wall
+- [x] `npm test` (`tests/sim/enemies.test.ts`: enclosed keep breach timing, no damage when an open route exists)
+- [x] Manual: fully wall in the keep, spawn enemies, watch them breach one wall
 
 **Dependencies:** Task 5
 

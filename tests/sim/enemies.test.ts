@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { ENEMY, TICK_RATE } from "../../src/sim/config";
+import { ENEMY, STRUCTURES, TICK_RATE } from "../../src/sim/config";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand, createGame, tick } from "../../src/sim/game";
 import { structureAt } from "../../src/sim/grid";
 import type { GameState } from "../../src/sim/types";
-import { buildAt } from "./helpers";
+import { buildAt, ring } from "./helpers";
 
 const ticksPerTile = TICK_RATE / ENEMY.speed;
 
@@ -72,5 +72,54 @@ describe("building near enemies", () => {
     tick(state); // now moving from (10, y) towards (11, y)
     expect(applyCommand(state, { type: "build", kind: "wall", x: 11, y }).ok).toBe(false);
     expect(applyCommand(state, { type: "build", kind: "wall", x: 12, y }).ok).toBe(true);
+  });
+});
+
+describe("breaking through", () => {
+  const hitsToBreakWall = Math.ceil(STRUCTURES.wall.maxHp / ENEMY.structureDps);
+
+  it("attacks only the structure on the cheapest route when the keep is enclosed", () => {
+    const state = createGame(1);
+    const { keep } = state;
+    const walls = ring(keep.x - 1, keep.y - 1, keep.x + keep.size, keep.y + keep.size);
+    buildAt(state, walls);
+    const y = keep.y + 1;
+    spawnEnemy(state, keep.x - 3, y); // two tiles from the ring's left side
+    const target = { x: keep.x - 1, y };
+
+    // Walk 1 tile (the first hit lands on the arrival tick), then all but the last hit.
+    run(state, Math.ceil(ticksPerTile) + (hitsToBreakWall - 1) * TICK_RATE - 1);
+    expect(structureAt(state, target.x, target.y)?.hp).toBe(ENEMY.structureDps);
+    const damaged = walls.filter((p) => {
+      const s = structureAt(state, p.x, p.y);
+      return s && s.hp < s.maxHp;
+    });
+    expect(damaged).toEqual([target]);
+
+    run(state, TICK_RATE);
+    expect(structureAt(state, target.x, target.y)).toBeUndefined();
+
+    // The enemy continues through the gap to the keep.
+    run(state, Math.ceil(3 * ticksPerTile));
+    expect(state.enemies).toHaveLength(0);
+    expect(state.keep.hp).toBe(state.keep.maxHp - ENEMY.keepDamage);
+  });
+
+  it("never damages structures when an open route exists", () => {
+    const state = createGame(1);
+    const { keep } = state;
+    // Enclose the keep except for one gap on the far (right) side.
+    const gap = { x: keep.x + keep.size, y: keep.y + 1 };
+    const walls = ring(keep.x - 1, keep.y - 1, keep.x + keep.size, keep.y + keep.size).filter(
+      (p) => p.x !== gap.x || p.y !== gap.y,
+    );
+    buildAt(state, walls);
+    spawnEnemy(state, 0, keep.y + 1);
+    run(state, 1000);
+    expect(state.keep.hp).toBe(state.keep.maxHp - ENEMY.keepDamage);
+    for (const p of walls) {
+      const s = structureAt(state, p.x, p.y)!;
+      expect(s.hp).toBe(s.maxHp);
+    }
   });
 });

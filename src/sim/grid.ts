@@ -73,3 +73,14 @@ export function placeStructure(
   state.gridVersion++;
   return structure;
 }
+
+export function removeStructure(state: GameState, structure: Structure): void {
+  delete state.structures[structure.id];
+  state.tiles[tileIndex(state, structure.x, structure.y)] = EMPTY;
+  state.gridVersion++;
+}
+
+export function damageStructure(state: GameState, structure: Structure, amount: number): void {
+  structure.hp -= amount;
+  if (structure.hp <= 0) removeStructure(state, structure);
+}

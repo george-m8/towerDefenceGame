@@ -27,6 +27,8 @@ export interface Enemy {
   hp: number;
   maxHp: number;
   bounty: number;
+  /** Ticks until it can hit a blocking structure again. */
+  attackCooldown: number;
 }
 
 export interface FlowField {
