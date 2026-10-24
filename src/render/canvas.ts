@@ -4,7 +4,14 @@ import { STRUCTURES, type StructureStats } from "../sim/config";
 import { hitTile } from "../sim/traps";
 import type { GameState, Point, Structure, StructureKind } from "../sim/types";
 import { isBuildTool, type UiState } from "../ui/state";
-import { COLOURS, GLYPH_FONT, STRUCTURE_COLOURS, TILE_SIZE, glyphFor } from "./palette";
+import {
+  COLOURS,
+  GLYPH_FONT,
+  KEEP_HP_FONT,
+  STRUCTURE_COLOURS,
+  TILE_SIZE,
+  glyphFor,
+} from "./palette";
 
 export function createRenderer(canvas: HTMLCanvasElement, width: number, height: number) {
   canvas.width = width * TILE_SIZE;
@@ -31,13 +38,32 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
       for (let x = 0; x < width; x++) {
         const base = baseAt(state, x, y);
         if (base) drawStructure(base);
-        else if (isKeepTile(state, x, y)) drawTile(x, y, COLOURS.keep, "K", COLOURS.keepGlyph);
+        else if (isKeepTile(state, x, y)) drawKeepTile(state, x, y);
         else if (isSpawnTile(state, x, y)) drawTile(x, y, COLOURS.spawn, ".", COLOURS.spawnGlyph);
         else drawTile(x, y, (x + y) % 2 === 0 ? COLOURS.ground : COLOURS.groundAlt);
         const mount = mountAt(state, x, y);
         if (mount) drawStructure(mount);
       }
     }
+  }
+
+  /** Keep tiles show "K", except the centre, which shows the keep's HP. */
+  function drawKeepTile(state: GameState, x: number, y: number) {
+    const { keep } = state;
+    const centre = Math.floor(keep.size / 2);
+    if (x !== keep.x + centre || y !== keep.y + centre) {
+      drawTile(x, y, COLOURS.keep, "K", COLOURS.keepGlyph);
+      return;
+    }
+    drawTile(x, y, COLOURS.keep);
+    ctx!.font = KEEP_HP_FONT;
+    ctx!.fillStyle = COLOURS.keepGlyph;
+    ctx!.fillText(
+      String(Math.ceil(keep.hp)),
+      (x + 0.5) * TILE_SIZE,
+      (y + 0.5) * TILE_SIZE + 1,
+      TILE_SIZE - 2,
+    );
   }
 
   function drawStructure(structure: Structure) {
