@@ -1,4 +1,5 @@
 import {
+  ENEMY,
   FAST_FORWARD_SPEED,
   GRID_HEIGHT,
   GRID_WIDTH,
@@ -53,6 +54,7 @@ export function createGame(seed: number): GameState {
     tick: 0,
     paused: false,
     speed: 1,
+    wanderChance: ENEMY.wanderChance,
     gameOver: false,
     rngState: seed,
   };

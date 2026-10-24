@@ -20,20 +20,24 @@ export function getFlowField(state: GameState): FlowField {
 /**
  * The neighbour an enemy on (x, y) should move to next, or null if already on the keep.
  * The returned tile may hold a blocking structure, which means "attack this".
+ * On a tie, any other tile is preferred over `avoid` (the tile the enemy just left).
  */
-export function nextStep(state: GameState, x: number, y: number): Point | null {
+export function nextStep(state: GameState, x: number, y: number, avoid?: Point): Point | null {
   const { dist } = getFlowField(state);
   if (dist[tileIndex(state, x, y)] === 0) return null;
   let best: Point | null = null;
   let bestDist = Infinity;
+  let bestAvoided = false;
   for (const d of DIRECTIONS) {
     const nx = x + d.x;
     const ny = y + d.y;
     if (!inBounds(state, nx, ny)) continue;
     const nd = dist[tileIndex(state, nx, ny)];
-    if (nd < bestDist) {
+    const avoided = avoid !== undefined && nx === avoid.x && ny === avoid.y;
+    if (nd < bestDist || (nd === bestDist && bestAvoided && !avoided)) {
       bestDist = nd;
       best = { x: nx, y: ny };
+      bestAvoided = avoided;
     }
   }
   return best;

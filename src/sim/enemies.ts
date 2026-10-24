@@ -1,7 +1,8 @@
 import { ENEMY, TICK_RATE } from "./config";
-import { attackTargetAt, blocksAt, damageStructure, isKeepTile } from "./grid";
-import { nextStep } from "./pathfinding";
-import type { Enemy, GameState, Structure } from "./types";
+import { attackTargetAt, blocksAt, damageStructure, inBounds, isKeepTile } from "./grid";
+import { DIRECTIONS, nextStep } from "./pathfinding";
+import { nextRandom, randomInt } from "./rng";
+import type { Enemy, GameState, Point, Structure } from "./types";
 
 const STEP = ENEMY.speed / TICK_RATE;
 const EPSILON = 1e-9;
@@ -19,6 +20,8 @@ export function spawnEnemy(
     y,
     tx: x,
     ty: y,
+    px: x,
+    py: y,
     hp,
     maxHp: hp,
     bounty,
@@ -58,15 +61,45 @@ function advance(state: GameState, enemy: Enemy): boolean {
 
 /** Sets the next tile to walk to. If a structure blocks the way, attacks it instead and returns false. */
 function chooseNextTile(state: GameState, enemy: Enemy): boolean {
-  const next = nextStep(state, enemy.x, enemy.y);
-  if (!next) return false;
-  if (blocksAt(state, next.x, next.y)) {
-    attack(state, enemy, attackTargetAt(state, next.x, next.y)!);
+  const previous = { x: enemy.px, y: enemy.py };
+  const pathStep = nextStep(state, enemy.x, enemy.y, previous);
+  if (!pathStep) return false;
+  if (blocksAt(state, pathStep.x, pathStep.y)) {
+    attack(state, enemy, attackTargetAt(state, pathStep.x, pathStep.y)!);
     return false;
   }
+  // Only walking enemies wander; one breaking through stays on its target.
+  const next = wanderStep(state, enemy, pathStep, previous) ?? pathStep;
+  enemy.px = enemy.x;
+  enemy.py = enemy.y;
   enemy.tx = next.x;
   enemy.ty = next.y;
   return true;
+}
+
+/**
+ * With chance `state.wanderChance`, a random open tile to the side of the path step,
+ * so enemies sometimes stray off the path. Never steps backwards (opposite the path
+ * step), onto the tile it just left, or into a blocking structure.
+ */
+function wanderStep(
+  state: GameState,
+  enemy: Enemy,
+  pathStep: Point,
+  previous: Point,
+): Point | null {
+  if (state.wanderChance <= 0 || nextRandom(state) >= state.wanderChance) return null;
+  const forward = { x: pathStep.x - enemy.x, y: pathStep.y - enemy.y };
+  const options: Point[] = [];
+  for (const d of DIRECTIONS) {
+    // Sideways only: skip both forward (the path step) and straight back.
+    if (d.x === forward.x || d.y === forward.y) continue;
+    const x = enemy.x + d.x;
+    const y = enemy.y + d.y;
+    if (x === previous.x && y === previous.y) continue;
+    if (inBounds(state, x, y) && !blocksAt(state, x, y)) options.push({ x, y });
+  }
+  return options.length > 0 ? options[randomInt(state, 0, options.length - 1)] : null;
 }
 
 function attack(state: GameState, enemy: Enemy, target: Structure) {

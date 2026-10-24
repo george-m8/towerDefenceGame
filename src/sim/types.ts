@@ -33,6 +33,9 @@ export interface Enemy {
   /** The tile it is currently moving to. */
   tx: number;
   ty: number;
+  /** The tile it last left, so it doesn't step straight back onto it. */
+  px: number;
+  py: number;
   hp: number;
   maxHp: number;
   bounty: number;
@@ -96,6 +99,8 @@ export interface GameState {
   paused: boolean;
   /** Game-speed multiplier: 1 normally, FAST_FORWARD_SPEED while fast-forwarding. */
   speed: number;
+  /** Chance (0-1) at each tile that an enemy wanders off the path. Starts at ENEMY.wanderChance. */
+  wanderChance: number;
   gameOver: boolean;
   rngState: number;
 }

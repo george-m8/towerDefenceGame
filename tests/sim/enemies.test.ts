@@ -3,6 +3,7 @@ import { ENEMY, STRUCTURES, TICK_RATE } from "../../src/sim/config";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand, tick } from "../../src/sim/game";
 import { topAt } from "../../src/sim/grid";
+import { nextStep } from "../../src/sim/pathfinding";
 import type { GameState } from "../../src/sim/types";
 import { buildAt, createGameWithoutWaves, ring } from "./helpers";
 
@@ -72,6 +73,70 @@ describe("building near enemies", () => {
     tick(state); // now moving from (10, y) towards (11, y)
     expect(applyCommand(state, { type: "build", kind: "wall", x: 11, y }).ok).toBe(false);
     expect(applyCommand(state, { type: "build", kind: "wall", x: 12, y }).ok).toBe(true);
+  });
+});
+
+describe("wandering", () => {
+  it("steps sideways off the path when the wander roll succeeds, never backwards", () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      const state = createGameWithoutWaves(seed);
+      state.wanderChance = 1;
+      const y = state.keep.y + 1;
+      const enemy = spawnEnemy(state, 5, y);
+      expect(nextStep(state, enemy.x, enemy.y)).toEqual({ x: 6, y }); // path heads east
+      tick(state);
+      expect(enemy.tx).toBe(5);
+      expect(Math.abs(enemy.ty - y)).toBe(1);
+    }
+  });
+
+  it("never wanders into a structure", () => {
+    const state = createGameWithoutWaves();
+    state.wanderChance = 1;
+    const y = state.keep.y + 1;
+    // Walls on both sides, so the only open tiles are forward and back: it must go forward.
+    buildAt(state, [
+      { x: 5, y: y - 1 },
+      { x: 5, y: y + 1 },
+    ]);
+    const enemy = spawnEnemy(state, 5, y);
+    tick(state);
+    expect({ x: enemy.tx, y: enemy.ty }).toEqual({ x: 6, y });
+  });
+
+  it("does not wander away from a structure it is attacking", () => {
+    const state = createGameWithoutWaves();
+    state.wanderChance = 1;
+    const k = state.keep;
+    buildAt(state, ring(k.x - 1, k.y - 1, k.x + k.size, k.y + k.size));
+    const enemy = spawnEnemy(state, k.x - 2, k.y + 1);
+    run(state, 3 * TICK_RATE);
+    expect({ x: enemy.x, y: enemy.y }).toEqual({ x: k.x - 2, y: k.y + 1 });
+    expect(topAt(state, k.x - 1, k.y + 1)!.hp).toBeLessThan(STRUCTURES.wall.maxHp);
+  });
+
+  it("never steps straight back onto the tile it just left", () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      const state = createGameWithoutWaves(seed);
+      state.wanderChance = 0.5;
+      const enemy = spawnEnemy(state, 2, state.keep.y + 1);
+      const tiles = [`${enemy.x},${enemy.y}`];
+      while (state.enemies.length > 0) {
+        tick(state);
+        const target = `${enemy.tx},${enemy.ty}`;
+        if (target !== tiles[tiles.length - 1]) tiles.push(target);
+      }
+      for (let i = 2; i < tiles.length; i++) expect(tiles[i]).not.toBe(tiles[i - 2]);
+    }
+  });
+
+  it("with the default chance, enemies still reach the keep", () => {
+    const state = createGameWithoutWaves();
+    state.wanderChance = ENEMY.wanderChance;
+    for (let i = 0; i < 10; i++) spawnEnemy(state, 0, state.keep.y + 1);
+    run(state, 60 * TICK_RATE);
+    expect(state.enemies).toHaveLength(0);
+    expect(state.keep.hp).toBe(state.keep.maxHp - 10 * ENEMY.keepDamage);
   });
 });
 
