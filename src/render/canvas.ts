@@ -19,6 +19,9 @@ import type { PendingBuild } from "../net/session";
 import { isBuildTool, type UiState } from "../ui/state";
 import {
   AIM_LINE_TILES,
+  ARROWS,
+  ARROW_SYMBOLS,
+  type ArrowStyle,
   COLOURS,
   NOTCH_DEPTH_PX,
   NOTCH_LENGTH_PX,
@@ -128,11 +131,71 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
     }
   }
 
+  /**
+   * An arrow pointing `angle` (compass degrees), drawn as a vector shape so every direction
+   * looks the same on every system (font arrows vary, and some turn into emoji).
+   */
+  function drawArrow(x: number, y: number, angle: number, colour: string, style: ArrowStyle) {
+    const { headHalfWidth, headLength, shaftHalfWidth, reach, fletchWidth, fletchLength } =
+      ARROWS[style];
+    ctx!.save();
+    ctx!.translate((x + 0.5) * TILE_SIZE, (y + 0.5) * TILE_SIZE);
+    ctx!.rotate((angle * Math.PI) / 180); // drawn pointing north, then turned
+    ctx!.fillStyle = colour;
+    ctx!.strokeStyle = colour;
+    if (fletchLength > 0) {
+      // Two pairs of feathers angled back from the tail.
+      ctx!.lineWidth = 1.5;
+      ctx!.beginPath();
+      for (const along of [reach - fletchLength, reach - fletchLength / 2]) {
+        ctx!.moveTo(-fletchWidth, along + fletchLength / 2);
+        ctx!.lineTo(0, along);
+        ctx!.lineTo(fletchWidth, along + fletchLength / 2);
+      }
+      ctx!.stroke();
+    }
+    ctx!.beginPath();
+    ctx!.moveTo(0, -reach); // tip
+    ctx!.lineTo(headHalfWidth, -reach + headLength);
+    ctx!.lineTo(shaftHalfWidth, -reach + headLength);
+    ctx!.lineTo(shaftHalfWidth, reach);
+    ctx!.lineTo(-shaftHalfWidth, reach);
+    ctx!.lineTo(-shaftHalfWidth, -reach + headLength);
+    ctx!.lineTo(-headHalfWidth, -reach + headLength);
+    ctx!.closePath();
+    ctx!.fill();
+    ctx!.restore();
+  }
+
+  /**
+   * A structure's symbol: arrow-drawn structures (wall spikes, archers) point where they aim, or
+   * else where they face; everything else draws its letter.
+   */
+  function drawSymbol(
+    x: number,
+    y: number,
+    kind: StructureKind,
+    facing: Facing | undefined,
+    colour: string,
+    aim?: number,
+  ) {
+    const style = ARROW_SYMBOLS[kind];
+    const angle = aim ?? (facing ? facingAngle(facing) : undefined);
+    if (style && angle !== undefined) drawArrow(x, y, angle, colour, style);
+    else drawGlyph(x, y, glyphFor(kind), colour);
+  }
+
+  /** Towers drawn as an arrow already show their facing; the rest get the edge notch. */
+  function needsNotch(kind: StructureKind): boolean {
+    return isTower(kind) && !ARROW_SYMBOLS[kind];
+  }
+
   function drawStructure(structure: Structure) {
     const { x, y } = structure;
     const colours = STRUCTURE_COLOURS[structure.kind];
-    drawTile(x, y, colours.bg, glyphFor(structure.kind, structure.facing), colours.fg);
-    if (isTower(structure.kind)) drawFacingNotch(x, y, structure.facing);
+    drawTile(x, y, colours.bg);
+    drawSymbol(x, y, structure.kind, structure.facing, colours.fg, structure.aim);
+    if (needsNotch(structure.kind)) drawFacingNotch(x, y, structure.facing);
     if (structure.hp < structure.maxHp) drawHpBar(x, y, structure.hp / structure.maxHp);
   }
 
@@ -140,10 +203,11 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
   function drawMountOnWall(tower: Structure, wall: Structure) {
     const { x, y } = tower;
     const towerColour = STRUCTURE_COLOURS[tower.kind].bg;
-    drawTile(x, y, STRUCTURE_COLOURS[wall.kind].bg, glyphFor(tower.kind), towerColour);
+    drawTile(x, y, STRUCTURE_COLOURS[wall.kind].bg);
+    drawSymbol(x, y, tower.kind, tower.facing, towerColour, tower.aim);
     ctx!.fillStyle = towerColour;
     ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, BATTLEMENT_PX);
-    drawFacingNotch(x, y, tower.facing);
+    if (needsNotch(tower.kind)) drawFacingNotch(x, y, tower.facing);
     if (wall.hp < wall.maxHp) drawHpBar(x, y, wall.hp / wall.maxHp);
   }
 
@@ -161,10 +225,10 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
     ctx!.fillStyle = ok ? COLOURS.ghostOk : COLOURS.ghostBad;
     ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
     const stats: StructureStats = STRUCTURES[ui.tool];
-    const facing = stats.directional ? ui.facing : undefined;
-    drawGlyph(x, y, glyphFor(ui.tool, facing), "#ffffff");
-    if (stats.tower) drawFacingNotch(x, y, ui.facing);
-    if (facing) {
+    drawSymbol(x, y, ui.tool, ui.facing, "#ffffff");
+    if (needsNotch(ui.tool)) drawFacingNotch(x, y, ui.facing);
+    if (stats.directional) {
+      const facing = ui.facing;
       const target = hitTile({ x, y, facing });
       ctx!.fillStyle = COLOURS.trapTarget;
       ctx!.fillRect(target.x * TILE_SIZE, target.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
@@ -315,7 +379,7 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
     for (const build of pending) {
       ctx!.fillStyle = COLOURS.ghostPending;
       ctx!.fillRect(build.x * TILE_SIZE, build.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-      drawGlyph(build.x, build.y, glyphFor(build.kind, build.facing), COLOURS.ghostPendingGlyph);
+      drawSymbol(build.x, build.y, build.kind, build.facing, COLOURS.ghostPendingGlyph);
     }
   }
 
