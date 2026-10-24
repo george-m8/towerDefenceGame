@@ -93,6 +93,17 @@ describe("flow field", () => {
     expect(nextStep(state, 0, 0)).toEqual({ x: 1, y: 0 });
   });
 
+  it("on a tie, prefers any other tile over the one to avoid", () => {
+    const state = createGame(1);
+    expect(nextStep(state, 0, 0, { x: 1, y: 0 })).toEqual({ x: 0, y: 1 });
+  });
+
+  it("still returns the avoided tile when it is the only best step", () => {
+    const state = createGame(1);
+    const y = state.keep.y + 1; // straight row into the keep: only E gets closer
+    expect(nextStep(state, 5, y, { x: 6, y })).toEqual({ x: 6, y });
+  });
+
   it("returns null when already on the keep", () => {
     const state = createGame(1, { blankMap: true });
     expect(nextStep(state, state.keep.x, state.keep.y)).toBeNull();

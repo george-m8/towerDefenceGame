@@ -142,6 +142,8 @@ export const ENEMY = {
   keepDamage: 5,
   structureDps: 5,
   baseBounty: 2,
+  /** Chance (0-1) at each tile that an enemy steps to a random open neighbour instead of following the path. */
+  wanderChance: 0.1,
 };
 
 export const WAVES = {
