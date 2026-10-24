@@ -135,7 +135,8 @@ describe("wandering", () => {
     const state = createGameWithoutWaves();
     state.wanderChance = ENEMY.wanderChance;
     for (let i = 0; i < 10; i++) spawnEnemy(state, 0, state.keep.y + 1);
-    run(state, 60 * TICK_RATE);
+    // Wandering adds detours: allow three times the straight walk, whatever the map size.
+    run(state, Math.ceil(3 * state.keep.x * ticksPerTile));
     expect(state.enemies).toHaveLength(0);
     expect(state.keep.hp).toBe(state.keep.maxHp - 10 * ENEMY.keepDamage);
   });
@@ -181,7 +182,8 @@ describe("breaking through", () => {
     );
     buildAt(state, walls);
     spawnEnemy(state, 0, keep.y + 1);
-    run(state, 1000);
+    // Long enough to walk round to the gap on the far side, whatever the map size.
+    run(state, Math.ceil(3 * keep.x * ticksPerTile));
     expect(state.keep.hp).toBe(state.keep.maxHp - ENEMY.keepDamage);
     for (const p of walls) {
       const s = topAt(state, p.x, p.y)!;
