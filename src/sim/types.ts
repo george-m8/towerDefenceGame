@@ -96,6 +96,7 @@ export type Command =
   | { type: "build"; kind: StructureKind; x: number; y: number; facing?: Facing }
   /** Dev only: spawn enemies at random spawn tiles. */
   | { type: "debugSpawn"; count: number }
-  | { type: "sendWave" };
+  | { type: "sendWave" }
+  | { type: "sell"; x: number; y: number };
 
 export type CommandResult = { ok: true } | { ok: false; reason: string };

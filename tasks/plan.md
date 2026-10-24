@@ -75,7 +75,7 @@ T9, T10a and T11 only depend on T8 and can be built in any order (or in parallel
 - [x] Task 10a: Floor spikes
 - [x] Task 10b: Wall spikes (directional)
 - [x] Task 11: Houses generate income
-- [ ] Task 12: Sell / demolish with refunds
+- [x] Task 12: Sell / demolish with refunds
 
 ### Checkpoint 3: Feature complete
 - [ ] All tests pass

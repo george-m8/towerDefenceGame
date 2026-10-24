@@ -9,7 +9,7 @@ import {
 } from "./config";
 import { spawnEnemy, updateEnemies } from "./enemies";
 import { EMPTY, KEEP_TILE, canBuild, placeStructure } from "./grid";
-import { awardBounties, collectIncome } from "./economy";
+import { awardBounties, collectIncome, sellStructure } from "./economy";
 import { updateEffects } from "./effects";
 import { randomInt } from "./rng";
 import { updateTowers } from "./towers";
@@ -79,6 +79,8 @@ export function applyCommand(state: GameState, command: Command): CommandResult 
       placeStructure(state, command.kind, command.x, command.y, command.facing);
       return { ok: true };
     }
+    case "sell":
+      return sellStructure(state, command.x, command.y);
     case "sendWave":
       return sendWaveEarly(state);
     case "debugSpawn":

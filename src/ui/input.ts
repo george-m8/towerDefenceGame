@@ -20,7 +20,11 @@ export function bindInput(
 
   function useToolAt(p: Point) {
     if (!ui.tool) return;
-    const result = dispatch({ type: "build", kind: ui.tool, x: p.x, y: p.y, facing: ui.facing });
+    const result = dispatch(
+      ui.tool === "sell"
+        ? { type: "sell", x: p.x, y: p.y }
+        : { type: "build", kind: ui.tool, x: p.x, y: p.y, facing: ui.facing },
+    );
     if (!result.ok) showMessage(ui, result.reason);
   }
 

@@ -3,7 +3,7 @@ import { ENEMY, STRUCTURES, TICK_RATE } from "../../src/sim/config";
 import { incomePerMinute } from "../../src/sim/economy";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand, tick } from "../../src/sim/game";
-import { placeStructure, removeStructure } from "../../src/sim/grid";
+import { placeStructure, removeStructure, structureAt } from "../../src/sim/grid";
 import { createGameWithoutWaves } from "./helpers";
 
 describe("bounties", () => {
@@ -67,5 +67,53 @@ describe("house income", () => {
     placeStructure(state, "house", 10, 10);
     placeStructure(state, "house", 12, 10);
     expect(incomePerMinute(state)).toBe(2 * HOUSE.gold * (60 / HOUSE.intervalSeconds));
+  });
+});
+
+describe("selling", () => {
+  it("removes the structure and refunds half its cost at full HP", () => {
+    const state = createGameWithoutWaves();
+    placeStructure(state, "archer", 10, 10);
+    const gold = state.gold;
+    expect(applyCommand(state, { type: "sell", x: 10, y: 10 })).toEqual({ ok: true });
+    expect(structureAt(state, 10, 10)).toBeUndefined();
+    expect(state.gold).toBe(gold + Math.floor(STRUCTURES.archer.cost * 0.5));
+  });
+
+  it("refunds proportionally less for damaged structures", () => {
+    const state = createGameWithoutWaves();
+    const archer = placeStructure(state, "archer", 10, 10);
+    archer.hp = archer.maxHp / 2;
+    const gold = state.gold;
+    applyCommand(state, { type: "sell", x: 10, y: 10 });
+    expect(state.gold).toBe(gold + Math.floor(STRUCTURES.archer.cost * 0.5 * 0.5));
+  });
+
+  it("always refunds half for floor spikes, which have no HP", () => {
+    const state = createGameWithoutWaves();
+    placeStructure(state, "floorSpikes", 10, 10);
+    const gold = state.gold;
+    applyCommand(state, { type: "sell", x: 10, y: 10 });
+    expect(state.gold).toBe(gold + Math.floor(STRUCTURES.floorSpikes.cost * 0.5));
+  });
+
+  it("rejects selling the keep or an empty tile", () => {
+    const state = createGameWithoutWaves();
+    expect(applyCommand(state, { type: "sell", x: state.keep.x, y: state.keep.y })).toEqual({
+      ok: false,
+      reason: "Can't sell the keep",
+    });
+    expect(applyCommand(state, { type: "sell", x: 3, y: 3 })).toEqual({
+      ok: false,
+      reason: "Nothing to sell",
+    });
+  });
+
+  it("lets enemies reroute through the gap", () => {
+    const state = createGameWithoutWaves();
+    const version = state.gridVersion;
+    placeStructure(state, "wall", 10, 10);
+    applyCommand(state, { type: "sell", x: 10, y: 10 });
+    expect(state.gridVersion).toBe(version + 2);
   });
 });

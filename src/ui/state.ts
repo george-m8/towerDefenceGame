@@ -1,6 +1,10 @@
 import type { Facing, Point, StructureKind } from "../sim/types";
 
-export type Tool = StructureKind;
+export type Tool = StructureKind | "sell";
+
+export function isBuildTool(tool: Tool | null): tool is StructureKind {
+  return tool !== null && tool !== "sell";
+}
 
 export interface ToolDef {
   tool: Tool;
@@ -18,6 +22,7 @@ export const TOOLS: ToolDef[] = [
   { tool: "floorSpikes", key: "Digit5", label: "5", paintable: true },
   { tool: "wallSpikes", key: "Digit6", label: "6", paintable: true },
   { tool: "house", key: "Digit7", label: "7", paintable: false },
+  { tool: "sell", key: "KeyX", label: "X", paintable: true },
 ];
 
 export interface UiState {

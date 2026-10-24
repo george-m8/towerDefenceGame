@@ -3,7 +3,7 @@ import { nextStep } from "../sim/pathfinding";
 import { STRUCTURES, type StructureStats } from "../sim/config";
 import { hitTile } from "../sim/traps";
 import type { GameState, Point, StructureKind } from "../sim/types";
-import type { UiState } from "../ui/state";
+import { isBuildTool, type UiState } from "../ui/state";
 import { COLOURS, GLYPH_FONT, STRUCTURE_COLOURS, TILE_SIZE, glyphFor } from "./palette";
 
 export function createRenderer(canvas: HTMLCanvasElement, width: number, height: number) {
@@ -44,6 +44,13 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
   function drawGhost(state: GameState, ui: UiState) {
     if (!ui.tool || !ui.hover) return;
     const { x, y } = ui.hover;
+    if (ui.tool === "sell") {
+      if (!structureAt(state, x, y)) return;
+      ctx!.fillStyle = COLOURS.ghostSell;
+      ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      drawGlyph(x, y, "$", "#ffffff");
+      return;
+    }
     const ok = canBuild(state, ui.tool, x, y).ok;
     ctx!.fillStyle = ok ? COLOURS.ghostOk : COLOURS.ghostBad;
     ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
@@ -61,11 +68,12 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
   function drawRange(state: GameState, ui: UiState) {
     if (!ui.hover) return;
     const hovered = structureAt(state, ui.hover.x, ui.hover.y);
-    const kind: StructureKind | undefined = ui.tool ?? hovered?.kind;
+    const placing = isBuildTool(ui.tool) ? ui.tool : undefined;
+    const kind: StructureKind | undefined = placing ?? hovered?.kind;
     if (!kind) return;
     const stats: StructureStats = STRUCTURES[kind];
     if (!stats.tower) return;
-    const centre: Point = ui.tool ? ui.hover : { x: hovered!.x, y: hovered!.y };
+    const centre: Point = placing ? ui.hover : { x: hovered!.x, y: hovered!.y };
     const { range, minRange } = stats.tower;
 
     ctx!.fillStyle = COLOURS.range;

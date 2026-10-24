@@ -111,3 +111,6 @@ export const WAVES = {
   bountyStepWaves: 5, // bounty +1 every this many waves
   earlySendGoldPerSecond: 1,
 };
+
+/** Selling refunds this fraction of cost, scaled by remaining HP. */
+export const SELL_REFUND = 0.5;

@@ -1,8 +1,8 @@
-import { STRUCTURES, TICK_RATE } from "../sim/config";
+import { SELL_REFUND, STRUCTURES, TICK_RATE } from "../sim/config";
 import { incomePerMinute } from "../sim/economy";
 import type { Command, CommandResult, GameState } from "../sim/types";
 import { GLYPHS } from "../render/palette";
-import { TOOLS, showMessage, type UiState } from "./state";
+import { TOOLS, isBuildTool, showMessage, type UiState } from "./state";
 
 export function createPanel(
   root: HTMLElement,
@@ -26,9 +26,9 @@ export function createPanel(
       ${TOOLS.map(
         (t) => `
         <button class="tool" data-tool="${t.tool}">
-          <span class="glyph">${GLYPHS[t.tool]}</span>
-          <span class="name">${STRUCTURES[t.tool].name}</span>
-          <span class="cost">${STRUCTURES[t.tool].cost}g</span>
+          <span class="glyph">${isBuildTool(t.tool) ? GLYPHS[t.tool] : "$"}</span>
+          <span class="name">${isBuildTool(t.tool) ? STRUCTURES[t.tool].name : "Sell"}</span>
+          <span class="cost">${isBuildTool(t.tool) ? `${STRUCTURES[t.tool].cost}g` : `${SELL_REFUND * 100}%`}</span>
           <kbd>${t.label}</kbd>
         </button>`,
       ).join("")}

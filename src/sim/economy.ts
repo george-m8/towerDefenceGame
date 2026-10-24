@@ -1,5 +1,6 @@
-import { STRUCTURES, TICK_RATE, type StructureStats } from "./config";
-import type { GameState } from "./types";
+import { SELL_REFUND, STRUCTURES, TICK_RATE, type StructureStats } from "./config";
+import { isKeepTile, removeStructure, structureAt } from "./grid";
+import type { CommandResult, GameState, Structure } from "./types";
 
 /** Removes dead enemies and pays out their bounties. */
 export function awardBounties(state: GameState): void {
@@ -28,4 +29,19 @@ export function incomePerMinute(state: GameState): number {
     if (income) total += income.gold * (60 / income.intervalSeconds);
   }
   return total;
+}
+
+export function sellStructure(state: GameState, x: number, y: number): CommandResult {
+  if (state.gameOver) return { ok: false, reason: "Game over" };
+  if (isKeepTile(state, x, y)) return { ok: false, reason: "Can't sell the keep" };
+  const structure = structureAt(state, x, y);
+  if (!structure) return { ok: false, reason: "Nothing to sell" };
+  state.gold += refundFor(structure);
+  removeStructure(state, structure);
+  return { ok: true };
+}
+
+export function refundFor(structure: Structure): number {
+  const condition = structure.maxHp > 0 ? structure.hp / structure.maxHp : 1;
+  return Math.floor(STRUCTURES[structure.kind].cost * SELL_REFUND * condition);
 }

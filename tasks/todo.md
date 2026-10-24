@@ -283,12 +283,12 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** Add the `sell` command and an `X` tool. Refund `floor(cost * 0.5 * hp / maxHp)` (floor spikes have no HP, so they always refund 50%). The keep can't be sold. The field recomputes after a sale.
 
 **Acceptance criteria:**
-- [ ] Selling removes the structure and refunds per the formula
-- [ ] Selling the keep or an empty tile is rejected
+- [x] Selling removes the structure and refunds per the formula
+- [x] Selling the keep or an empty tile is rejected
 
 **Verification:**
-- [ ] `npm test` (`tests/sim/economy.test.ts`: full HP, damaged and floor spike refunds, rejections)
-- [ ] Manual: sell a wall in the enemy path and watch enemies reroute
+- [x] `npm test` (`tests/sim/economy.test.ts`: full HP, damaged and floor spike refunds, rejections)
+- [x] Manual: sell a wall in the enemy path and watch enemies reroute
 
 **Dependencies:** Task 11
 
@@ -299,8 +299,8 @@ Standard verification for every task (in addition to task-specific checks):
 ---
 
 ### Checkpoint 3: Feature complete
-- [ ] All tests pass, build clean
-- [ ] All 7 structures buildable and sellable. Each tower behaves distinctly. The economy loop works.
+- [x] All tests pass, build clean
+- [x] All 7 structures buildable and sellable. Each tower behaves distinctly. The economy loop works.
 - [ ] Review with human, including a balance pass on `config.ts`
 
 ---
