@@ -1,8 +1,8 @@
 # Implementation Plan: Post-MVP Phases
 
 Capability map: [`CAPABILITIES.md`](../CAPABILITIES.md)
-Current module spec: none yet (next: `game-server`)
-Task list (current module only): `tasks/todo.md`, created when the next module's spec is approved
+Current module spec: [`SPEC-game-server.md`](../SPEC-game-server.md)
+Task list (current module only): [`tasks/todo.md`](todo.md)
 Finished modules: [`tasks/tile-layers/`](tile-layers/todo.md), [`tasks/map-gen/`](map-gen/todo.md), [`tasks/players/`](players/todo.md)
 Previous plan (MVP, complete except a Firefox/Safari smoke test): [`tasks/mvp/`](mvp/plan.md)
 
@@ -10,7 +10,7 @@ Previous plan (MVP, complete except a Firefox/Safari smoke test): [`tasks/mvp/`]
 
 Modules are built one at a time in the approved order. Each module goes spec -> plan -> tasks -> build:
 
-- **The current module** (`players`) has an approved spec, so its tasks are fully written in `tasks/todo.md`.
+- **The current module** (`game-server`) has an approved spec, so its tasks are fully written in `tasks/todo.md`.
 - **Later modules** have a provisional outline below. Each outline is refined into real tasks only after that module's spec is written and approved. Outlines will change as earlier modules teach us things.
 - When a module is finished, its `todo.md` moves to `tasks/<module-id>/` (as the MVP's did), and the next module's tasks take its place.
 
@@ -21,7 +21,7 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | 1. Basics | `tile-layers` | Done |
 | | `map-gen` | Done (merged in PR #4) |
 | 1b. Multiplayer (co-op) | `players` | Done |
-| | `game-server` | Spec needed |
+| | `game-server` | **Spec approved, tasks written** |
 | | `net-client` | Spec needed |
 | | `lobby` | Spec needed |
 | 1. Basics (continued) | `tower-aiming` | Spec needed |
@@ -214,15 +214,78 @@ T3 and T4 each depend only on T2.
 
 ---
 
+## Module 4: `game-server` (current)
+
+Spec: [`SPEC-game-server.md`](../SPEC-game-server.md). Branch `game-server`, stacked on `multiplayer-players` (PR #5) until that merges.
+
+### Overview
+
+A Node WebSocket server that hosts rooms, runs one simulation per room at 20 Hz, applies each connection's commands as its own player, and sends snapshots and 10 Hz updates. It runs locally and is reachable on the LAN. The browser doesn't use it until `net-client`; until then it's proven by unit tests, socket integration tests and a probe script.
+
+### Architecture decisions
+
+- **Shared, pure message code in `src/net/`.** Message types, validation and the state-to-update conversion have no Node or DOM, so `net-client` imports the same code. The server's Node-only code lives in `server/`.
+- **Rooms are driven, not timed.** `advanceRoom(room, elapsedMs)` and an injected `send` function make room logic testable without sockets or sleeping. `server/main.ts` owns the only real timer.
+- **Validate at the edge.** `connection.ts` turns raw socket data into a typed `ClientMessage` or an error before anything reaches a room. Rooms trust only typed messages and the connection's own player id.
+- **Grid only when it changes.** Updates carry tile layers and features only when `gridVersion` moved since the last update, which keeps 10 Hz updates small without a diffing system.
+- **Same origin in dev.** Vite proxies `/ws` to the game server, so the client will never need a server address. Production serves `dist/` and `/ws` from one process.
+
+### Dependency graph
+
+```
+T1 Tooling and a bare server
+ ├─ T2 Message types and validation
+ └─ T3 Snapshots and updates
+      └─ T4 A room: players, commands, ticks, restart   (needs T2 too)
+           └─ T5 Rooms, connections and sockets
+                └─ T6 Hardening: limits, tokens, expiry
+                     └─ T7 Probe script, production start, docs
+```
+
+T2 and T3 each depend only on T1.
+
+### Task list
+
+- [ ] Task 1: Tooling and a bare server
+- [ ] Task 2: Message types and validation
+- [ ] Task 3: Snapshots and updates
+
+**Checkpoint G: shared pieces**
+- [ ] All tests pass; the update size test is under 30 KB
+- [ ] `npm run server` starts and logs its LAN address
+
+- [ ] Task 4: A room: players, commands, ticks and restart
+- [ ] Task 5: Rooms, connections and sockets
+
+**Checkpoint H: two clients play over sockets**
+- [ ] Integration test: two clients create and join, B's build is owned by B and both see it
+- [ ] Review with human
+
+- [ ] Task 6: Hardening: limits, tokens and expiry
+- [ ] Task 7: Probe script, production start and docs
+
+**Checkpoint I: module complete**
+- [ ] All 7 success criteria in `SPEC-game-server.md` met
+- [ ] Coverage of 80% lines or more for `src/sim/`, `src/net/` and `server/` (except `main.ts`)
+- [ ] Manual: probe from another machine on the network
+- [ ] Review with human, then move `todo.md` to `tasks/game-server/` and write the `net-client` spec
+
+### Risks and mitigations
+
+| Risk | Impact | Mitigation |
+|---|---|---|
+| Sim code doesn't run under Node (DOM types, `import.meta.env`, extensionless imports) | High | Task 1 runs `createGame` and `tick` from `server/main.ts` under `tsx` before anything else is built; a separate server tsconfig without DOM catches accidental DOM use in `src/sim`. |
+| Updates too big at 10 Hz | Med | Task 3 has the 200-enemy / 150-structure size test; grid fields only on change. |
+| Timer drift or a slow tick stalls a room | Med | `advanceRoom` uses elapsed time with the same catch-up cap as `main.ts`; tested with large elapsed values. |
+| A malformed or hostile message crashes the server | High | Validation in `connection.ts` before any room code; every handler wrapped so one bad socket can't throw out of the event loop; tests for malformed, oversized and flooded input. |
+| Socket tests are flaky (ports, timing) | Med | Port 0 per test, await explicit messages instead of sleeping, close everything in `afterEach`. |
+| Integration with the browser is unproven until `net-client` | Med | The message types are shared code, and the probe script exercises the real protocol from another machine. |
+
+---
+
 ## Later modules: provisional outlines
 
 These are rough vertical slices, not tasks. Each becomes a proper task list after its spec is approved.
-
-### `game-server`
-1. Node WebSocket server (`ws`) that runs one sim per room at 20 Hz, with host and port from env vars
-2. Typed message format shared with the client: commands in, state updates out (grid when it changes, enemies every update)
-3. Join, leave and rejoin mapped to `addPlayer` / `setConnected`; `debugSpawn` blocked
-4. LAN play: reachable from other machines; documented in the README
 
 ### `net-client`
 1. Session interface: `LocalSession` (today's loop) and `NetworkSession`
@@ -277,4 +340,4 @@ These are rough vertical slices, not tasks. Each becomes a proper task list afte
 
 ## Open questions
 
-None for `players`. Each later module's questions are settled in its spec.
+None for `game-server`. Each later module's questions are settled in its spec.
