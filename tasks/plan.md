@@ -21,7 +21,7 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | 1. Basics | `tile-layers` | Done |
 | | `map-gen` | Done (merged in PR #4) |
 | 1b. Multiplayer (co-op) | `players` | Done |
-| | `game-server` | **Spec approved, tasks written** |
+| | `game-server` | **Built, awaiting review** |
 | | `net-client` | Spec needed |
 | | `lobby` | Spec needed |
 | 1. Basics (continued) | `tower-aiming` | Spec needed |
@@ -446,11 +446,11 @@ T2 and T3 each depend only on T1.
 - [ ] Review with human
 
 - [x] Task 6: Hardening: limits, tokens and expiry
-- [ ] Task 7: Probe script, production start and docs
+- [x] Task 7: Probe script, production start and docs
 
 **Checkpoint I: module complete**
 - [ ] All 7 success criteria in `SPEC-game-server.md` met
-- [ ] Coverage of 80% lines or more for `src/sim/`, `src/net/` and `server/` (except `main.ts`)
+- [x] Coverage of 80% lines or more for `src/sim/`, `src/net/` and `server/` (except `main.ts`) (98.7%)
 - [ ] Manual: probe from another machine on the network
 - [ ] Review with human, then move `todo.md` to `tasks/game-server/` and write the `net-client` spec
 

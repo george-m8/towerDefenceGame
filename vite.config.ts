@@ -12,7 +12,8 @@ export default defineConfig({
     include: ["tests/**/*.test.ts"],
     coverage: {
       provider: "v8",
-      include: ["src/sim/**/*.ts"],
+      include: ["src/sim/**/*.ts", "src/net/**/*.ts", "server/**/*.ts"],
+      exclude: ["server/main.ts", "server/probe.ts"],
       reporter: ["text", "html"],
       thresholds: { lines: 80 },
     },

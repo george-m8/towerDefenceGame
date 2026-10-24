@@ -95,7 +95,8 @@ export type ServerMessage =
 ```
 Server (dev):   npm run server         # tsx watch server/main.ts, restarts on change
 Client (dev):   npm run dev -- --host  # Vite, reachable on the LAN, proxies /ws to the server
-Server (prod):  npm run build:server && npm run start
+Probe:          npm run server:probe -- <host[:port]> [seconds]
+Server (prod):  npm run build && npm run build:server && npm run start   # node dist-server/main.js --static dist
 Test:           npm test               # now includes tests/server/
 Typecheck:      npm run typecheck      # now also checks server/
 ```
@@ -110,6 +111,9 @@ server/rooms.ts         Room registry: create, find, expire empty rooms, codes
 server/room.ts          One room: sim state, players' tokens and sockets, tick timer, broadcasts
 server/connection.ts    Per-socket handling: validation, rate limit, routing to a room
 server/config.ts        Server tunables: port/host defaults, max players, rates, limits
+server/server.ts        HTTP + WebSocket server startup (testable on port 0)
+server/static.ts        Serves dist/ in production, refusing paths outside it
+server/probe.ts         Reachability check: creates a room and prints updates
 tests/server/           Unit tests (protocol, snapshot, room) and socket integration tests
 ```
 

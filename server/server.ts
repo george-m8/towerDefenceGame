@@ -2,6 +2,7 @@ import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { WebSocketServer, type WebSocket } from "ws";
 import { MAX_MESSAGE_BYTES, WS_PATH } from "./config";
+import { serveStatic } from "./static";
 
 export interface GameServer {
   http: Server;
@@ -11,14 +12,20 @@ export interface GameServer {
   close(): Promise<void>;
 }
 
-/** Starts the HTTP server with the WebSocket endpoint at WS_PATH. */
+/**
+ * Starts the HTTP server with the WebSocket endpoint at WS_PATH. With `staticDir`
+ * (production), it also serves the built game from that folder.
+ */
 export async function startServer(
   host: string,
   port: number,
   onConnection: (socket: WebSocket) => void = () => {},
+  staticDir?: string,
 ): Promise<GameServer> {
-  const http = createServer((_req, res) => {
-    res.writeHead(404).end();
+  const files = staticDir ? serveStatic(staticDir) : null;
+  const http = createServer((req, res) => {
+    if (files) void files(req, res);
+    else res.writeHead(404).end();
   });
   // Larger messages close the connection (code 1009) before they reach our code.
   const wss = new WebSocketServer({ server: http, path: WS_PATH, maxPayload: MAX_MESSAGE_BYTES });

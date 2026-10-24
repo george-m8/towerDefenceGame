@@ -151,13 +151,13 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** `server/probe.ts` (`npm run server:probe -- <host[:port]>`): connects, creates a room, and prints the welcome and a line per update (tick, enemies, players), so you can check LAN access from another machine. Production: `build:server` bundles the server with `vite build --ssr`, and `start` runs it, serving `dist/` over HTTP next to `/ws` on one port. The README gets a "Running the server" section: dev, LAN, environment variables and probe. `SPEC.md` notes the server. Coverage includes `src/net/` and `server/` (except `main.ts` and `probe.ts`).
 
 **Acceptance criteria:**
-- [ ] The probe works against a local server and prints updates
-- [ ] `npm run build && npm run build:server && npm run start` serves the game page and `/ws` on one port
-- [ ] The README explains how to run and reach the server
+- [x] The probe works against a local server and prints updates
+- [x] `npm run build && npm run build:server && npm run start` serves the game page and `/ws` on one port
+- [x] The README explains how to run and reach the server
 
 **Verification:**
-- [ ] `npm run coverage` passes with the wider include
-- [ ] Manual: probe from another machine on the same network
+- [x] `npm run coverage` passes with the wider include
+- [ ] Manual: probe from another machine on the same network (probe checked against a local production server only)
 
 **Dependencies:** Task 6
 
@@ -168,7 +168,7 @@ Standard verification for every task (in addition to task-specific checks):
 ---
 
 ### Checkpoint I: game-server complete
-- [ ] All 7 success criteria in `SPEC-game-server.md` met
-- [ ] `npm run coverage` passes
+- [x] All 7 success criteria in `SPEC-game-server.md` met, except criterion 1's check from another machine
+- [x] `npm run coverage` passes (98.7% lines)
 - [ ] Manual: probe from another machine on the network
 - [ ] Review with human, then move this file to `tasks/game-server/` and write the `net-client` spec

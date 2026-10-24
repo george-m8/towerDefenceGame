@@ -7,6 +7,9 @@ import { startServer } from "./server";
 
 const host = process.env.HOST ?? DEFAULT_HOST;
 const port = Number(process.env.PORT ?? DEFAULT_PORT);
+/** `--static <dir>` (production) also serves the built game from that folder. */
+const staticFlag = process.argv.indexOf("--static");
+const staticDir = staticFlag >= 0 ? process.argv[staticFlag + 1] : undefined;
 
 /** The first non-internal IPv4 address, i.e. what other machines on the network use. */
 function lanAddress(): string {
@@ -23,7 +26,7 @@ const check = createGame(Date.now() >>> 0);
 tick(check);
 
 const hub = createHub();
-const server = await startServer(host, port, (socket) => handleConnection(hub, socket));
+const server = await startServer(host, port, (socket) => handleConnection(hub, socket), staticDir);
 
 // The only real clock: every room advances by the actual time elapsed.
 let last = performance.now();
@@ -36,6 +39,10 @@ setInterval(() => {
 const lan = lanAddress();
 console.log(`Game server listening on ws://${host}:${server.port}${WS_PATH}`);
 console.log(`Simulation OK (${check.width}x${check.height} map)`);
-console.log(
-  `Players on your network open: http://${lan}:${DEV_CLIENT_PORT} (with npm run dev -- --host)`,
-);
+if (staticDir) {
+  console.log(`Serving ${staticDir}. Players on your network open: http://${lan}:${server.port}`);
+} else {
+  console.log(
+    `Players on your network open: http://${lan}:${DEV_CLIENT_PORT} (with npm run dev -- --host)`,
+  );
+}
