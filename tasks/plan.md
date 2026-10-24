@@ -22,7 +22,7 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | | `map-gen` | Done (merged in PR #4) |
 | 1b. Multiplayer (co-op) | `players` | Done |
 | | `game-server` | Built; cross-machine probe and review pending |
-| | `net-client` | **Spec approved, tasks written** |
+| | `net-client` | **Built; browser play-test pending** |
 | | `lobby` | Spec needed |
 | 1. Basics (continued) | `tower-aiming` | Spec needed |
 | | `line-of-sight` | Spec needed |
@@ -325,7 +325,7 @@ T1 View state from server messages, interpolation
 - [ ] Manual: two tabs create and join, and build in the same game
 
 - [x] Task 5: Smoothing, ghosts and reconnect (browser check pending)
-- [ ] Task 6: Players, votes, owner colours, restart and docs
+- [x] Task 6: Players, votes, owner colours, restart and docs (browser check pending)
 
 **Checkpoint L: module complete**
 - [ ] All 6 success criteria in `SPEC-net-client.md` met

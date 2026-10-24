@@ -23,7 +23,9 @@ import {
   STRUCTURE_COLOURS,
   TERRAIN_STYLES,
   TILE_SIZE,
+  OWNER_MARK_PX,
   glyphFor,
+  playerColour,
 } from "./palette";
 
 export function createRenderer(canvas: HTMLCanvasElement, width: number, height: number) {
@@ -46,7 +48,21 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
     ctx!.fillText(glyph, (x + 0.5) * TILE_SIZE, (y + 0.5) * TILE_SIZE + 1);
   }
 
+  /** A small corner triangle in the owner's colour (multiplayer only). */
+  function drawOwnerMark(structure: Structure | undefined) {
+    if (!structure || structure.owner === null) return;
+    const left = structure.x * TILE_SIZE;
+    const top = structure.y * TILE_SIZE;
+    ctx!.fillStyle = playerColour(structure.owner);
+    ctx!.beginPath();
+    ctx!.moveTo(left, top);
+    ctx!.lineTo(left + OWNER_MARK_PX, top);
+    ctx!.lineTo(left, top + OWNER_MARK_PX);
+    ctx!.fill();
+  }
+
   function drawGrid(state: GameState) {
+    const showOwners = Object.keys(state.players).length > 1;
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const base = baseAt(state, x, y);
@@ -57,6 +73,7 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
         const mount = mountAt(state, x, y);
         if (mount && base) drawMountOnWall(mount, base);
         else if (mount) drawStructure(mount);
+        if (showOwners) drawOwnerMark(mount ?? base);
       }
     }
   }

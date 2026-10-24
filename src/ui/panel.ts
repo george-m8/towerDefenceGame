@@ -4,6 +4,7 @@ import type { Command, GameState } from "../sim/types";
 import { GLYPHS } from "../render/palette";
 import { TOOLS, isBuildTool, type UiState } from "./state";
 import { describeTile } from "./tileInfo";
+import { hasVoted, voteLabel } from "./votes";
 
 export function createPanel(root: HTMLElement, ui: UiState, dispatch: (command: Command) => void) {
   root.innerHTML = `
@@ -76,8 +77,14 @@ export function createPanel(root: HTMLElement, ui: UiState, dispatch: (command: 
       const spawning = state.wave.toSpawn > 0;
       next.textContent = spawning ? "incoming!" : `${Math.ceil(state.wave.countdown / TICK_RATE)}s`;
       sendWaveButton.disabled = spawning || state.gameOver;
-      pauseButton.textContent = state.paused ? "Resume" : "Pause";
-      fastForwardButton.classList.toggle("selected", state.speed > 1);
+      // With several players these are votes: show yours, and how many have voted.
+      pauseButton.textContent = state.paused ? "Resume" : voteLabel(state, "pause", "Pause");
+      pauseButton.classList.toggle(
+        "selected",
+        !state.paused && hasVoted(state, ui.playerId, "pause"),
+      );
+      fastForwardButton.textContent = voteLabel(state, "fastForward", ">>");
+      fastForwardButton.classList.toggle("selected", hasVoted(state, ui.playerId, "fastForward"));
       for (const button of toolButtons) {
         const tool = button.dataset.tool as UiState["tool"];
         button.classList.toggle("selected", tool === ui.tool);

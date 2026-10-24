@@ -131,12 +131,12 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** The players list in the online panel: swatch, name, "(you)", dimmed when disconnected, and vote marks. The pause and fast-forward buttons show your own vote as selected and the count ("Pause 1/2") when there's more than one connected player. Four player colours in `palette.ts`. With more than one player, owned structures get a corner mark in their owner's colour, and hover info adds "Built by <name>". The game-over Restart button works online. README: a "Playing together" section. `SPEC.md` note.
 
 **Acceptance criteria:**
-- [ ] The players list and vote counts match the server's state in two tabs
-- [ ] Structures show owner marks with two or more players, and none in single-player
-- [ ] Restart after game over starts a new game for both tabs
+- [ ] The players list and vote counts match the server's state in two tabs (manual; vote counting is tested)
+- [ ] Structures show owner marks with two or more players, and none in single-player (manual; "Built by" is tested)
+- [ ] Restart after game over starts a new game for both tabs (manual; restart is tested on the server)
 
 **Verification:**
-- [ ] `npm run coverage`
+- [x] `npm run coverage`
 - [ ] Manual: two tabs, then two machines on the network
 
 **Dependencies:** Task 5
@@ -149,5 +149,5 @@ Standard verification for every task (in addition to task-specific checks):
 
 ### Checkpoint L: net-client complete
 - [ ] All 6 success criteria in `SPEC-net-client.md` met
-- [ ] `npm run coverage` passes
+- [x] `npm run coverage` passes (98.6% lines)
 - [ ] Review with human (including the *(Claude)* decisions), then move this file to `tasks/net-client/` and write the `lobby` spec

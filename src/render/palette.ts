@@ -75,3 +75,12 @@ export const TERRAIN_STYLES: Record<
   rock: { bg: "#4a4a4a", glyph: "o", fg: "#9a9a9a" },
   tree: { bg: "#1f3d1f", glyph: "♣", fg: "#5fae5f" },
 };
+
+export const OWNER_MARK_PX = 6;
+
+/** One colour per player (ids 1-4; later ids wrap round), for owner marks and the players list. */
+export const PLAYER_COLOURS = ["#f2c14e", "#4ea8de", "#f25c54", "#6fd08c"];
+
+export function playerColour(id: number): string {
+  return PLAYER_COLOURS[(id - 1) % PLAYER_COLOURS.length];
+}

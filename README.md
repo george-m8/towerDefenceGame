@@ -16,7 +16,7 @@ npm install
 npm run dev
 ```
 
-Then open http://localhost:5173.
+Then open http://localhost:5173. To play with friends, see [Playing together](#playing-together).
 
 ## How to play
 
@@ -103,9 +103,45 @@ Dev server only: `E` spawns one enemy and `M` spawns 200 (stress test).
 | `npm run start` | Run the bundled server, serving `dist/` and `/ws` on one port |
 | `npm run format` | Format all files with Prettier |
 
-## Running the multiplayer server
+## Playing together
 
-The browser can't play online yet (that comes with the `net-client` module), but the game server runs and can be checked from any machine.
+Up to 4 players can defend the same keep, each with their own gold and structures.
+
+**1. The host starts the server and the game** (on one computer):
+
+```sh
+npm run server            # the game server
+npm run dev -- --host     # the game page, reachable from other computers
+```
+
+**2. The host creates a room** by opening:
+
+```
+http://localhost:5173/?create&name=YourName
+```
+
+The panel shows the room code (e.g. `RUVM`) and a **Copy invite link** button.
+
+**3. Friends join** by opening the invite link in their browser (they don't need to install anything):
+
+```
+http://<host's address>:5173/?room=RUVM
+```
+
+`npm run server` prints the host's address (e.g. `192.168.1.20`). Friends must be on the same network. If they can't connect, the host's firewall is probably blocking it: on macOS, allow `node` to accept incoming connections (System Settings > Network > Firewall). A second tab on the host also works as a second player, for trying it alone.
+
+**Playing:**
+- Gold is your own: you earn bounties for kills by your towers and traps, and income from your houses.
+- You can only sell what you built (ruins are anyone's). Towers go on your own walls or on ruins.
+- Each structure has a corner mark in its owner's colour; the panel lists players, and hover info says who built what.
+- **Pause** and **fast-forward** are votes: they happen when every connected player has pressed them, and the buttons show the count (e.g. `Pause 1/2`). Press again to take your vote back.
+- Builds show faintly until the server confirms them.
+- If your connection drops, the game reconnects you; reloading the page rejoins as the same player.
+- When the keep falls, anyone can press **Restart** for a new game in the same room.
+
+Open the page with no `?room` or `?create` to play on your own, offline.
+
+## Running the multiplayer server
 
 **On your machine (development):**
 
