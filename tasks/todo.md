@@ -14,13 +14,13 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** Set up Vite (vanilla-ts), strict TypeScript, Vitest and Prettier with the npm scripts from the spec. Render a 48x32 grid of coloured squares on a Canvas next to an empty side panel. Create the README with setup instructions. Run `git init` with a `.gitignore` (approved).
 
 **Acceptance criteria:**
-- [ ] `npm install && npm run dev` serves a page showing a 48x32 grid on a canvas and a side panel placeholder
-- [ ] All scripts in SPEC.md "Commands" exist and run (`test` passes with one trivial test)
-- [ ] README.md covers install, dev, test and build
+- [x] `npm install && npm run dev` serves a page showing a 48x32 grid on a canvas and a side panel placeholder
+- [x] All scripts in SPEC.md "Commands" exist and run (`test` passes with one trivial test)
+- [x] README.md covers install, dev, test and build
 
 **Verification:**
-- [ ] `npm run typecheck && npm test && npm run build`
-- [ ] Manual: open http://localhost:5173, grid is visible, no console errors
+- [x] `npm run typecheck && npm test && npm run build`
+- [x] Manual: open http://localhost:5173, grid is visible, no console errors
 
 **Dependencies:** None
 

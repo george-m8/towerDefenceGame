@@ -5,7 +5,8 @@ Task list: [`tasks/todo.md`](todo.md)
 
 ## Overview
 
-Build a browser-based, grid-based tower defence game in TypeScript + Vite + Canvas. The player defends a central keep against endless, scaling waves using walls, four static defence types and income-generating houses. The game logic is a pure, deterministic simulation (`src/sim/`) driven by commands. A separate Canvas/HTML layer draws it and turns input into commands.
+Build a browser-based, grid-based tower defence game in TypeScript + 
+Vite + Canvas. The player defends a central keep against endless, scaling waves using walls, four static defence types and income-generating houses. The game logic is a pure, deterministic simulation (`src/sim/`) driven by commands. A separate Canvas/HTML layer draws it and turns input into commands.
 
 Work is sliced vertically: every task ends with something visible or playable in the browser, plus unit tests for the simulation logic it adds.
 
@@ -48,7 +49,7 @@ T9, T10a and T11 only depend on T8 and can be built in any order (or in parallel
 ## Task List
 
 ### Phase 1: Foundation
-- [ ] Task 1: Project scaffold and empty grid render
+- [x] Task 1: Project scaffold and empty grid render
 - [ ] Task 2: Simulation core and game loop
 - [ ] Task 3: Wall placement with gold
 

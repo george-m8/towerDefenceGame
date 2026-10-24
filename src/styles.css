@@ -1,0 +1,62 @@
+:root {
+  --ink: #000;
+  --paper: #fff;
+  --desktop: #a8a8a8;
+  --stripe: repeating-linear-gradient(to bottom, var(--ink) 0 1px, var(--paper) 1px 3px);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--desktop);
+  color: var(--ink);
+  font-family: "VT323", "Monaco", monospace;
+  font-size: 20px;
+}
+
+.desktop {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 16px;
+}
+
+.window {
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+.title-bar {
+  display: flex;
+  justify-content: center;
+  height: 22px;
+  margin: 2px;
+  background: var(--stripe);
+  border-bottom: 1px solid var(--ink);
+}
+
+.title {
+  padding: 0 8px;
+  background: var(--paper);
+  line-height: 20px;
+}
+
+#map {
+  display: block;
+  margin: 4px;
+  image-rendering: pixelated;
+}
+
+.panel-window {
+  width: 240px;
+  flex-shrink: 0;
+}
+
+.panel {
+  padding: 8px 12px 12px;
+}

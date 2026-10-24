@@ -104,12 +104,12 @@ Unit-spawning towers (swordsmen), portcullis, drawbridge, moat, pushers, crossbo
 ## Tech Stack
 
 - **Language:** TypeScript (strict mode)
-- **Build/dev server:** Vite (vanilla-ts template)
+- **Build/dev server:** Vite 7 (Vite 8 hits an npm 10 install bug with its optional devtools peers)
 - **Rendering:** HTML5 Canvas 2D for the map, plain HTML/CSS for the side panel
-- **Tests:** Vitest, with `@vitest/coverage-v8` for coverage (approved)
+- **Tests:** Vitest 5, with `@vitest/coverage-v8` for coverage (approved)
 - **Formatting:** Prettier
 - **Runtime deps:** none. Font: a pixel/monospace web font (e.g. "VT323" or "Silkscreen" via Google Fonts, or bundled locally).
-- **Node:** LTS (>= 20)
+- **Node:** 22 or 24 LTS (Vitest 5 engine range)
 
 ## Commands
 

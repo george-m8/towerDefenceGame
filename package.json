@@ -1,0 +1,23 @@
+{
+  "name": "tower-defence",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "5.0.3",
+    "prettier": "3.9.9",
+    "typescript": "6.0.3",
+    "vite": "7.3.7",
+    "vitest": "5.0.3"
+  }
+}
