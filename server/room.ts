@@ -23,6 +23,8 @@ export interface Room {
   ticksSinceUpdate: number;
   /** gridVersion as of the last update everyone received. */
   sentGridVersion: number;
+  /** How long nobody has been connected; the registry deletes the room after a while. */
+  emptyMs: number;
 }
 
 export type JoinResult =
@@ -39,6 +41,7 @@ export function createRoom(code: string, seed: number, send: SendFn): Room {
     accumulatorMs: 0,
     ticksSinceUpdate: 0,
     sentGridVersion: state.gridVersion,
+    emptyMs: 0,
   };
 }
 

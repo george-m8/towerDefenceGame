@@ -2,6 +2,7 @@
 import { randomInt } from "node:crypto";
 import type { PlayerId } from "../src/sim/types";
 import { ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, type ServerMessage } from "../src/net/protocol";
+import { EMPTY_ROOM_TTL_MS } from "./config";
 import { advanceRoom, createRoom, type Room } from "./room";
 
 /** Delivers a room's message to one player's socket. */
@@ -32,8 +33,14 @@ export function findRoom(registry: Registry, code: string): Room | undefined {
   return registry.rooms.get(code);
 }
 
+/** Advances every room, and deletes rooms nobody has been connected to for EMPTY_ROOM_TTL_MS. */
 export function advanceAll(registry: Registry, elapsedMs: number): void {
-  for (const room of registry.rooms.values()) advanceRoom(room, elapsedMs);
+  for (const room of registry.rooms.values()) {
+    const occupied = Object.values(room.state.players).some((p) => p.connected);
+    room.emptyMs = occupied ? 0 : room.emptyMs + elapsedMs;
+    if (room.emptyMs >= EMPTY_ROOM_TTL_MS) registry.rooms.delete(room.code);
+    else advanceRoom(room, elapsedMs);
+  }
 }
 
 export function randomSeed(): number {

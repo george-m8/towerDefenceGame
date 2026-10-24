@@ -120,7 +120,7 @@ Standard verification for every task (in addition to task-specific checks):
 
 ### Checkpoint H: two clients play over sockets
 - [x] Integration test: two clients create and join, B's build is owned by B and both see it
-- [ ] Review with human
+- [x] Review with human
 
 ---
 
@@ -131,12 +131,12 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** Messages over 4 KB close the connection. More than 40 messages per second are dropped, with at most one `error` per second. Rejoin with a wrong token or unknown room is rejected. Rejoin while the old connection is still open closes the old one. Joining a full or unknown room is rejected. Rooms empty for 10 minutes are deleted. Every handler is wrapped so a thrown error is logged and answered with `error` rather than crashing the process.
 
 **Acceptance criteria:**
-- [ ] Oversized, flooded and malformed messages never crash the server or change the game
-- [ ] Rejoin restores the same player, gold and structures. A wrong token is rejected. A second connection with the same token replaces the first.
-- [ ] Empty rooms expire after the configured time, and rooms with anyone connected never do
+- [x] Oversized, flooded and malformed messages never crash the server or change the game
+- [x] Rejoin restores the same player, gold and structures. A wrong token is rejected. A second connection with the same token replaces the first.
+- [x] Empty rooms expire after the configured time, and rooms with anyone connected never do
 
 **Verification:**
-- [ ] Integration tests for each case; room expiry tested with hand-driven time
+- [x] Integration tests for each case; room expiry tested with hand-driven time
 
 **Dependencies:** Task 5
 

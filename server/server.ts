@@ -1,7 +1,7 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { WebSocketServer, type WebSocket } from "ws";
-import { WS_PATH } from "./config";
+import { MAX_MESSAGE_BYTES, WS_PATH } from "./config";
 
 export interface GameServer {
   http: Server;
@@ -20,7 +20,8 @@ export async function startServer(
   const http = createServer((_req, res) => {
     res.writeHead(404).end();
   });
-  const wss = new WebSocketServer({ server: http, path: WS_PATH });
+  // Larger messages close the connection (code 1009) before they reach our code.
+  const wss = new WebSocketServer({ server: http, path: WS_PATH, maxPayload: MAX_MESSAGE_BYTES });
   wss.on("connection", onConnection);
   await new Promise<void>((resolve) => http.listen(port, host, resolve));
   return {

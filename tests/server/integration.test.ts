@@ -107,3 +107,60 @@ describe("over sockets", () => {
     await a.next("welcome");
   });
 });
+
+describe("hardening", () => {
+  it("closes a connection that sends an oversized message", async () => {
+    const a = await client();
+    const closed = new Promise<number>((resolve) => a.socket.once("close", resolve));
+    a.send(JSON.stringify({ type: "create", name: "x".repeat(5000) }));
+    expect(await closed).toBe(1009); // "message too big"
+  });
+
+  it("drops a flood beyond the rate limit, with one error, and keeps working", async () => {
+    const { a } = await twoInARoom();
+    for (let seq = 0; seq < 100; seq++) {
+      a.send({ type: "command", seq, command: { type: "sendWave" } });
+    }
+    a.send({ type: "command", seq: 999, command: { type: "togglePause" } });
+    await a.next("error", (m) => m.reason === "Too many messages");
+    // Give the server a moment to process everything it accepted.
+    await new Promise((r) => setTimeout(r, 100));
+    const results = a.messages.filter((m) => m.type === "result");
+    expect(results.length).toBeGreaterThanOrEqual(39); // 40 per burst, one already spent on "create"
+    expect(results.length).toBeLessThan(50);
+    expect(a.messages.filter((m) => m.type === "error")).toHaveLength(1);
+  });
+
+  it("rejects a rejoin with the wrong token", async () => {
+    const { room } = await twoInARoom();
+    const c = await client();
+    c.send({ type: "rejoin", room, token: "f".repeat(32) });
+    expect(await c.next("error")).toEqual({ type: "error", reason: "Unknown player" });
+  });
+
+  it("a second connection with the same token replaces the first", async () => {
+    const { a, b, bWelcome, room } = await twoInARoom();
+    const oldClosed = new Promise<void>((resolve) => b.socket.once("close", () => resolve()));
+    const again = await client();
+    again.send({ type: "rejoin", room, token: bWelcome.token });
+    expect((await again.next("welcome")).playerId).toBe(2);
+    await oldClosed;
+    // The old socket closing must not mark B as gone.
+    again.send({ type: "command", seq: 1, command: { type: "togglePause" } });
+    await again.next("result");
+    const update = await a.next("update", (m) => m.update.players[2]?.votes.pause === true);
+    expect(update.update.players[2].connected).toBe(true);
+  });
+
+  it("refuses to join a full room", async () => {
+    const { room } = await twoInARoom();
+    for (const name of ["Cy", "Di"]) {
+      const c = await client();
+      c.send({ type: "join", room, name });
+      await c.next("welcome");
+    }
+    const late = await client();
+    late.send({ type: "join", room, name: "Ed" });
+    expect(await late.next("error")).toEqual({ type: "error", reason: "Room is full" });
+  });
+});
