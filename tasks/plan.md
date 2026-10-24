@@ -1,16 +1,16 @@
 # Implementation Plan: Post-MVP Phases
 
 Capability map: [`CAPABILITIES.md`](../CAPABILITIES.md)
-Current module spec: [`SPEC-map-gen.md`](../SPEC-map-gen.md)
+Current module spec: [`SPEC-players.md`](../SPEC-players.md)
 Task list (current module only): [`tasks/todo.md`](todo.md)
-Finished modules: [`tasks/tile-layers/`](tile-layers/todo.md)
+Finished modules: [`tasks/tile-layers/`](tile-layers/todo.md), [`tasks/map-gen/`](map-gen/todo.md)
 Previous plan (MVP, complete except a Firefox/Safari smoke test): [`tasks/mvp/`](mvp/plan.md)
 
 ## How this plan works
 
 Modules are built one at a time in the approved order. Each module goes spec -> plan -> tasks -> build:
 
-- **The current module** (`tile-layers`) has an approved spec, so its tasks are fully written in `tasks/todo.md`.
+- **The current module** (`players`) has an approved spec, so its tasks are fully written in `tasks/todo.md`.
 - **Later modules** have a provisional outline below. Each outline is refined into real tasks only after that module's spec is written and approved. Outlines will change as earlier modules teach us things.
 - When a module is finished, its `todo.md` moves to `tasks/<module-id>/` (as the MVP's did), and the next module's tasks take its place.
 
@@ -19,8 +19,12 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | Phase | Module | Status |
 |---|---|---|
 | 1. Basics | `tile-layers` | Done |
-| | `map-gen` | **Built, awaiting review** |
-| | `tower-aiming` | Spec needed |
+| | `map-gen` | Done (merged in PR #4) |
+| 1b. Multiplayer (co-op) | `players` | **Spec approved, tasks written** |
+| | `game-server` | Spec needed |
+| | `net-client` | Spec needed |
+| | `lobby` | Spec needed |
+| 1. Basics (continued) | `tower-aiming` | Spec needed |
 | | `line-of-sight` | Spec needed |
 | | `units` | Spec needed |
 | 2. Setup and modes | `game-setup` | Spec needed |
@@ -87,7 +91,7 @@ T4 and T5 both depend only on T3.
 
 ---
 
-## Module 2: `map-gen` (current)
+## Module 2: `map-gen` (done)
 
 Spec: [`SPEC-map-gen.md`](../SPEC-map-gen.md)
 
@@ -152,9 +156,82 @@ T4, T5 and T6 each depend only on T3.
 
 ---
 
+## Module 3: `players` (current)
+
+Spec: [`SPEC-players.md`](../SPEC-players.md). First module of the Multiplayer map in [`CAPABILITIES.md`](../CAPABILITIES.md).
+
+### Overview
+
+The simulation learns about several players: own gold, owned structures, kill credit, and unanimous votes for pause and fast-forward. It's pure `src/sim/` work with no networking. A one-player game must behave exactly as today.
+
+### Architecture decisions
+
+- **Data first, behaviour second.** Task 1 adds `owner`, `killedBy` and a single `damageEnemy` helper while gold is still shared, so kill credit is wired through towers and traps before anything depends on it. Nothing visible changes.
+- **Remove `state.gold` outright** rather than keeping an alias. The compiler then lists every place that used the shared pool, and none is missed.
+- **The player is an argument, not part of the command.** `applyCommand(state, playerId, command)` lets `game-server` stamp the sender's id, so a client can never act as someone else.
+- **`paused` and `speed` stay as fields but are derived** from votes and connections by one function in `players.ts`. `main.ts`, the panel and the renderer keep reading them unchanged.
+- **Single-player is the regression test.** `createGame` makes player 1 by default, and the existing suite (after a mechanical `goldOf(state)` swap) must pass untouched otherwise.
+
+### Dependency graph
+
+```
+T1 Ownership and kill-credit data (gold still shared)
+ └─ T2 Players with their own gold
+     ├─ T3 Ownership rules (sell and mount)
+     └─ T4 Votes and connections
+          └─ T5 Determinism check and docs
+```
+
+T3 and T4 each depend only on T2.
+
+### Task list
+
+- [ ] Task 1: Ownership and kill-credit data
+- [ ] Task 2: Players with their own gold
+
+**Checkpoint E: single-player unchanged**
+- [ ] All existing tests pass after the mechanical gold swap
+- [ ] Browser smoke test: build, sell, waves, bounties, houses, chests, trees, pause and fast-forward all behave as before
+
+- [ ] Task 3: Ownership rules for selling and mounting
+- [ ] Task 4: Votes and connections
+- [ ] Task 5: Determinism check and docs
+
+**Checkpoint F: module complete**
+- [ ] All 7 success criteria in `SPEC-players.md` met
+- [ ] Coverage of 80% lines or more for `src/sim/`
+- [ ] Review with human, then move `todo.md` to `tasks/players/` and write the `game-server` spec
+
+### Risks and mitigations
+
+| Risk | Impact | Mitigation |
+|---|---|---|
+| The gold refactor quietly changes single-player behaviour | High | Task 2 removes `state.gold` so the compiler finds every use; the full existing suite must stay green; browser smoke test at Checkpoint E. |
+| A damage path skips `damageEnemy`, so some kills pay nobody | Med | Task 1 routes every `enemy.hp -=` through it and adds a test per damage source (single target, splash, trap). A grep for `hp -=` on enemies in review. |
+| Splash hits an already-dead enemy and steals the credit | Med | `damageEnemy` ignores enemies at 0 HP or below; tested with two towers on one target. |
+| Derived `paused` disagrees with what the UI shows | Low | One function computes it and is called on every vote, connection or player change; the panel only reads it. |
+| Task 2 touches many test files | Low | The test changes are mechanical (`state.gold` -> `goldOf(state)`, and `applyCommand(state, cmd)` -> `applyCommand(state, 1, cmd)`); behaviour changes stay in their own tests. |
+
+---
+
 ## Later modules: provisional outlines
 
 These are rough vertical slices, not tasks. Each becomes a proper task list after its spec is approved.
+
+### `game-server`
+1. Node WebSocket server (`ws`) that runs one sim per room at 20 Hz, with host and port from env vars
+2. Typed message format shared with the client: commands in, state updates out (grid when it changes, enemies every update)
+3. Join, leave and rejoin mapped to `addPlayer` / `setConnected`; `debugSpawn` blocked
+4. LAN play: reachable from other machines; documented in the README
+
+### `net-client`
+1. Session interface: `LocalSession` (today's loop) and `NetworkSession`
+2. Apply server updates; smooth enemy movement between them
+3. Ghosts for placements waiting on the server; connection status; votes and owners shown in the panel
+
+### `lobby`
+1. Create or join a room by code or link, with a player name
+2. See who's in; start the game
 
 ### `tower-aiming`
 1. Facing at placement for all towers (reusing `R` rotation) and an arc per tower type
@@ -200,4 +277,4 @@ These are rough vertical slices, not tasks. Each becomes a proper task list afte
 
 ## Open questions
 
-None for `tile-layers`. Each later module's questions are settled in its spec.
+None for `players`. Each later module's questions are settled in its spec.

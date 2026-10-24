@@ -1,178 +1,131 @@
-# Tasks: map-gen
+# Tasks: players
 
-Spec: [`SPEC-map-gen.md`](../SPEC-map-gen.md) | Plan: [`plan.md`](plan.md) | Map: [`CAPABILITIES.md`](../CAPABILITIES.md)
+Spec: [`SPEC-players.md`](../SPEC-players.md) | Plan: [`plan.md`](plan.md) | Map: [`CAPABILITIES.md`](../CAPABILITIES.md)
 
 Standard verification for every task (in addition to task-specific checks):
 `npm run typecheck && npm test && npm run build`
 
 ---
 
-## Phase C: Terrain and the generator
+## Phase E: Players in the sim, single-player unchanged
 
-## Task 1: Terrain rules for walking and building
+## Task 1: Ownership and kill-credit data
 
-**Description:** Extend `Terrain` to `"ground" | "ford" | "river" | "sea" | "rock" | "tree"` with a `TERRAIN` table in config (walkable; buildable `any` / `bridgeOnly` / `none`). Add grid helpers `terrainAt` and `isWalkable` (terrain walkable, or a bridge on it once bridges exist). Pathfinding skips non-walkable tiles entirely. `canBuild` rejects sea, rock and trees ("Can't build on rock" etc.) and allows only bridges on rivers (the bridge kind arrives in Task 2, so for now every build on a river is rejected). The renderer draws terrain colours and glyphs. Tests set terrain by hand.
+**Description:** Add `owner: PlayerId | null` to `Structure` and `killedBy: PlayerId | null` to `Enemy`, plus `export type PlayerId = number`. `placeStructure` takes an owner: player-built structures get `1` for now (from `applyCommand`) and generated ruins get `null`. Add `damageEnemy(enemy, amount, by)` to `enemies.ts`, which ignores enemies already at 0 HP or below and records `killedBy` on the hit that takes HP to 0 or below. Route every enemy damage in `towers.ts` (single target and splash) and `traps.ts` through it, passing the structure's owner. Gold is still shared, so nothing visible changes.
 
 **Acceptance criteria:**
-- [x] Enemy routes never include sea, river, rock or tree tiles. Fords behave like ground.
-- [x] Building on sea, rock, tree or river is rejected with a clear reason. Ground and fords work as before.
-- [x] Terrain is drawn by the renderer (visual check moved to Checkpoint C, once the generator puts terrain on the map)
+- [ ] Built structures have `owner: 1`, and generated ruins have `owner: null`
+- [ ] Every enemy damage goes through `damageEnemy` (no `enemy.hp -=` / `target.hp -=` left in `towers.ts` or `traps.ts`)
+- [ ] `killedBy` is set on the killing blow for a single-target kill, a splash kill and a trap kill. A second hit on a dead enemy doesn't change it.
 
 **Verification:**
-- [x] `npm test` (new `tests/sim/terrain.test.ts`)
-- [x] Manual: terrain renders with the spec's glyphs and colours (checked at Checkpoint C)
+- [ ] New tests in `tests/sim/enemies.test.ts` (the `damageEnemy` rules) and `tests/sim/towers.test.ts` / `tests/sim/traps.test.ts` (each damage source sets `killedBy`)
+- [ ] All existing tests pass unchanged
+- [ ] `grep -n "hp -=" src/sim` shows only structure damage
 
 **Dependencies:** None
 
-**Files likely touched:** `src/sim/types.ts`, `src/sim/config.ts`, `src/sim/grid.ts`, `src/sim/pathfinding.ts`, `src/render/canvas.ts` + `palette.ts`, `tests/sim/terrain.test.ts`
+**Files likely touched:** `src/sim/types.ts`, `src/sim/enemies.ts`, `src/sim/towers.ts`, `src/sim/traps.ts`, `src/sim/grid.ts`, `src/sim/game.ts`, tests
 
 **Estimated scope:** M
 
 ---
 
-## Task 2: Bridges over rivers
+## Task 2: Players with their own gold
 
-**Description:** Add the `bridge` structure (base layer, cost 10, no HP, doesn't block, doesn't accept a mount, key `8`, glyph `=`). It can be built only on river tiles, and `isWalkable` treats a bridged river as walkable. Selling a bridge is rejected while an enemy is on it.
+**Description:** Add `Player`, `state.players` and `state.nextPlayerId`, and remove `state.gold`. New `src/sim/players.ts` with `addPlayer(state, name)` (starting gold, ids never reused) and `playerName`. `createGame(seed, { players?: string[] })` creates player 1 by default. `applyCommand(state, playerId, command)` rejects unknown players with "Unknown player" and passes the player to `canBuild` (checks their gold) and `placeStructure` (sets the owner). Gold flows per the spec: bounties to `killedBy`, house income to the owner, and build cost, sell refund, tree clearing, ruin salvage, chest claim and early-send bonus to the acting player. `main.ts` defines `LOCAL_PLAYER = 1` and passes it on every dispatch, and the panel shows that player's gold and disables unaffordable tools by it. Existing tests switch mechanically to `goldOf(state, id = 1)` (new helper) and `applyCommand(state, 1, command)`.
 
 **Acceptance criteria:**
-- [x] A bridge can be built only on a river tile, and anything else on a river is still rejected
-- [x] A river that blocked the only route becomes crossable once bridged; enemies reroute over it
-- [x] Selling a bridge with an enemy on it is rejected; otherwise it refunds as usual
+- [ ] `state.gold` no longer exists, and the game plays as before with one player
+- [ ] With two players, each player's gold changes only through their own builds, sales, kills, houses, chests, trees and early sends
+- [ ] A command from an unknown player id is rejected and changes nothing
 
 **Verification:**
-- [x] `npm test` (`tests/sim/terrain.test.ts` bridge cases)
-- [x] Manual: bridge a river and watch the path overlay (`D`) reroute (checked at Checkpoint C)
+- [ ] New `tests/sim/players.test.ts`: two-player gold separation for every gold source, unknown player, `addPlayer` ids and starting gold
+- [ ] All existing tests pass after only the mechanical swap
+- [ ] Manual: browser game shows gold, bounties and house income as before
 
 **Dependencies:** Task 1
 
-**Files likely touched:** `src/sim/config.ts`, `src/sim/grid.ts`, `src/sim/economy.ts`, `src/ui/state.ts`, `src/render/palette.ts`, `tests/sim/terrain.test.ts`
+**Files likely touched:** `src/sim/types.ts`, `src/sim/players.ts`, `src/sim/game.ts`, `src/sim/grid.ts`, `src/sim/economy.ts`, `src/sim/waves.ts`, `src/main.ts`, `src/ui/panel.ts`, `tests/sim/helpers.ts`, `tests/sim/players.test.ts`, plus mechanical edits to existing tests
 
-**Estimated scope:** S
+**Estimated scope:** L (mostly mechanical; the behaviour change is contained in the gold call sites)
 
 ---
 
-## Task 3: Map generator with coast, river, fords and guarantees
+### Checkpoint E: single-player unchanged
+- [ ] All existing tests pass after the mechanical gold swap
+- [ ] Browser smoke test: build, sell, waves, bounties, houses, chests, trees, pause and fast-forward all behave as before
+- [ ] Review with human
 
-**Description:** Add `src/sim/mapgen.ts` with `generateMap(state)` using the game's seeded rng and `MAP_GEN` config:
-- coast band on a random non-spawn edge
-- one meandering river in any direction, with 1-2 fords
-- clear zones (a 4-tile ring around the keep, the spawn plus 2 columns)
-- route validation with capped, deterministic regeneration
+---
 
-`createGame(seed, options?)` runs it unless `options.blankMap` is set. Existing tests move to blank maps through the test helpers. Show the seed in the panel.
+## Phase F: Multiplayer rules
+
+## Task 3: Ownership rules for selling and mounting
+
+**Description:** Selling checks the top structure on the tile: allowed if it's the acting player's or neutral (`owner: null`), otherwise rejected with "That belongs to <name>". Clearing trees is unaffected. Mounting a tower is allowed on open ground, on your own wall, or on a neutral ruin, and rejected on another player's wall with "That wall belongs to <name>". The UI's build ghost already calls `canBuild`, so it shows the same rule.
 
 **Acceptance criteria:**
-- [x] Same seed gives an identical map, and different seeds give different maps
-- [x] For 500 seeds: a walkable route exists from every spawn tile to the keep, the keep ring and spawn columns are clear, there's exactly one coast and one river, and each river has 1-2 fords
-- [x] Works on a 96x64 state with the same guarantees. Regeneration attempts are capped and the fallback is tested.
+- [ ] A can't sell B's structure (the reason names B), and B's gold and structure are unchanged
+- [ ] Anyone can salvage a ruin, unless another player's tower stands on it
+- [ ] A can mount on A's wall or a ruin but not on B's wall
 
 **Verification:**
-- [x] `npm test` (new `tests/sim/mapgen.test.ts`; all existing tests green on `blankMap`)
-- [x] Manual: reload a few times. Each map has a coast and a river, and enemies cross only at fords.
+- [ ] Tests in `tests/sim/players.test.ts` for each case above
+- [ ] Existing sell and layer tests still pass (single player owns everything they build)
 
 **Dependencies:** Task 2
 
-**Files likely touched:** `src/sim/mapgen.ts`, `src/sim/game.ts`, `src/sim/config.ts`, `src/sim/types.ts`, `tests/sim/mapgen.test.ts`, `tests/sim/helpers.ts` (+ `createGame` calls in existing tests)
-
-**Estimated scope:** M (the test-file updates are mechanical)
-
----
-
-### Checkpoint C: generated maps
-- [x] All tests pass, including the 500-seed guarantee tests
-- [x] Browser: several seeds look right; enemies use fords or bridges and never cross water (found and fixed: fords that did not cross, path arrows drawn on water)
-- [ ] Review with human before adding the remaining features
-
----
-
-## Phase D: Map features
-
-## Task 4: Rocks, forests and clearing trees
-
-**Description:** Generator passes for rock clusters (2-8 tiles) and forest patches (4-15 trees), with counts from per-1,000-tile densities, outside the clear zones and without breaking the route guarantee. The X tool on a tree clears it for `TREE_CLEAR_GOLD`, turning it into ground (bumps `gridVersion`). Rocks can't be cleared.
-
-**Acceptance criteria:**
-- [x] Maps contain rock clusters and forests, and guarantees still hold for 500 seeds
-- [x] Clearing a tree pays its gold, makes the tile ground and lets enemies use it. Clearing rock is rejected.
-- [x] Feature counts scale with map area (96x64 has noticeably more than 48x32)
-
-**Verification:**
-- [x] `npm test` (`tests/sim/mapgen.test.ts`, `tests/sim/terrain.test.ts`)
-- [x] Manual: clear a line of trees with X and watch the path overlay change
-
-**Dependencies:** Task 3
-
-**Files likely touched:** `src/sim/mapgen.ts`, `src/sim/config.ts`, `src/sim/economy.ts`, `tests/sim/mapgen.test.ts`, `tests/sim/terrain.test.ts`
+**Files likely touched:** `src/sim/economy.ts`, `src/sim/grid.ts`, `tests/sim/players.test.ts`
 
 **Estimated scope:** S
 
 ---
 
-## Task 5: Ruins
+## Task 4: Votes and connections
 
-**Description:** Add the `ruin` structure (base layer, blocks, accepts a mount, not buildable by the player, glyph `#` in dark grey). The generator places fragments (lines, L shapes, broken squares) of 3-8 tiles at 40-80% HP, outside the clear zones. Selling a ruin pays `RUIN_SALVAGE_GOLD`, scaled by HP.
+**Description:** Each player has `connected` and `votes: { pause, fastForward }`. `togglePause` and `toggleFastForward` toggle the acting player's vote. `setConnected(state, id, connected)` marks a player as dropped or back and clears their votes when they drop. One function, `updateVotes(state)`, derives `state.paused` (every connected player voted, or nobody is connected) and `state.speed` (`FAST_FORWARD_SPEED` when every connected player voted, else 1). It's called after every vote, connection change and `addPlayer`. Nothing else writes `paused` or `speed`.
 
 **Acceptance criteria:**
-- [x] Ruins start damaged, block movement, can hold a tower, and are attacked only when sealing the route
-- [x] Ruins aren't in the build tools, and `canBuild` rejects the ruin kind
-- [x] Selling a ruin pays salvage scaled by HP. Guarantees hold for 500 seeds, and every ruin is reachable.
+- [ ] Pause and fast-forward happen only when every connected player has voted, and any withdrawal undoes them
+- [ ] A dropped player's votes are cleared and they stop counting. With everyone dropped the game is paused. A single player's vote decides alone.
+- [ ] A dropped player keeps their gold and structures, still earns house income and bounties, and has them all on reconnect
 
 **Verification:**
-- [x] `npm test` (`tests/sim/mapgen.test.ts`, `tests/sim/layers.test.ts`, `tests/sim/economy.test.ts`)
-- [x] Manual: put an archer on a ruin; sell a ruin
+- [ ] Tests in `tests/sim/players.test.ts` for votes, drops, rejoin and income while dropped
+- [ ] Existing pause and fast-forward tests pass unchanged (apart from the Task 2 signature swap)
+- [ ] Manual: Space and F behave as before in the browser
 
-**Dependencies:** Task 3
+**Dependencies:** Task 2
 
-**Files likely touched:** `src/sim/config.ts`, `src/sim/mapgen.ts`, `src/sim/grid.ts`, `src/sim/economy.ts`, `src/render/palette.ts` (+ tests)
+**Files likely touched:** `src/sim/types.ts`, `src/sim/players.ts`, `src/sim/game.ts`, `tests/sim/players.test.ts`
 
 **Estimated scope:** M
 
 ---
 
-## Task 6: Treasure chests
+## Task 5: Determinism check and docs
 
-**Description:** Add `features: MapFeature[]` to the game state with a `chest` kind (gold 20-60, scaled by distance from the keep). The generator places chests on reachable open ground. Building anything on a chest tile adds its gold and removes it. Chests are drawn as `$`.
+**Description:** Add a test that plays the same seed with two players and a fixed list of `(tick, playerId, command)` entries twice and gets identical state. That's the guarantee `game-server` relies on. Update `SPEC.md` (a "Since `players`" note on gold and commands) and the README (gold and pause are per player and vote-based in multiplayer; single-player unchanged).
 
 **Acceptance criteria:**
-- [x] Building on a chest tile pays its gold once and removes the chest
-- [x] Enemies walking over a chest leave it untouched
-- [x] Chests further from the keep are worth more. Every chest is reachable (500 seeds).
+- [ ] The two-player replay test passes and compares the full state
+- [ ] `SPEC.md` and the README describe the player rules accurately
 
 **Verification:**
-- [x] `npm test` (`tests/sim/mapgen.test.ts`, `tests/sim/economy.test.ts`)
-- [x] Manual: build a wall on a `$` and watch gold jump
+- [ ] `npm run coverage` (80% lines or more for `src/sim/`)
+- [ ] Manual: read through the README changes
 
-**Dependencies:** Task 3
+**Dependencies:** Tasks 3, 4
 
-**Files likely touched:** `src/sim/types.ts`, `src/sim/mapgen.ts`, `src/sim/game.ts` (or `grid.ts` placement), `src/render/canvas.ts` (+ tests)
+**Files likely touched:** `tests/sim/players.test.ts`, `SPEC.md`, `README.md`
 
 **Estimated scope:** S
 
 ---
 
-## Task 7: Seed display, terrain hover info and docs
-
-**Description:** Hover info describes terrain ("River - bridge it to cross", "Tree - X to clear for 1g", "Ford"), ruins (salvage value) and chests (gold). The seed is shown in the panel (from Task 3) and on the game-over dialog. README gains a "The map" section (terrain table, bridges, trees, ruins, chests) and key `8`. `SPEC.md` gets a pointer to `SPEC-map-gen.md`.
-
-**Acceptance criteria:**
-- [x] Hovering every terrain type and feature gives a helpful description
-- [x] The seed is visible during play and on game over
-- [x] README and `SPEC.md` describe the map accurately
-
-**Verification:**
-- [x] `npm run build`
-- [x] Manual: hover each terrain and feature type (swept in the browser); screenshot a generated map for review
-- [ ] Manual: seed on the game-over dialog (not seen in the browser; covered by typecheck and build only)
-
-**Dependencies:** Tasks 4, 5, 6
-
-**Files likely touched:** `src/ui/tileInfo.ts`, `src/ui/gameOver.ts`, `src/ui/panel.ts`, `README.md`, `SPEC.md`
-
-**Estimated scope:** M
-
----
-
-### Checkpoint D: map-gen complete
-- [x] All 7 success criteria in `SPEC-map-gen.md` met
-- [x] `npm run coverage` passes (99.3% lines for `src/sim/`)
-- [ ] Review with human, then move this file to `tasks/map-gen/` and start the `tower-aiming` spec
+### Checkpoint F: players complete
+- [ ] All 7 success criteria in `SPEC-players.md` met
+- [ ] `npm run coverage` passes
+- [ ] Review with human, then move this file to `tasks/players/` and write the `game-server` spec
