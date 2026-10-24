@@ -88,13 +88,13 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** Each player has `connected` and `votes: { pause, fastForward }`. `togglePause` and `toggleFastForward` toggle the acting player's vote. `setConnected(state, id, connected)` marks a player as dropped or back and clears their votes when they drop. One function, `updateVotes(state)`, derives `state.paused` (every connected player voted, or nobody is connected) and `state.speed` (`FAST_FORWARD_SPEED` when every connected player voted, else 1). It's called after every vote, connection change and `addPlayer`. Nothing else writes `paused` or `speed`.
 
 **Acceptance criteria:**
-- [ ] Pause and fast-forward happen only when every connected player has voted, and any withdrawal undoes them
-- [ ] A dropped player's votes are cleared and they stop counting. With everyone dropped the game is paused. A single player's vote decides alone.
-- [ ] A dropped player keeps their gold and structures, still earns house income and bounties, and has them all on reconnect
+- [x] Pause and fast-forward happen only when every connected player has voted, and any withdrawal undoes them
+- [x] A dropped player's votes are cleared and they stop counting. With everyone dropped the game is paused. A single player's vote decides alone.
+- [x] A dropped player keeps their gold and structures, still earns house income and bounties, and has them all on reconnect
 
 **Verification:**
-- [ ] Tests in `tests/sim/players.test.ts` for votes, drops, rejoin and income while dropped
-- [ ] Existing pause and fast-forward tests pass unchanged (apart from the Task 2 signature swap)
+- [x] Tests in `tests/sim/players.test.ts` for votes, drops, rejoin and income while dropped
+- [x] Existing pause and fast-forward tests pass unchanged (apart from the Task 2 signature swap)
 - [ ] Manual: Space and F behave as before in the browser
 
 **Dependencies:** Task 2

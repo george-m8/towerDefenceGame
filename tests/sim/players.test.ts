@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { STARTING_GOLD, STRUCTURES, TICK_RATE, TREE_CLEAR_GOLD, WAVES } from "../../src/sim/config";
+import {
+  FAST_FORWARD_SPEED,
+  STARTING_GOLD,
+  STRUCTURES,
+  TICK_RATE,
+  TREE_CLEAR_GOLD,
+  WAVES,
+} from "../../src/sim/config";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand, createGame, tick } from "../../src/sim/game";
 import { placeStructure, topAt } from "../../src/sim/grid";
-import { addPlayer, playerName } from "../../src/sim/players";
+import { addPlayer, playerName, setConnected } from "../../src/sim/players";
 import type { GameState } from "../../src/sim/types";
 import { createGameWithoutWaves, goldOf, paintTerrain } from "./helpers";
 
@@ -173,5 +180,62 @@ describe("ownership rules", () => {
     const state = twoPlayers();
     paintTerrain(state, [{ x: 5, y: 5 }], "tree");
     expect(applyCommand(state, A, { type: "sell", x: 5, y: 5 })).toEqual({ ok: true });
+  });
+});
+
+describe("votes", () => {
+  it("pause and fast-forward need every connected player's vote", () => {
+    const state = twoPlayers();
+    applyCommand(state, A, { type: "togglePause" });
+    applyCommand(state, A, { type: "toggleFastForward" });
+    expect(state.paused).toBe(false);
+    expect(state.speed).toBe(1);
+    applyCommand(state, B, { type: "togglePause" });
+    applyCommand(state, B, { type: "toggleFastForward" });
+    expect(state.paused).toBe(true);
+    expect(state.speed).toBe(FAST_FORWARD_SPEED);
+  });
+
+  it("any player withdrawing their vote undoes it", () => {
+    const state = twoPlayers();
+    for (const id of [A, B]) applyCommand(state, id, { type: "togglePause" });
+    applyCommand(state, B, { type: "togglePause" });
+    expect(state.paused).toBe(false);
+  });
+
+  it("a dropped player's votes are cleared and they stop counting", () => {
+    const state = twoPlayers();
+    applyCommand(state, B, { type: "togglePause" });
+    applyCommand(state, A, { type: "toggleFastForward" });
+    setConnected(state, B, false);
+    expect(state.players[B].votes).toEqual({ pause: false, fastForward: false });
+    expect(state.paused).toBe(false);
+    expect(state.speed).toBe(FAST_FORWARD_SPEED); // A is the only connected player now
+
+    setConnected(state, B, true);
+    expect(state.speed).toBe(1); // B is back and hasn't voted
+  });
+
+  it("the game pauses while nobody is connected", () => {
+    const state = twoPlayers();
+    setConnected(state, A, false);
+    setConnected(state, B, false);
+    expect(state.paused).toBe(true);
+    setConnected(state, A, true);
+    expect(state.paused).toBe(false);
+  });
+});
+
+describe("rejoining", () => {
+  it("a dropped player keeps their gold and structures, and keeps earning", () => {
+    const state = twoPlayers();
+    const income = STRUCTURES.house.income;
+    applyCommand(state, B, { type: "build", kind: "house", x: 10, y: 10 });
+    const gold = goldOf(state, B);
+    setConnected(state, B, false);
+    for (let i = 0; i < income.intervalSeconds * TICK_RATE; i++) tick(state);
+    setConnected(state, B, true);
+    expect(topAt(state, 10, 10)?.owner).toBe(B);
+    expect(goldOf(state, B)).toBe(gold + income.gold);
   });
 });

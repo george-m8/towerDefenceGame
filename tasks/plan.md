@@ -194,7 +194,7 @@ T3 and T4 each depend only on T2.
 - [x] Browser smoke test: build, sell, waves, bounties, houses, chests, trees, pause and fast-forward all behave as before
 
 - [x] Task 3: Ownership rules for selling and mounting
-- [ ] Task 4: Votes and connections
+- [x] Task 4: Votes and connections
 - [ ] Task 5: Determinism check and docs
 
 **Checkpoint F: module complete**

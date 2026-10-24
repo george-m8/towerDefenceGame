@@ -1,4 +1,4 @@
-import { ENEMY, FAST_FORWARD_SPEED, GRID_HEIGHT, GRID_WIDTH, KEEP_HP, STRUCTURES } from "./config";
+import { ENEMY, GRID_HEIGHT, GRID_WIDTH, KEEP_HP, STRUCTURES } from "./config";
 import { spawnEnemy, updateEnemies } from "./enemies";
 import { EMPTY, KEEP_TILE, canBuild, placeStructure } from "./grid";
 import { awardBounties, claimChest, collectIncome, sellStructure } from "./economy";
@@ -8,7 +8,7 @@ import { randomInt } from "./rng";
 import { updateTowers } from "./towers";
 import { updateTraps } from "./traps";
 import { createWaveState, sendWaveEarly, updateWaves } from "./waves";
-import { addPlayer } from "./players";
+import { addPlayer, updateVotes } from "./players";
 import type { Command, CommandResult, GameState, PlayerId, Terrain } from "./types";
 
 export interface GameOptions {
@@ -89,10 +89,12 @@ export function applyCommand(
   if (!player) return { ok: false, reason: "Unknown player" };
   switch (command.type) {
     case "togglePause":
-      state.paused = !state.paused;
+      player.votes.pause = !player.votes.pause;
+      updateVotes(state);
       return { ok: true };
     case "toggleFastForward":
-      state.speed = state.speed === 1 ? FAST_FORWARD_SPEED : 1;
+      player.votes.fastForward = !player.votes.fastForward;
+      updateVotes(state);
       return { ok: true };
     case "build": {
       const check = canBuild(state, playerId, command.kind, command.x, command.y);

@@ -18,6 +18,9 @@ export interface Player {
   id: PlayerId;
   name: string;
   gold: number;
+  /** False while dropped out; they keep their gold and structures. */
+  connected: boolean;
+  votes: { pause: boolean; fastForward: boolean };
 }
 
 export interface Structure {
@@ -115,8 +118,9 @@ export interface GameState {
   players: Record<PlayerId, Player>;
   nextPlayerId: PlayerId;
   tick: number;
+  /** Derived from votes by updateVotes; never set directly. */
   paused: boolean;
-  /** Game-speed multiplier: 1 normally, FAST_FORWARD_SPEED while fast-forwarding. */
+  /** Game-speed multiplier: 1 normally, FAST_FORWARD_SPEED while fast-forwarding. Derived from votes. */
   speed: number;
   /** Chance (0-1) at each tile that an enemy wanders off the path. Starts at ENEMY.wanderChance. */
   wanderChance: number;
