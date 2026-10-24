@@ -55,12 +55,12 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** `src/net/networkSession.ts`: `createNetworkSession(url, intent, deps)`, where `deps` is `{ WebSocket, storage, now }`. It sends `create`, `join` or `rejoin` on open (rejoin when a token is stored for the room). It builds the view on `welcome` and stores the token, applies `update`s, sends commands with increasing `seq`, reports `result`s through `onResult`, and reports `error`s through `onError`. Malformed server messages are ignored. `status` reports "Connecting..." then "Room ABCD".
 
 **Acceptance criteria:**
-- [ ] Against a real server: create and join give both sessions the same game, and B's build appears in both as B's
-- [ ] A refused build reports its reason through `onResult`
-- [ ] The token is stored under the room code, and a new session with it rejoins as the same player
+- [x] Against a real server: create and join give both sessions the same game, and B's build appears in both as B's
+- [x] A refused build reports its reason through `onResult`
+- [x] The token is stored under the room code, and a new session with it rejoins as the same player
 
 **Verification:**
-- [ ] `tests/net/networkSession.test.ts` (real server on port 0, `ws` client)
+- [x] `tests/net/networkSession.test.ts` (real server on port 0, `ws` client)
 
 **Dependencies:** Task 2
 
