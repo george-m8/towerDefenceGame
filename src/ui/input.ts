@@ -30,6 +30,8 @@ export function bindInput(
       dispatch({ type: "togglePause" });
     } else if (e.code === "KeyD") {
       ui.showFlow = !ui.showFlow;
+    } else if (e.code === "KeyE" && import.meta.env.DEV) {
+      dispatch({ type: "debugSpawn", count: 1 });
     } else if (e.code === "Escape") {
       ui.tool = null;
     } else {

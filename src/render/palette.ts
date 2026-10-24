@@ -12,6 +12,9 @@ export const COLOURS = {
   keepGlyph: "#ffffff",
   ghostOk: "rgba(255, 255, 255, 0.35)",
   ghostBad: "rgba(255, 60, 60, 0.45)",
+  enemy: "#ff5f4a",
+  hpBack: "#000000",
+  hpFront: "#5fdc5f",
   flowArrow: "rgba(120, 200, 255, 0.55)",
   flowAttack: "rgba(255, 90, 90, 0.9)",
 };

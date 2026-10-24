@@ -60,10 +60,28 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
     }
   }
 
+  function drawEnemies(state: GameState) {
+    for (const enemy of state.enemies) {
+      drawGlyph(enemy.x, enemy.y, "g", COLOURS.enemy);
+      if (enemy.hp < enemy.maxHp) drawHpBar(enemy.x, enemy.y, enemy.hp / enemy.maxHp);
+    }
+  }
+
+  function drawHpBar(x: number, y: number, fraction: number) {
+    const left = x * TILE_SIZE + 2;
+    const top = y * TILE_SIZE;
+    const barWidth = TILE_SIZE - 4;
+    ctx!.fillStyle = COLOURS.hpBack;
+    ctx!.fillRect(left, top, barWidth, 3);
+    ctx!.fillStyle = COLOURS.hpFront;
+    ctx!.fillRect(left, top, Math.max(1, barWidth * fraction), 3);
+  }
+
   return {
     render(state: GameState, ui: UiState) {
       drawGrid(state);
       if (ui.showFlow) drawFlow(state);
+      drawEnemies(state);
       drawGhost(state, ui);
     },
   };

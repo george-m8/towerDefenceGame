@@ -125,3 +125,52 @@ body {
   text-align: center;
   border: 1px solid currentColor;
 }
+
+.map-window {
+  position: relative;
+}
+
+.dialog {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.dialog[hidden] {
+  display: none;
+}
+
+.dialog-window {
+  min-width: 280px;
+  padding: 16px 24px;
+  text-align: center;
+  outline: 1px solid var(--ink);
+  outline-offset: -5px;
+}
+
+.dialog-title {
+  margin-top: 0;
+  font-size: 24px;
+}
+
+.button {
+  min-width: 96px;
+  padding: 2px 12px;
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  border-radius: 8px;
+  box-shadow:
+    0 0 0 1px var(--paper),
+    0 0 0 2px var(--ink);
+  cursor: pointer;
+}
+
+.button:active {
+  color: var(--paper);
+  background: var(--ink);
+}

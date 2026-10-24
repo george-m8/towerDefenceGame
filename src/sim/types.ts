@@ -16,6 +16,19 @@ export interface Structure {
   maxHp: number;
 }
 
+export interface Enemy {
+  id: number;
+  /** Position in tile coordinates; fractional while moving between tiles. */
+  x: number;
+  y: number;
+  /** The tile it is currently moving to. */
+  tx: number;
+  ty: number;
+  hp: number;
+  maxHp: number;
+  bounty: number;
+}
+
 export interface FlowField {
   /** gridVersion this field was computed for. */
   version: number;
@@ -41,6 +54,7 @@ export interface GameState {
   /** Incremented whenever tile occupancy changes, so pathfinding can recompute lazily. */
   gridVersion: number;
   flow: FlowField | null;
+  enemies: Enemy[];
   spawnTiles: Point[];
   keep: Keep;
   gold: number;
@@ -51,6 +65,9 @@ export interface GameState {
 }
 
 export type Command =
-  { type: "togglePause" } | { type: "build"; kind: StructureKind; x: number; y: number };
+  | { type: "togglePause" }
+  | { type: "build"; kind: StructureKind; x: number; y: number }
+  /** Dev only: spawn enemies at random spawn tiles. */
+  | { type: "debugSpawn"; count: number };
 
 export type CommandResult = { ok: true } | { ok: false; reason: string };

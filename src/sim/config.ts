@@ -22,3 +22,11 @@ export interface StructureStats {
 export const STRUCTURES = {
   wall: { name: "Wall", cost: 5, maxHp: 50, blocksMovement: true },
 } satisfies Record<string, StructureStats>;
+
+export const ENEMY = {
+  baseHp: 20,
+  speed: 1.5, // tiles per second
+  keepDamage: 5,
+  structureDps: 5,
+  baseBounty: 2,
+};

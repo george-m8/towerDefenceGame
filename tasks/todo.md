@@ -107,13 +107,13 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** Add the enemy entity (HP, speed 1.5 tiles/s, continuous position) and `enemies.ts` movement. Enemies choose their next tile on reaching a tile centre using the flow field. On reaching the keep they deal 5 damage and are removed. Keep HP is shown in the panel. At HP <= 0 the game stops, a game-over dialog shows the wave reached, and `restart` creates a new game. Temporary dev key `E` spawns one enemy (removed or hidden behind a dev flag in T7). Building on a tile occupied by an enemy is rejected.
 
 **Acceptance criteria:**
-- [ ] Spawned enemies follow the flow field and visibly route around walls
-- [ ] Reaching the keep reduces keep HP by 5 and removes the enemy. HP 0 triggers game over and restart works.
-- [ ] Building on an enemy-occupied tile is rejected
+- [x] Spawned enemies follow the flow field and visibly route around walls
+- [x] Reaching the keep reduces keep HP by 5 and removes the enemy. HP 0 triggers game over and restart works.
+- [x] Building on an enemy-occupied tile is rejected
 
 **Verification:**
-- [ ] `npm test` (`tests/sim/enemies.test.ts`: reaches keep in the expected number of ticks on an open grid, reroutes after a wall is placed, keep damage, game over)
-- [ ] Manual: spawn enemies with `E`, wall off a route and watch them go around, let the keep die, restart
+- [x] `npm test` (`tests/sim/enemies.test.ts`: reaches keep in the expected number of ticks on an open grid, reroutes after a wall is placed, keep damage, game over)
+- [x] Manual: spawn enemies with `E`, wall off a route and watch them go around, let the keep die, restart
 
 **Dependencies:** Task 4
 
