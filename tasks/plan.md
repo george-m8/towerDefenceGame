@@ -181,7 +181,7 @@ T1 Angle maths (aiming.ts)
 
 - [x] Task 1: Angle maths module
 - [x] Task 2: Facing on every tower and arc-limited targeting
-- [ ] Task 3: Turning towers
+- [x] Task 3: Turning towers
 
 **Checkpoint E: aiming works**
 - [ ] All tests pass (existing tower tests updated to face their targets)

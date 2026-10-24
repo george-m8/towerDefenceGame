@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { STRUCTURES, TICK_RATE } from "../../src/sim/config";
+import { AIM_TOLERANCE_DEGREES, STRUCTURES, TICK_RATE } from "../../src/sim/config";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand } from "../../src/sim/game";
 import { placeStructure, topAt } from "../../src/sim/grid";
@@ -137,5 +137,56 @@ describe("facing and arcs", () => {
     const onEdge = spawnEnemy(state, 12, 8, TOUGH); // 45 degrees off the facing
     updateTowers(state);
     expect(onEdge.hp).toBe(TOUGH - ARCHER.damage);
+  });
+});
+
+describe("turning towers", () => {
+  const ticksToTurn = (degrees: number, kind: "cannon" | "catapult") =>
+    Math.ceil(
+      (degrees - AIM_TOLERANCE_DEGREES) / (STRUCTURES[kind].tower.turnDegreesPerSecond / TICK_RATE),
+    );
+
+  it("a cannon has to turn onto a target behind it before it fires", () => {
+    const state = createGameWithoutWaves();
+    const cannon = placeStructure(state, "cannon", 10, 10, "N");
+    const enemy = spawnEnemy(state, 10, 13, TOUGH); // due south
+    const turn = ticksToTurn(180, "cannon"); // about 2 s at 90 degrees/s
+    for (let i = 0; i < turn - 1; i++) updateTowers(state);
+    expect(enemy.hp).toBe(TOUGH);
+    updateTowers(state);
+    expect(enemy.hp).toBe(TOUGH - STRUCTURES.cannon.tower.damage);
+    expect(turn).toBeGreaterThanOrEqual(TICK_RATE * 1.9);
+    expect(cannon.aim).toBeGreaterThan(170);
+  });
+
+  it("a catapult takes about three times as long, and keeps its minimum range", () => {
+    const state = createGameWithoutWaves();
+    placeStructure(state, "catapult", 10, 10, "N");
+    const enemy = spawnEnemy(state, 10, 15, TOUGH);
+    const turn = ticksToTurn(180, "catapult");
+    expect(turn).toBeGreaterThanOrEqual(ticksToTurn(180, "cannon") * 2.9);
+    for (let i = 0; i < turn - 1; i++) updateTowers(state);
+    expect(enemy.hp).toBe(TOUGH);
+    updateTowers(state);
+    expect(enemy.hp).toBe(TOUGH - STRUCTURES.catapult.tower.damage);
+  });
+
+  it("turns the shorter way round", () => {
+    const state = createGameWithoutWaves();
+    const cannon = placeStructure(state, "cannon", 10, 10, "N");
+    spawnEnemy(state, 7, 10, TOUGH); // due west: anticlockwise is shorter
+    updateTowers(state);
+    expect(cannon.aim).toBeCloseTo(
+      360 - STRUCTURES.cannon.tower.turnDegreesPerSecond / TICK_RATE,
+      9,
+    );
+  });
+
+  it("fires straight away at a target it is already facing", () => {
+    const state = createGameWithoutWaves();
+    placeStructure(state, "cannon", 10, 10, "S");
+    const enemy = spawnEnemy(state, 10, 13, TOUGH);
+    updateTowers(state);
+    expect(enemy.hp).toBe(TOUGH - STRUCTURES.cannon.tower.damage);
   });
 });

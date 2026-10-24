@@ -1,11 +1,12 @@
 import {
+  AIM_TOLERANCE_DEGREES,
   EFFECT_TICKS,
   STRUCTURES,
   TICK_RATE,
   type StructureStats,
   type TowerStats,
 } from "./config";
-import { angleTo, facingAngle, inArc } from "./aiming";
+import { angleBetween, angleTo, facingAngle, inArc, turnTowards } from "./aiming";
 import { distanceAt } from "./pathfinding";
 import type { Enemy, GameState, Structure } from "./types";
 
@@ -18,10 +19,14 @@ export function updateTowers(state: GameState): void {
 
 function updateTower(state: GameState, structure: Structure, tower: TowerStats) {
   structure.cooldown = Math.max(0, structure.cooldown - 1);
-  if (structure.cooldown > 0) return;
+  const turns = tower.turnDegreesPerSecond > 0;
+  // Fixed towers have nothing to do while reloading; turning towers keep tracking.
+  if (structure.cooldown > 0 && !turns) return;
 
   const target = findTarget(state, structure, tower);
   if (!target) return;
+  const aligned = turns ? turnTowardsTarget(structure, tower, target) : true;
+  if (!aligned || structure.cooldown > 0) return;
 
   if (tower.splashRadius > 0) {
     for (const enemy of state.enemies) {
@@ -47,6 +52,14 @@ function updateTower(state: GameState, structure: Structure, tower: TowerStats) 
     ttl: EFFECT_TICKS,
   });
   structure.cooldown = tower.fireIntervalSeconds * TICK_RATE;
+}
+
+/** Turns the tower's aim towards the target; true once it is within the aim tolerance. */
+function turnTowardsTarget(structure: Structure, tower: TowerStats, target: Enemy): boolean {
+  const wanted = angleTo(structure, target);
+  const aim = structure.aim ?? wanted;
+  structure.aim = turnTowards(aim, wanted, tower.turnDegreesPerSecond / TICK_RATE);
+  return angleBetween(structure.aim, wanted) <= AIM_TOLERANCE_DEGREES;
 }
 
 /** Fixed towers only fire inside their arc; turning towers can face any way. */

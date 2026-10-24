@@ -67,13 +67,13 @@ No game changes yet.
 **Description:** In `towers.ts`, turning towers (360° arc, turn speed above 0) pick their target as today (in range, closest to the keep), then turn `aim` towards it by at most `turnDegreesPerSecond / TICK_RATE` per tick. They fire only when the target is within `AIM_TOLERANCE_DEGREES` of `aim`. The cooldown keeps counting down while they turn, and the target is re-picked every tick.
 
 **Acceptance criteria:**
-- [ ] A cannon facing N with an enemy due S doesn't fire until it has turned (about 2 s at 90°/s, within a tick), then fires
-- [ ] A catapult in the same setup takes about 3x as long. Its minimum range is still respected.
-- [ ] A turning tower already aimed at its target fires immediately, exactly as before (no regression for targets in front)
+- [x] A cannon facing N with an enemy due S doesn't fire until it has turned (about 2 s at 90°/s, within a tick), then fires
+- [x] A catapult in the same setup takes about 3x as long. Its minimum range is still respected.
+- [x] A turning tower already aimed at its target fires immediately, exactly as before (no regression for targets in front)
 
 **Verification:**
-- [ ] `npm test` (`tests/sim/towers.test.ts` turning cases)
-- [ ] Manual: watch a cannon swing round onto a wave
+- [x] `npm test` (`tests/sim/towers.test.ts` turning cases)
+- [ ] Manual: watch a cannon swing round onto a wave (with Task 4, once the aim line makes turning visible)
 
 **Dependencies:** Task 2
 
@@ -84,8 +84,8 @@ No game changes yet.
 ---
 
 ### Checkpoint E: aiming works
-- [ ] All tests pass, build clean
-- [ ] Browser: an archer ignores enemies behind it; a cannon visibly swings onto targets before firing
+- [x] All tests pass, build clean
+- [ ] Browser: an archer ignores enemies behind it; a cannon visibly swings onto targets before firing (run with Task 4: turning is only visible once the aim line is drawn)
 - [ ] Review with human (including whether the arc and turn numbers feel right)
 
 ---
