@@ -394,7 +394,8 @@ a.button {
   .intro-prompt {
     animation: none;
   }
-  
+}
+
 /* Minimap and zoom buttons, at the top of the panel */
 .minimap-box {
   display: grid;
