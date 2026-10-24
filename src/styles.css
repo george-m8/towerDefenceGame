@@ -190,3 +190,53 @@ body {
   color: #888;
   cursor: default;
 }
+
+.info {
+  min-height: 5.6em;
+  margin: 4px 0 0;
+  white-space: pre-line;
+  line-height: 1.1;
+}
+
+.help {
+  margin: 8px 0 0;
+  padding-top: 6px;
+  font-size: 16px;
+  line-height: 1.1;
+  border-top: 1px dotted var(--ink);
+}
+
+.tool:disabled .cost {
+  text-decoration: line-through;
+}
+
+.tool:disabled.selected {
+  color: #bbb;
+}
+
+/* Scale the map down to fit smaller windows; input maps clicks through the scale. */
+#map {
+  max-width: calc(100vw - 300px);
+  max-height: calc(100vh - 70px);
+  width: auto;
+  height: auto;
+}
+
+@media (max-width: 900px) {
+  .desktop {
+    flex-direction: column;
+  }
+
+  #map {
+    max-width: calc(100vw - 40px);
+  }
+
+  .panel-window {
+    width: 100%;
+  }
+}
+
+.panel {
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+}

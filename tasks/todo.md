@@ -312,13 +312,13 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** Style the panel and dialogs as classic Mac System 6/7 (1px borders, striped title bars, monochrome chrome, pixel font). Tool buttons show glyph, name, cost and hotkey, and are disabled when unaffordable. Hovering a tile shows its contents/HP in an info box. Add the full key map from the spec (`1`-`7`, `X`, `R`, `Esc`, `Space`, `D`). Game-over dialog styled to match.
 
 **Acceptance criteria:**
-- [ ] The panel matches the System 6/7 look. Unaffordable tools appear disabled.
-- [ ] Hover info shows the structure/enemy type and HP
-- [ ] All shortcuts from the spec work
+- [x] The panel matches the System 6/7 look. Unaffordable tools appear disabled.
+- [x] Hover info shows the structure/enemy type and HP
+- [x] All shortcuts from the spec work
 
 **Verification:**
-- [ ] `npm run build`
-- [ ] Manual: walk through every control. Screenshot for review.
+- [x] `npm run build`
+- [x] Manual: walk through every control. Screenshot for review.
 
 **Dependencies:** Task 12
 

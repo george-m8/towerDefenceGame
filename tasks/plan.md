@@ -83,7 +83,7 @@ T9, T10a and T11 only depend on T8 and can be built in any order (or in parallel
 - [ ] Review with human (balance pass on `config.ts` numbers)
 
 ### Phase 4: Polish and Verification
-- [ ] Task 13: System 6/7 UI polish, hover info and keyboard shortcuts
+- [x] Task 13: System 6/7 UI polish, hover info and keyboard shortcuts
 - [ ] Task 14: Performance, coverage, README and cross-browser check
 
 ### Checkpoint 4: MVP complete

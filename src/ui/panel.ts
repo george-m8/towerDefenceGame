@@ -3,6 +3,7 @@ import { incomePerMinute } from "../sim/economy";
 import type { Command, CommandResult, GameState } from "../sim/types";
 import { GLYPHS } from "../render/palette";
 import { TOOLS, isBuildTool, showMessage, type UiState } from "./state";
+import { describeTile } from "./tileInfo";
 
 export function createPanel(
   root: HTMLElement,
@@ -34,6 +35,9 @@ export function createPanel(
       ).join("")}
     </div>
     <p class="status" data-stat="status"></p>
+    <h2 class="section">Info</h2>
+    <p class="info" data-stat="info"></p>
+    <p class="help">Space pause · R rotate · D paths · Esc cancel · drag to paint</p>
   `;
   const field = (name: string) => root.querySelector<HTMLElement>(`[data-stat="${name}"]`)!;
   const gold = field("gold");
@@ -42,10 +46,15 @@ export function createPanel(
   const wave = field("wave");
   const next = field("next");
   const status = field("status");
+  const info = field("info");
   const sendWaveButton = root.querySelector<HTMLButtonElement>('[data-action="sendWave"]')!;
   const pauseButton = root.querySelector<HTMLButtonElement>('[data-action="pause"]')!;
   const toolButtons = [...root.querySelectorAll<HTMLButtonElement>("[data-tool]")];
 
+  // Drop focus after a click so Space only ever toggles pause, never re-presses a button.
+  root.addEventListener("click", (e) => {
+    (e.target as HTMLElement).closest("button")?.blur();
+  });
   sendWaveButton.addEventListener("click", () => {
     const result = dispatch({ type: "sendWave" });
     if (!result.ok) showMessage(ui, result.reason);
@@ -69,8 +78,11 @@ export function createPanel(
       sendWaveButton.disabled = spawning || state.gameOver;
       pauseButton.textContent = state.paused ? "Resume" : "Pause";
       for (const button of toolButtons) {
-        button.classList.toggle("selected", button.dataset.tool === ui.tool);
+        const tool = button.dataset.tool as UiState["tool"];
+        button.classList.toggle("selected", tool === ui.tool);
+        button.disabled = isBuildTool(tool) && state.gold < STRUCTURES[tool].cost;
       }
+      info.textContent = ui.hover ? describeTile(state, ui.hover).join("\n") : "";
       if (performance.now() < ui.messageUntil) status.textContent = ui.message;
       else status.textContent = state.paused ? "PAUSED - press Space" : "";
     },
