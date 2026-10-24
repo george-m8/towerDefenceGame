@@ -32,8 +32,10 @@ export interface Structure {
   maxHp: number;
   /** Ticks until a tower can fire again. */
   cooldown: number;
-  /** Only for directional structures (wall spikes). */
+  /** Towers and directional traps (wall spikes). */
   facing?: Facing;
+  /** Current aim in degrees, for towers that turn. */
+  aim?: number;
   /** Who built it; null for neutral map structures (ruins). */
   owner: PlayerId | null;
 }

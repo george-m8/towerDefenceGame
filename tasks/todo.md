@@ -1,153 +1,160 @@
-# Tasks: net-client
+# Tasks: tower-aiming
 
-Spec: [`SPEC-net-client.md`](../SPEC-net-client.md) | Plan: [`plan.md`](plan.md) | Map: [`CAPABILITIES.md`](../CAPABILITIES.md)
+Spec: [`SPEC-tower-aiming.md`](../SPEC-tower-aiming.md) | Plan: [`plan.md`](plan.md) | Map: [`CAPABILITIES.md`](../CAPABILITIES.md)
 
 Standard verification for every task (in addition to task-specific checks):
 `npm run typecheck && npm test && npm run build`
 
 ---
 
-## Phase J: Sessions
+## Phase E: Aiming rules
 
-## Task 1: View state from server messages
+## Task 1: Angle maths module
 
-**Description:** `src/net/view.ts`. `fromClientState(client)` builds a full `GameState`: enemies get default movement fields (`tx`/`ty`/`px`/`py` = position, `bounty` 0, `killedBy` null, `attackCooldown` 0), structures get `cooldown` 0, `flow` null, `rngState` 0. `applyUpdate(view, update)` copies the dynamic fields and the grid fields when present. `interpolateEnemies(previous, next, t)` returns enemies at fraction `t` between two updates, by id. New enemies appear at their position, and enemies missing from `next` are dropped.
+**Description:** Add a pure `src/sim/aiming.ts`. Angles are in degrees, measured clockwise from north (up the screen, negative y), from the tower's tile centre to a point:
+- `facingAngle(facing)`: N 0, E 90, S 180, W 270
+- `angleTo(from, to)`: the angle from a tower tile to a point
+- `angleBetween(a, b)`: the smallest absolute difference, 0-180
+- `inArc(aimAngle, arcDegrees, angle)`: inside or exactly on the edge; 360 always true
+- `turnTowards(current, target, maxStep)`: shorter way round, never overshoots, result normalised to [0, 360)
+
+No game changes yet.
 
 **Acceptance criteria:**
-- [x] Sim helpers (`topAt`, `canBuild`, `getFlowField`, `describeTile`) work on a view built from a welcome
-- [x] `applyUpdate` changes the grid only when the update carries it
-- [x] Interpolation gives the midpoint at `t = 0.5`, handles new and removed enemies, and clamps `t` to 0-1
+- [x] `angleTo` is correct for all four compass directions and the four diagonals
+- [x] `inArc` is true at the centre and exactly on the edge, false just outside, and always true for 360°
+- [x] `turnTowards` takes the shorter way across 0°/360°, stops exactly on the target, and never overshoots
 
 **Verification:**
-- [x] `tests/net/view.test.ts`
+- [x] `npm test` (new `tests/sim/aiming.test.ts`)
 
 **Dependencies:** None
 
-**Files likely touched:** `src/net/view.ts`, `tests/net/view.test.ts`, `server/tsconfig.json`, `tsconfig.json`
+**Files likely touched:** `src/sim/aiming.ts`, `tests/sim/aiming.test.ts`
 
 **Estimated scope:** S
 
 ---
 
-## Task 2: Sessions, with offline unchanged
+## Task 2: Facing on every tower and arc-limited targeting
 
-**Description:** `src/net/session.ts` with the `Session` interface (`state`, `playerId`, `send`, `restart`, `frame(now)`, `status`, `onResult`) and `createLocalSession(seed)`, holding today's fixed-step loop from `main.ts`. `main.ts`, the panel and input dispatch through the session. Results come back through `onResult`, which shows refusals with `showMessage`. The panel and input no longer read return values. Restart calls `session.restart()`.
+**Description:**
+- Add `arcDegrees` and `turnDegreesPerSecond` to `TowerStats`, plus `AIM_TOLERANCE_DEGREES = 5`. Values: archer 90 / 0, cannon 360 / 90, catapult 360 / 30.
+- `placeStructure` sets `facing` on every tower (and still on directional traps), and sets `aim` to the facing angle for turning towers.
+- Fixed towers (turn speed 0) target only enemies inside their arc, via `inArc(angleTo(...))`.
+- `glyphFor` draws arrows only for directional traps, so towers keep their letters.
+- Update existing tests that rely on all-round archers to give the archer a facing towards its enemy (same intent).
 
 **Acceptance criteria:**
-- [x] Offline play is unchanged: building, selling, refusals shown, pause, fast-forward, send wave, restart, debug keys (manual; confirmed in the user's play-test)
-- [x] `main.ts` no longer touches `tick` or `applyCommand` directly
-- [x] A `LocalSession` test checks ticking by elapsed time, speed, the catch-up cap and synchronous results
+- [x] Every placed tower records the facing it was built with. Turning towers start with `aim` on that facing.
+- [x] An archer facing E fires at an enemy to its east and ignores an equally close enemy to its west, even when the western one is closer to the keep
+- [x] Towers still draw as `A`, `C` and `P` (not arrows). All existing tests pass after the facing updates.
 
 **Verification:**
-- [x] `tests/net/session.test.ts` (local part)
-- [x] Manual: browser smoke test offline (user play-test)
+- [x] `npm test` (`tests/sim/towers.test.ts`; touched tests in `economy`/`layers` tests listed in the commit message)
+- [x] Glyphs covered by a unit test of `glyphFor`; browser check at Checkpoint E
 
 **Dependencies:** Task 1
 
-**Files likely touched:** `src/net/session.ts`, `src/main.ts`, `src/ui/panel.ts`, `src/ui/input.ts`, `tests/net/session.test.ts`
+**Files likely touched:** `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/grid.ts`, `src/sim/towers.ts`, `src/render/palette.ts` (+ tests)
 
 **Estimated scope:** M
 
 ---
 
-## Task 3: NetworkSession
+## Task 3: Turning towers
 
-**Description:** `src/net/networkSession.ts`: `createNetworkSession(url, intent, deps)`, where `deps` is `{ WebSocket, storage, now }`. It sends `create`, `join` or `rejoin` on open (rejoin when a token is stored for the room). It builds the view on `welcome` and stores the token, applies `update`s, sends commands with increasing `seq`, reports `result`s through `onResult`, and reports `error`s through `onError`. Malformed server messages are ignored. `status` reports "Connecting..." then "Room ABCD".
+**Description:** In `towers.ts`, turning towers (360° arc, turn speed above 0) pick their target as today (in range, closest to the keep), then turn `aim` towards it by at most `turnDegreesPerSecond / TICK_RATE` per tick. They fire only when the target is within `AIM_TOLERANCE_DEGREES` of `aim`. The cooldown keeps counting down while they turn, and the target is re-picked every tick.
 
 **Acceptance criteria:**
-- [x] Against a real server: create and join give both sessions the same game, and B's build appears in both as B's
-- [x] A refused build reports its reason through `onResult`
-- [x] The token is stored under the room code, and a new session with it rejoins as the same player
+- [x] A cannon facing N with an enemy due S doesn't fire until it has turned (about 2 s at 90°/s, within a tick), then fires
+- [x] A catapult in the same setup takes about 3x as long. Its minimum range is still respected.
+- [x] A turning tower already aimed at its target fires immediately, exactly as before (no regression for targets in front)
 
 **Verification:**
-- [x] `tests/net/networkSession.test.ts` (real server on port 0, `ws` client)
+- [x] `npm test` (`tests/sim/towers.test.ts` turning cases)
+- [x] Manual: watch a cannon swing round onto a wave (aim line swung from N to SE during a wave)
 
 **Dependencies:** Task 2
 
-**Files likely touched:** `src/net/networkSession.ts`, `tests/net/networkSession.test.ts`
+**Files likely touched:** `src/sim/towers.ts`, `tests/sim/towers.test.ts`
 
-**Estimated scope:** M
-
----
-
-### Checkpoint J: offline unchanged, network session tested
-- [x] All tests pass; offline smoke test in the browser (user play-test)
+**Estimated scope:** S
 
 ---
 
-## Phase K: Playable
+### Checkpoint E: aiming works
+- [x] All tests pass, build clean
+- [x] Browser: an archer ignores enemies behind it; a cannon visibly swings onto targets before firing (checked with Task 4)
+- [ ] Review with human (including whether the arc and turn numbers feel right)
 
-## Task 4: Joining by URL, room code and invite link
+---
 
-**Description:** `src/net/join.ts`: `readJoinIntent(search)` gives `offline`, `create {name}` or `join {room, name}` (asking for a missing name with `prompt`). Also `inviteLink(origin, room)` and the token storage key. `main.ts` picks the session from the intent, connects to `ws(s)://<host>/ws`, and after the welcome replaces the URL with `?room=CODE`. `src/ui/players.ts` is an online panel section with the room code, a "Copy invite link" button and the connection status. An unknown room shows a message with "Play offline" and "Create a new room" links. Debug keys don't send online.
+## Phase F: Showing it
+
+## Task 4: Arc overlay, facing notch and aim line
+
+**Description:** The range overlay (while placing a tower, or hovering a placed one) tints only the tiles that are in range, outside the minimum range, and inside the arc for the tower's facing. It uses `aiming.ts` and the same range rules as targeting. Placed towers show a small notch on the tile edge they face. Hovering a turning tower also draws a short line along its current `aim`. The ghost while placing shows the facing notch for the current `R` facing.
 
 **Acceptance criteria:**
-- [x] `/?create&name=Ann` creates a room and shows the code and invite link. `/?room=CODE&name=Bo` in another tab joins it.
-- [x] Both tabs see each other's builds. Reloading a tab rejoins as the same player.
-- [x] No parameters means offline, as before
+- [x] The placement overlay covers exactly the tiles the tower could fire at for the current facing (range, minimum range and arc)
+- [x] Every placed tower shows which way it faces at a glance
+- [x] Hovering a cannon or catapult shows its current aim line, which moves as it turns
 
 **Verification:**
-- [x] `tests/net/join.test.ts`
-- [x] Manual: two tabs with `npm run server` and `npm run dev` (the dev proxy path is checked with the probe through port 5173) (user play-test)
+- [x] `npm run build`
+- [x] Manual: rotate an archer ghost with `R` and watch the quarter circle swing round; hover a turning cannon during a wave
 
 **Dependencies:** Task 3
 
-**Files likely touched:** `src/net/join.ts`, `src/ui/players.ts`, `src/main.ts`, `src/styles.css`, `tests/net/join.test.ts`
+**Files likely touched:** `src/render/canvas.ts`, `src/render/palette.ts`
 
 **Estimated scope:** M
 
 ---
 
-### Checkpoint K: playable online
-- [x] Manual: two tabs create and join, and build in the same game (user play-test)
+## Task 5: Hover info and docs
 
----
-
-## Phase L: Feel and polish
-
-## Task 5: Smoothing, ghosts and reconnect
-
-**Description:** `NetworkSession` keeps the previous and newest updates with arrival times. `frame(now)` writes enemies interpolated 100 ms behind into the view. Builds waiting for their result are kept as pending, and the renderer draws them as faint ghosts. On close, it rejoins with backoff (0.5, 1, 2, 4, then 5 s), showing "Reconnecting...". On close code 4000 it shows "Opened in another tab" and stops.
+**Description:** Tower hover info shows facing and arc (`Archer (on wall), facing east, 90° arc`), and turning towers add `turns 90°/s`. README: a "Facing and arcs" note, `R` rotates towers as well as wall spikes, and arcs and turn speeds in the structures table. `SPEC.md` gets a pointer to `SPEC-tower-aiming.md`.
 
 **Acceptance criteria:**
-- [x] Enemies move smoothly between updates (manual; confirmed in the user's play-test); interpolation uses the buffered updates (tested)
-- [x] Pending builds show as ghosts until their result, and refused ones disappear with the reason shown
-- [x] A dropped socket reconnects as the same player, and close code 4000 doesn't retry (tests)
+- [x] Hover info shows facing, arc and (for turning towers) turn speed
+- [x] README and `SPEC.md` describe facing, arcs and turning accurately
 
 **Verification:**
-- [x] Session tests for reconnect, code 4000 and pending builds; view tests for frame interpolation
-- [x] Manual: smooth enemies at normal and 2x speed (user play-test)
+- [x] `npm run build`
+- [x] Manual: hover each tower type
 
 **Dependencies:** Task 4
 
-**Files likely touched:** `src/net/networkSession.ts`, `src/net/session.ts`, `src/render/canvas.ts`, `tests/net/networkSession.test.ts`
+**Files likely touched:** `src/ui/tileInfo.ts`, `README.md`, `SPEC.md`
 
-**Estimated scope:** M
+**Estimated scope:** S
 
 ---
 
-## Task 6: Players, votes, owner colours, restart and docs
+## Task 6: Play-test fixes for turning towers
 
-**Description:** The players list in the online panel: swatch, name, "(you)", dimmed when disconnected, and vote marks. The pause and fast-forward buttons show your own vote as selected and the count ("Pause 1/2") when there's more than one connected player. Four player colours in `palette.ts`. With more than one player, owned structures get a corner mark in their owner's colour, and hover info adds "Built by <name>". The game-over Restart button works online. README: a "Playing together" section. `SPEC.md` note.
+**Description:** From play-testing: turning towers kept swinging round after each kill and rarely fired. They now pick the in-range enemy needing the least turning (ties: closest to the keep, then id). Splash towers fire once the shell, landing where the barrel points at the target's distance, would land within splash radius of the target, and the blast is centred on that landing point. See the revised rules in the spec.
 
 **Acceptance criteria:**
-- [x] The players list and vote counts match the server's state in two tabs (manual; confirmed in the user's play-test)
-- [x] Structures show owner marks with two or more players, and none in single-player (manual; confirmed in the user's play-test)
-- [x] Restart after game over starts a new game for both tabs (manual; confirmed in the user's play-test)
+- [x] A cannon picks an enemy just off its barrel over a more urgent one behind it
+- [x] A cannon fires at an off-axis target sooner than the old 5° rule allowed, and the target is still caught in the blast
+- [x] Blasts are centred where the shell lands. Archers are unchanged.
 
 **Verification:**
-- [x] `npm run coverage`
-- [x] Manual: two tabs, then two machines on the network (user play-test)
+- [x] `npm test` (`tests/sim/towers.test.ts`)
+- [x] Manual: a cannon fired at an off-axis enemy during a wave, the blast landing beside it and still catching it
 
 **Dependencies:** Task 5
 
-**Files likely touched:** `src/ui/players.ts`, `src/ui/panel.ts`, `src/ui/tileInfo.ts`, `src/render/canvas.ts`, `src/render/palette.ts`, `README.md`, `SPEC.md`
+**Files likely touched:** `src/sim/towers.ts`, `tests/sim/towers.test.ts`, `SPEC-tower-aiming.md`
 
-**Estimated scope:** M
+**Estimated scope:** S
 
 ---
 
-### Checkpoint L: net-client complete
-- [x] All 6 success criteria in `SPEC-net-client.md` met
-- [x] `npm run coverage` passes (98.6% lines)
-- [x] Review with human (including the *(Claude)* decisions), then move this file to `tasks/net-client/` and write the `lobby` spec
+### Checkpoint F: tower-aiming complete
+- [x] All 6 success criteria in `SPEC-tower-aiming.md` met (re-checked after Task 6)
+- [x] `npm run coverage` passes (99.0% lines for `src/sim/`)
+- [ ] Review with human, then move this file to `tasks/tower-aiming/` and start `line-of-sight`

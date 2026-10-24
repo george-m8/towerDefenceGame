@@ -81,7 +81,7 @@ Standard verification for every task (in addition to task-specific checks):
 ### Checkpoint C: generated maps
 - [x] All tests pass, including the 500-seed guarantee tests
 - [x] Browser: several seeds look right; enemies use fords or bridges and never cross water (found and fixed: fords that did not cross, path arrows drawn on water)
-- [ ] Review with human before adding the remaining features
+- [x] Review with human before adding the remaining features
 
 ---
 
@@ -162,7 +162,7 @@ Standard verification for every task (in addition to task-specific checks):
 **Verification:**
 - [x] `npm run build`
 - [x] Manual: hover each terrain and feature type (swept in the browser); screenshot a generated map for review
-- [ ] Manual: seed on the game-over dialog (not seen in the browser; covered by typecheck and build only)
+- [x] Manual: seed on the game-over dialog (not seen in the browser; covered by typecheck and build only)
 
 **Dependencies:** Tasks 4, 5, 6
 
@@ -175,4 +175,4 @@ Standard verification for every task (in addition to task-specific checks):
 ### Checkpoint D: map-gen complete
 - [x] All 7 success criteria in `SPEC-map-gen.md` met
 - [x] `npm run coverage` passes (99.3% lines for `src/sim/`)
-- [ ] Review with human, then move this file to `tasks/map-gen/` and start the `tower-aiming` spec
+- [x] Review with human, then move this file to `tasks/map-gen/` and start the `tower-aiming` spec

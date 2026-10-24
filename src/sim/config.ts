@@ -20,7 +20,14 @@ export interface TowerStats {
   fireIntervalSeconds: number;
   /** Splash hits every enemy within this many tiles (Chebyshev) of the target. 0 = single target. */
   splashRadius: number;
+  /** Field of fire, centred on the facing. 360 = all round. */
+  arcDegrees: number;
+  /** 0 = fixed: never turns, fires at anything in its arc. */
+  turnDegreesPerSecond: number;
 }
+
+/** A turning tower fires once its aim is this close to the target. */
+export const AIM_TOLERANCE_DEGREES = 5;
 
 /** Spike traps fire on a fixed cycle from the moment they are built. */
 export interface TrapStats {
@@ -70,7 +77,15 @@ export const STRUCTURES = {
     cost: 25,
     maxHp: 40,
     blocksMovement: true,
-    tower: { range: 5, minRange: 0, damage: 6, fireIntervalSeconds: 1, splashRadius: 0 },
+    tower: {
+      range: 5,
+      minRange: 0,
+      damage: 6,
+      fireIntervalSeconds: 1,
+      splashRadius: 0,
+      arcDegrees: 90, // fixed, firing through a slit
+      turnDegreesPerSecond: 0,
+    },
   },
   cannon: {
     name: "Cannon",
@@ -78,7 +93,15 @@ export const STRUCTURES = {
     cost: 50,
     maxHp: 60,
     blocksMovement: true,
-    tower: { range: 4, minRange: 0, damage: 15, fireIntervalSeconds: 2.5, splashRadius: 1 },
+    tower: {
+      range: 4,
+      minRange: 0,
+      damage: 15,
+      fireIntervalSeconds: 2.5,
+      splashRadius: 1,
+      arcDegrees: 360,
+      turnDegreesPerSecond: 90,
+    },
   },
   catapult: {
     name: "Catapult",
@@ -86,7 +109,15 @@ export const STRUCTURES = {
     cost: 80,
     maxHp: 40,
     blocksMovement: true,
-    tower: { range: 9, minRange: 3, damage: 30, fireIntervalSeconds: 5, splashRadius: 2 },
+    tower: {
+      range: 9,
+      minRange: 3,
+      damage: 30,
+      fireIntervalSeconds: 5,
+      splashRadius: 2,
+      arcDegrees: 360,
+      turnDegreesPerSecond: 30, // very slow to swing round
+    },
   },
   floorSpikes: {
     name: "Floor spikes",

@@ -1,3 +1,4 @@
+import { facingAngle } from "./aiming";
 import { STRUCTURES, TERRAIN, TICK_RATE, type StructureStats, type TerrainStats } from "./config";
 import { playerName } from "./players";
 import type {
@@ -200,7 +201,8 @@ export function placeStructure(
     cooldown: initialCooldown(stats),
     owner,
   };
-  if (stats.directional) structure.facing = facing;
+  if (stats.directional || stats.tower) structure.facing = facing;
+  if (stats.tower && stats.tower.turnDegreesPerSecond > 0) structure.aim = facingAngle(facing);
   state.structures[structure.id] = structure;
   layerOf(state, kind)[tileIndex(state, x, y)] = structure.id;
   state.gridVersion++;

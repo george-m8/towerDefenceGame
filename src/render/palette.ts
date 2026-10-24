@@ -1,6 +1,12 @@
+import { STRUCTURES, type StructureStats } from "../sim/config";
 import type { Facing, StructureKind, Terrain } from "../sim/types";
 
 export const TILE_SIZE = 20;
+/** Facing notch on a tower tile edge, and the hovered turning tower's aim line. */
+export const NOTCH_LENGTH_PX = 8;
+export const NOTCH_DEPTH_PX = 3;
+export const AIM_LINE_TILES = 2;
+
 /** Height of the strip drawn along the top of a wall-mounted tower. */
 export const BATTLEMENT_PX = 3;
 export const GLYPH_FONT = `bold ${TILE_SIZE - 4}px Menlo, Consolas, monospace`;
@@ -28,6 +34,8 @@ export const COLOURS = {
   rangeEdge: "rgba(255, 255, 160, 0.6)",
   shot: "#fff6c0",
   chest: "#ffcc33",
+  facingNotch: "#ffffff",
+  aimLine: "#ff6b6b",
   splash: "rgba(255, 150, 40, 0.45)",
   spikesUp: "#c8c8c8",
   spikesUpGlyph: "#ffffff",
@@ -48,8 +56,10 @@ export const GLYPHS: Record<StructureKind, string> = {
 
 const FACING_GLYPHS: Record<Facing, string> = { N: "▲", E: "▶", S: "▼", W: "◀" };
 
+/** Directional traps draw as arrows; towers keep their letter (their facing is shown separately). */
 export function glyphFor(kind: StructureKind, facing?: Facing): string {
-  return facing ? FACING_GLYPHS[facing] : GLYPHS[kind];
+  const stats: StructureStats = STRUCTURES[kind];
+  return facing && stats.directional ? FACING_GLYPHS[facing] : GLYPHS[kind];
 }
 
 export const STRUCTURE_COLOURS: Record<StructureKind, { bg: string; fg: string }> = {

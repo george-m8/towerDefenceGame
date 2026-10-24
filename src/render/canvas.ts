@@ -10,13 +10,18 @@ import {
   topAt,
 } from "../sim/grid";
 import { nextStep } from "../sim/pathfinding";
-import { STRUCTURES, type StructureStats } from "../sim/config";
+import { facingAngle } from "../sim/aiming";
+import { STRUCTURES, type StructureStats, type TowerStats } from "../sim/config";
+import { canTarget } from "../sim/towers";
 import { hitTile } from "../sim/traps";
-import type { GameState, Point, Structure, StructureKind } from "../sim/types";
+import type { Facing, GameState, Point, Structure, StructureKind } from "../sim/types";
 import type { PendingBuild } from "../net/session";
 import { isBuildTool, type UiState } from "../ui/state";
 import {
+  AIM_LINE_TILES,
   COLOURS,
+  NOTCH_DEPTH_PX,
+  NOTCH_LENGTH_PX,
   KEEP_HP_FONT,
   BATTLEMENT_PX,
   GLYPH_FONT,
@@ -27,6 +32,16 @@ import {
   glyphFor,
   playerColour,
 } from "./palette";
+
+/** Compass degrees (0 = north, clockwise) to canvas radians (0 = east, clockwise). */
+function toCanvasAngle(compassDegrees: number): number {
+  return ((compassDegrees - 90) * Math.PI) / 180;
+}
+
+function isTower(kind: StructureKind): boolean {
+  const stats: StructureStats = STRUCTURES[kind];
+  return stats.tower !== undefined;
+}
 
 export function createRenderer(canvas: HTMLCanvasElement, width: number, height: number) {
   canvas.width = width * TILE_SIZE;
@@ -117,6 +132,7 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
     const { x, y } = structure;
     const colours = STRUCTURE_COLOURS[structure.kind];
     drawTile(x, y, colours.bg, glyphFor(structure.kind, structure.facing), colours.fg);
+    if (isTower(structure.kind)) drawFacingNotch(x, y, structure.facing);
     if (structure.hp < structure.maxHp) drawHpBar(x, y, structure.hp / structure.maxHp);
   }
 
@@ -127,6 +143,7 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
     drawTile(x, y, STRUCTURE_COLOURS[wall.kind].bg, glyphFor(tower.kind), towerColour);
     ctx!.fillStyle = towerColour;
     ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, BATTLEMENT_PX);
+    drawFacingNotch(x, y, tower.facing);
     if (wall.hp < wall.maxHp) drawHpBar(x, y, wall.hp / wall.maxHp);
   }
 
@@ -146,6 +163,7 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
     const stats: StructureStats = STRUCTURES[ui.tool];
     const facing = stats.directional ? ui.facing : undefined;
     drawGlyph(x, y, glyphFor(ui.tool, facing), "#ffffff");
+    if (stats.tower) drawFacingNotch(x, y, ui.facing);
     if (facing) {
       const target = hitTile({ x, y, facing });
       ctx!.fillStyle = COLOURS.trapTarget;
@@ -163,27 +181,78 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
     const stats: StructureStats = STRUCTURES[kind];
     if (!stats.tower) return;
     const centre: Point = placing ? ui.hover : { x: hovered!.x, y: hovered!.y };
-    const { range, minRange } = stats.tower;
+    const facing = placing ? ui.facing : hovered!.facing;
+    const tower = stats.tower;
+    const { range } = tower;
 
+    // Exactly the tiles this tower could fire at: the same rule targeting uses.
     ctx!.fillStyle = COLOURS.range;
     for (let y = Math.floor(centre.y - range); y <= centre.y + range; y++) {
       for (let x = Math.floor(centre.x - range); x <= centre.x + range; x++) {
-        const d = Math.hypot(x - centre.x, y - centre.y);
-        if (d <= range && d >= minRange) {
+        if (canTarget(tower, centre, facing, { x, y })) {
           ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
         }
       }
     }
+    drawRangeOutline(centre, tower, facing);
+    if (!placing && hovered!.aim !== undefined) drawAimLine(centre, hovered!.aim);
+  }
+
+  /** A circle for all-round towers, a wedge for fixed ones. */
+  function drawRangeOutline(centre: Point, tower: TowerStats, facing: Facing | undefined) {
+    const cx = (centre.x + 0.5) * TILE_SIZE;
+    const cy = (centre.y + 0.5) * TILE_SIZE;
+    const radius = (tower.range + 0.5) * TILE_SIZE;
     ctx!.strokeStyle = COLOURS.rangeEdge;
     ctx!.beginPath();
-    ctx!.arc(
-      (centre.x + 0.5) * TILE_SIZE,
-      (centre.y + 0.5) * TILE_SIZE,
-      (range + 0.5) * TILE_SIZE,
-      0,
-      Math.PI * 2,
+    if (tower.turnDegreesPerSecond > 0 || tower.arcDegrees >= 360 || !facing) {
+      ctx!.arc(cx, cy, radius, 0, Math.PI * 2);
+    } else {
+      const aim = facingAngle(facing);
+      ctx!.moveTo(cx, cy);
+      ctx!.arc(
+        cx,
+        cy,
+        radius,
+        toCanvasAngle(aim - tower.arcDegrees / 2),
+        toCanvasAngle(aim + tower.arcDegrees / 2),
+      );
+      ctx!.closePath();
+    }
+    ctx!.stroke();
+  }
+
+  function drawAimLine(centre: Point, aim: number) {
+    const cx = (centre.x + 0.5) * TILE_SIZE;
+    const cy = (centre.y + 0.5) * TILE_SIZE;
+    const length = AIM_LINE_TILES * TILE_SIZE;
+    ctx!.strokeStyle = COLOURS.aimLine;
+    ctx!.lineWidth = 2;
+    ctx!.beginPath();
+    ctx!.moveTo(cx, cy);
+    ctx!.lineTo(
+      cx + Math.cos(toCanvasAngle(aim)) * length,
+      cy + Math.sin(toCanvasAngle(aim)) * length,
     );
     ctx!.stroke();
+    ctx!.lineWidth = 1;
+  }
+
+  /** A small mark on the tile edge a tower faces. */
+  function drawFacingNotch(x: number, y: number, facing: Facing | undefined) {
+    if (!facing) return;
+    const left = x * TILE_SIZE;
+    const top = y * TILE_SIZE;
+    const mid = (TILE_SIZE - NOTCH_LENGTH_PX) / 2;
+    const far = TILE_SIZE - NOTCH_DEPTH_PX;
+    const rects: Record<Facing, [number, number, number, number]> = {
+      N: [left + mid, top, NOTCH_LENGTH_PX, NOTCH_DEPTH_PX],
+      E: [left + far, top + mid, NOTCH_DEPTH_PX, NOTCH_LENGTH_PX],
+      S: [left + mid, top + far, NOTCH_LENGTH_PX, NOTCH_DEPTH_PX],
+      W: [left, top + mid, NOTCH_DEPTH_PX, NOTCH_LENGTH_PX],
+    };
+    ctx!.fillStyle = COLOURS.facingNotch;
+    ctx!.fillRect(...rects[facing]);
   }
 
   function drawEffects(state: GameState) {

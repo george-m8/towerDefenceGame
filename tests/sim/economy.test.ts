@@ -9,7 +9,7 @@ import { createGameWithoutWaves, goldOf } from "./helpers";
 describe("bounties", () => {
   it("pays the enemy's bounty when a tower kills it", () => {
     const state = createGameWithoutWaves();
-    placeStructure(state, "archer", 10, 10, "N", 1);
+    placeStructure(state, "archer", 10, 10, "E", 1);
     spawnEnemy(state, 11, 10, 1, 7);
     const gold = goldOf(state);
     tick(state);

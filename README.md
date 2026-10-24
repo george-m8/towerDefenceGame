@@ -32,9 +32,9 @@ Enemies (`g`) spawn from the red strip on the left edge and walk to your keep (`
 | Key | Structure | Glyph | Cost | What it does |
 |---|---|---|---|---|
 | `1` | Wall | `#` | 5 | Blocks movement. 50 HP. Towers can be built on top. |
-| `2` | Archer | `A` | 25 | Range 5, 6 damage every 1s, single target. |
-| `3` | Cannon | `C` | 50 | Range 4, 15 damage every 2.5s, hits a 3x3 area. |
-| `4` | Catapult | `P` | 80 | Range 3-9, 30 damage every 5s, hits a 5x5 area. Can't hit enemies closer than 3 tiles. |
+| `2` | Archer | `A` | 25 | Range 5, 6 damage every 1s, single target. Fixed 90° arc. |
+| `3` | Cannon | `C` | 50 | Range 4, 15 damage every 2.5s, hits a 3x3 area. Turns 90°/s. |
+| `4` | Catapult | `P` | 80 | Range 3-9, 30 damage every 5s, hits a 5x5 area. Can't hit enemies closer than 3 tiles. Turns 30°/s. |
 | `5` | Floor spikes | `^` | 15 | Walkable. Every 1.5s spikes come up and deal 15 damage to every enemy on the tile. |
 | `6` | Wall spikes | `▲▶▼◀` | 20 | A wall section that fires every 2s, dealing 20 damage to the one tile it faces. Press `R` to rotate before placing. |
 | `7` | House | `h` | 40 | +2 gold every 5s. Blocks movement. |
@@ -67,6 +67,14 @@ Archers, cannons and catapults can stand on **open ground** or on **top of a wal
 
 Towers can't go on spikes, houses, the keep or the spawn zone. Hover a tower to see whether it is on a wall or the ground.
 
+### Facing and arcs
+
+Every tower faces north, east, south or west. Press `R` before placing to rotate it (the white notch on the tile shows which way). Facing is permanent: sell and rebuild to change it.
+
+- **Archers** are fixed behind an arrow slit and only fire inside a 90° arc centred on their facing.
+- **Cannons and catapults** can fire in any direction, but have to turn onto a target first (cannons at 90°/s, catapults at 30°/s), so enemies slipping past behind them may get through before they line up. Hover one to see its current aim.
+- While placing or hovering a tower, the tinted tiles are exactly the ones it can fire at.
+
 Towers always shoot the enemy closest to the keep. Traps fire on a fixed timer from the moment they're built, whether or not an enemy is there.
 
 ### Controls
@@ -77,7 +85,7 @@ Towers always shoot the enemy closest to the keep. Traps fire on a fixed timer f
 | Left click | Place (or sell) |
 | Left drag | Paint walls, spikes, bridges, or sell/clear along the dragged tiles |
 | Right click or `Esc` | Clear the selected tool |
-| `R` | Rotate wall spikes |
+| `R` | Rotate the facing of the tower or wall spikes you're placing |
 | `Space` or Pause button | Pause / resume (you can still build while paused) |
 | `F` or `>>` button | Toggle fast forward (2x game speed) |
 | Send wave button | Start the next wave now, for +1 gold per second skipped |
