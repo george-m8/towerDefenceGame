@@ -10,7 +10,7 @@ export const KEEP_HP = 100;
 // Spawn zone: a strip on the left edge of the map.
 export const SPAWN_ZONE = { x: 0, y: 10, width: 2, height: 12 };
 
-export const STARTING_GOLD = 150;
+export const STARTING_GOLD = 250;
 
 export interface TowerStats {
   range: number; // tiles, measured centre to centre
