@@ -34,7 +34,15 @@ export function terrainAt(state: GameState, x: number, y: number): Terrain {
 
 /** Whether enemies (and later units) can stand here at all. Sea, river, rock and trees are impassable. */
 export function isWalkable(state: GameState, x: number, y: number): boolean {
-  return inBounds(state, x, y) && TERRAIN[terrainAt(state, x, y)].walkable;
+  if (!inBounds(state, x, y)) return false;
+  if (TERRAIN[terrainAt(state, x, y)].walkable) return true;
+  return isBridge(baseAt(state, x, y));
+}
+
+function isBridge(structure: Structure | undefined): boolean {
+  if (!structure) return false;
+  const stats: StructureStats = STRUCTURES[structure.kind];
+  return stats.spansWater === true;
 }
 
 function structureIn(state: GameState, layer: number[], x: number, y: number) {
@@ -95,7 +103,7 @@ export function canBuild(
   if (!inBounds(state, x, y)) return { ok: false, reason: "Out of bounds" };
   if (isKeepTile(state, x, y)) return { ok: false, reason: "Can't build on the keep" };
   if (isSpawnTile(state, x, y)) return { ok: false, reason: "Can't build in the spawn zone" };
-  const terrainCheck = canBuildOnTerrain(state, x, y);
+  const terrainCheck = canBuildOnTerrain(state, kind, x, y);
   if (!terrainCheck.ok) return terrainCheck;
   const layerCheck =
     STRUCTURES[kind].layer === "mount" ? canMount(state, x, y) : canBuildBase(state, x, y);
@@ -104,13 +112,24 @@ export function canBuild(
   return { ok: true };
 }
 
-function canBuildOnTerrain(state: GameState, x: number, y: number): CommandResult {
+function canBuildOnTerrain(
+  state: GameState,
+  kind: StructureKind,
+  x: number,
+  y: number,
+): CommandResult {
   const terrain: TerrainStats = TERRAIN[terrainAt(state, x, y)];
+  const stats: StructureStats = STRUCTURES[kind];
+  const spansWater = stats.spansWater === true;
   if (terrain.buildable === "none") {
     return { ok: false, reason: `Can't build on ${terrain.name.toLowerCase()}` };
   }
-  if (terrain.buildable === "bridgeOnly") {
+  // Once a river is bridged, the layer rules decide (no towers on bridges, no stacking).
+  if (terrain.buildable === "bridgeOnly" && !spansWater && !baseAt(state, x, y)) {
     return { ok: false, reason: "Only bridges can be built on rivers" };
+  }
+  if (terrain.buildable === "any" && spansWater) {
+    return { ok: false, reason: "Bridges can only be built on rivers" };
   }
   return { ok: true };
 }

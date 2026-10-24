@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { canBuild, isKeepTile, isWalkable, terrainAt } from "../../src/sim/grid";
+import { STRUCTURES } from "../../src/sim/config";
+import { spawnEnemy } from "../../src/sim/enemies";
+import { applyCommand } from "../../src/sim/game";
+import { canBuild, isKeepTile, isWalkable, placeStructure, terrainAt } from "../../src/sim/grid";
 import { nextStep } from "../../src/sim/pathfinding";
 import type { GameState, Point } from "../../src/sim/types";
 import { column, createGameWithoutWaves, paintTerrain } from "./helpers";
@@ -61,5 +64,56 @@ describe("building on terrain", () => {
     const state = createGameWithoutWaves();
     paintTerrain(state, [{ x: 10, y: 10 }], "ford");
     expect(canBuild(state, "wall", 10, 10)).toEqual({ ok: true });
+  });
+});
+
+describe("bridges", () => {
+  function riverMap() {
+    const state = createGameWithoutWaves();
+    paintTerrain(state, column(state, 10), "river");
+    return state;
+  }
+
+  it("can only be built on river tiles", () => {
+    const state = riverMap();
+    expect(canBuild(state, "bridge", 10, 5)).toEqual({ ok: true });
+    expect(canBuild(state, "bridge", 12, 5)).toEqual({
+      ok: false,
+      reason: "Bridges can only be built on rivers",
+    });
+  });
+
+  it("opens a route across a river that blocked the only way", () => {
+    const state = riverMap();
+    expect(pathToKeep(state, { x: 2, y: 5 })).toBeNull();
+    expect(applyCommand(state, { type: "build", kind: "bridge", x: 10, y: 5 })).toEqual({
+      ok: true,
+    });
+    expect(isWalkable(state, 10, 5)).toBe(true);
+    expect(pathToKeep(state, { x: 2, y: 5 })).toContainEqual({ x: 10, y: 5 });
+  });
+
+  it("can't hold a tower", () => {
+    const state = riverMap();
+    placeStructure(state, "bridge", 10, 5);
+    expect(canBuild(state, "archer", 10, 5)).toEqual({
+      ok: false,
+      reason: "Can't put a tower on bridge",
+    });
+  });
+
+  it("can't be sold while an enemy is on it, and refunds as usual otherwise", () => {
+    const state = riverMap();
+    placeStructure(state, "bridge", 10, 5);
+    spawnEnemy(state, 10, 5);
+    expect(applyCommand(state, { type: "sell", x: 10, y: 5 })).toEqual({
+      ok: false,
+      reason: "An enemy is on the bridge",
+    });
+    state.enemies = [];
+    const gold = state.gold;
+    expect(applyCommand(state, { type: "sell", x: 10, y: 5 })).toEqual({ ok: true });
+    expect(state.gold).toBe(gold + Math.floor(STRUCTURES.bridge.cost * 0.5));
+    expect(isWalkable(state, 10, 5)).toBe(false);
   });
 });

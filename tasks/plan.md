@@ -121,7 +121,7 @@ T4, T5 and T6 each depend only on T3.
 ### Task list
 
 - [x] Task 1: Terrain rules for walking and building
-- [ ] Task 2: Bridges over rivers
+- [x] Task 2: Bridges over rivers
 - [ ] Task 3: Map generator with coast, river, fords and guarantees
 
 **Checkpoint C: generated maps**

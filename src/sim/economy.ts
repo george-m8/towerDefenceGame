@@ -1,5 +1,5 @@
 import { SELL_REFUND, STRUCTURES, TICK_RATE, type StructureStats } from "./config";
-import { isKeepTile, removeStructure, topAt } from "./grid";
+import { enemyOccupies, isKeepTile, removeStructure, topAt } from "./grid";
 import type { CommandResult, GameState, Structure } from "./types";
 
 /** Removes dead enemies and pays out their bounties. */
@@ -36,6 +36,10 @@ export function sellStructure(state: GameState, x: number, y: number): CommandRe
   if (isKeepTile(state, x, y)) return { ok: false, reason: "Can't sell the keep" };
   const structure = topAt(state, x, y);
   if (!structure) return { ok: false, reason: "Nothing to sell" };
+  const stats: StructureStats = STRUCTURES[structure.kind];
+  if (stats.spansWater && state.enemies.some((e) => enemyOccupies(e, x, y))) {
+    return { ok: false, reason: "An enemy is on the bridge" };
+  }
   state.gold += refundFor(structure);
   removeStructure(state, structure);
   return { ok: true };

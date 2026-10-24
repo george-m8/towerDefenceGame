@@ -35,13 +35,13 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** Add the `bridge` structure (base layer, cost 10, no HP, doesn't block, doesn't accept a mount, key `8`, glyph `=`). It can be built only on river tiles, and `isWalkable` treats a bridged river as walkable. Selling a bridge is rejected while an enemy is on it.
 
 **Acceptance criteria:**
-- [ ] A bridge can be built only on a river tile, and anything else on a river is still rejected
-- [ ] A river that blocked the only route becomes crossable once bridged; enemies reroute over it
-- [ ] Selling a bridge with an enemy on it is rejected; otherwise it refunds as usual
+- [x] A bridge can be built only on a river tile, and anything else on a river is still rejected
+- [x] A river that blocked the only route becomes crossable once bridged; enemies reroute over it
+- [x] Selling a bridge with an enemy on it is rejected; otherwise it refunds as usual
 
 **Verification:**
-- [ ] `npm test` (`tests/sim/terrain.test.ts` bridge cases)
-- [ ] Manual: bridge a hand-placed river and watch the path overlay (`D`) reroute
+- [x] `npm test` (`tests/sim/terrain.test.ts` bridge cases)
+- [ ] Manual: bridge a river and watch the path overlay (`D`) reroute (deferred to Checkpoint C, once rivers are generated)
 
 **Dependencies:** Task 1
 

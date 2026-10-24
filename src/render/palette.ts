@@ -39,6 +39,7 @@ export const GLYPHS: Record<StructureKind, string> = {
   floorSpikes: "^",
   wallSpikes: "▲",
   house: "h",
+  bridge: "=",
 };
 
 const FACING_GLYPHS: Record<Facing, string> = { N: "▲", E: "▶", S: "▼", W: "◀" };
@@ -55,6 +56,7 @@ export const STRUCTURE_COLOURS: Record<StructureKind, { bg: string; fg: string }
   floorSpikes: { bg: "#3a3122", fg: "#a89878" },
   wallSpikes: { bg: "#8a7a5c", fg: "#e8e8e8" },
   house: { bg: "#7a3b2e", fg: "#ffd28a" },
+  bridge: { bg: "#6b4f2a", fg: "#d9b77a" },
 };
 
 /** Ground keeps its checkerboard; every other terrain has a fixed look. */

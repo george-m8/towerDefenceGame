@@ -47,6 +47,8 @@ export interface StructureStats {
   /** Placed facing one direction (traps hit the tile they face). */
   directional?: boolean;
   income?: IncomeStats;
+  /** Can only be built on rivers, and makes them walkable. */
+  spansWater?: boolean;
 }
 
 export const STRUCTURES = {
@@ -106,6 +108,14 @@ export const STRUCTURES = {
     maxHp: 30,
     blocksMovement: true,
     income: { gold: 2, intervalSeconds: 5 },
+  },
+  bridge: {
+    name: "Bridge",
+    layer: "base",
+    cost: 10,
+    maxHp: 0, // walkable and never attacked
+    blocksMovement: false,
+    spansWater: true,
   },
 } satisfies Record<string, StructureStats>;
 
