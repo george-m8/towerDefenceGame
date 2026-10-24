@@ -67,7 +67,7 @@ T4 and T5 both depend only on T3.
 
 - [x] Task 3: Towers can be placed on walls
 - [x] Task 4: Walls protect, and drop, their towers
-- [ ] Task 5: Selling takes the top layer first
+- [x] Task 5: Selling takes the top layer first
 - [ ] Task 6: Wall-mounted visuals, hover info and docs
 
 **Checkpoint B: module complete**

@@ -123,12 +123,12 @@ The placement ghost already calls `canBuild`, so wall tiles show green for tower
 **Description:** The sell command uses `topAt`: it sells a mount if present, otherwise the base. Refund rules are unchanged.
 
 **Acceptance criteria:**
-- [ ] Selling a wall-mounted archer refunds the archer and leaves the wall. Selling again refunds the wall.
-- [ ] Selling a ground tower or a plain base works as before. Keep and empty-tile rejections are unchanged.
+- [x] Selling a wall-mounted archer refunds the archer and leaves the wall. Selling again refunds the wall.
+- [x] Selling a ground tower or a plain base works as before. Keep and empty-tile rejections are unchanged.
 
 **Verification:**
-- [ ] `npm test` (`tests/sim/economy.test.ts` selling cases)
-- [ ] Manual: X-click a wall-mounted archer twice
+- [x] `npm test` (`tests/sim/economy.test.ts` selling cases)
+- [x] Manual: X-click a wall-mounted archer twice
 
 **Dependencies:** Task 3
 
