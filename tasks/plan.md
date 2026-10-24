@@ -1,9 +1,9 @@
 # Implementation Plan: Post-MVP Phases
 
 Capability map: [`CAPABILITIES.md`](../CAPABILITIES.md)
-Current module spec: [`SPEC-tower-aiming.md`](../SPEC-tower-aiming.md)
+Current module spec: [`SPEC-audio.md`](../SPEC-audio.md)
 Task list (current module only): [`tasks/todo.md`](todo.md)
-Finished modules: [`tasks/tile-layers/`](tile-layers/todo.md), [`tasks/map-gen/`](map-gen/todo.md), [`tasks/players/`](players/todo.md), [`tasks/game-server/`](game-server/todo.md) (awaiting the cross-machine probe and review), [`tasks/net-client/`](net-client/todo.md)
+Finished modules: [`tasks/tile-layers/`](tile-layers/todo.md), [`tasks/tower-aiming/`](tower-aiming/todo.md), [`tasks/map-gen/`](map-gen/todo.md), [`tasks/players/`](players/todo.md), [`tasks/game-server/`](game-server/todo.md) (awaiting the cross-machine probe and review), [`tasks/net-client/`](net-client/todo.md)
 Previous plan (MVP, complete except a Firefox/Safari smoke test): [`tasks/mvp/`](mvp/plan.md)
 
 ## How this plan works
@@ -24,9 +24,10 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | | `game-server` | Built; cross-machine probe and review pending |
 | | `net-client` | Done (play-tested) |
 | | `lobby` | **Spec approved; tasks in [`tasks/lobby/`](lobby/todo.md)** |
-| 1. Basics (continued) | `tower-aiming` | **Built, awaiting review** |
+| 1. Basics (continued) | `tower-aiming` | Done |
 | | `line-of-sight` | Spec drafted |
 | | `units` | Spec drafted |
+| 1c. Presentation | `audio` | **Spec approved, tasks ready** |
 | 2. Setup and modes | `game-setup` | Spec needed |
 | | `mode-ramparts` | Spec needed |
 | 3. Economy | `resources` | Spec needed |
@@ -344,7 +345,7 @@ T1 View state from server messages, interpolation
 
 ---
 
-## Module 6: `tower-aiming` (current)
+## Module 6: `tower-aiming` (done)
 
 Spec: [`SPEC-tower-aiming.md`](../SPEC-tower-aiming.md)
 
@@ -378,7 +379,7 @@ T1 Angle maths (aiming.ts)
 **Checkpoint E: aiming works**
 - [x] All tests pass (existing tower tests updated to face their targets)
 - [x] Browser: an archer ignores enemies behind it; a cannon visibly swings onto targets before firing
-- [ ] Review with human
+- [x] Review with human
 
 - [x] Task 4: Arc overlay, facing notch and aim line
 - [x] Task 5: Hover info and docs
@@ -387,7 +388,7 @@ T1 Angle maths (aiming.ts)
 **Checkpoint F: module complete**
 - [x] All 6 success criteria in `SPEC-tower-aiming.md` met
 - [x] Coverage of 80% lines or more for `src/sim/` (99.3%)
-- [ ] Review with human
+- [x] Review with human
 
 ### Risks and mitigations
 
@@ -407,6 +408,66 @@ T1 Angle maths (aiming.ts)
 Spec: [`SPEC-lobby.md`](../SPEC-lobby.md). Tasks: [`tasks/lobby/todo.md`](lobby/todo.md) (kept apart while `tower-aiming`'s list in `tasks/todo.md` awaits review).
 
 A start screen (name, Play solo, Create room, Join by code) and a waiting room where the host starts the game. The server gains a waiting phase: no ticks and no commands until the host's `start`, with the host passing to the next connected player if they leave.
+
+---
+
+## Module 8: `audio` (current)
+
+Spec: [`SPEC-audio.md`](../SPEC-audio.md)
+
+### Overview
+
+Chiptune sound effects driven by simulation cues, and MIDI music on the title screen and menus, all played by our own small Web Audio synth (pulse with PWM, triangle, saw, sine, noise; ADSR and semitone pitch envelopes). No new dependencies.
+
+### Architecture decisions
+
+- **Pure where possible, Web Audio at the edge.** Note maths, envelopes, cue selection, throttling, MIDI reading and sequencing are pure and unit-tested. Only `synth.ts` touches Web Audio, behind an `AudioEngine` interface with a fake for tests.
+- **Sounds come from data, not calls.** The sim appends cues with increasing ids to `state.cues`; the audio layer plays each id once. The same path serves local play and online play (cues ride in snapshots), and network snapshots replacing the state can't cause repeats.
+- **Audio starts on the intro screen's gesture.** Browsers block audio until a click or key press. The intro's dismiss is that gesture, which is also exactly when the title theme should start.
+- **Tune by ear with a dev sound test.** A dev-only `?soundtest` page lists every sound effect with a play button, so the table in `sounds.ts` can be tuned without playing a game.
+- **Original placeholder theme first.** Music is wired up and tested with a short theme we write ourselves; your MIDI files drop into the manifest later.
+
+### Dependency graph
+
+```
+T1 Synth voice + pure maths
+ └─ T2 Engine, gesture unlock, settings, speaker button
+     ├─ T3 Sound table, cue player, UI cues, dev sound test
+     │    └─ T4 Sim cues, local and online
+     └─ T6 Sequencer, manifest, title and menu music  <── T5 MIDI reader (independent)
+          └─ T7 Docs
+```
+
+### Task list
+
+- [ ] Task 1: Synth voice and pure note maths
+- [ ] Task 2: Audio engine, gesture unlock and sound settings
+- [ ] Task 3: Sound-effect table, cue player and UI sounds
+- [ ] Task 4: Sound cues from the simulation
+
+**Checkpoint G: sound effects**
+- [ ] Every sound effect heard in a local and an online game; a busy wave stays under the hit cap
+- [ ] Review with human (tune the sounds with `?soundtest`)
+
+- [ ] Task 5: MIDI file reader
+- [ ] Task 6: Sequencer and title/menu music
+- [ ] Task 7: Docs
+
+**Checkpoint H: module complete**
+- [ ] All 7 success criteria in `SPEC-audio.md` met
+- [ ] Coverage of 80% lines or more for `src/sim/` and the pure audio modules
+- [ ] Review with human
+
+### Risks and mitigations
+
+| Risk | Impact | Mitigation |
+|---|---|---|
+| PWM via two sawtooths and a modulated delay sounds wrong or clicks | Med | Pure test of the delay-time limits for each duty cycle; listen in the sound test early (Task 1/3); fall back to fixed-duty pulses if needed |
+| Hit sounds pile up in big waves | Med | Per-cue throttle caps in the table, tested in the cue player |
+| Duplicate sounds after network snapshots | Med | Play by cue id, never by state diffing; tested |
+| Music timing drifts or stutters | Med | Schedule against the audio clock with a lookahead window; tested in the pure sequencer |
+| Too many Web Audio nodes in long sessions | Low | Each voice disconnects itself when it ends; check node counts in a stress wave |
+| Browsers block audio | Low | Start only on a gesture; every engine call is a no-op until unlocked; never throws into the game |
 
 ---
 
