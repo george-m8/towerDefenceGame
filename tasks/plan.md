@@ -122,11 +122,11 @@ T4, T5 and T6 each depend only on T3.
 
 - [x] Task 1: Terrain rules for walking and building
 - [x] Task 2: Bridges over rivers
-- [ ] Task 3: Map generator with coast, river, fords and guarantees
+- [x] Task 3: Map generator with coast, river, fords and guarantees
 
 **Checkpoint C: generated maps**
-- [ ] All tests pass, including 500-seed guarantee tests
-- [ ] Browser: several seeds show a coast and a river; enemies use fords or bridges and never cross water
+- [x] All tests pass, including 500-seed guarantee tests
+- [x] Browser: several seeds show a coast and a river; enemies use fords or bridges and never cross water
 - [ ] Review with human
 
 - [ ] Task 4: Rocks, forests and clearing trees

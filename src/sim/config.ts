@@ -8,8 +8,8 @@ export const FAST_FORWARD_SPEED = 2; // game-speed multiplier while fast-forward
 export const KEEP_SIZE = 3;
 export const KEEP_HP = 99;
 
-// Spawn zone: a strip on the left edge of the map.
-export const SPAWN_ZONE = { x: 0, y: 10, width: 2, height: 12 };
+// Spawn zone: a strip on the left edge of the map, centred vertically.
+export const SPAWN_ZONE = { x: 0, width: 2, height: 12 };
 
 export const STARTING_GOLD = 250;
 
@@ -158,3 +158,12 @@ export const TERRAIN = {
   rock: { name: "Rock", walkable: false, buildable: "none" },
   tree: { name: "Tree", walkable: false, buildable: "none" },
 } satisfies Record<string, TerrainStats>;
+
+export const MAP_GEN = {
+  maxAttempts: 20, // regenerate (deterministically) this many times before falling back to open ground
+  keepClearRadius: 4, // open ground this far around the keep
+  spawnClearColumns: 2, // open ground this many columns in front of the spawn zone
+  coastDepth: [2, 5] as [number, number],
+  riverFords: [1, 2] as [number, number],
+  riverMeander: 0.35, // chance per step that the river shifts sideways
+};

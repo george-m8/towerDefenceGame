@@ -53,6 +53,7 @@ Chests live in a new `features` list on the game state (not in the tile layers),
 - The keep and a ring of **4 tiles** around it are clear ground with no features.
 - The spawn zone and the **2 columns** in front of it are clear ground.
 - Every ruin and chest tile is reachable over walkable terrain.
+- **No walkable tile is cut off from the keep** (added during build: a ford on a corner of the river's sideways step didn't actually cross, leaving whole strips unreachable). Fords are therefore full cross-sections of the river.
 
 The seed is shown in the side panel, so a good map can be replayed (seed entry itself comes with `game-setup`).
 

@@ -3,8 +3,6 @@ import {
   GRID_HEIGHT,
   GRID_WIDTH,
   KEEP_HP,
-  KEEP_SIZE,
-  SPAWN_ZONE,
   STARTING_GOLD,
   STRUCTURES,
 } from "./config";
@@ -12,32 +10,38 @@ import { spawnEnemy, updateEnemies } from "./enemies";
 import { EMPTY, KEEP_TILE, canBuild, placeStructure } from "./grid";
 import { awardBounties, collectIncome, sellStructure } from "./economy";
 import { updateEffects } from "./effects";
+import { generateTerrain, layoutFor } from "./mapgen";
 import { randomInt } from "./rng";
 import { updateTowers } from "./towers";
 import { updateTraps } from "./traps";
 import { createWaveState, sendWaveEarly, updateWaves } from "./waves";
-import type { Command, CommandResult, GameState, Point, Terrain } from "./types";
+import type { Command, CommandResult, GameState, Terrain } from "./types";
 
-export function createGame(seed: number): GameState {
+export interface GameOptions {
+  /** Skip map generation and start on open ground (used by tests). */
+  blankMap?: boolean;
+}
+
+export function createGame(seed: number, options: GameOptions = {}): GameState {
   const width = GRID_WIDTH;
   const height = GRID_HEIGHT;
+  const layout = layoutFor(width, height);
+  const { keep, spawnTiles } = layout;
+
   const base = new Array<number>(width * height).fill(EMPTY);
-
-  const keepX = Math.floor(width / 2) - Math.floor(KEEP_SIZE / 2);
-  const keepY = Math.floor(height / 2) - Math.floor(KEEP_SIZE / 2);
-  for (let y = keepY; y < keepY + KEEP_SIZE; y++) {
-    for (let x = keepX; x < keepX + KEEP_SIZE; x++) base[y * width + x] = KEEP_TILE;
+  for (let y = keep.y; y < keep.y + keep.size; y++) {
+    for (let x = keep.x; x < keep.x + keep.size; x++) base[y * width + x] = KEEP_TILE;
   }
 
-  const spawnTiles: Point[] = [];
-  for (let y = SPAWN_ZONE.y; y < SPAWN_ZONE.y + SPAWN_ZONE.height; y++) {
-    for (let x = SPAWN_ZONE.x; x < SPAWN_ZONE.x + SPAWN_ZONE.width; x++) spawnTiles.push({ x, y });
-  }
+  const terrain = options.blankMap
+    ? new Array<Terrain>(width * height).fill("ground")
+    : generateTerrain(layout, seed).terrain;
 
   return {
+    seed,
     width,
     height,
-    terrain: new Array<Terrain>(width * height).fill("ground"),
+    terrain,
     base,
     mount: new Array<number>(width * height).fill(EMPTY),
     structures: {},
@@ -47,7 +51,7 @@ export function createGame(seed: number): GameState {
     enemies: [],
     effects: [],
     spawnTiles,
-    keep: { x: keepX, y: keepY, size: KEEP_SIZE, hp: KEEP_HP, maxHp: KEEP_HP },
+    keep: { ...keep, hp: KEEP_HP, maxHp: KEEP_HP },
     wave: createWaveState(),
     gold: STARTING_GOLD,
     tick: 0,

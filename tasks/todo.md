@@ -20,7 +20,7 @@ Standard verification for every task (in addition to task-specific checks):
 
 **Verification:**
 - [x] `npm test` (new `tests/sim/terrain.test.ts`)
-- [ ] Manual: terrain renders with the spec's glyphs and colours (deferred to Checkpoint C)
+- [x] Manual: terrain renders with the spec's glyphs and colours (checked at Checkpoint C)
 
 **Dependencies:** None
 
@@ -41,7 +41,7 @@ Standard verification for every task (in addition to task-specific checks):
 
 **Verification:**
 - [x] `npm test` (`tests/sim/terrain.test.ts` bridge cases)
-- [ ] Manual: bridge a river and watch the path overlay (`D`) reroute (deferred to Checkpoint C, once rivers are generated)
+- [x] Manual: bridge a river and watch the path overlay (`D`) reroute (checked at Checkpoint C)
 
 **Dependencies:** Task 1
 
@@ -62,13 +62,13 @@ Standard verification for every task (in addition to task-specific checks):
 `createGame(seed, options?)` runs it unless `options.blankMap` is set. Existing tests move to blank maps through the test helpers. Show the seed in the panel.
 
 **Acceptance criteria:**
-- [ ] Same seed gives an identical map, and different seeds give different maps
-- [ ] For 500 seeds: a walkable route exists from every spawn tile to the keep, the keep ring and spawn columns are clear, there's exactly one coast and one river, and each river has 1-2 fords
-- [ ] Works on a 96x64 state with the same guarantees. Regeneration attempts are capped and the fallback is tested.
+- [x] Same seed gives an identical map, and different seeds give different maps
+- [x] For 500 seeds: a walkable route exists from every spawn tile to the keep, the keep ring and spawn columns are clear, there's exactly one coast and one river, and each river has 1-2 fords
+- [x] Works on a 96x64 state with the same guarantees. Regeneration attempts are capped and the fallback is tested.
 
 **Verification:**
-- [ ] `npm test` (new `tests/sim/mapgen.test.ts`; all existing tests green on `blankMap`)
-- [ ] Manual: reload a few times. Each map has a coast and a river, and enemies cross only at fords.
+- [x] `npm test` (new `tests/sim/mapgen.test.ts`; all existing tests green on `blankMap`)
+- [x] Manual: reload a few times. Each map has a coast and a river, and enemies cross only at fords.
 
 **Dependencies:** Task 2
 
@@ -79,8 +79,8 @@ Standard verification for every task (in addition to task-specific checks):
 ---
 
 ### Checkpoint C: generated maps
-- [ ] All tests pass, including the 500-seed guarantee tests
-- [ ] Browser: several seeds look right; enemies use fords or bridges and never cross water
+- [x] All tests pass, including the 500-seed guarantee tests
+- [x] Browser: several seeds look right; enemies use fords or bridges and never cross water (found and fixed: fords that did not cross, path arrows drawn on water)
 - [ ] Review with human before adding the remaining features
 
 ---

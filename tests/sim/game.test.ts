@@ -11,7 +11,7 @@ import {
 import { isKeepTile, isSpawnTile } from "../../src/sim/grid";
 
 describe("createGame", () => {
-  const state = createGame(1);
+  const state = createGame(1, { blankMap: true });
 
   it("creates a grid of the configured size", () => {
     expect(state.width).toBe(GRID_WIDTH);
@@ -52,14 +52,14 @@ describe("createGame", () => {
 
 describe("tick and pause", () => {
   it("advances the tick count when not paused", () => {
-    const state = createGame(1);
+    const state = createGame(1, { blankMap: true });
     tick(state);
     tick(state);
     expect(state.tick).toBe(2);
   });
 
   it("does not advance while paused, and resumes after unpausing", () => {
-    const state = createGame(1);
+    const state = createGame(1, { blankMap: true });
     expect(applyCommand(state, { type: "togglePause" })).toEqual({ ok: true });
     tick(state);
     expect(state.tick).toBe(0);
@@ -71,7 +71,7 @@ describe("tick and pause", () => {
 
 describe("fast forward", () => {
   it("starts at normal speed and toggles between normal and fast", () => {
-    const state = createGame(1);
+    const state = createGame(1, { blankMap: true });
     expect(state.speed).toBe(1);
     expect(applyCommand(state, { type: "toggleFastForward" })).toEqual({ ok: true });
     expect(state.speed).toBe(FAST_FORWARD_SPEED);

@@ -73,6 +73,8 @@ export interface Keep {
 }
 
 export interface GameState {
+  /** The seed this game was created from (map and waves). */
+  seed: number;
   width: number;
   height: number;
   // Per-tile layers, index = y * width + x. Read them through the grid.ts helpers only.

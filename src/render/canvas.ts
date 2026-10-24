@@ -4,6 +4,7 @@ import {
   canBuild,
   isKeepTile,
   isSpawnTile,
+  isWalkable,
   mountAt,
   terrainAt,
   topAt,
@@ -189,7 +190,7 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
   function drawFlow(state: GameState) {
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
-        if (topAt(state, x, y)) continue;
+        if (topAt(state, x, y) || !isWalkable(state, x, y)) continue;
         const next = nextStep(state, x, y);
         if (!next) continue;
         const arrow = next.y < y ? "↑" : next.x > x ? "→" : next.y > y ? "↓" : "←";

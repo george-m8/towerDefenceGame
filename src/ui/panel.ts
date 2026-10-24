@@ -17,6 +17,7 @@ export function createPanel(
       <dt>Keep</dt><dd data-stat="keep"></dd>
       <dt>Wave</dt><dd data-stat="wave"></dd>
       <dt>Next</dt><dd data-stat="next"></dd>
+      <dt>Seed</dt><dd data-stat="seed"></dd>
     </dl>
     <div class="actions">
       <button class="button" data-action="sendWave">Send wave</button>
@@ -46,6 +47,7 @@ export function createPanel(
   const keep = field("keep");
   const wave = field("wave");
   const next = field("next");
+  const seed = field("seed");
   const status = field("status");
   const info = field("info");
   const sendWaveButton = root.querySelector<HTMLButtonElement>('[data-action="sendWave"]')!;
@@ -76,6 +78,7 @@ export function createPanel(
       income.textContent = `+${incomePerMinute(state)}/min`;
       keep.textContent = `${state.keep.hp} / ${state.keep.maxHp}`;
       wave.textContent = String(state.wave.number);
+      seed.textContent = String(state.seed);
       const spawning = state.wave.toSpawn > 0;
       next.textContent = spawning ? "incoming!" : `${Math.ceil(state.wave.countdown / TICK_RATE)}s`;
       sendWaveButton.disabled = spawning || state.gameOver;
