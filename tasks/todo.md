@@ -87,8 +87,8 @@ Standard verification for every task (in addition to task-specific checks):
 - [ ] No parameters means offline, as before
 
 **Verification:**
-- [ ] `tests/net/join.test.ts`
-- [ ] Manual: two tabs with `npm run server` and `npm run dev`
+- [x] `tests/net/join.test.ts`
+- [ ] Manual: two tabs with `npm run server` and `npm run dev` (the dev proxy path is checked with the probe through port 5173)
 
 **Dependencies:** Task 3
 

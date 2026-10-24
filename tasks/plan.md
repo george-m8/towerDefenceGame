@@ -319,7 +319,7 @@ T1 View state from server messages, interpolation
 **Checkpoint J: offline unchanged, network session tested**
 - [ ] All tests pass; offline smoke test in the browser
 
-- [ ] Task 4: Joining by URL, room code and invite link
+- [x] Task 4: Joining by URL, room code and invite link (browser check pending)
 
 **Checkpoint K: playable online**
 - [ ] Manual: two tabs create and join, and build in the same game

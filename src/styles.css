@@ -251,3 +251,15 @@ body {
   max-height: calc(100vh - 64px);
   overflow-y: auto;
 }
+
+/* Online play: the room section sits above the panel, divided from it. */
+.online {
+  border-bottom: 1px dotted var(--ink);
+}
+.online[hidden] {
+  display: none;
+}
+a.button {
+  display: inline-block;
+  text-decoration: none;
+}
