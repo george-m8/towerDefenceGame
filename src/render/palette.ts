@@ -1,4 +1,3 @@
-import { STRUCTURES, type StructureStats } from "../sim/config";
 import type { Facing, StructureKind, Terrain } from "../sim/types";
 
 export const TILE_SIZE = 20;
@@ -44,7 +43,7 @@ export const COLOURS = {
 
 export const GLYPHS: Record<StructureKind, string> = {
   wall: "#",
-  archer: "A",
+  archer: "↑",
   cannon: "C",
   catapult: "P",
   floorSpikes: "^",
@@ -61,24 +60,57 @@ export function facingArrow(facing: Facing): string {
   return FACING_ARROWS[facing];
 }
 
+export type ArrowStyle = "spike" | "fletched";
+
 /**
- * The text symbol for a structure: directional traps get the arrow for their facing; towers
- * keep their letter (their facing is shown separately). On the map, directional traps are
- * drawn as a vector arrow instead (see drawArrow in canvas.ts).
+ * Structures drawn as an arrow pointing where they face (or aim): wall spikes as a bold spike,
+ * archers as a fletched arrow. Everything else keeps its letter.
+ */
+export const ARROW_SYMBOLS: Partial<Record<StructureKind, ArrowStyle>> = {
+  wallSpikes: "spike",
+  archer: "fletched",
+};
+
+/**
+ * The text symbol for a structure: arrow-drawn structures get the text arrow for their facing;
+ * the rest keep their letter. On the map, arrow-drawn structures are drawn as vector arrows
+ * instead (see drawArrow in canvas.ts).
  */
 export function glyphFor(kind: StructureKind, facing?: Facing): string {
-  const stats: StructureStats = STRUCTURES[kind];
-  return facing && stats.directional ? FACING_ARROWS[facing] : GLYPHS[kind];
+  return facing && ARROW_SYMBOLS[kind] ? FACING_ARROWS[facing] : GLYPHS[kind];
 }
 
-/** The drawn arrow on a directional trap, in pixels: an arrowhead on a short shaft. */
-export const ARROW = {
-  headHalfWidth: 6,
-  headLength: 7,
-  shaftHalfWidth: 1.5,
-  /** Distance from the tile centre to the tip; the tail sits the same distance behind. */
-  reach: 7,
+/** Drawn arrows, in pixels, pointing north before rotation. `reach` is centre to tip (and tail). */
+export const ARROWS: Record<ArrowStyle, ArrowShape> = {
+  // Wall spikes: a broad head on a short shaft.
+  spike: {
+    headHalfWidth: 6,
+    headLength: 7,
+    shaftHalfWidth: 1.5,
+    reach: 7,
+    fletchWidth: 0,
+    fletchLength: 0,
+  },
+  // Archers: a slim arrow with feathers at the tail.
+  fletched: {
+    headHalfWidth: 4,
+    headLength: 5,
+    shaftHalfWidth: 1,
+    reach: 8,
+    fletchWidth: 4,
+    fletchLength: 4,
+  },
 };
+
+export interface ArrowShape {
+  headHalfWidth: number;
+  headLength: number;
+  shaftHalfWidth: number;
+  reach: number;
+  /** Feathers: how far out from the shaft, and how far along it (0 for none). */
+  fletchWidth: number;
+  fletchLength: number;
+}
 
 export const STRUCTURE_COLOURS: Record<StructureKind, { bg: string; fg: string }> = {
   wall: { bg: "#8a7a5c", fg: "#3b3226" },

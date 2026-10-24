@@ -9,9 +9,14 @@ describe("glyphFor", () => {
     expect(glyphFor("wallSpikes", "W")).toBe("←");
   });
 
-  it("keeps towers as letters whatever their facing", () => {
-    expect(glyphFor("archer", "E")).toBe("A");
+  it("draws archers as an arrow for their facing too", () => {
+    expect(glyphFor("archer", "E")).toBe("→");
+    expect(glyphFor("archer", "W")).toBe("←");
+  });
+
+  it("keeps other towers as letters whatever their facing", () => {
     expect(glyphFor("cannon", "S")).toBe("C");
+    expect(glyphFor("catapult", "E")).toBe("P");
   });
 });
 

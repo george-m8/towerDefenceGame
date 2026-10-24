@@ -43,7 +43,7 @@ A browser-based, top-down, grid-based tower defence game where the player grows 
 |---|---|---|---|---|
 | Keep | `K` | - | 99 | Game over at 0. Enemies that reach it deal damage and are removed. |
 | Wall | `#` | 5 | 50 | Blocks movement. |
-| Archer tower | `A` | 25 | 40 | Range 5, fast fire (1/s), single target, low damage. Blocks movement. |
+| Archer tower | fletched arrow (faces its arc) | 25 | 40 | Range 5, fast fire (1/s), single target, low damage. Blocks movement. |
 | Cannon | `C` | 50 | 60 | Range 4, slow (0.4/s), small splash (radius 1). Blocks movement. |
 | Catapult | `P` | 80 | 40 | Range 9, min range 3, very slow (0.2/s), large splash (radius 2). Blocks movement. |
 | Floor spikes | `^` | 15 | - | Walkable. Fires every 1.5s: spikes come up from the floor and deal 15 damage to every enemy on its tile. Does not block. Never attacked. |

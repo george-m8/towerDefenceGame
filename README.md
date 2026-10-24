@@ -32,7 +32,7 @@ Enemies (`g`) spawn from the red strip on the left edge and walk to your keep (`
 | Key | Structure | Glyph | Cost | What it does |
 |---|---|---|---|---|
 | `1` | Wall | `#` | 5 | Blocks movement. 50 HP. Towers can be built on top. |
-| `2` | Archer | `A` | 25 | Range 5, 6 damage every 1s, single target. Fixed 90° arc. |
+| `2` | Archer | fletched arrow, pointing where it faces | 25 | Range 5, 6 damage every 1s, single target. Fixed 90° arc. |
 | `3` | Cannon | `C` | 50 | Range 4, 15 damage every 2.5s, hits a 3x3 area. Turns 90°/s. |
 | `4` | Catapult | `P` | 80 | Range 3-9, 30 damage every 5s, hits a 5x5 area. Can't hit enemies closer than 3 tiles. Turns 30°/s. |
 | `5` | Floor spikes | `^` | 15 | Walkable. Every 1.5s spikes come up and deal 15 damage to every enemy on the tile. |
