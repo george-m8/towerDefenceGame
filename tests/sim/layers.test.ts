@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { spawnEnemy } from "../../src/sim/enemies";
-import { applyCommand, createGame } from "../../src/sim/game";
+import { applyCommand, createGame, tick } from "../../src/sim/game";
 import {
   attackTargetAt,
   baseAt,
@@ -12,7 +12,7 @@ import {
   placeStructure,
   topAt,
 } from "../../src/sim/grid";
-import { createGameWithoutWaves } from "./helpers";
+import { buildAt, createGameWithoutWaves, ring } from "./helpers";
 
 describe("layer data model", () => {
   it("starts with ground terrain, the keep in the base layer and no mounts", () => {
@@ -155,5 +155,66 @@ describe("placement rules", () => {
     expect(baseAt(state, 5, 5)?.kind).toBe("wall");
     expect(blocksAt(state, 5, 5)).toBe(true);
     expect(isElevated(state, archer)).toBe(true);
+  });
+});
+
+describe("combat across layers", () => {
+  const TOUGH = 1_000_000;
+  const run = (state: ReturnType<typeof createGame>, ticks: number) => {
+    for (let i = 0; i < ticks; i++) tick(state);
+  };
+
+  function sealedKeep() {
+    const state = createGameWithoutWaves();
+    const { keep } = state;
+    const y = keep.y + 1;
+    const target = { x: keep.x - 1, y }; // the ring tile an enemy from the left attacks
+    buildAt(state, ring(keep.x - 1, keep.y - 1, keep.x + keep.size, keep.y + keep.size));
+    return { state, y, target };
+  }
+
+  it("a wall shields the tower on it, and the tower falls with the wall", () => {
+    const { state, y, target } = sealedKeep();
+    const archer = placeStructure(state, "archer", target.x, target.y);
+    spawnEnemy(state, target.x - 2, y, TOUGH);
+    const gold = state.gold;
+
+    run(state, 100);
+    const wall = baseAt(state, target.x, target.y)!;
+    expect(wall.hp).toBeLessThan(wall.maxHp);
+    expect(archer.hp).toBe(archer.maxHp);
+
+    // Step until the wall breaks: the archer must go in that same tick, not get attacked after.
+    for (let i = 0; i < 400 && baseAt(state, target.x, target.y); i++) tick(state);
+    expect(baseAt(state, target.x, target.y)).toBeUndefined();
+    expect(mountAt(state, target.x, target.y)).toBeUndefined();
+    expect(state.structures[archer.id]).toBeUndefined();
+    expect(state.gold).toBe(gold); // no refund for a fallen tower
+  });
+
+  it("a ground tower sealing the route is attacked directly", () => {
+    const state = createGameWithoutWaves();
+    const { keep } = state;
+    const y = keep.y + 1;
+    const gap = { x: keep.x - 1, y };
+    buildAt(
+      state,
+      ring(keep.x - 1, keep.y - 1, keep.x + keep.size, keep.y + keep.size).filter(
+        (p) => p.x !== gap.x || p.y !== gap.y,
+      ),
+    );
+    const cannon = placeStructure(state, "cannon", gap.x, gap.y);
+    spawnEnemy(state, gap.x - 2, y, TOUGH);
+    run(state, 100);
+    expect(cannon.hp).toBeLessThan(cannon.maxHp);
+  });
+
+  it("ground towers with an open route around them take no damage", () => {
+    const state = createGameWithoutWaves();
+    const y = state.keep.y + 1;
+    const towers = [8, 9, 11, 12].map((x) => placeStructure(state, "archer", 15, y - 10 + x));
+    spawnEnemy(state, 0, y, TOUGH);
+    run(state, 1000);
+    for (const t of towers) expect(t.hp).toBe(t.maxHp);
   });
 });

@@ -102,13 +102,13 @@ The placement ghost already calls `canBuild`, so wall tiles show green for tower
 - `removeStructure` on a base removes its mount too, which bumps `gridVersion` so enemies reroute
 
 **Acceptance criteria:**
-- [ ] With the keep sealed by a wall carrying an archer, the wall takes all the damage and the archer keeps full HP until the wall falls
-- [ ] When that wall falls, the archer is removed in the same tick, with no refund, and enemies continue through
-- [ ] A ground tower sealing the route is attacked directly, and ground towers with an open route around them take no damage
+- [x] With the keep sealed by a wall carrying an archer, the wall takes all the damage and the archer keeps full HP until the wall falls
+- [x] When that wall falls, the archer is removed in the same tick, with no refund, and enemies continue through
+- [x] A ground tower sealing the route is attacked directly, and ground towers with an open route around them take no damage
 
 **Verification:**
-- [ ] `npm test` (`tests/sim/layers.test.ts` combat cases; extended "no damage when an open route exists" test in `tests/sim/enemies.test.ts`)
-- [ ] Manual: wall in the keep with archers on the wall, then watch the wall break and the archer vanish with it
+- [x] `npm test` (`tests/sim/layers.test.ts` combat cases; extended "no damage when an open route exists" test in `tests/sim/enemies.test.ts`)
+- [x] Manual: wall in the keep with archers on the wall, then watch the wall break and the archer vanish with it
 
 **Dependencies:** Task 3
 
@@ -123,12 +123,12 @@ The placement ghost already calls `canBuild`, so wall tiles show green for tower
 **Description:** The sell command uses `topAt`: it sells a mount if present, otherwise the base. Refund rules are unchanged.
 
 **Acceptance criteria:**
-- [ ] Selling a wall-mounted archer refunds the archer and leaves the wall. Selling again refunds the wall.
-- [ ] Selling a ground tower or a plain base works as before. Keep and empty-tile rejections are unchanged.
+- [x] Selling a wall-mounted archer refunds the archer and leaves the wall. Selling again refunds the wall.
+- [x] Selling a ground tower or a plain base works as before. Keep and empty-tile rejections are unchanged.
 
 **Verification:**
-- [ ] `npm test` (`tests/sim/economy.test.ts` selling cases)
-- [ ] Manual: X-click a wall-mounted archer twice
+- [x] `npm test` (`tests/sim/economy.test.ts` selling cases)
+- [x] Manual: X-click a wall-mounted archer twice
 
 **Dependencies:** Task 3
 
@@ -143,13 +143,13 @@ The placement ghost already calls `canBuild`, so wall tiles show green for tower
 **Description:** Draw wall-mounted towers on the wall's colour with the tower glyph in the tower's colour and a thin top border. Ground towers are drawn as today. Hover info shows `Archer (on wall)` / `Archer (ground)` plus the HP of both layers. Update README (structures table and a short "towers on walls" note) and `SPEC.md` where its rules now differ (towers no longer block as walls).
 
 **Acceptance criteria:**
-- [ ] Wall-mounted and ground towers are clearly distinguishable at a glance
-- [ ] Hover info shows the elevation and both HP values for a wall-mounted tower
-- [ ] README and `SPEC.md` describe the layered rules accurately
+- [x] Wall-mounted and ground towers are clearly distinguishable at a glance
+- [x] Hover info shows the elevation and both HP values for a wall-mounted tower
+- [x] README and `SPEC.md` describe the layered rules accurately
 
 **Verification:**
-- [ ] `npm run build`
-- [ ] Manual: screenshot of a wall line with archers next to ground cannons; hover both
+- [x] `npm run build`
+- [x] Manual: screenshot of a wall line with archers next to ground cannons; hover both
 
 **Dependencies:** Tasks 4, 5
 
@@ -160,6 +160,6 @@ The placement ghost already calls `canBuild`, so wall tiles show green for tower
 ---
 
 ### Checkpoint B: tile-layers complete
-- [ ] All 7 success criteria in `SPEC-tile-layers.md` met
-- [ ] `npm run coverage` passes (80% lines or more for `src/sim/`)
+- [x] All 7 success criteria in `SPEC-tile-layers.md` met
+- [x] `npm run coverage` passes (98.7% lines for `src/sim/`)
 - [ ] Review with human, then move this file to `tasks/tile-layers/` and start the `map-gen` spec

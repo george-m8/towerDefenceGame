@@ -3,7 +3,7 @@ import { ENEMY, STRUCTURES, TICK_RATE } from "../../src/sim/config";
 import { incomePerMinute } from "../../src/sim/economy";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand, tick } from "../../src/sim/game";
-import { placeStructure, removeStructure, topAt } from "../../src/sim/grid";
+import { baseAt, mountAt, placeStructure, removeStructure, topAt } from "../../src/sim/grid";
 import { createGameWithoutWaves } from "./helpers";
 
 describe("bounties", () => {
@@ -115,5 +115,34 @@ describe("selling", () => {
     placeStructure(state, "wall", 10, 10);
     applyCommand(state, { type: "sell", x: 10, y: 10 });
     expect(state.gridVersion).toBe(version + 2);
+  });
+});
+
+describe("selling across layers", () => {
+  it("sells a wall-mounted tower first, then the wall", () => {
+    const state = createGameWithoutWaves();
+    placeStructure(state, "wall", 10, 10);
+    placeStructure(state, "archer", 10, 10);
+    const gold = state.gold;
+
+    expect(applyCommand(state, { type: "sell", x: 10, y: 10 })).toEqual({ ok: true });
+    expect(state.gold).toBe(gold + Math.floor(STRUCTURES.archer.cost * 0.5));
+    expect(mountAt(state, 10, 10)).toBeUndefined();
+    expect(baseAt(state, 10, 10)?.kind).toBe("wall");
+
+    applyCommand(state, { type: "sell", x: 10, y: 10 });
+    expect(state.gold).toBe(
+      gold + Math.floor(STRUCTURES.archer.cost * 0.5) + Math.floor(STRUCTURES.wall.cost * 0.5),
+    );
+    expect(topAt(state, 10, 10)).toBeUndefined();
+  });
+
+  it("sells a ground tower in one click", () => {
+    const state = createGameWithoutWaves();
+    placeStructure(state, "cannon", 10, 10);
+    const gold = state.gold;
+    applyCommand(state, { type: "sell", x: 10, y: 10 });
+    expect(state.gold).toBe(gold + Math.floor(STRUCTURES.cannon.cost * 0.5));
+    expect(topAt(state, 10, 10)).toBeUndefined();
   });
 });

@@ -17,7 +17,7 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 
 | Phase | Module | Status |
 |---|---|---|
-| 1. Basics | `tile-layers` | **Spec approved, tasks ready** |
+| 1. Basics | `tile-layers` | **Built, awaiting review** |
 | | `map-gen` | Spec needed |
 | | `tower-aiming` | Spec needed |
 | | `line-of-sight` | Spec needed |
@@ -66,13 +66,13 @@ T4 and T5 both depend only on T3.
 - [x] Browser smoke test: build, waves, towers, selling all behave exactly as before
 
 - [x] Task 3: Towers can be placed on walls
-- [ ] Task 4: Walls protect, and drop, their towers
-- [ ] Task 5: Selling takes the top layer first
-- [ ] Task 6: Wall-mounted visuals, hover info and docs
+- [x] Task 4: Walls protect, and drop, their towers
+- [x] Task 5: Selling takes the top layer first
+- [x] Task 6: Wall-mounted visuals, hover info and docs
 
 **Checkpoint B: module complete**
-- [ ] All 7 success criteria in `SPEC-tile-layers.md` met
-- [ ] Coverage of 80% lines or more for `src/sim/`
+- [x] All 7 success criteria in `SPEC-tile-layers.md` met
+- [x] Coverage of 80% lines or more for `src/sim/` (98.7%)
 - [ ] Review with human
 
 ### Risks and mitigations

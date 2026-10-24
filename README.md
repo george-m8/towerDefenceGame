@@ -30,14 +30,23 @@ Enemies (`g`) spawn from the red strip on the left edge and walk to your keep (`
 
 | Key | Structure | Glyph | Cost | What it does |
 |---|---|---|---|---|
-| `1` | Wall | `#` | 5 | Blocks movement. 50 HP. |
+| `1` | Wall | `#` | 5 | Blocks movement. 50 HP. Towers can be built on top. |
 | `2` | Archer | `A` | 25 | Range 5, 6 damage every 1s, single target. |
 | `3` | Cannon | `C` | 50 | Range 4, 15 damage every 2.5s, hits a 3x3 area. |
 | `4` | Catapult | `P` | 80 | Range 3-9, 30 damage every 5s, hits a 5x5 area. Can't hit enemies closer than 3 tiles. |
 | `5` | Floor spikes | `^` | 15 | Walkable. Every 1.5s spikes come up and deal 15 damage to every enemy on the tile. |
 | `6` | Wall spikes | `▲▶▼◀` | 20 | A wall section that fires every 2s, dealing 20 damage to the one tile it faces. Press `R` to rotate before placing. |
 | `7` | House | `h` | 40 | +2 gold every 5s. Blocks movement. |
-| `X` | Sell | `$` | - | Refunds 50% of cost, less if damaged. |
+| `X` | Sell | `$` | - | Refunds 50% of cost, less if damaged. Sells the top layer first (a tower before the wall under it). |
+
+### Towers on walls
+
+Archers, cannons and catapults can stand on **open ground** or on **top of a wall**:
+
+- **On a wall** (drawn on the wall colour with a strip along the top): the wall blocks enemies and takes all the hits. If the wall is destroyed, the tower falls with it, with no refund.
+- **On the ground:** the tower blocks enemies like a building. Enemies only attack it when it is in the way of the keep.
+
+Towers can't go on spikes, houses, the keep or the spawn zone. Hover a tower to see whether it is on a wall or the ground.
 
 Towers always shoot the enemy closest to the keep. Traps fire on a fixed timer from the moment they're built, whether or not an enemy is there.
 
