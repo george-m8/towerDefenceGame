@@ -1,0 +1,15 @@
+import { placeStructure } from "../../src/sim/grid";
+import type { GameState, Point, StructureKind } from "../../src/sim/types";
+
+/** Place structures directly, bypassing gold and placement rules. */
+export function buildAt(state: GameState, points: Point[], kind: StructureKind = "wall") {
+  for (const p of points) placeStructure(state, kind, p.x, p.y);
+}
+
+/** Every tile in the 1-tile ring around a rectangle. */
+export function ring(x0: number, y0: number, x1: number, y1: number): Point[] {
+  const points: Point[] = [];
+  for (let x = x0; x <= x1; x++) points.push({ x, y: y0 }, { x, y: y1 });
+  for (let y = y0 + 1; y < y1; y++) points.push({ x: x0, y }, { x: x1, y });
+  return points;
+}

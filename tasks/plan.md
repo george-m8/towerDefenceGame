@@ -59,7 +59,7 @@ T9, T10a and T11 only depend on T8 and can be built in any order (or in parallel
 - [ ] Review with human
 
 ### Phase 2: Enemies and Waves (highest risk, done early)
-- [ ] Task 4: Flow field pathfinding and debug overlay
+- [x] Task 4: Flow field pathfinding and debug overlay
 - [ ] Task 5: Enemies walk to the keep, keep HP, game over and restart
 - [ ] Task 6: Blocked path - enemies attack and destroy structures
 - [ ] Task 7: Endless waves with countdown and early send

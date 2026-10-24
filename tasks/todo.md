@@ -86,13 +86,13 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** Implement `pathfinding.ts`: Dijkstra from all keep tiles outwards with a binary heap. Open/walkable tiles cost 1, blocking structures cost `BLOCKED_COST` (greater than the tile count). Store per-tile distance and a `nextStep` direction with fixed tie-breaking order. Recompute lazily when `gridVersion` changes. Add a debug overlay toggle (`D` key) that renders distances or arrows.
 
 **Acceptance criteria:**
-- [ ] On an open grid, every tile's path leads to the keep in Manhattan-distance steps
-- [ ] A long open detour is preferred over a short route through one wall
-- [ ] When the keep is fully enclosed, the path from the spawn zone crosses exactly the structure with the cheapest total route. Placing or removing a wall updates the field on the next tick.
+- [x] On an open grid, every tile's path leads to the keep in Manhattan-distance steps
+- [x] A long open detour is preferred over a short route through one wall
+- [x] When the keep is fully enclosed, the path from the spawn zone crosses exactly the structure with the cheapest total route. Placing or removing a wall updates the field on the next tick.
 
 **Verification:**
-- [ ] `npm test` (`tests/sim/pathfinding.test.ts`: open grid, detour vs wall, fully enclosed, update after change, deterministic ties)
-- [ ] Manual: press `D`, build a wall maze and watch the arrows reroute
+- [x] `npm test` (`tests/sim/pathfinding.test.ts`: open grid, detour vs wall, fully enclosed, update after change, deterministic ties)
+- [x] Manual: press `D`, build a wall maze and watch the arrows reroute
 
 **Dependencies:** Task 3
 

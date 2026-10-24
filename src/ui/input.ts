@@ -28,6 +28,8 @@ export function bindInput(
     if (e.code === "Space") {
       e.preventDefault();
       dispatch({ type: "togglePause" });
+    } else if (e.code === "KeyD") {
+      ui.showFlow = !ui.showFlow;
     } else if (e.code === "Escape") {
       ui.tool = null;
     } else {

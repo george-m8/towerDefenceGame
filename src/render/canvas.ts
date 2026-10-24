@@ -1,4 +1,5 @@
 import { canBuild, isKeepTile, isSpawnTile, structureAt } from "../sim/grid";
+import { nextStep } from "../sim/pathfinding";
 import type { GameState } from "../sim/types";
 import type { UiState } from "../ui/state";
 import { COLOURS, GLYPHS, GLYPH_FONT, STRUCTURE_COLOURS, TILE_SIZE } from "./palette";
@@ -46,9 +47,23 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
     drawGlyph(x, y, GLYPHS[ui.tool], "#ffffff");
   }
 
+  function drawFlow(state: GameState) {
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        if (structureAt(state, x, y)) continue;
+        const next = nextStep(state, x, y);
+        if (!next) continue;
+        const arrow = next.y < y ? "↑" : next.x > x ? "→" : next.y > y ? "↓" : "←";
+        const attacking = structureAt(state, next.x, next.y) !== undefined;
+        drawGlyph(x, y, arrow, attacking ? COLOURS.flowAttack : COLOURS.flowArrow);
+      }
+    }
+  }
+
   return {
     render(state: GameState, ui: UiState) {
       drawGrid(state);
+      if (ui.showFlow) drawFlow(state);
       drawGhost(state, ui);
     },
   };

@@ -33,6 +33,7 @@ export function createGame(seed: number): GameState {
     structures: {},
     nextId: 1,
     gridVersion: 0,
+    flow: null,
     spawnTiles,
     keep: { x: keepX, y: keepY, size: KEEP_SIZE, hp: KEEP_HP, maxHp: KEEP_HP },
     gold: STARTING_GOLD,

@@ -16,6 +16,13 @@ export interface Structure {
   maxHp: number;
 }
 
+export interface FlowField {
+  /** gridVersion this field was computed for. */
+  version: number;
+  /** Cost to reach the keep from each tile (0 on the keep). */
+  dist: number[];
+}
+
 export interface Keep {
   x: number; // top-left tile
   y: number;
@@ -33,6 +40,7 @@ export interface GameState {
   nextId: number;
   /** Incremented whenever tile occupancy changes, so pathfinding can recompute lazily. */
   gridVersion: number;
+  flow: FlowField | null;
   spawnTiles: Point[];
   keep: Keep;
   gold: number;

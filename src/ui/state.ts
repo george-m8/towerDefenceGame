@@ -17,10 +17,12 @@ export interface UiState {
   hover: Point | null;
   message: string;
   messageUntil: number;
+  /** Debug overlay: show the flow field direction on every tile. */
+  showFlow: boolean;
 }
 
 export function createUiState(): UiState {
-  return { tool: null, hover: null, message: "", messageUntil: 0 };
+  return { tool: null, hover: null, message: "", messageUntil: 0, showFlow: false };
 }
 
 const MESSAGE_MS = 2000;
