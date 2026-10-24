@@ -16,7 +16,7 @@ npm install
 npm run dev
 ```
 
-Then open http://localhost:5173, enter a name and press **Play solo**. To play with friends, see [Playing together](#playing-together).
+Then open http://localhost:5173, click (or press any key) past the title screen, enter a name and press **Play solo**. To play with friends, see [Playing together](#playing-together).
 
 ## How to play
 
