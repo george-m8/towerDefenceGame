@@ -1,9 +1,9 @@
 # Implementation Plan: Post-MVP Phases
 
 Capability map: [`CAPABILITIES.md`](../CAPABILITIES.md)
-Current module spec: [`SPEC-players.md`](../SPEC-players.md)
-Task list (current module only): [`tasks/todo.md`](todo.md)
-Finished modules: [`tasks/tile-layers/`](tile-layers/todo.md), [`tasks/map-gen/`](map-gen/todo.md)
+Current module spec: none yet (next: `game-server`)
+Task list (current module only): `tasks/todo.md`, created when the next module's spec is approved
+Finished modules: [`tasks/tile-layers/`](tile-layers/todo.md), [`tasks/map-gen/`](map-gen/todo.md), [`tasks/players/`](players/todo.md)
 Previous plan (MVP, complete except a Firefox/Safari smoke test): [`tasks/mvp/`](mvp/plan.md)
 
 ## How this plan works
@@ -20,7 +20,7 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 |---|---|---|
 | 1. Basics | `tile-layers` | Done |
 | | `map-gen` | Done (merged in PR #4) |
-| 1b. Multiplayer (co-op) | `players` | **Built, awaiting review** |
+| 1b. Multiplayer (co-op) | `players` | Done |
 | | `game-server` | Spec needed |
 | | `net-client` | Spec needed |
 | | `lobby` | Spec needed |
@@ -156,7 +156,7 @@ T4, T5 and T6 each depend only on T3.
 
 ---
 
-## Module 3: `players` (current)
+## Module 3: `players` (done)
 
 Spec: [`SPEC-players.md`](../SPEC-players.md). First module of the Multiplayer map in [`CAPABILITIES.md`](../CAPABILITIES.md).
 
@@ -200,7 +200,7 @@ T3 and T4 each depend only on T2.
 **Checkpoint F: module complete**
 - [x] All 7 success criteria in `SPEC-players.md` met
 - [x] Coverage of 80% lines or more for `src/sim/` (99.3%)
-- [ ] Review with human, then move `todo.md` to `tasks/players/` and write the `game-server` spec
+- [x] Review with human, then move `todo.md` to `tasks/players/` and write the `game-server` spec
 
 ### Risks and mitigations
 

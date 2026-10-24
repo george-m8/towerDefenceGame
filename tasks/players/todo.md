@@ -1,6 +1,6 @@
 # Tasks: players
 
-Spec: [`SPEC-players.md`](../SPEC-players.md) | Plan: [`plan.md`](plan.md) | Map: [`CAPABILITIES.md`](../CAPABILITIES.md)
+Spec: [`SPEC-players.md`](../../SPEC-players.md) | Plan: [`plan.md`](../plan.md) | Map: [`CAPABILITIES.md`](../../CAPABILITIES.md)
 
 Standard verification for every task (in addition to task-specific checks):
 `npm run typecheck && npm test && npm run build`
@@ -95,7 +95,7 @@ Standard verification for every task (in addition to task-specific checks):
 **Verification:**
 - [x] Tests in `tests/sim/players.test.ts` for votes, drops, rejoin and income while dropped
 - [x] Existing pause and fast-forward tests pass unchanged (apart from the Task 2 signature swap)
-- [ ] Manual: Space and F behave as before in the browser
+- [x] Manual: Space and F behave as before in the browser
 
 **Dependencies:** Task 2
 
@@ -126,6 +126,6 @@ Standard verification for every task (in addition to task-specific checks):
 ---
 
 ### Checkpoint F: players complete
-- [x] All 7 success criteria in `SPEC-players.md` met (criterion 1's manual playthrough: pause and fast-forward still to recheck in the browser after Task 4)
+- [x] All 7 success criteria in `SPEC-players.md` met
 - [x] `npm run coverage` passes (99.3% lines for `src/sim/`)
-- [ ] Review with human, then move this file to `tasks/players/` and write the `game-server` spec
+- [x] Review with human, then move this file to `tasks/players/` and write the `game-server` spec
