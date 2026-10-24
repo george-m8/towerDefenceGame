@@ -106,6 +106,8 @@ export function canBuild(
   y: number,
 ): CommandResult {
   if (state.gameOver) return { ok: false, reason: "Game over" };
+  const stats: StructureStats = STRUCTURES[kind];
+  if (stats.buildable === false) return { ok: false, reason: `${stats.name}s can't be built` };
   if (!inBounds(state, x, y)) return { ok: false, reason: "Out of bounds" };
   if (isKeepTile(state, x, y)) return { ok: false, reason: "Can't build on the keep" };
   if (isSpawnTile(state, x, y)) return { ok: false, reason: "Can't build in the spawn zone" };

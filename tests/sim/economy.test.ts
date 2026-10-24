@@ -146,3 +146,15 @@ describe("selling across layers", () => {
     expect(topAt(state, 10, 10)).toBeUndefined();
   });
 });
+
+describe("ruin salvage", () => {
+  it("sells for its salvage value scaled by HP", () => {
+    const state = createGameWithoutWaves();
+    const ruin = placeStructure(state, "ruin", 10, 10);
+    ruin.hp = ruin.maxHp / 2;
+    const gold = state.gold;
+    applyCommand(state, { type: "sell", x: 10, y: 10 });
+    expect(state.gold).toBe(gold + Math.floor(STRUCTURES.ruin.salvageGold * 0.5));
+    expect(topAt(state, 10, 10)).toBeUndefined();
+  });
+});

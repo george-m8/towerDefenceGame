@@ -47,7 +47,9 @@ export function sellStructure(state: GameState, x: number, y: number): CommandRe
 
 export function refundFor(structure: Structure): number {
   const condition = structure.maxHp > 0 ? structure.hp / structure.maxHp : 1;
-  return Math.floor(STRUCTURES[structure.kind].cost * SELL_REFUND * condition);
+  const stats: StructureStats = STRUCTURES[structure.kind];
+  const fullValue = stats.salvageGold ?? stats.cost * SELL_REFUND;
+  return Math.floor(fullValue * condition);
 }
 
 /** The sell tool on bare terrain: trees are cleared for timber; rock stays. */

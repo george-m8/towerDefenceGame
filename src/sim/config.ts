@@ -49,6 +49,10 @@ export interface StructureStats {
   income?: IncomeStats;
   /** Can only be built on rivers, and makes them walkable. */
   spansWater?: boolean;
+  /** False for map features the player can't build (ruins). */
+  buildable?: boolean;
+  /** Gold when sold at full HP, instead of the usual share of cost. */
+  salvageGold?: number;
 }
 
 export const STRUCTURES = {
@@ -117,6 +121,16 @@ export const STRUCTURES = {
     blocksMovement: false,
     spansWater: true,
   },
+  ruin: {
+    name: "Ruin",
+    layer: "base",
+    acceptsMount: true,
+    cost: 0,
+    maxHp: 50,
+    blocksMovement: true,
+    buildable: false, // only placed by the map generator
+    salvageGold: 2,
+  },
 } satisfies Record<string, StructureStats>;
 
 /** How long shot and splash effects stay on screen. */
@@ -171,6 +185,8 @@ export const MAP_GEN = {
   rockClusterSize: [2, 8] as [number, number],
   forestsPer1000: [2, 3.3] as [number, number],
   forestSize: [4, 15] as [number, number],
+  ruinsPer1000: [2.6, 5.2] as [number, number],
+  ruinHp: [0.4, 0.8] as [number, number], // fraction of full HP each ruin fragment starts with
 };
 
 /** Gold of timber for clearing one tree with the sell tool. */

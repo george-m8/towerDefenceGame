@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { GRID_HEIGHT, GRID_WIDTH, MAP_GEN, TERRAIN } from "../../src/sim/config";
 import { createGame } from "../../src/sim/game";
+import { baseAt } from "../../src/sim/grid";
 import { generateTerrain, layoutFor, type MapLayout } from "../../src/sim/mapgen";
 import type { Terrain } from "../../src/sim/types";
 
@@ -151,6 +152,23 @@ describe("generateTerrain", () => {
     expect(features(big)).toBeGreaterThan(2.5 * features(layout));
   });
 
+  it("places damaged ruin fragments on reachable open ground", () => {
+    for (const seed of SEEDS) {
+      const { terrain, ruins } = generateTerrain(layout, seed);
+      expect(ruins.length, `seed ${seed}`).toBeGreaterThan(0);
+      const reach = reachableFromKeep(layout, terrain);
+      const problems = ruins.flatMap((r) => {
+        const i = r.y * layout.width + r.x;
+        if (terrain[i] !== "ground") return [`ruin on ${terrain[i]}`];
+        if (!reach.has(i)) return ["ruin cut off"];
+        if (r.hpFraction < 0.4 || r.hpFraction > 0.8) return [`hp ${r.hpFraction}`];
+        return [];
+      });
+      expect(problems, `seed ${seed}`).toEqual([]);
+      expect(new Set(ruins.map((r) => `${r.x},${r.y}`)).size).toBe(ruins.length);
+    }
+  });
+
   it("works on a much larger map", () => {
     const big = layoutFor(96, 64);
     for (const seed of SEEDS.slice(0, 50)) {
@@ -183,6 +201,17 @@ describe("createGame map generation", () => {
     const state = createGame(42);
     expect(state.seed).toBe(42);
     expect(state.terrain.some((t) => t !== "ground")).toBe(true);
+  });
+
+  it("builds the generated ruins as damaged structures", () => {
+    const state = createGame(42);
+    const ruins = Object.values(state.structures).filter((s) => s.kind === "ruin");
+    expect(ruins.length).toBeGreaterThan(0);
+    for (const ruin of ruins) {
+      expect(baseAt(state, ruin.x, ruin.y)).toBe(ruin);
+      expect(ruin.hp).toBeLessThan(ruin.maxHp);
+      expect(ruin.hp).toBeGreaterThanOrEqual(ruin.maxHp * 0.4);
+    }
   });
 
   it("gives an open field with blankMap", () => {

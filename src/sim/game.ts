@@ -33,15 +33,15 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     for (let x = keep.x; x < keep.x + keep.size; x++) base[y * width + x] = KEEP_TILE;
   }
 
-  const terrain = options.blankMap
-    ? new Array<Terrain>(width * height).fill("ground")
-    : generateTerrain(layout, seed).terrain;
+  const map = options.blankMap
+    ? { terrain: new Array<Terrain>(width * height).fill("ground"), ruins: [] }
+    : generateTerrain(layout, seed);
 
-  return {
+  const state: GameState = {
     seed,
     width,
     height,
-    terrain,
+    terrain: map.terrain,
     base,
     mount: new Array<number>(width * height).fill(EMPTY),
     structures: {},
@@ -60,6 +60,11 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     gameOver: false,
     rngState: seed,
   };
+  for (const spot of map.ruins) {
+    const ruin = placeStructure(state, "ruin", spot.x, spot.y);
+    ruin.hp = Math.round(ruin.maxHp * spot.hpFraction);
+  }
+  return state;
 }
 
 export function tick(state: GameState): void {

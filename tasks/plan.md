@@ -130,7 +130,7 @@ T4, T5 and T6 each depend only on T3.
 - [ ] Review with human
 
 - [x] Task 4: Rocks, forests and clearing trees
-- [ ] Task 5: Ruins
+- [x] Task 5: Ruins
 - [ ] Task 6: Treasure chests
 - [ ] Task 7: Seed display, terrain hover info and docs
 

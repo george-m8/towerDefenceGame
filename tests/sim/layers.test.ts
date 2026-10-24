@@ -218,3 +218,17 @@ describe("combat across layers", () => {
     for (const t of towers) expect(t.hp).toBe(t.maxHp);
   });
 });
+
+describe("ruins", () => {
+  it("block like walls and can hold a tower", () => {
+    const state = createGameWithoutWaves();
+    placeStructure(state, "ruin", 5, 5);
+    expect(blocksAt(state, 5, 5)).toBe(true);
+    expect(canBuild(state, "archer", 5, 5)).toEqual({ ok: true });
+  });
+
+  it("can't be built by the player", () => {
+    const state = createGameWithoutWaves();
+    expect(canBuild(state, "ruin", 5, 5)).toEqual({ ok: false, reason: "Ruins can't be built" });
+  });
+});

@@ -113,13 +113,13 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** Add the `ruin` structure (base layer, blocks, accepts a mount, not buildable by the player, glyph `#` in dark grey). The generator places fragments (lines, L shapes, broken squares) of 3-8 tiles at 40-80% HP, outside the clear zones. Selling a ruin pays `RUIN_SALVAGE_GOLD`, scaled by HP.
 
 **Acceptance criteria:**
-- [ ] Ruins start damaged, block movement, can hold a tower, and are attacked only when sealing the route
-- [ ] Ruins aren't in the build tools, and `canBuild` rejects the ruin kind
-- [ ] Selling a ruin pays salvage scaled by HP. Guarantees hold for 500 seeds, and every ruin is reachable.
+- [x] Ruins start damaged, block movement, can hold a tower, and are attacked only when sealing the route
+- [x] Ruins aren't in the build tools, and `canBuild` rejects the ruin kind
+- [x] Selling a ruin pays salvage scaled by HP. Guarantees hold for 500 seeds, and every ruin is reachable.
 
 **Verification:**
-- [ ] `npm test` (`tests/sim/mapgen.test.ts`, `tests/sim/layers.test.ts`, `tests/sim/economy.test.ts`)
-- [ ] Manual: put an archer on a ruin; sell a ruin
+- [x] `npm test` (`tests/sim/mapgen.test.ts`, `tests/sim/layers.test.ts`, `tests/sim/economy.test.ts`)
+- [x] Manual: put an archer on a ruin; sell a ruin
 
 **Dependencies:** Task 3
 

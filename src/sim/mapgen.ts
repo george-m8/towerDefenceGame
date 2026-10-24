@@ -13,8 +13,16 @@ export interface MapLayout {
   spawnTiles: Point[];
 }
 
+/** A ruin tile for createGame to build, starting at a fraction of full HP. */
+export interface RuinSpot {
+  x: number;
+  y: number;
+  hpFraction: number;
+}
+
 export interface MapGenResult {
   terrain: Terrain[];
+  ruins: RuinSpot[];
   /** How many generations it took (1 = first try). */
   attempts: number;
   /** True if every attempt failed and the map is open ground. */
@@ -36,9 +44,9 @@ export function layoutFor(width: number, height: number): MapLayout {
 }
 
 /**
- * Seeded terrain: a meandering river with fords, then a coast, then clear zones around the
- * keep and spawn. Maps that cut the spawn off from the keep are regenerated from a derived
- * seed, so the result is still deterministic.
+ * Seeded map: a meandering river with fords, a coast, rock clusters and forests, with clear
+ * zones around the keep and spawn; then ruin fragments on the finished ground. Maps that fail
+ * validation are regenerated from a derived seed, so the result is still deterministic.
  */
 export function generateTerrain(
   layout: MapLayout,
@@ -48,10 +56,11 @@ export function generateTerrain(
   for (let attempt = 0; attempt < config.maxAttempts; attempt++) {
     const rng = { rngState: (seed + Math.imul(attempt, 0x9e3779b9)) | 0 };
     const terrain = buildTerrain(layout, rng, config);
-    if (isValid(layout, terrain, config))
-      return { terrain, attempts: attempt + 1, fallback: false };
+    if (!isValid(layout, terrain, config)) continue;
+    const ruins = placeRuins(layout, rng, config, terrain);
+    return { terrain, ruins, attempts: attempt + 1, fallback: false };
   }
-  return { terrain: blankTerrain(layout), attempts: config.maxAttempts, fallback: true };
+  return { terrain: blankTerrain(layout), ruins: [], attempts: config.maxAttempts, fallback: true };
 }
 
 function blankTerrain(layout: MapLayout): Terrain[] {
@@ -273,6 +282,75 @@ function fillSealedPockets(layout: MapLayout, terrain: Terrain[], reserved: bool
     ];
     terrain[i] = neighbours.some((n) => terrain[n] === "tree") ? "tree" : "rock";
   });
+}
+
+/**
+ * Ruin fragments (straight runs, L shapes, broken squares) of at least 3 tiles on open ground
+ * outside the clear zones. Each fragment starts at one random fraction of full HP.
+ */
+function placeRuins(
+  layout: MapLayout,
+  rng: Rng,
+  config: MapGenConfig,
+  terrain: Terrain[],
+): RuinSpot[] {
+  const { width, height } = layout;
+  const reserved = clearZoneMask(layout, config);
+  const taken = new Set<number>();
+  const ruins: RuinSpot[] = [];
+  const area = (width * height) / 1000;
+  const [lo, hi] = config.ruinsPer1000;
+  const fragments = randomInt(rng, Math.round(lo * area), Math.round(hi * area));
+  for (let f = 0; f < fragments; f++) {
+    const shape = ruinShape(rng);
+    const hpFraction = config.ruinHp[0] + nextRandom(rng) * (config.ruinHp[1] - config.ruinHp[0]);
+    for (let tries = 0; tries < START_TRIES; tries++) {
+      const ox = randomInt(rng, 0, width - 1);
+      const oy = randomInt(rng, 0, height - 1);
+      const tiles = shape
+        .map((p) => ({ x: ox + p.x, y: oy + p.y }))
+        .filter(({ x, y }) => x >= 0 && y >= 0 && x < width && y < height)
+        .filter(({ x, y }) => {
+          const i = y * width + x;
+          return terrain[i] === "ground" && !reserved[i] && !taken.has(i);
+        });
+      if (tiles.length < 3) continue;
+      for (const t of tiles) {
+        taken.add(t.y * width + t.x);
+        ruins.push({ ...t, hpFraction });
+      }
+      break;
+    }
+  }
+  return ruins;
+}
+
+/** Tile offsets for one ruin fragment. */
+function ruinShape(rng: Rng): Point[] {
+  const kind = randomInt(rng, 0, 2);
+  if (kind === 0) {
+    const length = randomInt(rng, 3, 6);
+    const horizontal = nextRandom(rng) < 0.5;
+    return Array.from({ length }, (_, i) => (horizontal ? { x: i, y: 0 } : { x: 0, y: i }));
+  }
+  if (kind === 1) {
+    const across = randomInt(rng, 2, 4);
+    const down = randomInt(rng, 2, 4);
+    return [
+      ...Array.from({ length: across }, (_, i) => ({ x: i, y: 0 })),
+      ...Array.from({ length: down }, (_, i) => ({ x: 0, y: i + 1 })),
+    ];
+  }
+  // A broken square: the outline of a small old tower with a gap or two.
+  const size = randomInt(rng, 3, 4);
+  const outline: Point[] = [];
+  for (let i = 0; i < size; i++) {
+    outline.push({ x: i, y: 0 }, { x: i, y: size - 1 });
+    if (i > 0 && i < size - 1) outline.push({ x: 0, y: i }, { x: size - 1, y: i });
+  }
+  const gaps = randomInt(rng, 1, 2);
+  for (let g = 0; g < gaps; g++) outline.splice(randomInt(rng, 0, outline.length - 1), 1);
+  return outline;
 }
 
 /** Playable: a real river with its fords, and every walkable tile (spawn included) can reach the keep. */
