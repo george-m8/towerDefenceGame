@@ -9,6 +9,8 @@ export type StructureKind = keyof typeof STRUCTURES;
 
 export type Facing = "N" | "E" | "S" | "W";
 
+export type PlayerId = number;
+
 /** Natural ground type under any structures. */
 export type Terrain = keyof typeof TERRAIN;
 
@@ -23,6 +25,8 @@ export interface Structure {
   cooldown: number;
   /** Only for directional structures (wall spikes). */
   facing?: Facing;
+  /** Who built it; null for neutral map structures (ruins). */
+  owner: PlayerId | null;
 }
 
 export interface Enemy {
@@ -39,6 +43,8 @@ export interface Enemy {
   hp: number;
   maxHp: number;
   bounty: number;
+  /** The player whose structure struck the killing blow, once hp <= 0. */
+  killedBy: PlayerId | null;
   /** Ticks until it can hit a blocking structure again. */
   attackCooldown: number;
 }

@@ -4,6 +4,7 @@ import type {
   Enemy,
   Facing,
   GameState,
+  PlayerId,
   Structure,
   StructureKind,
   Terrain,
@@ -177,6 +178,7 @@ export function placeStructure(
   x: number,
   y: number,
   facing: Facing = "N",
+  owner: PlayerId | null = null,
 ): Structure {
   const stats: StructureStats = STRUCTURES[kind];
   const structure: Structure = {
@@ -187,6 +189,7 @@ export function placeStructure(
     hp: stats.maxHp,
     maxHp: stats.maxHp,
     cooldown: initialCooldown(stats),
+    owner,
   };
   if (stats.directional) structure.facing = facing;
   state.structures[structure.id] = structure;

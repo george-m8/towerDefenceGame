@@ -64,7 +64,7 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     rngState: seed,
   };
   for (const spot of map.ruins) {
-    const ruin = placeStructure(state, "ruin", spot.x, spot.y);
+    const ruin = placeStructure(state, "ruin", spot.x, spot.y, "N", null);
     ruin.hp = Math.round(ruin.maxHp * spot.hpFraction);
   }
   return state;
@@ -95,7 +95,7 @@ export function applyCommand(state: GameState, command: Command): CommandResult 
       const check = canBuild(state, command.kind, command.x, command.y);
       if (!check.ok) return check;
       state.gold -= STRUCTURES[command.kind].cost;
-      placeStructure(state, command.kind, command.x, command.y, command.facing);
+      placeStructure(state, command.kind, command.x, command.y, command.facing, 1);
       claimChest(state, command.x, command.y);
       return { ok: true };
     }

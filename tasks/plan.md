@@ -186,7 +186,7 @@ T3 and T4 each depend only on T2.
 
 ### Task list
 
-- [ ] Task 1: Ownership and kill-credit data
+- [x] Task 1: Ownership and kill-credit data
 - [ ] Task 2: Players with their own gold
 
 **Checkpoint E: single-player unchanged**

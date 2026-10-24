@@ -14,14 +14,14 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** Add `owner: PlayerId | null` to `Structure` and `killedBy: PlayerId | null` to `Enemy`, plus `export type PlayerId = number`. `placeStructure` takes an owner: player-built structures get `1` for now (from `applyCommand`) and generated ruins get `null`. Add `damageEnemy(enemy, amount, by)` to `enemies.ts`, which ignores enemies already at 0 HP or below and records `killedBy` on the hit that takes HP to 0 or below. Route every enemy damage in `towers.ts` (single target and splash) and `traps.ts` through it, passing the structure's owner. Gold is still shared, so nothing visible changes.
 
 **Acceptance criteria:**
-- [ ] Built structures have `owner: 1`, and generated ruins have `owner: null`
-- [ ] Every enemy damage goes through `damageEnemy` (no `enemy.hp -=` / `target.hp -=` left in `towers.ts` or `traps.ts`)
-- [ ] `killedBy` is set on the killing blow for a single-target kill, a splash kill and a trap kill. A second hit on a dead enemy doesn't change it.
+- [x] Built structures have `owner: 1`, and generated ruins have `owner: null`
+- [x] Every enemy damage goes through `damageEnemy` (no `enemy.hp -=` / `target.hp -=` left in `towers.ts` or `traps.ts`)
+- [x] `killedBy` is set on the killing blow for a single-target kill, a splash kill and a trap kill. A second hit on a dead enemy doesn't change it.
 
 **Verification:**
-- [ ] New tests in `tests/sim/enemies.test.ts` (the `damageEnemy` rules) and `tests/sim/towers.test.ts` / `tests/sim/traps.test.ts` (each damage source sets `killedBy`)
-- [ ] All existing tests pass unchanged
-- [ ] `grep -n "hp -=" src/sim` shows only structure damage
+- [x] New tests in `tests/sim/enemies.test.ts` (the `damageEnemy` rules) and `tests/sim/towers.test.ts` / `tests/sim/traps.test.ts` (each damage source sets `killedBy`)
+- [x] All existing tests pass unchanged
+- [x] `grep -n "hp -=" src/sim` shows only structure damage
 
 **Dependencies:** None
 

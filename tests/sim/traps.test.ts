@@ -100,3 +100,15 @@ describe("wall spikes", () => {
     expect(nextStep(state, 9, y)).not.toEqual({ x: 10, y });
   });
 });
+
+describe("trap kill credit", () => {
+  it("every enemy killed by spikes is credited to the trap's owner", () => {
+    const state = createGameWithoutWaves();
+    placeStructure(state, "floorSpikes", 10, 10, "N", 2);
+    const a = spawnEnemy(state, 10, 10, FLOOR.damage);
+    const b = spawnEnemy(state, 10, 10, FLOOR.damage);
+    runTraps(state, floorInterval);
+    expect(a.killedBy).toBe(2);
+    expect(b.killedBy).toBe(2);
+  });
+});

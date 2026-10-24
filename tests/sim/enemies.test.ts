@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ENEMY, STRUCTURES, TICK_RATE } from "../../src/sim/config";
-import { spawnEnemy } from "../../src/sim/enemies";
+import { damageEnemy, spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand, tick } from "../../src/sim/game";
 import { topAt } from "../../src/sim/grid";
 import { nextStep } from "../../src/sim/pathfinding";
@@ -186,5 +186,26 @@ describe("breaking through", () => {
       const s = topAt(state, p.x, p.y)!;
       expect(s.hp).toBe(s.maxHp);
     }
+  });
+});
+
+describe("damageEnemy", () => {
+  it("records who struck the killing blow, not who hit first", () => {
+    const state = createGameWithoutWaves();
+    const enemy = spawnEnemy(state, 5, 5, 10);
+    damageEnemy(enemy, 6, 1);
+    expect(enemy.killedBy).toBeNull();
+    damageEnemy(enemy, 4, 2);
+    expect(enemy.hp).toBe(0);
+    expect(enemy.killedBy).toBe(2);
+  });
+
+  it("ignores hits on an enemy that is already dead", () => {
+    const state = createGameWithoutWaves();
+    const enemy = spawnEnemy(state, 5, 5, 10);
+    damageEnemy(enemy, 15, 1);
+    damageEnemy(enemy, 15, 2);
+    expect(enemy.hp).toBe(-5);
+    expect(enemy.killedBy).toBe(1);
   });
 });

@@ -5,6 +5,7 @@ import {
   type StructureStats,
   type TowerStats,
 } from "./config";
+import { damageEnemy } from "./enemies";
 import { distanceAt } from "./pathfinding";
 import type { Enemy, GameState, Structure } from "./types";
 
@@ -25,7 +26,7 @@ function updateTower(state: GameState, structure: Structure, tower: TowerStats) 
   if (tower.splashRadius > 0) {
     for (const enemy of state.enemies) {
       const spread = Math.max(Math.abs(enemy.x - target.x), Math.abs(enemy.y - target.y));
-      if (spread <= tower.splashRadius) enemy.hp -= tower.damage;
+      if (spread <= tower.splashRadius) damageEnemy(enemy, tower.damage, structure.owner);
     }
     state.effects.push({
       kind: "splash",
@@ -35,7 +36,7 @@ function updateTower(state: GameState, structure: Structure, tower: TowerStats) 
       ttl: EFFECT_TICKS,
     });
   } else {
-    target.hp -= tower.damage;
+    damageEnemy(target, tower.damage, structure.owner);
   }
   state.effects.push({
     kind: "shot",

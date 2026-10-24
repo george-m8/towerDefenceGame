@@ -92,3 +92,16 @@ describe("determinism", () => {
     expect(run()).toBe(run());
   });
 });
+
+describe("ownership", () => {
+  it("structures built by command belong to the player; generated ruins to no one", () => {
+    const state = createGame(7);
+    const ruins = Object.values(state.structures).filter((s) => s.kind === "ruin");
+    expect(ruins.length).toBeGreaterThan(0);
+    expect(ruins.every((r) => r.owner === null)).toBe(true);
+
+    const blank = createGame(1, { blankMap: true });
+    expect(applyCommand(blank, { type: "build", kind: "wall", x: 5, y: 5 })).toEqual({ ok: true });
+    expect(Object.values(blank.structures).map((s) => s.owner)).toEqual([1]);
+  });
+});
