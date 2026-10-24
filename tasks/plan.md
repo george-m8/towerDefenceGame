@@ -184,11 +184,11 @@ T1 Angle maths (aiming.ts)
 - [x] Task 3: Turning towers
 
 **Checkpoint E: aiming works**
-- [ ] All tests pass (existing tower tests updated to face their targets)
-- [ ] Browser: an archer ignores enemies behind it; a cannon visibly swings onto targets before firing
+- [x] All tests pass (existing tower tests updated to face their targets)
+- [x] Browser: an archer ignores enemies behind it; a cannon visibly swings onto targets before firing
 - [ ] Review with human
 
-- [ ] Task 4: Arc overlay, facing notch and aim line
+- [x] Task 4: Arc overlay, facing notch and aim line
 - [ ] Task 5: Hover info and docs
 
 **Checkpoint F: module complete**

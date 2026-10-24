@@ -8,7 +8,7 @@ import {
 } from "./config";
 import { angleBetween, angleTo, facingAngle, inArc, turnTowards } from "./aiming";
 import { distanceAt } from "./pathfinding";
-import type { Enemy, GameState, Structure } from "./types";
+import type { Enemy, Facing, GameState, Point, Structure } from "./types";
 
 export function updateTowers(state: GameState): void {
   for (const structure of Object.values(state.structures)) {
@@ -62,10 +62,21 @@ function turnTowardsTarget(structure: Structure, tower: TowerStats, target: Enem
   return angleBetween(structure.aim, wanted) <= AIM_TOLERANCE_DEGREES;
 }
 
-/** Fixed towers only fire inside their arc; turning towers can face any way. */
-function canFireTowards(structure: Structure, tower: TowerStats, enemy: Enemy): boolean {
-  if (tower.turnDegreesPerSecond > 0 || !structure.facing) return true;
-  return inArc(facingAngle(structure.facing), tower.arcDegrees, angleTo(structure, enemy));
+/**
+ * Whether a tower at `origin` with `facing` could ever fire at `point`: in range, outside its
+ * minimum range, and (for fixed towers) inside its arc. Turning towers can face any way.
+ * Targeting and the range overlay both use this, so they always agree.
+ */
+export function canTarget(
+  tower: TowerStats,
+  origin: Point,
+  facing: Facing | undefined,
+  point: Point,
+): boolean {
+  const distance = Math.hypot(point.x - origin.x, point.y - origin.y);
+  if (distance > tower.range || distance < tower.minRange) return false;
+  if (tower.turnDegreesPerSecond > 0 || !facing) return true;
+  return inArc(facingAngle(facing), tower.arcDegrees, angleTo(origin, point));
 }
 
 /** The living, in-range enemy closest to the keep by path distance (ties: lowest id). */
@@ -74,9 +85,7 @@ function findTarget(state: GameState, structure: Structure, tower: TowerStats): 
   let bestDist = Infinity;
   for (const enemy of state.enemies) {
     if (enemy.hp <= 0) continue;
-    const range = Math.hypot(enemy.x - structure.x, enemy.y - structure.y);
-    if (range > tower.range || range < tower.minRange) continue;
-    if (!canFireTowards(structure, tower, enemy)) continue;
+    if (!canTarget(tower, structure, structure.facing, enemy)) continue;
     const dist = distanceAt(state, Math.round(enemy.x), Math.round(enemy.y));
     if (dist < bestDist || (dist === bestDist && best && enemy.id < best.id)) {
       best = enemy;

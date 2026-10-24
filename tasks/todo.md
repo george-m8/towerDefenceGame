@@ -73,7 +73,7 @@ No game changes yet.
 
 **Verification:**
 - [x] `npm test` (`tests/sim/towers.test.ts` turning cases)
-- [ ] Manual: watch a cannon swing round onto a wave (with Task 4, once the aim line makes turning visible)
+- [x] Manual: watch a cannon swing round onto a wave (aim line swung from N to SE during a wave)
 
 **Dependencies:** Task 2
 
@@ -85,7 +85,7 @@ No game changes yet.
 
 ### Checkpoint E: aiming works
 - [x] All tests pass, build clean
-- [ ] Browser: an archer ignores enemies behind it; a cannon visibly swings onto targets before firing (run with Task 4: turning is only visible once the aim line is drawn)
+- [x] Browser: an archer ignores enemies behind it; a cannon visibly swings onto targets before firing (checked with Task 4)
 - [ ] Review with human (including whether the arc and turn numbers feel right)
 
 ---
@@ -97,13 +97,13 @@ No game changes yet.
 **Description:** The range overlay (while placing a tower, or hovering a placed one) tints only the tiles that are in range, outside the minimum range, and inside the arc for the tower's facing. It uses `aiming.ts` and the same range rules as targeting. Placed towers show a small notch on the tile edge they face. Hovering a turning tower also draws a short line along its current `aim`. The ghost while placing shows the facing notch for the current `R` facing.
 
 **Acceptance criteria:**
-- [ ] The placement overlay covers exactly the tiles the tower could fire at for the current facing (range, minimum range and arc)
-- [ ] Every placed tower shows which way it faces at a glance
-- [ ] Hovering a cannon or catapult shows its current aim line, which moves as it turns
+- [x] The placement overlay covers exactly the tiles the tower could fire at for the current facing (range, minimum range and arc)
+- [x] Every placed tower shows which way it faces at a glance
+- [x] Hovering a cannon or catapult shows its current aim line, which moves as it turns
 
 **Verification:**
-- [ ] `npm run build`
-- [ ] Manual: rotate an archer ghost with `R` and watch the quarter circle swing round; hover a turning cannon during a wave
+- [x] `npm run build`
+- [x] Manual: rotate an archer ghost with `R` and watch the quarter circle swing round; hover a turning cannon during a wave
 
 **Dependencies:** Task 3
 

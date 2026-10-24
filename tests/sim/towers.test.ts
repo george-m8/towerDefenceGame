@@ -3,7 +3,7 @@ import { AIM_TOLERANCE_DEGREES, STRUCTURES, TICK_RATE } from "../../src/sim/conf
 import { spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand } from "../../src/sim/game";
 import { placeStructure, topAt } from "../../src/sim/grid";
-import { updateTowers } from "../../src/sim/towers";
+import { canTarget, updateTowers } from "../../src/sim/towers";
 import { createGameWithoutWaves } from "./helpers";
 
 const ARCHER = STRUCTURES.archer.tower;
@@ -188,5 +188,21 @@ describe("turning towers", () => {
     const enemy = spawnEnemy(state, 10, 13, TOUGH);
     updateTowers(state);
     expect(enemy.hp).toBe(TOUGH - STRUCTURES.cannon.tower.damage);
+  });
+});
+
+describe("canTarget (shared by targeting and the overlay)", () => {
+  const at = { x: 10, y: 10 };
+  it("limits a fixed archer to range and its arc", () => {
+    expect(canTarget(ARCHER, at, "E", { x: 15, y: 10 })).toBe(true);
+    expect(canTarget(ARCHER, at, "E", { x: 12, y: 8 })).toBe(true); // arc edge
+    expect(canTarget(ARCHER, at, "E", { x: 10, y: 15 })).toBe(false); // outside the arc
+    expect(canTarget(ARCHER, at, "E", { x: 16, y: 10 })).toBe(false); // out of range
+  });
+
+  it("lets turning towers reach all round, but keeps minimum range", () => {
+    const catapult = STRUCTURES.catapult.tower;
+    expect(canTarget(catapult, at, "N", { x: 10, y: 15 })).toBe(true); // behind it
+    expect(canTarget(catapult, at, "N", { x: 11, y: 10 })).toBe(false); // too close
   });
 });
