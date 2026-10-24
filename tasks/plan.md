@@ -51,7 +51,7 @@ T9, T10a and T11 only depend on T8 and can be built in any order (or in parallel
 ### Phase 1: Foundation
 - [x] Task 1: Project scaffold and empty grid render
 - [x] Task 2: Simulation core and game loop
-- [ ] Task 3: Wall placement with gold
+- [x] Task 3: Wall placement with gold
 
 ### Checkpoint 1: Foundation
 - [ ] `npm run typecheck && npm test && npm run build` pass

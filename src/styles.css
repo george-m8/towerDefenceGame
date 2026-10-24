@@ -81,3 +81,47 @@ body {
   min-height: 1.2em;
   margin: 8px 0 0;
 }
+
+.section {
+  margin: 12px 0 4px;
+  font-size: inherit;
+  font-weight: normal;
+  border-bottom: 1px solid var(--ink);
+}
+
+.tools {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tool {
+  display: grid;
+  grid-template-columns: 20px 1fr auto 20px;
+  gap: 8px;
+  align-items: center;
+  padding: 2px 6px;
+  font: inherit;
+  text-align: left;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.tool.selected {
+  color: var(--paper);
+  background: var(--ink);
+}
+
+.tool:disabled {
+  color: #888;
+  cursor: default;
+}
+
+.tool kbd {
+  font: inherit;
+  text-align: center;
+  border: 1px solid currentColor;
+}

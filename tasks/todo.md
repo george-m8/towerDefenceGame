@@ -56,13 +56,13 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** Add the `build` command and placement rules in `grid.ts`: in bounds, tile empty, not the keep, not the spawn zone, enough gold. Wall config row (cost 5, HP 50, `#`). `input.ts` maps mouse to tiles: selected tool + click places, drag paints. Right click / Esc clears the tool. The panel shows gold and the selected tool. Rejected placements show a brief reason.
 
 **Acceptance criteria:**
-- [ ] Walls can be placed by click and by drag-painting, deducting 5 gold each
-- [ ] Placement is rejected (with a reason) on occupied, keep, spawn-zone or out-of-bounds tiles, or with too little gold
-- [ ] Placement works while paused
+- [x] Walls can be placed by click and by drag-painting, deducting 5 gold each
+- [x] Placement is rejected (with a reason) on occupied, keep, spawn-zone or out-of-bounds tiles, or with too little gold
+- [x] Placement works while paused
 
 **Verification:**
-- [ ] `npm test` (`tests/sim/grid.test.ts` covers every rejection rule)
-- [ ] Manual: paint a wall line, watch gold drop, try building on the keep and spawn zone and see it rejected
+- [x] `npm test` (`tests/sim/grid.test.ts` covers every rejection rule)
+- [x] Manual: paint a wall line, watch gold drop, try building on the keep and spawn zone and see it rejected
 
 **Dependencies:** Task 2
 
@@ -73,8 +73,8 @@ Standard verification for every task (in addition to task-specific checks):
 ---
 
 ### Checkpoint 1: Foundation
-- [ ] `npm run typecheck && npm test && npm run build` pass
-- [ ] Grid, keep and spawn zone visible. Walls can be painted, gold decreases, pause works.
+- [x] `npm run typecheck && npm test && npm run build` pass
+- [x] Grid, keep and spawn zone visible. Walls can be painted, gold decreases, pause works.
 - [ ] Review with human before proceeding
 
 ---

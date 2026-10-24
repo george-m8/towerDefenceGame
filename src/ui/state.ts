@@ -1,0 +1,31 @@
+import type { Point, StructureKind } from "../sim/types";
+
+export type Tool = StructureKind;
+
+export interface ToolDef {
+  tool: Tool;
+  key: string; // KeyboardEvent.code
+  label: string;
+  /** Click-and-drag places along the dragged tiles. */
+  paintable: boolean;
+}
+
+export const TOOLS: ToolDef[] = [{ tool: "wall", key: "Digit1", label: "1", paintable: true }];
+
+export interface UiState {
+  tool: Tool | null;
+  hover: Point | null;
+  message: string;
+  messageUntil: number;
+}
+
+export function createUiState(): UiState {
+  return { tool: null, hover: null, message: "", messageUntil: 0 };
+}
+
+const MESSAGE_MS = 2000;
+
+export function showMessage(ui: UiState, message: string) {
+  ui.message = message;
+  ui.messageUntil = performance.now() + MESSAGE_MS;
+}

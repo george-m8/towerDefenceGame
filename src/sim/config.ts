@@ -11,3 +11,14 @@ export const KEEP_HP = 100;
 export const SPAWN_ZONE = { x: 0, y: 10, width: 2, height: 12 };
 
 export const STARTING_GOLD = 150;
+
+export interface StructureStats {
+  name: string;
+  cost: number;
+  maxHp: number;
+  blocksMovement: boolean;
+}
+
+export const STRUCTURES = {
+  wall: { name: "Wall", cost: 5, maxHp: 50, blocksMovement: true },
+} satisfies Record<string, StructureStats>;

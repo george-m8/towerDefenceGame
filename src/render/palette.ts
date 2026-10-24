@@ -1,3 +1,5 @@
+import type { StructureKind } from "../sim/types";
+
 export const TILE_SIZE = 20;
 export const GLYPH_FONT = `bold ${TILE_SIZE - 4}px Menlo, Consolas, monospace`;
 
@@ -8,4 +10,14 @@ export const COLOURS = {
   spawnGlyph: "#8a3a3a",
   keep: "#6b6b6b",
   keepGlyph: "#ffffff",
+  ghostOk: "rgba(255, 255, 255, 0.35)",
+  ghostBad: "rgba(255, 60, 60, 0.45)",
+};
+
+export const GLYPHS: Record<StructureKind, string> = {
+  wall: "#",
+};
+
+export const STRUCTURE_COLOURS: Record<StructureKind, { bg: string; fg: string }> = {
+  wall: { bg: "#8a7a5c", fg: "#3b3226" },
 };

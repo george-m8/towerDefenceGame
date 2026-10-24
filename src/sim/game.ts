@@ -1,5 +1,13 @@
-import { GRID_HEIGHT, GRID_WIDTH, KEEP_HP, KEEP_SIZE, SPAWN_ZONE, STARTING_GOLD } from "./config";
-import { EMPTY, KEEP_TILE } from "./grid";
+import {
+  GRID_HEIGHT,
+  GRID_WIDTH,
+  KEEP_HP,
+  KEEP_SIZE,
+  SPAWN_ZONE,
+  STARTING_GOLD,
+  STRUCTURES,
+} from "./config";
+import { EMPTY, KEEP_TILE, canBuild, placeStructure } from "./grid";
 import type { Command, CommandResult, GameState, Point } from "./types";
 
 export function createGame(seed: number): GameState {
@@ -22,6 +30,9 @@ export function createGame(seed: number): GameState {
     width,
     height,
     tiles,
+    structures: {},
+    nextId: 1,
+    gridVersion: 0,
     spawnTiles,
     keep: { x: keepX, y: keepY, size: KEEP_SIZE, hp: KEEP_HP, maxHp: KEEP_HP },
     gold: STARTING_GOLD,
@@ -42,5 +53,12 @@ export function applyCommand(state: GameState, command: Command): CommandResult 
     case "togglePause":
       state.paused = !state.paused;
       return { ok: true };
+    case "build": {
+      const check = canBuild(state, command.kind, command.x, command.y);
+      if (!check.ok) return check;
+      state.gold -= STRUCTURES[command.kind].cost;
+      placeStructure(state, command.kind, command.x, command.y);
+      return { ok: true };
+    }
   }
 }
