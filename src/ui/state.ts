@@ -10,7 +10,10 @@ export interface ToolDef {
   paintable: boolean;
 }
 
-export const TOOLS: ToolDef[] = [{ tool: "wall", key: "Digit1", label: "1", paintable: true }];
+export const TOOLS: ToolDef[] = [
+  { tool: "wall", key: "Digit1", label: "1", paintable: true },
+  { tool: "archer", key: "Digit2", label: "2", paintable: false },
+];
 
 export interface UiState {
   tool: Tool | null;

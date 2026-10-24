@@ -17,12 +17,17 @@ export const COLOURS = {
   hpFront: "#5fdc5f",
   flowArrow: "rgba(120, 200, 255, 0.55)",
   flowAttack: "rgba(255, 90, 90, 0.9)",
+  range: "rgba(255, 255, 160, 0.12)",
+  rangeEdge: "rgba(255, 255, 160, 0.6)",
+  shot: "#fff6c0",
 };
 
 export const GLYPHS: Record<StructureKind, string> = {
   wall: "#",
+  archer: "A",
 };
 
 export const STRUCTURE_COLOURS: Record<StructureKind, { bg: string; fg: string }> = {
   wall: { bg: "#8a7a5c", fg: "#3b3226" },
+  archer: { bg: "#3d6b3a", fg: "#d8f5c8" },
 };

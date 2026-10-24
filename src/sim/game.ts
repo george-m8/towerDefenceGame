@@ -9,7 +9,10 @@ import {
 } from "./config";
 import { spawnEnemy, updateEnemies } from "./enemies";
 import { EMPTY, KEEP_TILE, canBuild, placeStructure } from "./grid";
+import { awardBounties } from "./economy";
+import { updateEffects } from "./effects";
 import { randomInt } from "./rng";
+import { updateTowers } from "./towers";
 import { createWaveState, sendWaveEarly, updateWaves } from "./waves";
 import type { Command, CommandResult, GameState, Point } from "./types";
 
@@ -38,6 +41,7 @@ export function createGame(seed: number): GameState {
     gridVersion: 0,
     flow: null,
     enemies: [],
+    effects: [],
     spawnTiles,
     keep: { x: keepX, y: keepY, size: KEEP_SIZE, hp: KEEP_HP, maxHp: KEEP_HP },
     wave: createWaveState(),
@@ -52,8 +56,11 @@ export function createGame(seed: number): GameState {
 export function tick(state: GameState): void {
   if (state.paused || state.gameOver) return;
   state.tick++;
+  updateEffects(state);
   updateEnemies(state);
   updateWaves(state);
+  updateTowers(state);
+  awardBounties(state);
   if (state.keep.hp <= 0) state.gameOver = true;
 }
 

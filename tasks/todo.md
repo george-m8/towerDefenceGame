@@ -179,13 +179,13 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** Add the Archer config row (cost 25, HP 40, range 5, 1 shot/s, `A`). `towers.ts` adds `updateTower` with cooldown and targeting (the in-range enemy with the lowest flow-field distance, ties broken by id), with instant-hit damage. Dead enemies award their bounty (2 gold, +1 every 5 waves). Show a brief shot line/flash. Show a range overlay when hovering a tower or holding a tower tool. Towers block movement and can be attacked like walls.
 
 **Acceptance criteria:**
-- [ ] Archers fire at most once per second at the in-range enemy closest to the keep
-- [ ] Killing an enemy awards the correct bounty
-- [ ] The range overlay shows on hover and while placing
+- [x] Archers fire at most once per second at the in-range enemy closest to the keep
+- [x] Killing an enemy awards the correct bounty
+- [x] The range overlay shows on hover and while placing
 
 **Verification:**
-- [ ] `npm test` (`tests/sim/towers.test.ts`: range edge cases, fire rate, target selection; `tests/sim/economy.test.ts`: bounty by wave)
-- [ ] Manual: build archers along the path and watch kills and gold rise
+- [x] `npm test` (`tests/sim/towers.test.ts`: range edge cases, fire rate, target selection; `tests/sim/economy.test.ts`: bounty by wave)
+- [x] Manual: build archers along the path and watch kills and gold rise
 
 **Dependencies:** Task 7
 

@@ -70,7 +70,7 @@ T9, T10a and T11 only depend on T8 and can be built in any order (or in parallel
 - [ ] Review with human
 
 ### Phase 3: Defences and Economy
-- [ ] Task 8: Archer tower, targeting, bounties and range overlay
+- [x] Task 8: Archer tower, targeting, bounties and range overlay
 - [ ] Task 9: Cannon and Catapult (splash, minimum range)
 - [ ] Task 10a: Floor spikes
 - [ ] Task 10b: Wall spikes (directional)

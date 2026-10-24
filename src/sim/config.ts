@@ -12,16 +12,33 @@ export const SPAWN_ZONE = { x: 0, y: 10, width: 2, height: 12 };
 
 export const STARTING_GOLD = 150;
 
+export interface TowerStats {
+  range: number; // tiles, measured centre to centre
+  damage: number;
+  fireIntervalSeconds: number;
+}
+
 export interface StructureStats {
   name: string;
   cost: number;
   maxHp: number;
   blocksMovement: boolean;
+  tower?: TowerStats;
 }
 
 export const STRUCTURES = {
   wall: { name: "Wall", cost: 5, maxHp: 50, blocksMovement: true },
+  archer: {
+    name: "Archer",
+    cost: 25,
+    maxHp: 40,
+    blocksMovement: true,
+    tower: { range: 5, damage: 6, fireIntervalSeconds: 1 },
+  },
 } satisfies Record<string, StructureStats>;
+
+/** How long shot effects stay on screen. */
+export const EFFECT_TICKS = 3;
 
 export const ENEMY = {
   baseHp: 20,

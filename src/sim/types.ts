@@ -14,6 +14,8 @@ export interface Structure {
   y: number;
   hp: number;
   maxHp: number;
+  /** Ticks until a tower can fire again. */
+  cooldown: number;
 }
 
 export interface Enemy {
@@ -30,6 +32,16 @@ export interface Enemy {
   /** Ticks until it can hit a blocking structure again. */
   attackCooldown: number;
 }
+
+/** Short-lived visual events recorded by the simulation for the renderer. */
+export type Effect = {
+  kind: "shot";
+  fromX: number;
+  fromY: number;
+  toX: number;
+  toY: number;
+  ttl: number;
+};
 
 export interface FlowField {
   /** gridVersion this field was computed for. */
@@ -68,6 +80,7 @@ export interface GameState {
   gridVersion: number;
   flow: FlowField | null;
   enemies: Enemy[];
+  effects: Effect[];
   spawnTiles: Point[];
   keep: Keep;
   wave: WaveState;

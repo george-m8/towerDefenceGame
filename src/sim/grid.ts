@@ -67,6 +67,7 @@ export function placeStructure(
     y,
     hp: stats.maxHp,
     maxHp: stats.maxHp,
+    cooldown: 0,
   };
   state.structures[structure.id] = structure;
   state.tiles[tileIndex(state, x, y)] = structure.id;
