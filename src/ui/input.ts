@@ -1,6 +1,6 @@
 import { TILE_SIZE } from "../render/palette";
-import type { Command, CommandResult, Point } from "../sim/types";
-import { TOOLS, rotateFacing, showMessage, type UiState } from "./state";
+import type { Command, Point } from "../sim/types";
+import { TOOLS, rotateFacing, type UiState } from "./state";
 
 /** Dev-only stress test: M spawns this many enemies at once. */
 const STRESS_TEST_ENEMIES = 200;
@@ -8,7 +8,7 @@ const STRESS_TEST_ENEMIES = 200;
 export function bindInput(
   canvas: HTMLCanvasElement,
   ui: UiState,
-  dispatch: (command: Command) => CommandResult,
+  dispatch: (command: Command) => void,
 ) {
   let painting = false;
   let lastPainted: Point | null = null;
@@ -23,12 +23,12 @@ export function bindInput(
 
   function useToolAt(p: Point) {
     if (!ui.tool) return;
-    const result = dispatch(
+    // Refusals come back through the session's onResult.
+    dispatch(
       ui.tool === "sell"
         ? { type: "sell", x: p.x, y: p.y }
         : { type: "build", kind: ui.tool, x: p.x, y: p.y, facing: ui.facing },
     );
-    if (!result.ok) showMessage(ui, result.reason);
   }
 
   window.addEventListener("keydown", (e) => {
