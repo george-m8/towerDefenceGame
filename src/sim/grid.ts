@@ -1,5 +1,6 @@
 import { facingAngle } from "./aiming";
 import { STRUCTURES, TERRAIN, TICK_RATE, type StructureStats, type TerrainStats } from "./config";
+import { priceAt } from "./enclosures";
 import { playerName } from "./players";
 import type {
   CommandResult,
@@ -121,7 +122,7 @@ export function canBuild(
     STRUCTURES[kind].layer === "mount" ? canMount(state, player, x, y) : canBuildBase(state, x, y);
   if (!layerCheck.ok) return layerCheck;
   const gold = state.players[player]?.gold ?? 0;
-  if (gold < STRUCTURES[kind].cost) return { ok: false, reason: "Not enough gold" };
+  if (gold < priceAt(state, kind, x, y)) return { ok: false, reason: "Not enough gold" };
   return { ok: true };
 }
 

@@ -23,7 +23,7 @@ Reward walling in. Once walls (with any other impassable things) fully close off
 - An open tile (walkable, with nothing blocking on it) is **enclosed** when enemies can't walk to it from the spawn zone. Walls, every other blocking structure (towers on the ground, houses, wall spikes, ruins), impassable terrain (sea, river, rock, trees) and the map edge all count as closing it off. Floor spikes and bridges don't block.
 - Enclosed open tiles form **areas**: groups of enclosed tiles connected through their edges.
 - An area that touches the keep (any tile next to a keep tile) is a **keep enclosure**. It doesn't matter whether the walls go right round the keep or use the keep as part of the loop. Every other area is an **outer enclosure**.
-- A new map has no enclosures: the generator already guarantees every open tile is reachable.
+- An area only counts once **something a player built** (anything but a ruin) is part of its wall. Ruins and terrain can box in small pockets on a fresh map, so a new map starts with no enclosures. Closing a ruin box with one wall claims it. *(Added during the build: a check found 89 ruin-boxed tiles on a fresh map.)*
 - The walls themselves, and anything blocking or impassable next to an enclosed area, are its **boundary**. A boundary tile takes the discount of the best area it touches.
 
 **Discount**
@@ -90,7 +90,7 @@ Vitest, on blank maps with hand-built walls:
 4. The discount applies inside and on the boundary (towers on the walls included).
 
 5. **Rounding:** nearest whole gold, never below 1.
-6. **The keep itself:** if enemies can't reach the keep, it counts as enclosed. Structures touching it are its boundary (50%), so a ring hugging the keep makes those walls, and towers on them, half price.
+6. **The keep itself:** if enemies can't reach the keep (and a built structure is part of what blocks it), it counts as enclosed. Structures touching it are its boundary (50%), so a ring hugging the keep makes those walls, and towers on them, half price.
 
 ## Open questions
 
