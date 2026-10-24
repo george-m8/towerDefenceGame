@@ -60,6 +60,7 @@ Towers always shoot the enemy closest to the keep. Traps fire on a fixed timer f
 | Right click or `Esc` | Clear the selected tool |
 | `R` | Rotate wall spikes |
 | `Space` or Pause button | Pause / resume (you can still build while paused) |
+| `F` or `>>` button | Toggle fast forward (2x game speed) |
 | Send wave button | Start the next wave now, for +1 gold per second skipped |
 | `D` | Toggle the path overlay (arrows show where enemies will walk; red means "will attack this") |
 | Hover a tile | Show its details in the Info box, and a tower's range |

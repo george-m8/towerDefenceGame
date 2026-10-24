@@ -87,6 +87,7 @@ A browser-based, top-down, grid-based tower defence game where the player grows 
 - Right click or `Esc` clears the selected tool.
 - Hovering a tile shows what's on it. Hovering a tower (or holding a tower tool) shows its range.
 - `Space` pauses.
+- `F` (or the `>>` button next to Pause) toggles fast forward at 2x game speed.
 
 **Visual style**
 - Canvas grid of coloured squares with a single glyph per tile, rendered in a monospace pixel font.

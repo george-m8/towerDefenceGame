@@ -1,4 +1,5 @@
 import {
+  FAST_FORWARD_SPEED,
   GRID_HEIGHT,
   GRID_WIDTH,
   KEEP_HP,
@@ -51,6 +52,7 @@ export function createGame(seed: number): GameState {
     gold: STARTING_GOLD,
     tick: 0,
     paused: false,
+    speed: 1,
     gameOver: false,
     rngState: seed,
   };
@@ -73,6 +75,9 @@ export function applyCommand(state: GameState, command: Command): CommandResult 
   switch (command.type) {
     case "togglePause":
       state.paused = !state.paused;
+      return { ok: true };
+    case "toggleFastForward":
+      state.speed = state.speed === 1 ? FAST_FORWARD_SPEED : 1;
       return { ok: true };
     case "build": {
       const check = canBuild(state, command.kind, command.x, command.y);
