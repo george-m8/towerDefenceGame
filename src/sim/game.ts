@@ -60,6 +60,7 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     rngState: seed,
   };
   for (const name of options.players ?? ["Player 1"]) addPlayer(state, name);
+  updateVotes(state); // with no players, the game starts paused
   for (const spot of map.ruins) {
     const ruin = placeStructure(state, "ruin", spot.x, spot.y, "N", null);
     ruin.hp = Math.round(ruin.maxHp * spot.hpFraction);

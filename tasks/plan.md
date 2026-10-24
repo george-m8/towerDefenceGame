@@ -254,7 +254,7 @@ T2 and T3 each depend only on T1.
 - [x] All tests pass; the update size test is under 30 KB (about 21 KB)
 - [x] `npm run server` starts and logs its LAN address
 
-- [ ] Task 4: A room: players, commands, ticks and restart
+- [x] Task 4: A room: players, commands, ticks and restart
 - [ ] Task 5: Rooms, connections and sockets
 
 **Checkpoint H: two clients play over sockets**

@@ -279,3 +279,9 @@ describe("multiplayer determinism", () => {
     expect(owners).toEqual(new Set([null, A, B]));
   });
 });
+
+describe("no players", () => {
+  it("a game created without players is paused", () => {
+    expect(createGame(1, { blankMap: true, players: [] }).paused).toBe(true);
+  });
+});

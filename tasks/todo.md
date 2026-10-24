@@ -83,12 +83,12 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** `server/room.ts`. `createRoom(code, seed, now)` and functions to add a player (name made unique, random token, max 4), rejoin by token, and mark a player disconnected. `applyRoomCommand` runs a command as the given player, rejects `debugSpawn`, and returns the result. `advanceRoom(room, elapsedMs)` runs whole ticks for elapsed time times `speed` (with the `main.ts` catch-up cap) and reports when an update is due (every 2 ticks), or immediately after a state-changing command. `restartRoom` (only after game over) makes a new game with a new seed and re-adds the same players with the same ids, names and tokens and fresh gold. Sending is done by an injected `send(playerId, message)`, so tests use a fake.
 
 **Acceptance criteria:**
-- [ ] Commands apply as the given player. `debugSpawn` is rejected. A fifth player is refused.
-- [ ] Ticks follow elapsed time and speed, don't run while paused, and updates go out every 2 ticks and after commands
-- [ ] Restart is only allowed after game over and keeps players' ids, names and tokens, resetting gold
+- [x] Commands apply as the given player. `debugSpawn` is rejected. A fifth player is refused.
+- [x] Ticks follow elapsed time and speed, don't run while paused, and updates go out every 2 ticks and after commands
+- [x] Restart is only allowed after game over and keeps players' ids, names and tokens, resetting gold
 
 **Verification:**
-- [ ] `tests/server/room.test.ts` with a fake `send` and hand-driven time
+- [x] `tests/server/room.test.ts` with a fake `send` and hand-driven time
 
 **Dependencies:** Tasks 2, 3
 
