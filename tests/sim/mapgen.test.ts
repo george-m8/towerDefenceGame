@@ -107,7 +107,9 @@ function fordCrossings(layout: MapLayout, terrain: Terrain[]): number {
 }
 
 describe("generateTerrain", () => {
-  const layout = layoutFor(GRID_WIDTH, GRID_HEIGHT);
+  // The 500-seed checks run on a fixed mid-size map so the suite stays fast as the default
+  // map grows; the default size gets its own check below.
+  const layout = layoutFor(108, 72);
 
   it("is deterministic per seed, and different seeds give different maps", () => {
     expect(generateTerrain(layout, 7).terrain).toEqual(generateTerrain(layout, 7).terrain);
@@ -127,6 +129,18 @@ describe("generateTerrain", () => {
     }
   });
 
+  it("meets every guarantee at the default map size too", () => {
+    const full = layoutFor(GRID_WIDTH, GRID_HEIGHT);
+    for (const seed of SEEDS.slice(0, 25)) {
+      const { terrain, fallback } = generateTerrain(full, seed);
+      expect(fallback, `seed ${seed}`).toBe(false);
+      expectGuarantees(full, terrain);
+      const reach = reachableFromKeep(full, terrain);
+      const cutOff = terrain.flatMap((t, i) => (TERRAIN[t].walkable && !reach.has(i) ? [i] : []));
+      expect(cutOff, `seed ${seed}`).toEqual([]);
+    }
+  });
+
   it("leaves no walkable tile cut off from the keep, so every ford really crosses", () => {
     for (const seed of SEEDS) {
       const { terrain } = generateTerrain(layout, seed);
@@ -142,7 +156,7 @@ describe("generateTerrain", () => {
       expect(count(terrain, "rock"), `seed ${seed}`).toBeGreaterThan(0);
       expect(count(terrain, "tree"), `seed ${seed}`).toBeGreaterThan(0);
     }
-    const big = layoutFor(96, 64);
+    const big = layoutFor(layout.width * 2, layout.height * 2);
     const features = (l: MapLayout) =>
       SEEDS.slice(0, 20).reduce((sum, seed) => {
         const { terrain } = generateTerrain(l, seed);

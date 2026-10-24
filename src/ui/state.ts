@@ -1,4 +1,5 @@
 import type { Facing, PlayerId, Point, StructureKind } from "../sim/types";
+import { createCamera, type Camera } from "./camera";
 
 export type Tool = StructureKind | "sell";
 
@@ -37,6 +38,10 @@ export interface UiState {
   facing: Facing;
   /** The player this screen acts as. Always 1 offline. */
   playerId: PlayerId;
+  /** The view onto the map: scroll position and zoom. */
+  camera: Camera;
+  /** Arrow keys held down, for smooth panning. */
+  panKeys: { left: boolean; right: boolean; up: boolean; down: boolean };
 }
 
 export function createUiState(): UiState {
@@ -48,6 +53,8 @@ export function createUiState(): UiState {
     showFlow: false,
     facing: "N",
     playerId: 1,
+    camera: createCamera(),
+    panKeys: { left: false, right: false, up: false, down: false },
   };
 }
 
