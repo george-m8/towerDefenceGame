@@ -1,8 +1,9 @@
 # Implementation Plan: Post-MVP Phases
 
 Capability map: [`CAPABILITIES.md`](../CAPABILITIES.md)
-Current module spec: [`SPEC-tile-layers.md`](../SPEC-tile-layers.md)
+Current module spec: [`SPEC-map-gen.md`](../SPEC-map-gen.md)
 Task list (current module only): [`tasks/todo.md`](todo.md)
+Finished modules: [`tasks/tile-layers/`](tile-layers/todo.md)
 Previous plan (MVP, complete except a Firefox/Safari smoke test): [`tasks/mvp/`](mvp/plan.md)
 
 ## How this plan works
@@ -17,8 +18,8 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 
 | Phase | Module | Status |
 |---|---|---|
-| 1. Basics | `tile-layers` | **Built, awaiting review** |
-| | `map-gen` | Spec needed |
+| 1. Basics | `tile-layers` | Done |
+| | `map-gen` | **Spec approved, tasks ready** |
 | | `tower-aiming` | Spec needed |
 | | `line-of-sight` | Spec needed |
 | | `units` | Spec needed |
@@ -30,7 +31,7 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 
 ---
 
-## Module 1: `tile-layers` (current)
+## Module 1: `tile-layers` (done)
 
 ### Overview
 
@@ -86,17 +87,74 @@ T4 and T5 both depend only on T3.
 
 ---
 
+## Module 2: `map-gen` (current)
+
+Spec: [`SPEC-map-gen.md`](../SPEC-map-gen.md)
+
+### Overview
+
+Every game starts on a seeded, generated map: sea along one edge, a river with fords, rock clusters, forests, pre-damaged ruins and treasure chests. Terrain is truly impassable (unlike walls), bridges open river tiles, trees can be cleared, ruins work as free damaged walls, and building on a chest claims its gold. The generator is size-agnostic, because the map will grow a lot later.
+
+### Architecture decisions
+
+- **Terrain rules before terrain content.** Task 1 makes pathfinding and placement understand terrain (set by hand in tests) before any generator exists, so the rules are proven on simple, readable cases.
+- **Impassable is a separate concept from blocking.** `isWalkable` (terrain, plus bridges) is checked before `blocksAt` (structures). Pathfinding skips non-walkable tiles entirely, while blocking structures keep their "very expensive but breakable" cost. The "break in only when sealed" rule is untouched.
+- **One generator module, one pass per feature.** `src/sim/mapgen.ts` runs coast -> river -> rocks -> forests -> ruins -> chests from the game's seeded rng, then validates the guarantees. On failure it retries with a seed derived from the original, so maps stay deterministic.
+- **Sizes and counts come from config.** Feature counts are densities per 1,000 tiles in `MAP_GEN`, and every pass reads `state.width` / `state.height`. A 96x64 test keeps us honest.
+- **Tests opt out of generation.** `createGame(seed, { blankMap: true })` gives today's open field. Existing tests switch to it (via the test helpers), so they keep testing exactly what they test now.
+- **Features are a list, not a layer.** Chests live in `state.features`, so `resources` can add deposits, animals and crops as new kinds without another data-model change.
+
+### Dependency graph
+
+```
+T1 Terrain rules (walkable / buildable)
+ └─ T2 Bridges
+     └─ T3 Generator: coast, river, fords, guarantees
+         ├─ T4 Rocks, forests, clearing trees
+         ├─ T5 Ruins
+         └─ T6 Treasure chests
+              └─ T7 Seed display, hover info, README
+```
+
+T4, T5 and T6 each depend only on T3.
+
+### Task list
+
+- [ ] Task 1: Terrain rules for walking and building
+- [ ] Task 2: Bridges over rivers
+- [ ] Task 3: Map generator with coast, river, fords and guarantees
+
+**Checkpoint C: generated maps**
+- [ ] All tests pass, including 500-seed guarantee tests
+- [ ] Browser: several seeds show a coast and a river; enemies use fords or bridges and never cross water
+- [ ] Review with human
+
+- [ ] Task 4: Rocks, forests and clearing trees
+- [ ] Task 5: Ruins
+- [ ] Task 6: Treasure chests
+- [ ] Task 7: Seed display, terrain hover info and docs
+
+**Checkpoint D: module complete**
+- [ ] All 7 success criteria in `SPEC-map-gen.md` met
+- [ ] Coverage of 80% lines or more for `src/sim/`
+- [ ] Review with human
+
+### Risks and mitigations
+
+| Risk | Impact | Mitigation |
+|---|---|---|
+| A generated map cuts the keep off from the spawn | High | A route check runs after every generation, with deterministic regeneration on failure. Tested on 500 seeds and on a 96x64 map. |
+| Regeneration loops forever on a pathological size or config | Med | Cap the attempts (e.g. 20), then fall back to a map with only the features that passed (or a blank map) and log it. The cap is tested. |
+| Generated maps feel samey or ugly | Med | All shapes and densities live in `MAP_GEN` config. Review several seeds at Checkpoint C before adding more features. |
+| The terrain change breaks existing tests | Med | Existing tests move to `blankMap` in Task 3, the same commit that turns generation on. The suite must stay green. |
+| Enemies walk onto impassable tiles mid-move after a tree is cleared or a bridge is sold | Low | Terrain only ever gets more walkable at runtime (clearing trees, building bridges). Selling a bridge is rejected while an enemy is on it, like building. |
+
+
+---
+
 ## Later modules: provisional outlines
 
 These are rough vertical slices, not tasks. Each becomes a proper task list after its spec is approved.
-
-### `map-gen`
-1. Terrain types (water, rock) in pathfinding and placement, unwalkable and unbuildable
-2. Seeded generator: coastline and river shapes, rock clusters, with a guaranteed open route from spawn to keep
-3. Bridges: a buildable base on river tiles that makes them walkable
-4. Ruin wall fragments (neutral, pre-damaged, can be built on)
-5. Loot caches that pay gold when reached or built over
-6. Hooks for resource features (deposits, animals, crops) used later by `resources`
 
 ### `tower-aiming`
 1. Facing at placement for all towers (reusing `R` rotation) and an arc per tower type

@@ -75,7 +75,7 @@ Standard verification for every task (in addition to task-specific checks):
 ### Checkpoint 1: Foundation
 - [x] `npm run typecheck && npm test && npm run build` pass
 - [x] Grid, keep and spawn zone visible. Walls can be painted, gold decreases, pause works.
-- [ ] Review with human before proceeding
+- [x] Review with human before proceeding
 
 ---
 
@@ -168,7 +168,7 @@ Standard verification for every task (in addition to task-specific checks):
 ### Checkpoint 2: Playable without defences
 - [x] All tests pass, build clean
 - [x] Waves spawn endlessly. Enemies route around walls, breach when fully enclosed, and can kill the keep. Restart works.
-- [ ] Review with human before proceeding
+- [x] Review with human before proceeding
 
 ---
 
@@ -301,7 +301,7 @@ Standard verification for every task (in addition to task-specific checks):
 ### Checkpoint 3: Feature complete
 - [x] All tests pass, build clean
 - [x] All 7 structures buildable and sellable. Each tower behaves distinctly. The economy loop works.
-- [ ] Review with human, including a balance pass on `config.ts`
+- [x] Review with human, including a balance pass on `config.ts`
 
 ---
 
