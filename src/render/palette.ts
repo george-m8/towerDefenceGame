@@ -14,6 +14,10 @@ export const KEEP_HP_FONT = `bold ${TILE_SIZE - 6}px Menlo, Consolas, monospace`
 
 export const COLOURS = {
   ground: "#2b2418",
+  /** Beyond the map's edge, when the whole map fits with room to spare. */
+  offMap: "#15110b",
+  /** The view's outline on the minimap. */
+  minimapView: "#ffffff",
   groundAlt: "#2f2819",
   spawn: "#4a1c1c",
   spawnGlyph: "#8a3a3a",

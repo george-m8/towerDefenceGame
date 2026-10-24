@@ -21,6 +21,14 @@
       </section>
       <aside class="window panel-window">
         <header class="title-bar"><span class="title">Keep</span></header>
+        <div class="panel minimap-box">
+          <canvas id="minimap" title="Click or drag to move the view"></canvas>
+          <div class="zoom-controls">
+            <button class="button" data-zoom="out" title="Zoom out (-)">-</button>
+            <button class="button" data-zoom="in" title="Zoom in (+)">+</button>
+            <button class="button" data-zoom="fit" title="Show the whole map">Fit</button>
+          </div>
+        </div>
         <div id="online" class="panel online" hidden></div>
         <div id="panel" class="panel"></div>
       </aside>

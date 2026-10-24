@@ -91,6 +91,10 @@ Towers always shoot the enemy closest to the keep. Traps fire on a fixed timer f
 | Send wave button | Start the next wave now, for +1 gold per second skipped |
 | `D` | Toggle the path overlay (arrows show where enemies will walk; red means "will attack this") |
 | Hover a tile | Show its details in the Info box, and a tower's range |
+| Arrow keys | Move the view around the map |
+| Mouse wheel, or `+` / `-` | Zoom in and out (the wheel zooms around the cursor) |
+| Minimap (top of the panel) | Click or drag to move the view there; the white box is what you're looking at |
+| `-` / `+` / `Fit` buttons | Zoom out, zoom in, or show the whole map |
 
 Dev server only: `E` spawns one enemy and `M` spawns 200 (stress test).
 
