@@ -1,6 +1,8 @@
 import type { Facing, StructureKind } from "../sim/types";
 
 export const TILE_SIZE = 20;
+/** Height of the strip drawn along the top of a wall-mounted tower. */
+export const BATTLEMENT_PX = 3;
 export const GLYPH_FONT = `bold ${TILE_SIZE - 4}px Menlo, Consolas, monospace`;
 
 export const COLOURS = {

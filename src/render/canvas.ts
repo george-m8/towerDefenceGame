@@ -4,7 +4,14 @@ import { STRUCTURES, type StructureStats } from "../sim/config";
 import { hitTile } from "../sim/traps";
 import type { GameState, Point, Structure, StructureKind } from "../sim/types";
 import { isBuildTool, type UiState } from "../ui/state";
-import { COLOURS, GLYPH_FONT, STRUCTURE_COLOURS, TILE_SIZE, glyphFor } from "./palette";
+import {
+  BATTLEMENT_PX,
+  COLOURS,
+  GLYPH_FONT,
+  STRUCTURE_COLOURS,
+  TILE_SIZE,
+  glyphFor,
+} from "./palette";
 
 export function createRenderer(canvas: HTMLCanvasElement, width: number, height: number) {
   canvas.width = width * TILE_SIZE;
@@ -35,7 +42,8 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
         else if (isSpawnTile(state, x, y)) drawTile(x, y, COLOURS.spawn, ".", COLOURS.spawnGlyph);
         else drawTile(x, y, (x + y) % 2 === 0 ? COLOURS.ground : COLOURS.groundAlt);
         const mount = mountAt(state, x, y);
-        if (mount) drawStructure(mount);
+        if (mount && base) drawMountOnWall(mount, base);
+        else if (mount) drawStructure(mount);
       }
     }
   }
@@ -45,6 +53,16 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
     const colours = STRUCTURE_COLOURS[structure.kind];
     drawTile(x, y, colours.bg, glyphFor(structure.kind, structure.facing), colours.fg);
     if (structure.hp < structure.maxHp) drawHpBar(x, y, structure.hp / structure.maxHp);
+  }
+
+  /** A tower on a wall: the wall shows through, the tower glyph sits on it under a battlement strip. */
+  function drawMountOnWall(tower: Structure, wall: Structure) {
+    const { x, y } = tower;
+    const towerColour = STRUCTURE_COLOURS[tower.kind].bg;
+    drawTile(x, y, STRUCTURE_COLOURS[wall.kind].bg, glyphFor(tower.kind), towerColour);
+    ctx!.fillStyle = towerColour;
+    ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, BATTLEMENT_PX);
+    if (wall.hp < wall.maxHp) drawHpBar(x, y, wall.hp / wall.maxHp);
   }
 
   function drawGhost(state: GameState, ui: UiState) {

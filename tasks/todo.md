@@ -143,13 +143,13 @@ The placement ghost already calls `canBuild`, so wall tiles show green for tower
 **Description:** Draw wall-mounted towers on the wall's colour with the tower glyph in the tower's colour and a thin top border. Ground towers are drawn as today. Hover info shows `Archer (on wall)` / `Archer (ground)` plus the HP of both layers. Update README (structures table and a short "towers on walls" note) and `SPEC.md` where its rules now differ (towers no longer block as walls).
 
 **Acceptance criteria:**
-- [ ] Wall-mounted and ground towers are clearly distinguishable at a glance
-- [ ] Hover info shows the elevation and both HP values for a wall-mounted tower
-- [ ] README and `SPEC.md` describe the layered rules accurately
+- [x] Wall-mounted and ground towers are clearly distinguishable at a glance
+- [x] Hover info shows the elevation and both HP values for a wall-mounted tower
+- [x] README and `SPEC.md` describe the layered rules accurately
 
 **Verification:**
-- [ ] `npm run build`
-- [ ] Manual: screenshot of a wall line with archers next to ground cannons; hover both
+- [x] `npm run build`
+- [x] Manual: screenshot of a wall line with archers next to ground cannons; hover both
 
 **Dependencies:** Tasks 4, 5
 
@@ -160,6 +160,6 @@ The placement ghost already calls `canBuild`, so wall tiles show green for tower
 ---
 
 ### Checkpoint B: tile-layers complete
-- [ ] All 7 success criteria in `SPEC-tile-layers.md` met
-- [ ] `npm run coverage` passes (80% lines or more for `src/sim/`)
+- [x] All 7 success criteria in `SPEC-tile-layers.md` met
+- [x] `npm run coverage` passes (98.7% lines for `src/sim/`)
 - [ ] Review with human, then move this file to `tasks/tile-layers/` and start the `map-gen` spec
