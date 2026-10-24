@@ -20,12 +20,12 @@ Standard verification for every task (in addition to task-specific checks):
 Add `src/audio/synth.ts`: a Web Audio voice with pulse (duty cycle and optional PWM LFO, built from two sawtooths and a modulated delay), triangle, saw, sine and noise (looped noise buffer); an ADSR gain envelope; a pitch envelope sliding onto the note; and self-disconnecting nodes. Voices connect to a given output node.
 
 **Acceptance criteria:**
-- [ ] `noteToHz` gives A4 = 440 Hz and the right G3/C4 values; +16 / -14 semitone start frequencies are correct
-- [ ] Duty-cycle delay times are correct for 12.5%, 25% and 50% pulses, and stay inside safe limits
-- [ ] A voice of each waveform can be built and stopped without leaving nodes connected (checked by ear and in a node-count probe in Task 3's sound test)
+- [x] `noteToHz` gives A4 = 440 Hz and the right G3/C4 values; +16 / -14 semitone start frequencies are correct
+- [x] Duty-cycle delay times are correct for 12.5%, 25% and 50% pulses, and stay inside safe limits
+- [ ] A voice of each waveform can be built and stopped without leaving nodes connected (checked by ear and with the node-count probe in Task 3's sound test)
 
 **Verification:**
-- [ ] `npm test` (new `tests/audio/envelopes.test.ts`)
+- [x] `npm test` (new `tests/audio/envelopes.test.ts`)
 
 **Dependencies:** None
 
