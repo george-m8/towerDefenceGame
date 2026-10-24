@@ -82,9 +82,9 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** `src/net/join.ts`: `readJoinIntent(search)` gives `offline`, `create {name}` or `join {room, name}` (asking for a missing name with `prompt`). Also `inviteLink(origin, room)` and the token storage key. `main.ts` picks the session from the intent, connects to `ws(s)://<host>/ws`, and after the welcome replaces the URL with `?room=CODE`. `src/ui/players.ts` is an online panel section with the room code, a "Copy invite link" button and the connection status. An unknown room shows a message with "Play offline" and "Create a new room" links. Debug keys don't send online.
 
 **Acceptance criteria:**
-- [ ] `/?create&name=Ann` creates a room and shows the code and invite link. `/?room=CODE&name=Bo` in another tab joins it.
-- [ ] Both tabs see each other's builds. Reloading a tab rejoins as the same player.
-- [ ] No parameters means offline, as before
+- [x] `/?create&name=Ann` creates a room and shows the code and invite link. `/?room=CODE&name=Bo` in another tab joins it.
+- [x] Both tabs see each other's builds. Reloading a tab rejoins as the same player.
+- [x] No parameters means offline, as before
 
 **Verification:**
 - [x] `tests/net/join.test.ts`
@@ -150,4 +150,4 @@ Standard verification for every task (in addition to task-specific checks):
 ### Checkpoint L: net-client complete
 - [x] All 6 success criteria in `SPEC-net-client.md` met
 - [x] `npm run coverage` passes (98.6% lines)
-- [ ] Review with human (including the *(Claude)* decisions), then move this file to `tasks/net-client/` and write the `lobby` spec
+- [x] Review with human (including the *(Claude)* decisions), then move this file to `tasks/net-client/` and write the `lobby` spec
