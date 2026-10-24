@@ -27,7 +27,7 @@ A browser-based, top-down, grid-based tower defence game where the player grows 
 
 **Map**
 - Fixed-size grid, default 48 x 32 tiles (configurable).
-- Keep: 3x3 footprint at map centre, has HP (default 100).
+- Keep: 3x3 footprint at map centre, has HP (default 99).
 - Spawn zone: a marked strip on the map edge. MVP has a single fixed zone on the left edge. Nothing can be built inside it.
 - Terrain: all tiles are open ground for the MVP (no rocks/water yet).
 - Build area: anywhere in bounds except the keep, the spawn zone, occupied tiles, and tiles with an enemy currently on them (stops enemies being trapped inside walls).
@@ -41,7 +41,7 @@ A browser-based, top-down, grid-based tower defence game where the player grows 
 
 | Structure | Glyph | Cost | HP | Behaviour |
 |---|---|---|---|---|
-| Keep | `K` | - | 100 | Game over at 0. Enemies that reach it deal damage and are removed. |
+| Keep | `K` | - | 99 | Game over at 0. Enemies that reach it deal damage and are removed. |
 | Wall | `#` | 5 | 50 | Blocks movement. |
 | Archer tower | `A` | 25 | 40 | Range 5, fast fire (1/s), single target, low damage. Blocks movement. |
 | Cannon | `C` | 50 | 60 | Range 4, slow (0.4/s), small splash (radius 1). Blocks movement. |
