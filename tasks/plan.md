@@ -59,11 +59,11 @@ T4 and T5 both depend only on T3.
 ### Task list
 
 - [x] Task 1: Layer data model behind grid helpers
-- [ ] Task 2: Move callers to explicit layer helpers
+- [x] Task 2: Move callers to explicit layer helpers
 
 **Checkpoint A: refactor complete, no behaviour change**
-- [ ] All 73 MVP tests pass, plus the new helper tests
-- [ ] Browser smoke test: build, waves, towers, selling all behave exactly as before
+- [x] All 73 MVP tests pass, plus the new helper tests
+- [x] Browser smoke test: build, waves, towers, selling all behave exactly as before
 
 - [ ] Task 3: Towers can be placed on walls
 - [ ] Task 4: Walls protect, and drop, their towers

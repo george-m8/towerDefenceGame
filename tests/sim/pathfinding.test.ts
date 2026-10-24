@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createGame } from "../../src/sim/game";
-import { isKeepTile, structureAt } from "../../src/sim/grid";
+import { isKeepTile, topAt } from "../../src/sim/grid";
 import { getFlowField, nextStep } from "../../src/sim/pathfinding";
 import type { GameState, Point } from "../../src/sim/types";
 import { buildAt, ring } from "./helpers";
@@ -19,7 +19,7 @@ function pathToKeep(state: GameState, start: Point): Point[] {
 }
 
 const blockedTilesOn = (state: GameState, path: Point[]) =>
-  path.filter((p) => structureAt(state, p.x, p.y)).length;
+  path.filter((p) => topAt(state, p.x, p.y)).length;
 
 function manhattanToKeep(state: GameState, p: Point): number {
   const { keep } = state;

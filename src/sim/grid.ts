@@ -41,9 +41,6 @@ export function topAt(state: GameState, x: number, y: number): Structure | undef
   return mountAt(state, x, y) ?? baseAt(state, x, y);
 }
 
-/** @deprecated Temporary alias while callers move to the explicit layer helpers. */
-export const structureAt = topAt;
-
 /** True if enemies can't walk onto the tile: a blocking base, or any tower. */
 export function blocksAt(state: GameState, x: number, y: number): boolean {
   if (mountAt(state, x, y)) return true;

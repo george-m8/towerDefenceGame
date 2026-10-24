@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ENEMY, STRUCTURES, TICK_RATE } from "../../src/sim/config";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand, tick } from "../../src/sim/game";
-import { structureAt } from "../../src/sim/grid";
+import { topAt } from "../../src/sim/grid";
 import type { GameState } from "../../src/sim/types";
 import { buildAt, createGameWithoutWaves, ring } from "./helpers";
 
@@ -40,7 +40,7 @@ describe("enemy movement", () => {
 
     run(state, 600, () => {
       for (const e of state.enemies) {
-        expect(structureAt(state, Math.round(e.x), Math.round(e.y))).toBeUndefined();
+        expect(topAt(state, Math.round(e.x), Math.round(e.y))).toBeUndefined();
       }
     });
     expect(state.enemies).toHaveLength(0);
@@ -89,15 +89,15 @@ describe("breaking through", () => {
 
     // Walk 1 tile (the first hit lands on the arrival tick), then all but the last hit.
     run(state, Math.ceil(ticksPerTile) + (hitsToBreakWall - 1) * TICK_RATE - 1);
-    expect(structureAt(state, target.x, target.y)?.hp).toBe(ENEMY.structureDps);
+    expect(topAt(state, target.x, target.y)?.hp).toBe(ENEMY.structureDps);
     const damaged = walls.filter((p) => {
-      const s = structureAt(state, p.x, p.y);
+      const s = topAt(state, p.x, p.y);
       return s && s.hp < s.maxHp;
     });
     expect(damaged).toEqual([target]);
 
     run(state, TICK_RATE);
-    expect(structureAt(state, target.x, target.y)).toBeUndefined();
+    expect(topAt(state, target.x, target.y)).toBeUndefined();
 
     // The enemy continues through the gap to the keep.
     run(state, Math.ceil(3 * ticksPerTile));
@@ -118,7 +118,7 @@ describe("breaking through", () => {
     run(state, 1000);
     expect(state.keep.hp).toBe(state.keep.maxHp - ENEMY.keepDamage);
     for (const p of walls) {
-      const s = structureAt(state, p.x, p.y)!;
+      const s = topAt(state, p.x, p.y)!;
       expect(s.hp).toBe(s.maxHp);
     }
   });

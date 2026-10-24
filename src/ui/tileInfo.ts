@@ -1,6 +1,6 @@
 import { STRUCTURES, type StructureStats } from "../sim/config";
 import { refundFor } from "../sim/economy";
-import { inBounds, isKeepTile, isSpawnTile, structureAt } from "../sim/grid";
+import { inBounds, isKeepTile, isSpawnTile, topAt } from "../sim/grid";
 import type { GameState, Point } from "../sim/types";
 
 const FACING_NAMES = { N: "north", E: "east", S: "south", W: "west" };
@@ -9,7 +9,7 @@ const FACING_NAMES = { N: "north", E: "east", S: "south", W: "west" };
 export function describeTile(state: GameState, p: Point): string[] {
   if (!inBounds(state, p.x, p.y)) return [];
   const lines: string[] = [];
-  const structure = structureAt(state, p.x, p.y);
+  const structure = topAt(state, p.x, p.y);
 
   if (isKeepTile(state, p.x, p.y)) {
     lines.push("Keep", `HP ${state.keep.hp} / ${state.keep.maxHp}`);

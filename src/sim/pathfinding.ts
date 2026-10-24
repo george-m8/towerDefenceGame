@@ -1,5 +1,4 @@
-import { STRUCTURES } from "./config";
-import { KEEP_TILE, inBounds, structureAt, tileIndex } from "./grid";
+import { blocksAt, inBounds, isKeepTile, tileIndex } from "./grid";
 import type { FlowField, GameState, Point } from "./types";
 
 // Neighbour order doubles as the tie-break order: N, E, S, W.
@@ -50,15 +49,17 @@ export function distanceAt(state: GameState, x: number, y: number): number {
  */
 function computeDistances(state: GameState): number[] {
   const blockedCost = state.width * state.height + 1;
-  const dist = new Array<number>(state.base.length).fill(Infinity);
+  const dist = new Array<number>(state.width * state.height).fill(Infinity);
   const heap = new MinHeap();
 
-  state.base.forEach((occupant, i) => {
-    if (occupant === KEEP_TILE) {
+  for (let y = 0; y < state.height; y++) {
+    for (let x = 0; x < state.width; x++) {
+      if (!isKeepTile(state, x, y)) continue;
+      const i = tileIndex(state, x, y);
       dist[i] = 0;
       heap.push(0, i);
     }
-  });
+  }
 
   while (heap.size > 0) {
     const [d, i] = heap.pop();
@@ -69,8 +70,7 @@ function computeDistances(state: GameState): number[] {
       const nx = x + dir.x;
       const ny = y + dir.y;
       if (!inBounds(state, nx, ny)) continue;
-      const structure = structureAt(state, nx, ny);
-      const cost = structure && STRUCTURES[structure.kind].blocksMovement ? blockedCost : 1;
+      const cost = blocksAt(state, nx, ny) ? blockedCost : 1;
       const ni = tileIndex(state, nx, ny);
       if (d + cost < dist[ni]) {
         dist[ni] = d + cost;

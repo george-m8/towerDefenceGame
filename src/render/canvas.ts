@@ -1,8 +1,8 @@
-import { canBuild, isKeepTile, isSpawnTile, structureAt } from "../sim/grid";
+import { baseAt, blocksAt, canBuild, isKeepTile, isSpawnTile, mountAt, topAt } from "../sim/grid";
 import { nextStep } from "../sim/pathfinding";
 import { STRUCTURES, type StructureStats } from "../sim/config";
 import { hitTile } from "../sim/traps";
-import type { GameState, Point, StructureKind } from "../sim/types";
+import type { GameState, Point, Structure, StructureKind } from "../sim/types";
 import { isBuildTool, type UiState } from "../ui/state";
 import { COLOURS, GLYPH_FONT, STRUCTURE_COLOURS, TILE_SIZE, glyphFor } from "./palette";
 
@@ -29,23 +29,29 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
   function drawGrid(state: GameState) {
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
-        const structure = structureAt(state, x, y);
-        if (structure) {
-          const colours = STRUCTURE_COLOURS[structure.kind];
-          drawTile(x, y, colours.bg, glyphFor(structure.kind, structure.facing), colours.fg);
-          if (structure.hp < structure.maxHp) drawHpBar(x, y, structure.hp / structure.maxHp);
-        } else if (isKeepTile(state, x, y)) drawTile(x, y, COLOURS.keep, "K", COLOURS.keepGlyph);
+        const base = baseAt(state, x, y);
+        if (base) drawStructure(base);
+        else if (isKeepTile(state, x, y)) drawTile(x, y, COLOURS.keep, "K", COLOURS.keepGlyph);
         else if (isSpawnTile(state, x, y)) drawTile(x, y, COLOURS.spawn, ".", COLOURS.spawnGlyph);
         else drawTile(x, y, (x + y) % 2 === 0 ? COLOURS.ground : COLOURS.groundAlt);
+        const mount = mountAt(state, x, y);
+        if (mount) drawStructure(mount);
       }
     }
+  }
+
+  function drawStructure(structure: Structure) {
+    const { x, y } = structure;
+    const colours = STRUCTURE_COLOURS[structure.kind];
+    drawTile(x, y, colours.bg, glyphFor(structure.kind, structure.facing), colours.fg);
+    if (structure.hp < structure.maxHp) drawHpBar(x, y, structure.hp / structure.maxHp);
   }
 
   function drawGhost(state: GameState, ui: UiState) {
     if (!ui.tool || !ui.hover) return;
     const { x, y } = ui.hover;
     if (ui.tool === "sell") {
-      if (!structureAt(state, x, y)) return;
+      if (!topAt(state, x, y)) return;
       ctx!.fillStyle = COLOURS.ghostSell;
       ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
       drawGlyph(x, y, "$", "#ffffff");
@@ -67,7 +73,7 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
   /** Range of the tower being placed, or of the tower under the cursor. */
   function drawRange(state: GameState, ui: UiState) {
     if (!ui.hover) return;
-    const hovered = structureAt(state, ui.hover.x, ui.hover.y);
+    const hovered = mountAt(state, ui.hover.x, ui.hover.y);
     const placing = isBuildTool(ui.tool) ? ui.tool : undefined;
     const kind: StructureKind | undefined = placing ?? hovered?.kind;
     if (!kind) return;
@@ -125,11 +131,11 @@ export function createRenderer(canvas: HTMLCanvasElement, width: number, height:
   function drawFlow(state: GameState) {
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
-        if (structureAt(state, x, y)) continue;
+        if (topAt(state, x, y)) continue;
         const next = nextStep(state, x, y);
         if (!next) continue;
         const arrow = next.y < y ? "↑" : next.x > x ? "→" : next.y > y ? "↓" : "←";
-        const attacking = structureAt(state, next.x, next.y) !== undefined;
+        const attacking = blocksAt(state, next.x, next.y);
         drawGlyph(x, y, arrow, attacking ? COLOURS.flowAttack : COLOURS.flowArrow);
       }
     }

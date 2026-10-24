@@ -42,13 +42,13 @@ Standard verification for every task (in addition to task-specific checks):
 No rule changes.
 
 **Acceptance criteria:**
-- [ ] `structureAt` and every direct `state.base` / `state.mount` read outside `grid.ts` are gone (a grep check)
-- [ ] All existing tests pass, and the game looks and plays exactly as before
+- [x] `structureAt` and every direct `state.base` / `state.mount` read outside `grid.ts` are gone (a grep check)
+- [x] All existing tests pass, and the game looks and plays exactly as before
 
 **Verification:**
-- [ ] `npm test`
-- [ ] `grep -rn "structureAt\|state\.base\|state\.mount" src --include=*.ts | grep -v src/sim/grid.ts` returns nothing
-- [ ] Manual: build walls, towers and spikes, sell something, run two waves. No visible difference.
+- [x] `npm test`
+- [x] `grep -rn "structureAt\|state\.base\|state\.mount" src --include=*.ts | grep -v src/sim/grid.ts` returns nothing
+- [x] Manual: build walls, towers and spikes, sell something, run two waves. No visible difference.
 
 **Dependencies:** Task 1
 
@@ -59,8 +59,8 @@ No rule changes.
 ---
 
 ### Checkpoint A: refactor complete
-- [ ] All MVP tests plus helper tests pass, build clean
-- [ ] Browser smoke test shows no behaviour change
+- [x] All MVP tests plus helper tests pass, build clean
+- [x] Browser smoke test shows no behaviour change
 - [ ] Review with human before adding new rules
 
 ---

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ENEMY, STRUCTURES, TICK_RATE } from "../../src/sim/config";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand, tick } from "../../src/sim/game";
-import { placeStructure, structureAt } from "../../src/sim/grid";
+import { placeStructure, topAt } from "../../src/sim/grid";
 import { getFlowField, nextStep } from "../../src/sim/pathfinding";
 import { updateTraps } from "../../src/sim/traps";
 import { createGameWithoutWaves } from "./helpers";
@@ -56,7 +56,7 @@ describe("floor spikes", () => {
     for (let i = 0; i < 600; i++) tick(state);
     expect(state.enemies).toHaveLength(0);
     expect(state.keep.hp).toBe(state.keep.maxHp - ENEMY.keepDamage);
-    for (let x = 5; x < 15; x++) expect(structureAt(state, x, y)?.kind).toBe("floorSpikes");
+    for (let x = 5; x < 15; x++) expect(topAt(state, x, y)?.kind).toBe("floorSpikes");
   });
 });
 
@@ -90,7 +90,7 @@ describe("wall spikes", () => {
   it("defaults to facing north", () => {
     const state = createGameWithoutWaves();
     applyCommand(state, { type: "build", kind: "wallSpikes", x: 10, y: 10 });
-    expect(structureAt(state, 10, 10)?.facing).toBe("N");
+    expect(topAt(state, 10, 10)?.facing).toBe("N");
   });
 
   it("blocks movement like a wall", () => {

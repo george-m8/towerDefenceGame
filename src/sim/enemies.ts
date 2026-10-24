@@ -1,5 +1,5 @@
-import { ENEMY, STRUCTURES, TICK_RATE } from "./config";
-import { damageStructure, isKeepTile, structureAt } from "./grid";
+import { ENEMY, TICK_RATE } from "./config";
+import { attackTargetAt, blocksAt, damageStructure, isKeepTile } from "./grid";
 import { nextStep } from "./pathfinding";
 import type { Enemy, GameState, Structure } from "./types";
 
@@ -60,9 +60,8 @@ function advance(state: GameState, enemy: Enemy): boolean {
 function chooseNextTile(state: GameState, enemy: Enemy): boolean {
   const next = nextStep(state, enemy.x, enemy.y);
   if (!next) return false;
-  const blocker = structureAt(state, next.x, next.y);
-  if (blocker && STRUCTURES[blocker.kind].blocksMovement) {
-    attack(state, enemy, blocker);
+  if (blocksAt(state, next.x, next.y)) {
+    attack(state, enemy, attackTargetAt(state, next.x, next.y)!);
     return false;
   }
   enemy.tx = next.x;

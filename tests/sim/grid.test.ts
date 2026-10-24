@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { applyCommand, createGame } from "../../src/sim/game";
 import { STRUCTURES, STARTING_GOLD } from "../../src/sim/config";
-import { structureAt } from "../../src/sim/grid";
+import { topAt } from "../../src/sim/grid";
 
 const WALL_COST = STRUCTURES.wall.cost;
 
@@ -11,7 +11,7 @@ describe("building walls", () => {
     const result = applyCommand(state, { type: "build", kind: "wall", x: 5, y: 5 });
     expect(result).toEqual({ ok: true });
     expect(state.gold).toBe(STARTING_GOLD - WALL_COST);
-    const wall = structureAt(state, 5, 5);
+    const wall = topAt(state, 5, 5);
     expect(wall?.kind).toBe("wall");
     expect(wall?.hp).toBe(STRUCTURES.wall.maxHp);
   });
@@ -75,7 +75,7 @@ describe("building walls", () => {
       ok: false,
       reason: "Not enough gold",
     });
-    expect(structureAt(state, 5, 5)).toBeUndefined();
+    expect(topAt(state, 5, 5)).toBeUndefined();
   });
 
   it("allows building while paused", () => {

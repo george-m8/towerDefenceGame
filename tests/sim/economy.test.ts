@@ -3,7 +3,7 @@ import { ENEMY, STRUCTURES, TICK_RATE } from "../../src/sim/config";
 import { incomePerMinute } from "../../src/sim/economy";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand, tick } from "../../src/sim/game";
-import { placeStructure, removeStructure, structureAt } from "../../src/sim/grid";
+import { placeStructure, removeStructure, topAt } from "../../src/sim/grid";
 import { createGameWithoutWaves } from "./helpers";
 
 describe("bounties", () => {
@@ -76,7 +76,7 @@ describe("selling", () => {
     placeStructure(state, "archer", 10, 10);
     const gold = state.gold;
     expect(applyCommand(state, { type: "sell", x: 10, y: 10 })).toEqual({ ok: true });
-    expect(structureAt(state, 10, 10)).toBeUndefined();
+    expect(topAt(state, 10, 10)).toBeUndefined();
     expect(state.gold).toBe(gold + Math.floor(STRUCTURES.archer.cost * 0.5));
   });
 
