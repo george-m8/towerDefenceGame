@@ -5,6 +5,7 @@ import {
   type StructureStats,
   type TowerStats,
 } from "./config";
+import { angleTo, facingAngle, inArc } from "./aiming";
 import { distanceAt } from "./pathfinding";
 import type { Enemy, GameState, Structure } from "./types";
 
@@ -48,6 +49,12 @@ function updateTower(state: GameState, structure: Structure, tower: TowerStats) 
   structure.cooldown = tower.fireIntervalSeconds * TICK_RATE;
 }
 
+/** Fixed towers only fire inside their arc; turning towers can face any way. */
+function canFireTowards(structure: Structure, tower: TowerStats, enemy: Enemy): boolean {
+  if (tower.turnDegreesPerSecond > 0 || !structure.facing) return true;
+  return inArc(facingAngle(structure.facing), tower.arcDegrees, angleTo(structure, enemy));
+}
+
 /** The living, in-range enemy closest to the keep by path distance (ties: lowest id). */
 function findTarget(state: GameState, structure: Structure, tower: TowerStats): Enemy | undefined {
   let best: Enemy | undefined;
@@ -56,6 +63,7 @@ function findTarget(state: GameState, structure: Structure, tower: TowerStats): 
     if (enemy.hp <= 0) continue;
     const range = Math.hypot(enemy.x - structure.x, enemy.y - structure.y);
     if (range > tower.range || range < tower.minRange) continue;
+    if (!canFireTowards(structure, tower, enemy)) continue;
     const dist = distanceAt(state, Math.round(enemy.x), Math.round(enemy.y));
     if (dist < bestDist || (dist === bestDist && best && enemy.id < best.id)) {
       best = enemy;

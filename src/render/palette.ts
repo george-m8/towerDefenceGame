@@ -1,3 +1,4 @@
+import { STRUCTURES, type StructureStats } from "../sim/config";
 import type { Facing, StructureKind, Terrain } from "../sim/types";
 
 export const TILE_SIZE = 20;
@@ -46,8 +47,10 @@ export const GLYPHS: Record<StructureKind, string> = {
 
 const FACING_GLYPHS: Record<Facing, string> = { N: "▲", E: "▶", S: "▼", W: "◀" };
 
+/** Directional traps draw as arrows; towers keep their letter (their facing is shown separately). */
 export function glyphFor(kind: StructureKind, facing?: Facing): string {
-  return facing ? FACING_GLYPHS[facing] : GLYPHS[kind];
+  const stats: StructureStats = STRUCTURES[kind];
+  return facing && stats.directional ? FACING_GLYPHS[facing] : GLYPHS[kind];
 }
 
 export const STRUCTURE_COLOURS: Record<StructureKind, { bg: string; fg: string }> = {

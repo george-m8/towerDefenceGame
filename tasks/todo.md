@@ -46,13 +46,13 @@ No game changes yet.
 - Update existing tests that rely on all-round archers to give the archer a facing towards its enemy (same intent).
 
 **Acceptance criteria:**
-- [ ] Every placed tower records the facing it was built with. Turning towers start with `aim` on that facing.
-- [ ] An archer facing E fires at an enemy to its east and ignores an equally close enemy to its west, even when the western one is closer to the keep
-- [ ] Towers still draw as `A`, `C` and `P` (not arrows). All existing tests pass after the facing updates.
+- [x] Every placed tower records the facing it was built with. Turning towers start with `aim` on that facing.
+- [x] An archer facing E fires at an enemy to its east and ignores an equally close enemy to its west, even when the western one is closer to the keep
+- [x] Towers still draw as `A`, `C` and `P` (not arrows). All existing tests pass after the facing updates.
 
 **Verification:**
-- [ ] `npm test` (`tests/sim/towers.test.ts`; touched tests in `economy`/`layers` tests listed in the commit message)
-- [ ] Manual: place archers facing different ways; they keep their letter glyphs
+- [x] `npm test` (`tests/sim/towers.test.ts`; touched tests in `economy`/`layers` tests listed in the commit message)
+- [x] Glyphs covered by a unit test of `glyphFor`; browser check at Checkpoint E
 
 **Dependencies:** Task 1
 
