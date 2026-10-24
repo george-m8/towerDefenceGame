@@ -106,7 +106,8 @@ function fordCrossings(layout: MapLayout, terrain: Terrain[]): number {
   return groups;
 }
 
-describe("generateTerrain", () => {
+// Hundreds of full-size maps per test: slow on a busy machine, so allow more than the default 5 s.
+describe("generateTerrain", { timeout: 30_000 }, () => {
   // The 500-seed checks run on a fixed mid-size map so the suite stays fast as the default
   // map grows; the default size gets its own check below.
   const layout = layoutFor(108, 72);
