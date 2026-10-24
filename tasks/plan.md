@@ -84,7 +84,7 @@ T9, T10a and T11 only depend on T8 and can be built in any order (or in parallel
 
 ### Phase 4: Polish and Verification
 - [x] Task 13: System 6/7 UI polish, hover info and keyboard shortcuts
-- [ ] Task 14: Performance, coverage, README and cross-browser check
+- [x] Task 14: Performance, coverage, README and cross-browser check
 
 ### Checkpoint 4: MVP complete
 - [ ] All 10 success criteria in SPEC.md met

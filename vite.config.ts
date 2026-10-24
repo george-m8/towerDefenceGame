@@ -7,6 +7,7 @@ export default defineConfig({
       provider: "v8",
       include: ["src/sim/**/*.ts"],
       reporter: ["text", "html"],
+      thresholds: { lines: 80 },
     },
   },
 });

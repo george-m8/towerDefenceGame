@@ -2,6 +2,9 @@ import { TILE_SIZE } from "../render/palette";
 import type { Command, CommandResult, Point } from "../sim/types";
 import { TOOLS, rotateFacing, showMessage, type UiState } from "./state";
 
+/** Dev-only stress test: M spawns this many enemies at once. */
+const STRESS_TEST_ENEMIES = 200;
+
 export function bindInput(
   canvas: HTMLCanvasElement,
   ui: UiState,
@@ -38,6 +41,8 @@ export function bindInput(
       ui.showFlow = !ui.showFlow;
     } else if (e.code === "KeyE" && import.meta.env.DEV) {
       dispatch({ type: "debugSpawn", count: 1 });
+    } else if (e.code === "KeyM" && import.meta.env.DEV) {
+      dispatch({ type: "debugSpawn", count: STRESS_TEST_ENEMIES });
     } else if (e.code === "Escape") {
       ui.tool = null;
     } else {

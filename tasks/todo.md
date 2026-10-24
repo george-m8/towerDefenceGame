@@ -333,13 +333,15 @@ Standard verification for every task (in addition to task-specific checks):
 **Description:** Add a dev-only stress mode (spawn 200 enemies) and check for a steady 60fps. Cache glyphs if needed. Run coverage and fill gaps to >= 80% lines in `src/sim/`. Finalise the README (controls, rules summary, project structure). Smoke test in Chrome, Firefox and Safari.
 
 **Acceptance criteria:**
-- [ ] 200 enemies render at ~60fps on a typical laptop
-- [ ] `npm run coverage` reports >= 80% line coverage for `src/sim/`
-- [ ] README is complete and accurate. No console errors in the 3 browsers.
+- [x] 200 enemies render at ~60fps on a typical laptop
+- [x] `npm run coverage` reports >= 80% line coverage for `src/sim/`
+- [x] README is complete and accurate. No console errors in Chrome.
+- [ ] No console errors in Firefox and Safari (not yet checked: only Chrome was available to test with)
 
 **Verification:**
-- [ ] `npm run coverage`
-- [ ] Manual: stress mode FPS check, smoke test in 3 browsers
+- [x] `npm run coverage`
+- [x] Manual: stress mode FPS check (60 fps, worst frame 18ms with 200 enemies in Chrome)
+- [ ] Manual: smoke test in Firefox and Safari
 
 **Dependencies:** Task 13
 
@@ -350,5 +352,5 @@ Standard verification for every task (in addition to task-specific checks):
 ---
 
 ### Checkpoint 4: MVP complete
-- [ ] All 10 success criteria in SPEC.md met
+- [ ] All 10 success criteria in SPEC.md met (all verified in Chrome; Firefox/Safari smoke test outstanding)
 - [ ] Ready for review
