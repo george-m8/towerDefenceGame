@@ -16,7 +16,7 @@ npm install
 npm run dev
 ```
 
-Then open http://localhost:5173. To play with friends, see [Playing together](#playing-together).
+Then open http://localhost:5173, enter a name and press **Play solo**. To play with friends, see [Playing together](#playing-together).
 
 ## How to play
 
@@ -122,21 +122,13 @@ npm run server            # the game server
 npm run dev -- --host     # the game page, reachable from other computers
 ```
 
-**2. The host creates a room** by opening:
+**2. The host creates a room:** open `http://localhost:5173`, enter a name and press **Create room**. The waiting room shows the room code (e.g. `RUVM`) and a **Copy invite link** button.
 
-```
-http://localhost:5173/?create&name=YourName
-```
-
-The panel shows the room code (e.g. `RUVM`) and a **Copy invite link** button.
-
-**3. Friends join** by opening the invite link in their browser (they don't need to install anything):
-
-```
-http://<host's address>:5173/?room=RUVM
-```
+**3. Friends join** from their browser (they don't need to install anything): either open the invite link, which fills in the code, or open `http://<host's address>:5173`, enter the code and press **Join**.
 
 `npm run server` prints the host's address (e.g. `192.168.1.20`). Friends must be on the same network. If they can't connect, the host's firewall is probably blocking it: on macOS, allow `node` to accept incoming connections (System Settings > Network > Firewall). A second tab on the host also works as a second player, for trying it alone.
+
+**4. The host presses Start game** once everyone is in. Until then the game is frozen, so nobody gets a head start. If the host leaves the waiting room, the next player becomes host. Friends can still join after the start.
 
 **Playing:**
 - Gold is your own: you earn bounties for kills by your towers and traps, and income from your houses.
@@ -147,7 +139,7 @@ http://<host's address>:5173/?room=RUVM
 - If your connection drops, the game reconnects you; reloading the page rejoins as the same player.
 - When the keep falls, anyone can press **Restart** for a new game in the same room.
 
-Open the page with no `?room` or `?create` to play on your own, offline.
+To play on your own, press **Play solo** on the start screen (or open `?solo`). Links of the form `?create&name=Ann` and `?room=CODE&name=Bo` skip the start screen.
 
 ## Running the multiplayer server
 

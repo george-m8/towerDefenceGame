@@ -32,6 +32,8 @@ export function bindInput(
   }
 
   window.addEventListener("keydown", (e) => {
+    // Typing a name or room code must not trigger game shortcuts.
+    if (e.target instanceof HTMLInputElement) return;
     if (e.code === "Space") {
       e.preventDefault();
       dispatch({ type: "togglePause" });

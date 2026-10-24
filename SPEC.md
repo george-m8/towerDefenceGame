@@ -59,6 +59,7 @@ A browser-based, top-down, grid-based tower defence game where the player grows 
 - **Since `players`:** the simulation supports several players sharing one keep. Gold is per player (a single-player game has just player 1), every structure has an owner (ruins are neutral), and only the owner can sell it. Bounties pay the player who struck the killing blow. Pause and fast-forward are unanimous votes of connected players. See [`SPEC-players.md`](SPEC-players.md).
 - **Since `game-server`:** a Node WebSocket server (`npm run server`) hosts rooms, each running this simulation at 20 Hz, applying each connection's commands as its own player and sending 10 Hz updates. `ws` is the first runtime dependency (server only). See [`SPEC-game-server.md`](SPEC-game-server.md).
 - **Since `net-client`:** the browser plays online through the server (`?create&name=` / `?room=CODE`), via a `Session` that is either the local simulation or the server's game. See [`SPEC-net-client.md`](SPEC-net-client.md).
+- **Since `lobby`:** the page opens on a start screen (name, Play solo, Create room, Join by code), and new rooms wait until their host starts the game. See [`SPEC-lobby.md`](SPEC-lobby.md).
 
 **Enemies** (one type for the MVP)
 

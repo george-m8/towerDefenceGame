@@ -4,6 +4,22 @@ import { inviteLink } from "../net/join";
 import { playerColour } from "../render/palette";
 import type { NetworkSession } from "../net/networkSession";
 
+/** Copies the room's invite link, or shows it when the clipboard isn't available. */
+export async function copyInviteLink(button: HTMLButtonElement, room: string | null) {
+  button.blur();
+  if (!room) return;
+  const link = inviteLink(location.origin, room);
+  const label = button.textContent;
+  try {
+    await navigator.clipboard.writeText(link);
+    button.textContent = "Copied!";
+  } catch {
+    // Clipboard needs a secure context (http on a LAN address isn't one): show it instead.
+    window.prompt("Copy this invite link:", link);
+  }
+  setTimeout(() => (button.textContent = label), 1500);
+}
+
 export function createOnlinePanel(root: HTMLElement, session: NetworkSession) {
   root.hidden = false;
   root.innerHTML = `
@@ -22,19 +38,7 @@ export function createOnlinePanel(root: HTMLElement, session: NetworkSession) {
   const players = root.querySelector<HTMLElement>('[data-field="players"]')!;
   let lastPlayers = "";
 
-  invite.addEventListener("click", async () => {
-    invite.blur();
-    if (!session.room) return;
-    const link = inviteLink(location.origin, session.room);
-    try {
-      await navigator.clipboard.writeText(link);
-      invite.textContent = "Copied!";
-    } catch {
-      // Clipboard needs a secure context (http on a LAN address isn't one): show it instead.
-      window.prompt("Copy this invite link:", link);
-    }
-    setTimeout(() => (invite.textContent = "Copy invite link"), 1500);
-  });
+  invite.addEventListener("click", () => copyInviteLink(invite, session.room));
 
   /** One row per player: colour, name, (you), dimmed when away, and their votes. */
   function renderPlayers(state: GameState) {

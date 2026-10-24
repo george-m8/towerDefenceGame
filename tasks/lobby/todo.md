@@ -24,7 +24,7 @@ Standard verification for every task: `npm run typecheck && npm test && npm run 
 **Description:** `NetworkSession` keeps the latest `lobby` and has `start()`. `readJoinIntent` returns `menu` (with an optional room) when there's no room or create, or no name, instead of prompting.
 
 **Acceptance criteria:**
-- [ ] `readJoinIntent("")` is `menu`; `?room=abcd` without a name is `menu` with room `ABCD`; named links still go straight in
+- [x] `readJoinIntent("")` is `menu`; `?room=abcd` without a name is `menu` with room `ABCD`; named links still go straight in
 - [x] Against a real server, both sessions see `lobby.started` turn true after the host's `start()`
 
 **Verification:** `tests/net/join.test.ts`, `tests/net/networkSession.test.ts`
@@ -40,12 +40,12 @@ Standard verification for every task: `npm run typecheck && npm test && npm run 
 - [ ] Create and Join lead to the waiting room listing everyone; the host's Start game starts it for all
 - [ ] An invite link opens the start screen with the code filled in
 
-**Verification:** manual, two tabs
+**Verification:** manual, two tabs (pending); typecheck, tests and build pass
 
 **Files:** `src/ui/startScreen.ts`, `src/ui/waitingRoom.ts`, `src/main.ts`, `src/styles.css`, `index.html`, `README.md`
 
 ## Checkpoint: lobby complete
-- [ ] All 4 success criteria in `SPEC-lobby.md` met
-- [ ] `npm run coverage` passes
+- [ ] All 4 success criteria in `SPEC-lobby.md` met (3 and 4 tested; 1 and 2 need the browser)
+- [x] `npm run coverage` passes
 - [ ] Manual: two tabs through the start screen and waiting room
 - [ ] Review with human (including the *(Claude)* decisions)
