@@ -1,7 +1,7 @@
 # Implementation Plan: Post-MVP Phases
 
 Capability map: [`CAPABILITIES.md`](../CAPABILITIES.md)
-Current module spec: none; next is `bestiary` (Armies)
+Current module spec: [`SPEC-bestiary.md`](../SPEC-bestiary.md) (Armies); next [`SPEC-enemy-pathing.md`](../SPEC-enemy-pathing.md)
 Task list (current module only): `tasks/todo.md`, written when the next module's spec is approved
 Finished modules: [`tasks/tile-layers/`](tile-layers/todo.md), [`tasks/tower-aiming/`](tower-aiming/todo.md), [`tasks/audio/`](audio/todo.md), [`tasks/map-gen/`](map-gen/todo.md), [`tasks/players/`](players/todo.md), [`tasks/game-server/`](game-server/todo.md) (awaiting the cross-machine probe and review), [`tasks/net-client/`](net-client/todo.md)
 Previous plan (MVP, complete except a Firefox/Safari smoke test): [`tasks/mvp/`](mvp/plan.md)
@@ -27,8 +27,8 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | 1. Basics (continued) | `tower-aiming` | Done |
 | | `line-of-sight` | Spec drafted |
 | 1d. Armies (see below) | `enemy-kinds` | Done (tasks in [`tasks/enemy-kinds/`](enemy-kinds/todo.md)) |
-| | `bestiary` | Outline |
-| | `enemy-pathing` | Outline |
+| | `bestiary` | **Spec approved; tasks in [`tasks/todo.md`](todo.md)** |
+| | `enemy-pathing` | Spec approved ([`SPEC-enemy-pathing.md`](../SPEC-enemy-pathing.md)); tasks after `bestiary` |
 | | `enemy-targeting` | Outline |
 | | `wave-director` | Outline |
 | | `units` | Outline (replaces the earlier `units` row) |
@@ -583,7 +583,7 @@ enemy-kinds ──┬─ bestiary
 | 5 | Leader and follower groups (`b` with `B`, `d` with `D`); followers fall back to normal pathing when the leader dies | M |
 | 6 | Shaman `s`: heals nearby enemies on a cooldown | S |
 | 7 | Battering ram `R`: attacks structures only, never units, very high HP | S |
-| 8 | Diggers `n`: walk to a wall in sight, dig under it and damage it from below (no tunnel) | S |
+| 8 | Diggers `n`: walk to a wall in sight, dig under it and damage it from below (no tunnel); still attackable while digging | S |
 
 **Checkpoint C (after 3):** breachers break through a long maze and followers don't; marines take a river route; field rebuild time measured on an XL map. **Checkpoint D (after 8):** each behaviour seen in the browser; online games stay in sync.
 
