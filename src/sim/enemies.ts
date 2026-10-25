@@ -1,7 +1,7 @@
 import { ENEMY_KINDS, TICK_RATE, WAVES, type EnemyKind, type EnemyKindId } from "./config";
 import { addCue } from "./cues";
-import { attackTargetAt, blocksAt, damageStructure, inBounds, keepAt } from "./grid";
-import { DIRECTIONS, nextStep } from "./pathfinding";
+import { attackTargetAt, blocksAt, damageStructure, keepAt } from "./grid";
+import { DIRECTIONS, canCross, nextStep } from "./pathfinding";
 import { nextRandom, randomInt } from "./rng";
 import type { Enemy, GameState, Keep, PlayerId, Point, Structure } from "./types";
 
@@ -131,7 +131,7 @@ function chooseNextTile(state: GameState, enemy: Enemy): boolean {
 /**
  * With chance `state.wanderChance`, a random open tile to the side of the path step,
  * so enemies sometimes stray off the path. Never steps backwards (opposite the path
- * step), onto the tile it just left, or into a blocking structure.
+ * step), onto the tile it just left, into a blocking structure, or onto terrain it can't cross.
  */
 function wanderStep(
   state: GameState,
@@ -148,7 +148,7 @@ function wanderStep(
     const x = enemy.x + d.x;
     const y = enemy.y + d.y;
     if (x === previous.x && y === previous.y) continue;
-    if (inBounds(state, x, y) && !blocksAt(state, x, y) && !keepAt(state, x, y)) {
+    if (canCross(state, "follower", x, y) && !blocksAt(state, x, y) && !keepAt(state, x, y)) {
       options.push({ x, y });
     }
   }

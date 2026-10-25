@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { ENEMY, ENEMY_KINDS, STRUCTURES, TICK_RATE, type EnemyKindId } from "../../src/sim/config";
 import { damageEnemy, spawnEnemy } from "../../src/sim/enemies";
-import { applyCommand, tick } from "../../src/sim/game";
-import { placeStructure, topAt } from "../../src/sim/grid";
+import { applyCommand, createGame, tick } from "../../src/sim/game";
+import { isWalkable, placeStructure, topAt } from "../../src/sim/grid";
 import { nextStep } from "../../src/sim/pathfinding";
 import type { GameState } from "../../src/sim/types";
-import { buildAt, createGameWithoutWaves, ring, standsAtKeep } from "./helpers";
+import { buildAt, createGameWithoutWaves, paintTerrain, ring, standsAtKeep } from "./helpers";
 
 const ticksPerTile = TICK_RATE / ENEMY_KINDS.goblin.speed;
 
@@ -428,5 +428,32 @@ describe("variants", () => {
     variants.forEach((v, i) =>
       expect(Math.abs(counts[i] / rolls - v.weight / total)).toBeLessThan(0.02),
     );
+  });
+});
+
+describe("wandering and terrain", () => {
+  it("never wanders sideways onto rock or water", () => {
+    for (let seed = 1; seed <= 10; seed++) {
+      const state = createGameWithoutWaves(seed);
+      state.wanderChance = 1;
+      const y = state.keeps[0].y + 1;
+      paintTerrain(state, [{ x: 5, y: y - 1 }], "rock");
+      paintTerrain(state, [{ x: 5, y: y + 1 }], "river");
+      const enemy = spawnEnemy(state, 5, y);
+      tick(state);
+      expect({ x: enemy.tx, y: enemy.ty }).toEqual({ x: 6, y });
+    }
+  });
+
+  it("keeps every enemy on crossable ground on generated maps", () => {
+    for (let seed = 1; seed <= 3; seed++) {
+      const state = createGame(seed, { fog: false });
+      state.wanderChance = 0.5;
+      state.wave.countdown = 1;
+      for (let t = 0; t < 40 * TICK_RATE && !state.gameOver; t++) {
+        tick(state);
+        for (const e of state.enemies) expect(isWalkable(state, e.tx, e.ty)).toBe(true);
+      }
+    }
   });
 });

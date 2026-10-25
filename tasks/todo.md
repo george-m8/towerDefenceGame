@@ -18,8 +18,8 @@ Files: `src/sim/types.ts`, `src/sim/pathfinding.ts`, `src/sim/game.ts`, `src/net
 
 Wandering only picks tiles the enemy's profile can cross (`canCross`), as well as no structures and no keep.
 
-- [ ] With wander chance 1 on generated maps, no enemy ever targets a rock, tree or water tile (fails before the fix)
-- [ ] Existing wander tests still pass
+- [x] With wander chance 1 on generated maps, no enemy ever targets a rock, tree or water tile (fails before the fix)
+- [x] Existing wander tests still pass
 
 Files: `src/sim/enemies.ts`, `tests/sim/enemies.test.ts`. Size: XS. Depends on: 1.
 
