@@ -67,6 +67,14 @@ export interface Enemy {
   killedBy: PlayerId | null;
   /** Ticks until it can hit a blocking structure again. */
   attackCooldown: number;
+  /** Ticks until its behaviour's ability (a heal, a dig) is ready again. */
+  abilityCooldown: number;
+  /** What it's doing beyond walking its field. */
+  mode: "walking" | "sprinting" | "digging";
+  /** The structure a bomber or digger is heading for or digging under. */
+  targetId: number | null;
+  /** Band members: the leader they follow, until it dies. */
+  leaderId: number | null;
 }
 
 /** Short-lived visual events recorded by the simulation for the renderer. */
@@ -87,6 +95,7 @@ export type Effect =
     }
   | { kind: "splash"; x: number; y: number; radius: number; ttl: number }
   | { kind: "spikes"; x: number; y: number; ttl: number }
+  | { kind: "heal"; x: number; y: number; ttl: number }
   /**
    * Something destroyed: an enemy killed, or a structure broken. Drawn still there for
    * BURST_DELAY_TICKS, then as its pixels flying apart and fading for BURST_TICKS.
@@ -104,7 +113,8 @@ export type Effect =
 export type MapFeature = { kind: "chest"; x: number; y: number; gold: number };
 
 /** Game events that make a sound. The audio layer adds UI-only sounds on top. */
-export type SimCueKind = "enemyHit" | "keepHit" | "treasure" | "splash" | "waveStart" | "gameOver";
+export type SimCueKind =
+  "enemyHit" | "keepHit" | "treasure" | "splash" | "explosion" | "waveStart" | "gameOver";
 
 export interface SoundCue {
   id: number;

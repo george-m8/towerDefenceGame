@@ -218,6 +218,8 @@ export const STRUCTURES = {
 
 /** How long shot and splash effects stay on screen. */
 export const EFFECT_TICKS = 4;
+/** How long a heal's green "+" shows. */
+export const HEAL_EFFECT_TICKS = 10;
 /**
  * Something destroyed stays a moment (BURST_DELAY_TICKS, with its emptied health bar), then
  * bursts apart, its pieces flying and fading for BURST_TICKS.
@@ -242,6 +244,34 @@ export const BREACH = { referenceDps: 8, referenceSpeed: 1 };
 /** What marines pay to swim each kind of water (land is 1). Nobody else can enter water. */
 export const MARINE_COSTS = { river: 2, sea: 4 };
 
+/** What an enemy does on top of following its profile's field (see sim/behaviours.ts). */
+export type BehaviourId = "follower" | "bomber" | "healer" | "siege" | "digger";
+
+/** Numbers for behaviours that need them. Distances in tiles, intervals in seconds. */
+export interface EnemyAbility {
+  /** How far it notices a target, straight-line, ignoring fog. */
+  sight?: number;
+  /** Bombers: the blast reaches this many tiles each way (1 = the 3x3). Healers: heal range. */
+  radius?: number;
+  /** Bombers: blast damage. Healers: HP per heal. */
+  amount?: number;
+  /** Healers: seconds between heals. */
+  interval?: number;
+  /** Bombers: speed multiplier while sprinting. */
+  sprint?: number;
+  /** Longest walk it will take to reach a target it has noticed. */
+  search?: number;
+}
+
+/** How band members keep up with their leader, by field distance in tiles. */
+export const BAND = {
+  /** A member waits rather than get further ahead than this. */
+  maxLead: 1,
+  /** Further behind than this, it hurries. */
+  catchUpBehind: 4,
+  catchUpSpeed: 1.3,
+};
+
 /** A version of a kind, rolled at spawn. Multipliers apply to the kind's stats. */
 export interface EnemyVariant {
   name: string;
@@ -262,6 +292,13 @@ export interface EnemyKind {
   description: string;
   /** Which tiles it can cross and what walls cost it (see BREACH). */
   profile: MovementProfile;
+  behaviour: BehaviourId;
+  ability?: EnemyAbility;
+  /** Band members: the kind they follow. Kind ids are strings here (an EnemyKindId would be a
+   * circular type); tests/sim/config.test.ts checks they name real kinds. */
+  leader?: string;
+  /** Leaders: the band spawned with them (stopgap mix). */
+  band?: { kind: string; min: number; max: number };
   hp: number;
   speed: number; // tiles per second
   /** Per hit, against a structure in the way or the keep. */
@@ -283,6 +320,7 @@ export const ENEMY_KINDS = {
     name: "Goblin",
     description: "Weak all round, but cheap and plentiful.",
     profile: "follower",
+    behaviour: "follower",
     hp: 20,
     speed: 1.5,
     damage: 5,
@@ -302,6 +340,7 @@ export const ENEMY_KINDS = {
     name: "Zerg",
     description: "Tiny and cheap, comes in numbers.",
     profile: "follower",
+    behaviour: "follower",
     hp: 6,
     speed: 1.8,
     damage: 2,
@@ -317,6 +356,7 @@ export const ENEMY_KINDS = {
     name: "Wolf rider",
     description: "Fast and fragile.",
     profile: "follower",
+    behaviour: "follower",
     hp: 14,
     speed: 3,
     damage: 4,
@@ -335,6 +375,8 @@ export const ENEMY_KINDS = {
     name: "Barbarian",
     description: "Quick hits, tougher than a goblin. Follows its chief.",
     profile: "follower",
+    behaviour: "follower",
+    leader: "barbarianChief",
     hp: 30,
     speed: 1.8,
     damage: 4,
@@ -353,6 +395,8 @@ export const ENEMY_KINDS = {
     name: "Dwarf",
     description: "Slow, with solid hits. Follows its thane.",
     profile: "breacher",
+    behaviour: "follower",
+    leader: "dwarfThane",
     hp: 45,
     speed: 1,
     damage: 8,
@@ -372,6 +416,8 @@ export const ENEMY_KINDS = {
     name: "Barbarian chief",
     description: "Leads barbarians. Slow, but hits very fast.",
     profile: "follower",
+    behaviour: "follower",
+    band: { kind: "barbarian", min: 2, max: 4 },
     hp: 90,
     speed: 1.2,
     damage: 8,
@@ -387,6 +433,8 @@ export const ENEMY_KINDS = {
     name: "Dwarf thane",
     description: "Leads dwarves. A stronger dwarf.",
     profile: "breacher",
+    behaviour: "follower",
+    band: { kind: "dwarf", min: 2, max: 3 },
     hp: 120,
     speed: 0.9,
     damage: 14,
@@ -402,6 +450,7 @@ export const ENEMY_KINDS = {
     name: "Golem",
     description: "Rare, slow and huge, with slow crushing hits.",
     profile: "breacher",
+    behaviour: "follower",
     hp: 250,
     speed: 0.6,
     damage: 40,
@@ -420,6 +469,7 @@ export const ENEMY_KINDS = {
     name: "Marine",
     description: "Swims rivers and the sea when that's the quicker way in.",
     profile: "marine",
+    behaviour: "follower",
     hp: 25,
     speed: 1.4,
     damage: 5,
@@ -435,6 +485,7 @@ export const ENEMY_KINDS = {
     name: "Marine captain",
     description: "A tougher marine, just as happy in the water.",
     profile: "marine",
+    behaviour: "follower",
     hp: 60,
     speed: 1.2,
     damage: 10,
@@ -445,9 +496,101 @@ export const ENEMY_KINDS = {
     mixWeight: 1,
     variants: [{ name: "captain", weight: 1, hp: 1, speed: 1, damage: 1, size: "normal" }],
   },
+  shaman: {
+    glyph: "s",
+    name: "Shaman",
+    description: "Heals the enemies around it.",
+    profile: "follower",
+    behaviour: "healer",
+    ability: { radius: 2.5, amount: 6, interval: 2 },
+    hp: 30,
+    speed: 1.2,
+    damage: 3,
+    attackInterval: 1,
+    bounty: 6,
+    threat: 4,
+    firstWave: 8,
+    mixWeight: 2,
+    variants: [{ name: "elder", weight: 1, hp: 1, speed: 1, damage: 1, size: "normal" }],
+  },
+  dwarfBomber: {
+    glyph: "x",
+    name: "Dwarf bomber",
+    description: "Spots a wall, tower or house, runs at it and blows it up.",
+    profile: "follower",
+    behaviour: "bomber",
+    ability: { sight: 3, radius: 1, amount: 60, sprint: 2.5, search: 6 },
+    hp: 18,
+    speed: 1,
+    damage: 3,
+    attackInterval: 1,
+    bounty: 4,
+    threat: 3,
+    firstWave: 8,
+    mixWeight: 2,
+    variants: [{ name: "sapper", weight: 1, hp: 1, speed: 1, damage: 1, size: "normal" }],
+  },
+  dwarfDemolisher: {
+    glyph: "X",
+    name: "Dwarf demolisher",
+    description: "A bigger bomber with a bigger bang.",
+    profile: "follower",
+    behaviour: "bomber",
+    ability: { sight: 3, radius: 1, amount: 120, sprint: 2.5, search: 6 },
+    hp: 40,
+    speed: 0.9,
+    damage: 5,
+    attackInterval: 1,
+    bounty: 9,
+    threat: 6,
+    firstWave: 11,
+    mixWeight: 1,
+    variants: [{ name: "demolisher", weight: 1, hp: 1, speed: 1, damage: 1, size: "normal" }],
+  },
+  digger: {
+    glyph: "n",
+    name: "Digger",
+    description: "Digs under a nearby wall until it falls, then walks on.",
+    profile: "follower",
+    behaviour: "digger",
+    ability: { sight: 4, search: 8 },
+    hp: 20,
+    speed: 1.2,
+    damage: 6,
+    attackInterval: 1,
+    bounty: 4,
+    threat: 3,
+    firstWave: 9,
+    mixWeight: 2,
+    variants: [{ name: "tunneller", weight: 1, hp: 1, speed: 1, damage: 1, size: "normal" }],
+  },
+  batteringRam: {
+    glyph: "R",
+    name: "Battering ram",
+    description: "Huge and slow. Smashes straight through walls.",
+    profile: "breacher",
+    behaviour: "siege",
+    hp: 400,
+    speed: 0.5,
+    damage: 60,
+    attackInterval: 2.5,
+    bounty: 30,
+    threat: 18,
+    firstWave: 12,
+    mixWeight: 0.5,
+    variants: [{ name: "ram", weight: 1, hp: 1, speed: 1, damage: 1, size: "normal" }],
+  },
 } satisfies Record<string, EnemyKind>;
 
 export type EnemyKindId = keyof typeof ENEMY_KINDS;
+
+/** A leader's band, or undefined for kinds that don't lead one. */
+export function bandOf(
+  kind: EnemyKindId,
+): { kind: EnemyKindId; min: number; max: number } | undefined {
+  const band = (ENEMY_KINDS[kind] as EnemyKind).band;
+  return band && { ...band, kind: band.kind as EnemyKindId };
+}
 
 /** Roster order; an enemy's index here is its id on the wire. */
 export const ENEMY_KIND_ORDER = Object.keys(ENEMY_KINDS) as EnemyKindId[];

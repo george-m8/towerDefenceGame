@@ -28,18 +28,22 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | | `line-of-sight` | Spec drafted |
 | 1d. Armies (see below) | `enemy-kinds` | Done (tasks in [`tasks/enemy-kinds/`](enemy-kinds/todo.md)) |
 | | `bestiary` | Built; browser check with George pending (tasks in [`tasks/bestiary/`](bestiary/todo.md)) |
-| | `enemy-pathing` | **Spec approved; tasks in [`tasks/todo.md`](todo.md)** |
-| | `enemy-targeting` | Outline |
-| | `wave-director` | Outline |
-| | `units` | Outline (replaces the earlier `units` row) |
+| | `enemy-pathing` | **Built (Tasks 1-10); browser checkpoints C and D and review with George pending** (tasks in [`tasks/todo.md`](todo.md)) |
+| | `enemy-targeting` | Outline (moved after `field-units` by the AoE update) |
+| | `wave-director` | Outline (moved after `field-units` by the AoE update) |
+| 1e. AoE update (see [`CAPABILITIES.md`](../CAPABILITIES.md)) | `unit-core` | **Spec approved; tasks in [`tasks/unit-core/`](unit-core/todo.md)** (starts after `enemy-pathing`) |
+| | `resources` | Spec needed (gold only) |
+| | `town-economy` | Spec needed |
+| | `units` | Outline (guard towers only; entity moves to `unit-core`) |
 | | `field-units` | Outline |
+| | `game-setup` | Spec drafted; deferred until `food` |
+| | `food` | Deferred |
 | 1c. Presentation | `audio` | Done |
 | | `music-packs` | Done (tasks in [`tasks/music-packs/`](music-packs/todo.md)) |
 | | `music-director` | Outline only (see below); intro hand-over now part of `music-packs` |
-| 2. Setup and modes | `game-setup` | Spec needed |
+| 2. Setup and modes | `game-setup` | Moved to 1e (deferred) |
 | | `mode-ramparts` | Spec needed |
-| 3. Economy | `resources` | Spec needed |
-| | `town-economy` | Spec needed |
+| 3. Economy | `resources`, `town-economy` | Moved to 1e |
 | 4. Multiplayer-style | `mode-barbarians` | Spec needed |
 
 ---
@@ -648,6 +652,8 @@ T1 Fields keyed by profile (refactor)
 
 ### `units`
 
+> AoE update (2026-10-25): slices 1 and 3 move to `unit-core`. Slice 5 is dropped: guard towers cost gold and their units spawn free. This outline gets rewritten when the `units` spec is drafted.
+
 | # | Slice | Size |
 |---|---|---|
 | 1 | Unit entity (owner, faction, HP, armour, attack, range, speed, sight), shared `dealDamage`, tile occupancy index; enemies stop and fight a unit on their next tile | M |
@@ -689,6 +695,45 @@ T1 Fields keyed by profile (refactor)
 2. The other module-level questions are listed in the map and settled in each spec.
 
 ---
+
+## AoE update: unit-core
+
+Spec: [`SPEC-unit-core.md`](../SPEC-unit-core.md) (approved). Tasks: [`tasks/unit-core/todo.md`](unit-core/todo.md), moved to `tasks/todo.md` once `enemy-pathing` is finished.
+
+### Architecture decisions
+
+- **Sim first, all of it tested offline,** then drawing, then the network. Each sim task ends with a green suite and changes nothing for existing play.
+- **Units are their own list,** not a kind of enemy. They share `damageEnemy`, `damageStructure` and the tile-to-tile movement maths, and nothing else.
+- **One occupancy index per tick** (units by tile). Enemy blocking, hold targets and PvP towers all read it, so no one scans every unit.
+- **Paths are per unit, with a per-tick budget,** found by a multi-goal breadth-first search. Flow fields stay as they are, for enemies only.
+- **The spawner is a config row** (`spawner` on `StructureStats`), using `cooldown` as its timer like income does. `unit-core` tests it with a test-only kind, so `STRUCTURES` doesn't change.
+
+### Dependency graph
+
+```
+T1 Unit entity, militia, hold, debugUnit
+ ├─ T2 Enemies fight units
+ ├─ T3 Paths and movement
+ │   └─ T4 Spawners
+ ├─ T5 Units give fog sight
+ └─ T6 PvP towers shoot units
+      (T2-T6 all done)
+       └─ T7 Drawing, hover, U key
+           └─ T8 Network
+               └─ T9 Determinism, timing test, docs
+```
+
+T2, T3, T5 and T6 each depend only on T1. T4 needs T3, because spawned units have to be able to walk.
+
+### Checkpoints
+
+- **A (after T2):** a militia and a goblin fight to the death in a test, both ways round, and the existing suite passes untouched.
+- **B (after T7):** offline browser check: `U` places a militia, goblins stop for it, fog lifts, and HP bars show.
+- **C (after T9):** online check with two browsers; 200 units and 200 enemies on XL stay within a 50 ms tick.
+
+### Risks
+
+See the spec's risk table. The main one is sight recomputation now that sight sources move: T5 measures it on an XL map before moving on.
 
 ## Later modules: provisional outlines
 

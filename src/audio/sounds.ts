@@ -108,6 +108,32 @@ export const SOUNDS: Record<CueKind, SoundEffect> = {
     maxPerWindow: 3,
     windowSeconds: 0.1,
   },
+  explosion: {
+    notes: [
+      {
+        voice: {
+          wave: "noise",
+          volume: 0.5,
+          envelope: { attack: 0.002, decay: 0.5, sustain: 0, release: 0.2 },
+          lowpass: 900,
+        },
+        hz: 0,
+        duration: 0.4,
+      },
+      {
+        voice: {
+          wave: "triangle",
+          volume: 0.35,
+          envelope: { attack: 0.002, decay: 0.3, sustain: 0, release: 0.1 },
+          pitchEnvelope: { semitones: 12, time: 0.3 },
+        },
+        hz: noteToHz("C", 2),
+        duration: 0.3,
+      },
+    ],
+    maxPerWindow: 2,
+    windowSeconds: 0.15,
+  },
   build: {
     notes: [{ voice: blip(0.25, 0.18), hz: noteToHz("C", 5), duration: 0.04 }],
     maxPerWindow: 6,

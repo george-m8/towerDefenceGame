@@ -54,55 +54,65 @@ Files: `src/sim/config.ts`, `src/sim/pathfinding.ts`, `tests/sim/pathfinding.tes
 
 `BehaviourId`, `behaviour` on every kind, `BEHAVIOURS` table in `src/sim/behaviours.ts` (run before movement; true means the turn is used). `Enemy.mode` and `targetId`. Bombers `x`/`X`: spot a player-built wall, tower, house or wall spikes within 3 tiles; sprint (2.5x) to a tile next to it along a search of up to 6 tiles; explode for 60/120 on every structure and the keep in the 3x3; die with no bounty; splash effect and an `explosion` cue (with a sound).
 
-- [ ] Sprints only once a target is within 3 tiles; ignores ruins, bridges, floor spikes and the keep as targets
-- [ ] Explodes next to its target, damaging the 3x3 and nothing outside it; never damages enemies; drops no bounty
-- [ ] No explosion if killed before it arrives; no sprint if there's no short path
+- [x] Sprints only once a target is within 3 tiles; ignores ruins, bridges, floor spikes and the keep as targets
+- [x] Explodes next to its target, damaging the 3x3 and nothing outside it; never damages enemies; drops no bounty
+- [x] No explosion if killed before it arrives; no sprint if there's no short path
 
 Files: `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/behaviours.ts`, `src/sim/enemies.ts`, `src/audio/sounds.ts` (+ `src/sim/cues.ts`), `tests/sim/behaviours.test.ts`. Size: M. Depends on: 2.
+
+Built: the blast is `ability.amount` (60 / 120); a bomber's ordinary hit (when blocked, or at the keep) is a small `damage` (3 / 5), so a bomber that reaches the keep doesn't hit it for 60 a second. Tile-to-tile stepping moved to `src/sim/movement.ts` so sprinting reuses it. Enemies at 0 HP no longer act before they're removed.
 
 ## Task 6: Bands
 
 `leader` and `band` on kinds (`b` follows `B`, `d` follows `D`); `Enemy.leaderId`. A band member uses the leader's profile, waits rather than get more than 1 tile ahead (by field distance), and moves at 1.3x while more than 4 tiles behind; on the leader's death it uses its own profile. The stopgap mix spawns a drawn leader with a band (2-4 `b`, 2-3 `d`) on the same tile, within budget.
 
-- [ ] Members stay at most 1 tile ahead and catch up when behind
-- [ ] Members attack the wall their breaching chief or thane stops at
-- [ ] Members carry on alone when the leader dies
-- [ ] The mix never draws a leader whose smallest band doesn't fit the budget; total threat stays within budget
+- [x] Members stay at most 1 tile ahead and catch up when behind
+- [x] Members attack the wall their breaching chief or thane stops at
+- [x] Members carry on alone when the leader dies
+- [x] The mix never draws a leader whose smallest band doesn't fit the budget; total threat stays within budget
 
 Files: `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/enemies.ts`, `src/sim/waves.ts`, `tests/sim/enemies.test.ts`, `tests/sim/waves.test.ts`. Size: M. Depends on: 3, 5.
+
+Built: `leader` and `band.kind` are typed `string` in `EnemyKind` (an `EnemyKindId` there is a circular type), read through `bandOf`, and `tests/sim/config.test.ts` checks they name real kinds. `pickWaveGroup` replaces `pickWaveKind` as the mix's entry point; a band is as big as rolled or as the budget can pay for, never below its minimum.
 
 ## Task 7: Shaman and the heal effect
 
 Row for `s`; healer behaviour: every 2 s, +6 HP (up to max) to every other enemy within 2.5 tiles. `heal` effect, drawn as a green `+` in sight.
 
-- [ ] Heals others in range every 2 s up to max HP; not itself; not out of range
-- [ ] Heal effects only on enemies actually healed
+- [x] Heals others in range every 2 s up to max HP; not itself; not out of range
+- [x] Heal effects only on enemies actually healed
 
 Files: `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/behaviours.ts`, `src/render/canvas.ts`, `tests/sim/behaviours.test.ts`. Size: S. Depends on: 5.
+
+Built: a heal pulse fires as soon as someone in range is hurt, then waits its 2 s (`Enemy.abilityCooldown`, which diggers reuse). The green `+` floats up over 10 ticks.
 
 ## Task 8: Battering ram and diggers
 
 Rows for `R` (breacher, siege behaviour: no extra code yet) and `n`. Digger behaviour: spot a player-built wall or wall spikes within 4 tiles; walk to a tile next to it (search of up to 8 tiles); dig in (`mode: "digging"`), hitting that wall each interval until it falls (with its tower); then walk on. Diggers stay attackable while digging.
 
-- [ ] A ram breaks through a maze wall; its hits are 60 every 2.5 s
-- [ ] A digger digs under the nearest wall within 4 tiles, brings it (and its tower) down, then walks on
-- [ ] Towers and traps still hit a digging digger
+- [x] A ram breaks through a maze wall; its hits are 60 every 2.5 s
+- [x] A digger digs under the nearest wall within 4 tiles, brings it (and its tower) down, then walks on
+- [x] Towers and traps still hit a digging digger
 
 Files: `src/sim/config.ts`, `src/sim/behaviours.ts`, `tests/sim/behaviours.test.ts`, `tests/sim/enemies.test.ts`. Size: M. Depends on: 5.
+
+Built: a digger heads for its wall in `walking` mode with `targetId` set, and switches to `digging` once next to it. Once the wall falls it may notice another within 4 tiles and dig again.
 
 ## Task 9: Hover words and the network
 
 `ClientEnemy` gains `mode` (only when not walking) and `banded` (only while its leader lives). Hover info adds `sprinting`, `digging`, `with its chief` / `with its thane`.
 
-- [ ] `mode` and `banded` survive snapshot and update round trips, and are left out when not needed
-- [ ] Hover lines for a sprinting bomber, a digging digger and a banded barbarian
-- [ ] The 200-enemy update size test still passes
+- [x] `mode` and `banded` survive snapshot and update round trips, and are left out when not needed
+- [x] Hover lines for a sprinting bomber, a digging digger and a banded barbarian
+- [x] The 200-enemy update size test still passes
 
 Files: `src/net/protocol.ts`, `src/net/snapshot.ts`, `src/net/view.ts`, `src/ui/tileInfo.ts`, tests. Size: S. Depends on: 6, 7, 8.
 
+Built: instead of a `banded: true` flag, `ClientEnemy` carries `leaderId` (only while the leader lives). Same information, and the client's `Enemy` then means what the server's does, so the hover code is shared. The "chief" / "thane" word is the last word of the leader kind's name.
+
 ## Checkpoint D (after Tasks 5-9)
 
-- [ ] All tests pass; coverage 80%+ lines for `src/sim/`
+- [x] All tests pass; coverage 80%+ lines for `src/sim/` (99% lines; the XL timing guards are flaky under coverage instrumentation, as they were before this module)
 - [ ] Browser: every new kind via `E` (bombers blow holes, shamans heal, bands follow, rams and diggers bring walls down); each gets a journal entry
 - [ ] Online: two clients see the same behaviours
 - [ ] **Review with George**
@@ -111,7 +121,7 @@ Files: `src/net/protocol.ts`, `src/net/snapshot.ts`, `src/net/view.ts`, `src/ui/
 
 A test that runs the same seed with every kind for 2,000 ticks twice and compares the state. README (enemy table with the new kinds, profiles and behaviours in plain words), SPEC.md "Since `enemy-pathing`", plan roadmap status.
 
-- [ ] Same seed, same state
-- [ ] Docs match the built behaviour
+- [x] Same seed, same state
+- [x] Docs match the built behaviour
 
 Files: `tests/sim/game.test.ts`, `README.md`, `SPEC.md`, `tasks/plan.md`. Size: S. Depends on: 9.

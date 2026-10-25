@@ -63,6 +63,26 @@ describe("fog hover info", () => {
     expect(describeTile(state, { x: 6, y: 5 })).toContain("Zerg, HP 6 / 6");
   });
 
+  it("says what an enemy is doing: sprinting, digging, or with its chief or thane", () => {
+    const state = createGame(1, { blankMap: true, fog: false });
+    spawnEnemy(state, 5, 5, { kind: "dwarfBomber" }).mode = "sprinting";
+    spawnEnemy(state, 6, 5, { kind: "digger" }).mode = "digging";
+    const chief = spawnEnemy(state, 7, 5, { kind: "barbarianChief" });
+    spawnEnemy(state, 8, 5, { kind: "barbarian", leader: chief });
+    const thane = spawnEnemy(state, 9, 5, { kind: "dwarfThane" });
+    spawnEnemy(state, 10, 5, { kind: "dwarf", leader: thane });
+
+    expect(describeTile(state, { x: 5, y: 5 })).toContain("Dwarf bomber, HP 18 / 18, sprinting");
+    expect(describeTile(state, { x: 6, y: 5 })).toContain("Digger, HP 20 / 20, digging");
+    expect(describeTile(state, { x: 7, y: 5 }).join("\n")).not.toContain("with its");
+    expect(describeTile(state, { x: 8, y: 5 })).toContain(
+      "Barbarian raider, HP 30 / 30, with its chief",
+    );
+    expect(describeTile(state, { x: 10, y: 5 }).join("\n")).toMatch(
+      /Dwarf warrior, HP \d+ \/ \d+, with its thane/,
+    );
+  });
+
   it("the price line says why you can't build on unexplored land", () => {
     const state = createGame(1, { blankMap: true });
     expect(priceLine(state, "wall", { x: 0, y: 0 })).toBe("Wall: can't build on unexplored land");
@@ -88,6 +108,10 @@ function enemyAt(x: number, y: number): Enemy {
     damage: 5,
     attackInterval: 20,
     attackCooldown: 0,
+    abilityCooldown: 0,
+    mode: "walking",
+    targetId: null,
+    leaderId: null,
   };
 }
 

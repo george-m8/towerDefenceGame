@@ -14,6 +14,7 @@ import { nextStep } from "../sim/pathfinding";
 import { facingAngle } from "../sim/aiming";
 import {
   EFFECT_TICKS,
+  HEAL_EFFECT_TICKS,
   ENEMY_KINDS,
   STRUCTURES,
   type StructureStats,
@@ -541,6 +542,12 @@ export function createRenderer(canvas: HTMLCanvasElement) {
         ctx!.lineWidth = 1;
       } else if (effect.kind === "spikes") {
         drawTile(effect.x, effect.y, COLOURS.spikesUp, "^", COLOURS.spikesUpGlyph);
+      } else if (effect.kind === "heal") {
+        // Floats up a little over its life, above the enemy it healed.
+        const rise = (1 - effect.ttl / HEAL_EFFECT_TICKS) * TILE_SIZE * 0.5;
+        ctx!.font = GLYPH_FONT;
+        ctx!.fillStyle = COLOURS.heal;
+        ctx!.fillText("+", (effect.x + 0.5) * TILE_SIZE, (effect.y + 0.2) * TILE_SIZE - rise);
       } else if (effect.kind === "burst") {
         drawBurst(effect);
       } else {

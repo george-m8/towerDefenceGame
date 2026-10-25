@@ -47,6 +47,10 @@ export interface LobbyInfo {
  */
 export type ClientEnemy = Pick<Enemy, "id" | "x" | "y" | "hp" | "maxHp" | "variant"> & {
   kind: number;
+  /** Only when it's doing something other than walking. */
+  mode?: Exclude<Enemy["mode"], "walking">;
+  /** Band members, only while their leader lives. */
+  leaderId?: number;
 };
 /** An enemy in an update: kind and variant never change, so they're only sent once. */
 export type UpdateEnemy = Omit<ClientEnemy, "kind" | "variant"> &

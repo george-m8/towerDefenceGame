@@ -1,8 +1,15 @@
 import { goldOf } from "./helpers";
 import { describe, expect, it } from "vitest";
-import { ENEMY_KINDS, TICK_RATE, WAVES, type EnemyKindId } from "../../src/sim/config";
+import {
+  ENEMY_KINDS,
+  TICK_RATE,
+  WAVES,
+  bandOf,
+  type EnemyKind,
+  type EnemyKindId,
+} from "../../src/sim/config";
 import { applyCommand, createGame, tick } from "../../src/sim/game";
-import { pickWaveKind, waveThreatBudget } from "../../src/sim/waves";
+import { pickWaveGroup, sendWaveEarly, waveThreatBudget } from "../../src/sim/waves";
 import type { GameState } from "../../src/sim/types";
 
 const countdownTicks = WAVES.countdownSeconds * TICK_RATE;
@@ -21,16 +28,19 @@ describe("wave formulas", () => {
 });
 
 describe("the stopgap mix", () => {
-  /** The kinds a wave would spawn, drawn the way spawning draws them. */
-  function compose(state: GameState, wave: number): EnemyKindId[] {
-    const kinds: EnemyKindId[] = [];
+  /** The groups a wave would spawn (a leader first, then its band), drawn as spawning draws them. */
+  function groups(state: GameState, wave: number): EnemyKindId[][] {
+    const all: EnemyKindId[][] = [];
     let left = waveThreatBudget(wave);
-    for (let kind = pickWaveKind(state, wave, left); kind; kind = pickWaveKind(state, wave, left)) {
-      kinds.push(kind);
-      left -= ENEMY_KINDS[kind].threat;
+    for (let g = pickWaveGroup(state, wave, left); g; g = pickWaveGroup(state, wave, left)) {
+      all.push(g);
+      left -= threatOf(g);
     }
-    return kinds;
+    return all;
   }
+  const compose = (state: GameState, wave: number) => groups(state, wave).flat();
+  const threatOf = (kinds: EnemyKindId[]) =>
+    kinds.reduce((sum, kind) => sum + ENEMY_KINDS[kind].threat, 0);
 
   it("makes waves 1 and 2 today's 8 and 11 goblins", () => {
     const state = createGame(1, { blankMap: true, fog: false });
@@ -49,6 +59,50 @@ describe("the stopgap mix", () => {
       kinds.forEach((kind) => seen.add(kind));
     }
     expect(seen.size).toBe(Object.keys(ENEMY_KINDS).length); // every kind turns up by wave 30
+  });
+
+  it("draws leaders with a band of the right size, and only when the smallest band fits", () => {
+    const state = createGame(1, { blankMap: true, fog: false });
+    let leaders = 0;
+    for (let wave = 1; wave <= 30; wave++) {
+      for (const [first, ...rest] of groups(state, wave)) {
+        const band = bandOf(first);
+        if (!band) {
+          expect(rest).toEqual([]);
+          continue;
+        }
+        leaders++;
+        expect(rest.every((kind) => kind === band.kind)).toBe(true);
+        expect(rest.length).toBeGreaterThanOrEqual(band.min);
+        expect(rest.length).toBeLessThanOrEqual(band.max);
+      }
+    }
+    expect(leaders).toBeGreaterThan(0);
+
+    const chief = ENEMY_KINDS.barbarianChief;
+    const justShort = chief.threat + 2 * ENEMY_KINDS.barbarian.threat - 1;
+    for (let i = 0; i < 200; i++) {
+      expect(pickWaveGroup(state, 30, justShort)?.[0]).not.toBe("barbarianChief");
+    }
+  });
+
+  it("spawns each band on its leader's tile, following it", () => {
+    const state = createGame(3, { blankMap: true, fog: false });
+    state.wanderChance = 0;
+    state.wave.number = 14;
+    sendWaveEarly(state, 1);
+    const spawned = new Map<number, { x: number; y: number }>();
+    while (state.wave.threatLeft > 0) {
+      tick(state);
+      for (const e of state.enemies) if (!spawned.has(e.id)) spawned.set(e.id, { x: e.x, y: e.y });
+    }
+    const members = state.enemies.filter((e) => e.leaderId !== null);
+    expect(members.length).toBeGreaterThan(0);
+    for (const member of members) {
+      const leader = state.enemies.find((e) => e.id === member.leaderId)!;
+      expect((ENEMY_KINDS[member.kind] as EnemyKind).leader).toBe(leader.kind);
+      expect(spawned.get(member.id)).toEqual(spawned.get(leader.id));
+    }
   });
 
   it("composes the same wave from the same seed", () => {

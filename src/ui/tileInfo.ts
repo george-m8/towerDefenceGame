@@ -27,7 +27,16 @@ import {
   terrainAt,
   topAt,
 } from "../sim/grid";
-import type { GameState, PlayerId, Point, Structure, StructureKind, Terrain } from "../sim/types";
+import { livingLeader } from "../sim/enemies";
+import type {
+  Enemy,
+  GameState,
+  PlayerId,
+  Point,
+  Structure,
+  StructureKind,
+  Terrain,
+} from "../sim/types";
 import { isBuildTool, type UiState } from "./state";
 
 const FACING_NAMES = { N: "north", E: "east", S: "south", W: "west" };
@@ -84,7 +93,8 @@ export function describeTile(state: GameState, p: Point, viewer?: PlayerId): str
     const kind = ENEMY_KINDS[enemy.kind];
     const name =
       kind.variants.length > 1 ? `${kind.name} ${kind.variants[enemy.variant].name}` : kind.name;
-    lines.push(`${name}, HP ${Math.ceil(enemy.hp)} / ${enemy.maxHp}`);
+    const doing = enemyDoing(state, enemy);
+    lines.push(`${name}, HP ${Math.ceil(enemy.hp)} / ${enemy.maxHp}${doing ? `, ${doing}` : ""}`);
   }
   if (enemies.length > 3) lines.push(`...and ${enemies.length - 3} more`);
   const enclosure = enclosureLine(state, p, viewer);
@@ -155,6 +165,15 @@ function describeStructure(structure: Structure, placement?: string): string[] {
   if (stats.income) lines.push(`+${stats.income.gold}g / ${stats.income.intervalSeconds}s`);
   if (stats.sight) lines.push(`Sees ${stats.sight.inner} (land ${stats.sight.outer})`);
   return lines;
+}
+
+/** What an enemy is up to beyond walking: "sprinting", "digging", "with its chief". */
+function enemyDoing(state: GameState, enemy: Enemy): string | null {
+  if (enemy.mode !== "walking") return enemy.mode;
+  const leader = livingLeader(state, enemy);
+  if (!leader) return null;
+  // The last word of the leader's name: "Barbarian chief" leads "with its chief".
+  return `with its ${ENEMY_KINDS[leader.kind].name.split(" ").pop()!.toLowerCase()}`;
 }
 
 /** What the info boxes show: the price of the selected tool here, then the tile's details. */
