@@ -140,22 +140,45 @@ Dev server only: `E` spawns one enemy and `M` spawns 200 (stress test).
 Everything you hear is played by the game's own small chiptune synth (pulse waves with PWM, triangle, sawtooth, sine and noise, with volume and pitch envelopes) on the browser's Web Audio API. There's no audio library.
 
 - **Sound effects** come from what happens in the game: hits, cannon and catapult blasts, enemies reaching the keep, treasure claimed, a wave starting, the keep falling, and your own builds, sales and refused actions. Busy waves are capped so they stay a rhythm, not a wall of noise. Online, everyone hears the game's events.
-- **Music** plays on the title screen and the start screen, and fades out when a game starts. Until you add your own songs, a short original placeholder theme plays.
-- **Sound: on/off** and the **Music** and **Effects** sliders sit at the bottom of the side panel, and they're remembered on this device.
+- **Music** follows where you are. The **intro** music starts when you dismiss the title screen and plays once, to the end, carrying on into the start screen. If it finishes while you're still in the menus (or an online waiting room), **menu** music takes over. Starting a game switches to **in-play** music, one song after another, and the keep falling plays the **game-over** song. Restarting goes back to in-play music.
+- **Built-in songs:** Concertino in D (John Baston) for the intro and a short original theme in the menu. There's no built-in in-play or game-over music yet; a [music pack](#music-packs) can add it.
+- **Sound: on/off**, the **Music** and **Effects** sliders and (when you have music packs) the **Songs** choice sit at the bottom of the side panel, and they're remembered on this device.
 - Browsers only allow sound after a click or key press, so the game is silent until the first one (dismissing the title screen counts).
 - **Tuning sounds:** every effect is defined in `src/audio/sounds.ts`. With the dev server running, open http://localhost:5173/?soundtest to play each one.
 
+### Music packs
+
+A music pack replaces the game's music with your own MIDI files, without touching any code. Each pack is a folder in `public/music/music-packs/`, with a folder per place:
+
+```
+public/music/music-packs/
+  music-pack-1/
+    intro/      plays once at the start, into the menus
+    menu/       after the intro, while still in the menus
+    in-play/    during a game
+    game-over/  once, when the keep falls
+```
+
+- **A folder with `.mid` files replaces the built-in songs for that place.** An empty or missing folder keeps the built-in ones.
+- **Several songs in a folder** are shuffled: menu and in-play move on to a random different song when one ends.
+- **Choosing a pack:** the **Songs** dropdown in the Sound panel lists your packs and **Built-in**. It starts on the first pack (alphabetically).
+- The dev server notices new or removed files and reloads the page. For a build, the packs present when you run `npm run build` are included.
+- Pack songs use the default instrument mapping (see step 3 below).
+- **Pack files stay out of git** (`.gitignore`), because songs in packs are usually someone else's copyright. Keep packs for your own use, and don't deploy a build that includes songs you aren't allowed to share.
+
 ### Adding a song
 
+To add a song to the built-in music instead (it's committed, so it must be one you're allowed to share):
+
 1. Put the MIDI file in `public/music/`, e.g. `public/music/castle-theme.mid` (format 0 or 1).
-2. Add an entry to `SONGS` in `src/audio/songs.ts`, above the placeholder (the first song listed for a place wins):
+2. Add an entry to `SONGS` in `src/audio/songs.ts`. With several songs for a place, one is picked at random:
 
    ```ts
    {
      id: "castle-theme",
      title: "Castle Theme",
-     plays: ["title", "menu"],
-     loop: true,
+     plays: ["menu"], // intro, menu, in-play or game-over
+     loop: true, // false: menu and in-play move on to another song when it ends
      source: "Where it came from (URL or author)",
      licence: "The licence you have it under, e.g. CC BY 4.0",
      file: "castle-theme.mid",
@@ -266,8 +289,10 @@ src/sim/              Pure, deterministic game simulation (no DOM, seeded RNG)
 src/net/              Message types and state snapshots, shared by browser and server
 src/render/           Canvas drawing (reads state, never changes it)
 src/ui/               Side panel, input, hover info, game-over dialog
-src/audio/            Synth, sound effects, MIDI reader, music sequencer and song list
+src/audio/            Synth, sound effects, MIDI reader, music player, playlist and song list
 public/music/         MIDI files for the songs listed in src/audio/songs.ts
+public/music/music-packs/  Your music packs (git-ignored)
+tools/                Vite plugin that finds the music packs
 src/styles.css        System 6/7 style window chrome
 server/               Multiplayer game server (Node): rooms, connections, static files, probe
 tests/sim/            Unit tests for the simulation

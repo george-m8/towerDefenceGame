@@ -28,7 +28,7 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | | `line-of-sight` | Spec drafted |
 | | `units` | Spec drafted |
 | 1c. Presentation | `audio` | Done |
-| | `music-packs` | **Spec approved ([`SPEC-music-packs.md`](../SPEC-music-packs.md)); tasks in [`tasks/todo.md`](todo.md)** |
+| | `music-packs` | Done (tasks in [`tasks/music-packs/`](music-packs/todo.md)) |
 | | `music-director` | Outline only (see below); intro hand-over now part of `music-packs` |
 | 2. Setup and modes | `game-setup` | Spec needed |
 | | `mode-ramparts` | Spec needed |
@@ -492,13 +492,13 @@ T2 Pack scan + Vite plugin + gitignore
              └─ T6 Docs
 ```
 
-**Task list** (details in [`tasks/todo.md`](todo.md))
+**Task list** (details in [`tasks/music-packs/todo.md`](music-packs/todo.md))
 - [x] Task 1: MIDI reader keeps the good tracks of a file with a broken track
 - [x] Task 2: Pack scan and Vite plugin (`virtual:music-packs`), pack contents git-ignored
 - [x] Task 3: Playlist (pack songs or defaults, random pick without repeats) and the chosen pack setting
 - [x] Task 4: Music player: new places, play-once with an ended callback, shuffle chaining, switch after a fade
 - [x] Task 5: Wiring: intro to menu hand-over, in-play, game-over, restart, unlock on direct links; Music dropdown
-- [ ] Task 6: Docs (README, SPEC-audio, CAPABILITIES)
+- [x] Task 6: Docs (README, SPEC-audio, CAPABILITIES)
 
 **Checkpoint (after Task 5):** all tests pass; in the browser the intro hands over to menu music, a game switches to in-play, game over plays its song.
 

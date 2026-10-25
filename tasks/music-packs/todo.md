@@ -1,6 +1,6 @@
 # Tasks: music-packs
 
-Spec: [`SPEC-music-packs.md`](../SPEC-music-packs.md). Plan: [`tasks/plan.md`](plan.md).
+Spec: [`SPEC-music-packs.md`](../../SPEC-music-packs.md). Plan: [`tasks/plan.md`](../plan.md).
 
 ## Task 1: MIDI reader keeps the good tracks
 - [x] A track with a bad byte is cut short there; its notes so far and the other tracks are kept
@@ -35,4 +35,4 @@ Spec: [`SPEC-music-packs.md`](../SPEC-music-packs.md). Plan: [`tasks/plan.md`](p
 - Files: `src/main.ts`, `src/ui/soundControls.ts`, `src/audio/engine.ts`
 
 ## Task 6: Docs
-- [ ] README "Music packs" section; SPEC-audio and CAPABILITIES updated
+- [x] README "Music packs" section; SPEC-audio and CAPABILITIES updated

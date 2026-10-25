@@ -104,14 +104,15 @@ None at map level. Module-level questions live in each `SPEC-<module-id>.md`. Pr
 
 # Capability Map: Presentation (sound and music)
 
-Status: `audio` done (2026-10-25); `music-director` planned, outline in [`tasks/plan.md`](tasks/plan.md).
+Status: `audio` done (2026-10-25); `music-packs` built (2026-10-25); `music-director` planned (peaceful/fight), outline in [`tasks/plan.md`](tasks/plan.md).
 
 | Module id | Responsibility | Depends on |
 |---|---|---|
 | `audio` | Our own Web Audio chiptune synth (pulse with PWM, triangle, saw, sine, noise; ADSR and semitone pitch envelopes). Sound effects from simulation cues (`state.cues`, each played once, capped per sound) for local and online games, plus UI sounds for the player's own actions. A MIDI file reader and lookahead sequencer play songs from a manifest on the title and start screens. Mute and volumes saved per device. See [`SPEC-audio.md`](SPEC-audio.md). | core, intro screen, net-client |
-| `music-director` | Music that follows the player: an intro piece played once to the end, then menu music or gameplay music depending on where the player is. Gameplay music is either standard (gameplay songs only) or switches between peaceful and fight songs with a minimum time in each state. Each place can list several songs. Fallbacks when a place has no songs. Possibly crossfades and stings. | audio |
+| `music-packs` | Music packs (folders of MIDI files per place, found by a Vite plugin) replace the built-in songs place by place, chosen in the Sound panel. Music follows the player: the intro plays once and hands over to menu music; games get shuffled in-play music, then a game-over song. Pack files stay out of git. See [`SPEC-music-packs.md`](SPEC-music-packs.md). | audio |
+| `music-director` | Gameplay music is either standard (gameplay songs only) or switches between peaceful and fight songs with a minimum time in each state. Each place can list several songs. Fallbacks when a place has no songs. Possibly crossfades and stings. | audio |
 
-Build order: `audio` -> `music-director`
+Build order: `audio` -> `music-packs` -> `music-director`
 
 ### Decisions captured
 
@@ -120,7 +121,8 @@ Build order: `audio` -> `music-director`
 - Mute is a button only, no keyboard shortcut.
 - Peaceful/fight switching is decided by the song lists (a list of fight songs and a list of peaceful songs), not a player setting.
 - Every song records its source and licence in the manifest.
+- Music packs are git-ignored and chosen in the Sound panel; menu and in-play songs shuffle without immediate repeats; game over stops in-play music and plays a game-over song once.
 
 ### Open questions (for the `music-director` spec)
 
-Skipping the intro, what counts as "fight", crossfade versus waiting for a phrase end, stings, and how a song is picked from a list. See the outline in [`tasks/plan.md`](tasks/plan.md).
+Skipping the intro, what counts as "fight", crossfade versus waiting for a phrase end, and stings (picking from a list is settled by `music-packs`: shuffled without repeats). See the outline in [`tasks/plan.md`](tasks/plan.md).
