@@ -136,7 +136,9 @@ export function canBuild(
     STRUCTURES[kind].layer === "mount" ? canMount(state, player, x, y) : canBuildBase(state, x, y);
   if (!layerCheck.ok) return layerCheck;
   const gold = state.players[player]?.gold ?? 0;
-  if (gold < priceAt(state, kind, x, y, player)) return { ok: false, reason: "Not enough gold" };
+  if (!state.debug.infiniteGold && gold < priceAt(state, kind, x, y, player)) {
+    return { ok: false, reason: "Not enough gold" };
+  }
   return { ok: true };
 }
 
@@ -240,6 +242,12 @@ export function removeStructure(state: GameState, structure: Structure): void {
   delete state.structures[structure.id];
   layerOf(state, structure.kind)[tileIndex(state, structure.x, structure.y)] = EMPTY;
   state.gridVersion++;
+}
+
+/** Damages a keep, never below 0, unless the infinite keep health debug option is on. */
+export function damageKeep(state: GameState, keep: Keep, amount: number): void {
+  if (state.debug.infiniteKeep) return;
+  keep.hp = Math.max(0, keep.hp - amount);
 }
 
 export function damageStructure(state: GameState, structure: Structure, amount: number): void {

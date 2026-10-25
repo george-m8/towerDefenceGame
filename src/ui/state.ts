@@ -1,5 +1,6 @@
 import type { Facing, PlayerId, Point, StructureKind } from "../sim/types";
 import { createCamera, type Camera } from "./camera";
+import type { StatId } from "./stats";
 
 export type Tool = StructureKind | "sell";
 
@@ -41,6 +42,8 @@ export interface UiState {
   playerId: PlayerId;
   /** The view onto the map: scroll position and zoom. */
   camera: Camera;
+  /** Which stats the HUD shows, a box each (toggled in its menu). Never empty. */
+  hudStats: StatId[];
   /** Arrow keys held down, for smooth panning. */
   panKeys: { left: boolean; right: boolean; up: boolean; down: boolean };
 }
@@ -55,6 +58,7 @@ export function createUiState(): UiState {
     facing: "N",
     playerId: 1,
     camera: createCamera(),
+    hudStats: ["gold"],
     panKeys: { left: false, right: false, up: false, down: false },
   };
 }

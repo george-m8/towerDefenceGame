@@ -5,6 +5,7 @@ import { DEFAULT_MAP_SIZE, STARTING_GOLD, TICK_RATE, type MapSize } from "../src
 import { applyCommand, assignKeeps, createGame, tick } from "../src/sim/game";
 import { addPlayer, setConnected, updateVotes } from "../src/sim/players";
 import type { Command, CommandResult, GameMode, GameState, PlayerId } from "../src/sim/types";
+import { isDebugCommand } from "../src/sim/types";
 import { uniqueName, type LobbyInfo, type ServerMessage } from "../src/net/protocol";
 import { sentStateOf, toClientState, toUpdate, type SentState } from "../src/net/snapshot";
 import { MAX_PLAYERS, MAX_TICKS_PER_ADVANCE, PVP_PLAYERS, UPDATE_EVERY_TICKS } from "./config";
@@ -146,7 +147,7 @@ export function applyRoomCommand(
 ): CommandResult {
   const result: CommandResult = !room.started
     ? { ok: false, reason: "The game hasn't started" }
-    : command.type === "debugSpawn"
+    : isDebugCommand(command)
       ? { ok: false, reason: "Not allowed online" }
       : applyCommand(room.state, playerId, command);
   room.send(playerId, { type: "result", seq, result });

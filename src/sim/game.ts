@@ -73,6 +73,7 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     speed: 1,
     wanderChance: ENEMY.wanderChance,
     gameOver: false,
+    debug: { infiniteKeep: false, infiniteGold: false },
     rngState: seed,
     fog: options.fog ?? true,
     explored: [],
@@ -147,7 +148,7 @@ export function applyCommand(
       if (!check.ok) return check;
       // The price depends on the enclosure here before this build changes the grid.
       const price = priceAt(state, command.kind, command.x, command.y, playerId);
-      player.gold -= price;
+      if (!state.debug.infiniteGold) player.gold -= price; // free with infinite gold
       const built = placeStructure(
         state,
         command.kind,
@@ -165,6 +166,12 @@ export function applyCommand(
     case "sendWave":
       if (state.mode === "pvp") return { ok: false, reason: "No waves in PvP" };
       return sendWaveEarly(state, playerId);
+    case "debugOption":
+      state.debug[command.option] = command.on;
+      return { ok: true };
+    case "debugFog":
+      state.fog = command.on;
+      return { ok: true };
     case "debugSpawn":
       for (let i = 0; i < command.count; i++) {
         const p = state.spawnTiles[randomInt(state, 0, state.spawnTiles.length - 1)];

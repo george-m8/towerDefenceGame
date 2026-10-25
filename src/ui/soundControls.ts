@@ -1,5 +1,5 @@
 // Sound on/off, the song playing (with Skip), the two volume sliders and the music pack, in
-// the side panel.
+// the settings window.
 import { BUILT_IN } from "../audio/playlist";
 import type { AudioSettings } from "../audio/settings";
 

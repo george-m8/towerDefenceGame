@@ -28,6 +28,7 @@ import {
   topAt,
 } from "../sim/grid";
 import type { GameState, PlayerId, Point, Structure, StructureKind, Terrain } from "../sim/types";
+import { isBuildTool, type UiState } from "./state";
 
 const FACING_NAMES = { N: "north", E: "east", S: "south", W: "west" };
 
@@ -154,4 +155,12 @@ function describeStructure(structure: Structure, placement?: string): string[] {
   if (stats.income) lines.push(`+${stats.income.gold}g / ${stats.income.intervalSeconds}s`);
   if (stats.sight) lines.push(`Sees ${stats.sight.inner} (land ${stats.sight.outer})`);
   return lines;
+}
+
+/** What the info boxes show: the price of the selected tool here, then the tile's details. */
+export function hoverText(state: GameState, ui: UiState): string {
+  if (!ui.hover) return "";
+  const lines = describeTile(state, ui.hover, ui.playerId);
+  if (isBuildTool(ui.tool)) lines.unshift(priceLine(state, ui.tool, ui.hover, ui.playerId));
+  return lines.join("\n");
 }

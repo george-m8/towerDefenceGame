@@ -56,6 +56,7 @@ export const COLOURS = {
   offMap: "#15110b",
   /** The view's outline on the minimap. */
   minimapView: "#ffffff",
+  minimapViewDash: "#000000",
   /** Enclosed areas and their walls: warm for the keep's enclosure, cool for others. */
   enclosureKeep: "rgba(255, 196, 60, 0.22)",
   enclosureOuter: "rgba(120, 200, 255, 0.16)",

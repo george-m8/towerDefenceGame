@@ -331,3 +331,23 @@ describe("map size", () => {
     expect([room.state.width, room.state.height]).toEqual([66, 44]);
   });
 });
+
+describe("debug commands online", () => {
+  it("are refused", () => {
+    const { room } = testRoom();
+    const ann = join(room, "Ann");
+    expect(
+      applyRoomCommand(room, ann.playerId, 1, {
+        type: "debugOption",
+        option: "infiniteKeep",
+        on: true,
+      }),
+    ).toEqual({ ok: false, reason: "Not allowed online" });
+    expect(room.state.debug.infiniteKeep).toBe(false);
+    expect(applyRoomCommand(room, ann.playerId, 2, { type: "debugFog", on: false })).toEqual({
+      ok: false,
+      reason: "Not allowed online",
+    });
+    expect(room.state.fog).toBe(true);
+  });
+});

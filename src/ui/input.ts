@@ -89,8 +89,6 @@ export function bindInput(
       dispatch({ type: "toggleFastForward" });
     } else if (e.code === "KeyR") {
       rotateFacing(ui);
-    } else if (e.code === "KeyD") {
-      ui.showFlow = !ui.showFlow;
     } else if (e.code === "KeyE" && import.meta.env.DEV) {
       // One of each kind in turn, so every kind is easy to look at.
       dispatch({ type: "debugSpawn", count: 1, kind: ENEMY_KIND_ORDER[debugKind] });
