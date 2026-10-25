@@ -18,9 +18,9 @@ Files: `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/enemies.ts`, `src/sim/w
 
 Enemies hit a blocking structure for their own `damage` once per `attackInterval` (replacing `ENEMY.structureDps`). Rows for zerg, wolf rider, barbarian, dwarf, barbarian chief, dwarf thane and golem, with the spec's stats (variants still one each).
 
-- [ ] Each kind spawns with its spec HP, speed, damage and interval, scaled by wave
-- [ ] A golem hits a wall for 40 every 3 s; a zerg for 2 every 0.6 s
-- [ ] A wolf rider crosses 10 tiles in half the ticks a goblin needs
+- [x] Each kind spawns with its spec HP, speed, damage and interval, scaled by wave
+- [x] A golem hits a wall for 40 every 3 s; a zerg for 2 every 0.6 s
+- [x] A wolf rider crosses 10 tiles in half the ticks a goblin needs
 
 Files: `src/sim/config.ts`, `src/sim/enemies.ts`, `tests/sim/enemies.test.ts`. Size: S. Depends on: 1.
 

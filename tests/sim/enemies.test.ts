@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ENEMY, ENEMY_KINDS, STRUCTURES, TICK_RATE } from "../../src/sim/config";
+import { ENEMY, ENEMY_KINDS, STRUCTURES, TICK_RATE, type EnemyKindId } from "../../src/sim/config";
 import { damageEnemy, spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand, tick } from "../../src/sim/game";
 import { topAt } from "../../src/sim/grid";
@@ -251,5 +251,65 @@ describe("enemy kinds", () => {
     run(state, 2 * TICK_RATE); // 3 tiles at 1.5 tiles per second
     expect(slow.x).toBeCloseTo(3);
     expect(fast.x).toBeCloseTo(6);
+  });
+});
+
+describe("the roster", () => {
+  const ROSTER = [
+    ["goblin", "g", 20, 1.5, 5, 1.0, 2],
+    ["zerg", "z", 6, 1.8, 2, 0.6, 1],
+    ["wolfRider", "w", 14, 3.0, 4, 0.8, 3],
+    ["barbarian", "b", 30, 1.8, 4, 0.6, 3],
+    ["dwarf", "d", 45, 1.0, 8, 1.2, 4],
+    ["barbarianChief", "B", 90, 1.2, 8, 0.5, 10],
+    ["dwarfThane", "D", 120, 0.9, 14, 1.2, 12],
+    ["golem", "G", 250, 0.6, 40, 3.0, 20],
+  ] as const;
+
+  it.each(ROSTER)(
+    "%s (%s) has its spec stats",
+    (kind, glyph, hp, speed, damage, interval, bounty) => {
+      expect(ENEMY_KINDS[kind]).toMatchObject({
+        glyph,
+        hp,
+        speed,
+        damage,
+        attackInterval: interval,
+        bounty,
+      });
+    },
+  );
+
+  it("scales every kind's HP and bounty by wave", () => {
+    const state = createGameWithoutWaves();
+    const golem = spawnEnemy(state, 5, 5, { kind: "golem", wave: 11 });
+    expect(golem.maxHp).toBe(Math.round(250 * 2.5));
+    expect(golem.bounty).toBe(22);
+    expect(golem.attackInterval).toBe(3 * TICK_RATE);
+  });
+
+  /** Wall damage after `ticks`, for an enemy starting next to the wall: hits on ticks 1, 1 + I, 1 + 2I... */
+  function wallDamageAfter(kind: EnemyKindId, ticks: number) {
+    const state = createGameWithoutWaves();
+    const k = state.keeps[0];
+    buildAt(state, ring(k.x - 1, k.y - 1, k.x + k.size, k.y + k.size));
+    spawnEnemy(state, k.x - 2, k.y + 1, { kind, hp: 1e6 });
+    run(state, ticks);
+    return STRUCTURES.wall.maxHp - (topAt(state, k.x - 1, k.y + 1)?.hp ?? 0); // destroyed = all of it
+  }
+
+  it("hits a wall in the way with its own damage and interval", () => {
+    expect(wallDamageAfter("golem", 3 * TICK_RATE)).toBe(40); // one hit
+    expect(wallDamageAfter("golem", 3 * TICK_RATE + 1)).toBe(Math.min(80, STRUCTURES.wall.maxHp)); // the second lands 3 s later
+    expect(wallDamageAfter("zerg", 0.6 * 2 * TICK_RATE + 1)).toBe(6); // three hits, 0.6 s apart
+  });
+
+  it("a wolf rider covers ground twice as fast as a goblin", () => {
+    const state = createGameWithoutWaves();
+    const y = state.keeps[0].y + 1;
+    const goblin = spawnEnemy(state, 0, y);
+    const wolf = spawnEnemy(state, 0, y, { kind: "wolfRider" });
+    run(state, 2 * TICK_RATE);
+    expect(wolf.x).toBeCloseTo(2 * goblin.x);
   });
 });
