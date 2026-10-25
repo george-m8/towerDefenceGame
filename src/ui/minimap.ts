@@ -133,7 +133,8 @@ function tinted(hex: string, kind: number): string {
 
 /** Fog of war on the minimap, like the map's: unexplored is misted over, seen is misted lightly. */
 export function fogged(hex: string, tier: number): string {
-  const opacity = tier === UNEXPLORED ? FOG.unexplored : tier === SEEN ? FOG.seen : 0;
+  const opacity =
+    tier === UNEXPLORED ? FOG.unexplored.opacity : tier === SEEN ? FOG.seen.opacity : 0;
   if (opacity === 0) return hex;
   const fog = hexToRgb(FOG.colour);
   const mix = hexToRgb(hex).map((c, i) => Math.round(c * (1 - opacity) + fog[i] * opacity));

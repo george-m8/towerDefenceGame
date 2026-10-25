@@ -34,8 +34,8 @@ describe("fogged", () => {
       const c = Math.round(0x80 * (1 - opacity) + 0xff * opacity).toString(16); // FOG.colour is white
       return `#${c}${c}${c}`;
     };
-    expect(fogged("#808080", UNEXPLORED)).toBe(mist(FOG.unexplored));
-    expect(fogged("#808080", SEEN)).toBe(mist(FOG.seen));
+    expect(fogged("#808080", UNEXPLORED)).toBe(mist(FOG.unexplored.opacity));
+    expect(fogged("#808080", SEEN)).toBe(mist(FOG.seen.opacity));
     expect(fogged("#808080", IN_SIGHT)).toBe("#808080");
   });
 });

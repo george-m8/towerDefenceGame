@@ -88,7 +88,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   /** The tiles on screen this frame. */
   let view: VisibleTiles = { x0: 0, y0: 0, x1: -1, y1: -1 };
   /** The fog image and the sight it was made from. */
-  let fog: { tier: Uint8Array; image: HTMLCanvasElement } | null = null;
+  let fog: { tier: Uint8Array; image: HTMLCanvasElement; lift: number } | null = null;
 
   function drawTile(x: number, y: number, bg: string, glyph?: string, fg?: string) {
     ctx!.fillStyle = bg;
@@ -218,17 +218,17 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   }
 
   /**
-   * Fog of war, over everything drawn so far: a white mist, thin over seen land and solid over
-   * unexplored land, with see-through steps along its edge. Enemies and effects out of sight
-   * are left out before this, not covered by it. The fog image is only rebuilt when sight
-   * changes.
+   * Fog of war, over everything drawn so far: a white mist raised like the blocks, thin and low
+   * over seen land, solid and high over unexplored land, stepping down in see-through bands
+   * along its edge. Enemies and effects out of sight are left out before this, not covered by
+   * it. The fog image is only rebuilt when sight changes.
    */
   function drawFog(state: GameState) {
     if (!state.fog) return;
     const tier = getSight(state);
-    if (fog?.tier !== tier) fog = { tier, image: fogImage(tier, state.width, state.height) };
+    if (fog?.tier !== tier) fog = { tier, ...fogImage(tier, state.width, state.height) };
     ctx!.imageSmoothingEnabled = false; // hard tile edges
-    ctx!.drawImage(fog.image, 0, 0, state.width * TILE_SIZE, state.height * TILE_SIZE);
+    ctx!.drawImage(fog.image, 0, -fog.lift, state.width * TILE_SIZE, fog.image.height);
     ctx!.imageSmoothingEnabled = true;
   }
 
