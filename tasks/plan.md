@@ -450,7 +450,7 @@ T1 Synth voice + pure maths
 - [ ] Review with human (tune the sounds with `?soundtest`)
 
 - [x] Task 5: MIDI file reader
-- [ ] Task 6: Sequencer and title/menu music
+- [x] Task 6: Sequencer and title/menu music
 - [ ] Task 7: Docs
 
 **Checkpoint H: module complete**

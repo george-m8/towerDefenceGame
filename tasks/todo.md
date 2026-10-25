@@ -151,13 +151,13 @@ Cues age out like effects. They're included in network snapshots, and the audio 
 - The title theme starts on the intro's dismiss, carries on through the start screen, and fades out when a game starts.
 
 **Acceptance criteria:**
-- [ ] The sequencer schedules only the next lookahead window, with times correct across tempo changes, and loops at the song's end
-- [ ] Channel 10 notes go to drum instruments; other channels follow the default or the manifest's mapping
-- [ ] In the browser the theme starts on the intro's dismiss, plays through the start screen, and fades when a game starts
+- [x] The sequencer schedules only the next lookahead window, with times correct across tempo changes, and loops at the song's end
+- [x] Channel 10 notes go to drum instruments; other channels follow the default or the manifest's mapping
+- [ ] In the browser the theme starts on the intro's dismiss, plays through the start screen, and fades when a game starts (left for you to listen: the browser check kept detaching while you were using it; the player logic is unit-tested)
 
 **Verification:**
-- [ ] `npm test` (`tests/audio/sequencer.test.ts`, a manifest sanity test)
-- [ ] Manual: listen from the intro into a game; mute and volume affect the music
+- [x] `npm test` (`tests/audio/sequencer.test.ts`, a manifest sanity test)
+- [ ] Manual: listen from the intro into a game; mute and volume affect the music (yours)
 
 **Dependencies:** Tasks 2, 5
 

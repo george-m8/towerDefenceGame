@@ -10,7 +10,15 @@ const BLIP: VoiceSettings = {
 
 /** Just enough of an AudioContext for the engine's bus wiring. */
 function fakeContext() {
-  const node = () => ({ gain: { value: 1 }, connect: vi.fn((n: unknown) => n) });
+  const node = () => ({
+    gain: {
+      value: 1,
+      cancelScheduledValues: vi.fn(),
+      setValueAtTime: vi.fn(),
+      linearRampToValueAtTime: vi.fn(),
+    },
+    connect: vi.fn((n: unknown) => n),
+  });
   return {
     currentTime: 3,
     destination: {},
@@ -109,5 +117,20 @@ describe("unlockOnFirstGesture", () => {
     target.dispatchEvent(new Event("keydown"));
     target.dispatchEvent(new Event("pointerdown"));
     expect(engine.unlock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("fadeOutMusic", () => {
+  it("ramps the music bus to silence, then restores it; harmless before unlock", () => {
+    const { engine, context } = setup();
+    expect(() => engine.fadeOutMusic(1)).not.toThrow();
+    engine.unlock();
+    engine.setVolumes({ muted: false, music: 0.4, sfx: 0.8 });
+    engine.fadeOutMusic(1);
+    const music = context.createGain.mock.results
+      .map((r) => r.value.gain)
+      .find((g) => g.linearRampToValueAtTime.mock.calls.length > 0);
+    expect(music.linearRampToValueAtTime).toHaveBeenCalledWith(0, context.currentTime + 1);
+    expect(music.setValueAtTime).toHaveBeenLastCalledWith(0.4, expect.any(Number));
   });
 });

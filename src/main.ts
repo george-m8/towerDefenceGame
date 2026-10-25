@@ -19,6 +19,7 @@ import { loadAudioSettings, saveAudioSettings } from "./audio/settings";
 import { createSoundControls } from "./ui/soundControls";
 import { createCuePlayer, soundForResult } from "./audio/cues";
 import { showSoundTest } from "./ui/soundTest";
+import { createMusicPlayer } from "./audio/sequencer";
 import { liveVoiceCount } from "./audio/synth";
 import { showNotice } from "./ui/notice";
 import type { Command, GameState } from "./sim/types";
@@ -84,6 +85,8 @@ const audioSettings = loadAudioSettings(audioStorage);
 audio.setVolumes(audioSettings);
 unlockOnFirstGesture(audio);
 const cues = createCuePlayer(audio);
+const music = createMusicPlayer(audio);
+const MUSIC_FADE_SECONDS = 1;
 if (import.meta.env.DEV) {
   // Lets you check from the console that sounds are playing (and cleaning up).
   (window as unknown as { __liveVoices: () => number }).__liveVoices = liveVoiceCount;
@@ -95,6 +98,7 @@ createSoundControls(element("#sound"), audioSettings, (settings) => {
 
 /** Starts playing: offline, or in a room on the game server. */
 function startSession(intent: Exclude<PageIntent, { mode: "menu" }>) {
+  music.fadeOut(MUSIC_FADE_SECONDS); // music is for the title and menus (for now)
   if (intent.mode === "offline") {
     session = createLocalSession(Date.now() >>> 0);
   } else {
@@ -129,9 +133,12 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has("soundtest")
   startSession({ mode: "join", room: intent.room, name: rememberedName() ?? "Player" });
 } else {
   // Direct room links and rejoins skip the intro; everyone else sees it before the menu.
-  showIntro(element("#intro"), () =>
-    showStartScreen(element("#start"), { room: intent.room, onChoose: startSession }),
-  );
+  // Dismissing the intro is the first gesture, so audio is unlocked by then.
+  showIntro(element("#intro"), () => {
+    void music.play("title");
+    showStartScreen(element("#start"), { room: intent.room, onChoose: startSession });
+    void music.play("menu"); // the same song carries on unless the manifest says otherwise
+  });
 }
 
 let lastFrame = performance.now();

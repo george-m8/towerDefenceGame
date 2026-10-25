@@ -14,6 +14,8 @@ export interface AudioEngine {
   /** The audio clock in seconds (0 before unlock). */
   now(): number;
   setVolumes(settings: AudioSettings): void;
+  /** Fades the music bus to silence over `seconds`, then restores its volume for next time. */
+  fadeOutMusic(seconds: number): void;
 }
 
 interface EngineDeps {
@@ -25,6 +27,9 @@ const defaultDeps: EngineDeps = {
   createContext: () => new AudioContext(),
   playVoice: webAudioVoice,
 };
+
+/** Pause after a fade before the music bus is turned back up. */
+const FADE_RESTORE_GAP = 0.05;
 
 export function createWebAudioEngine(deps: EngineDeps = defaultDeps): AudioEngine {
   let ctx: AudioContext | null = null;
@@ -82,6 +87,21 @@ export function createWebAudioEngine(deps: EngineDeps = defaultDeps): AudioEngin
     setVolumes(settings) {
       volumes = { ...settings };
       applyVolumes();
+    },
+
+    fadeOutMusic(seconds) {
+      if (!ctx || !buses) return;
+      try {
+        const gain = buses.music.gain;
+        const now = ctx.currentTime;
+        gain.cancelScheduledValues(now);
+        gain.setValueAtTime(gain.value, now);
+        gain.linearRampToValueAtTime(0, now + seconds);
+        // Notes already queued end within the fade; then the bus is ready for the next song.
+        gain.setValueAtTime(volumes?.music ?? 1, now + seconds + FADE_RESTORE_GAP);
+      } catch {
+        // No fade: the music just stops.
+      }
     },
   };
 }
