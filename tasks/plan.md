@@ -410,6 +410,14 @@ A start screen (name, Play solo, Create room, Join by code) and a waiting room w
 
 ---
 
+## Module 8: `enclosures` (in progress)
+
+Spec: [`SPEC-enclosures.md`](../SPEC-enclosures.md). Tasks: [`tasks/enclosures/todo.md`](enclosures/todo.md).
+
+Closing off an area with walls (and anything else impassable) claims it: it's shaded, and builds inside or on its walls cost 50% less in the keep's enclosure and 25% less elsewhere. Worked out from the grid alone (a flood fill from the spawn, cached by `gridVersion`), so server and clients agree with no protocol change. Refunds are based on the price paid.
+
+---
+
 ## Later modules: provisional outlines
 
 These are rough vertical slices, not tasks. Each becomes a proper task list after its spec is approved.

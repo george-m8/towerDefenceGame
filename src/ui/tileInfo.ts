@@ -1,8 +1,14 @@
-import { STRUCTURES, TREE_CLEAR_GOLD, type StructureStats } from "../sim/config";
+import {
+  ENCLOSURE_DISCOUNT,
+  STRUCTURES,
+  TREE_CLEAR_GOLD,
+  type StructureStats,
+} from "../sim/config";
 import { playerName } from "../sim/players";
+import { KEEP, OUTER, discountAt, enclosureAt, priceAt } from "../sim/enclosures";
 import { refundFor } from "../sim/economy";
 import { baseAt, inBounds, isKeepTile, isSpawnTile, mountAt, terrainAt, topAt } from "../sim/grid";
-import type { GameState, Point, Structure, Terrain } from "../sim/types";
+import type { GameState, Point, Structure, StructureKind, Terrain } from "../sim/types";
 
 const FACING_NAMES = { N: "north", E: "east", S: "south", W: "west" };
 
@@ -50,7 +56,33 @@ export function describeTile(state: GameState, p: Point): string[] {
     lines.push(`Enemy HP ${Math.ceil(enemy.hp)} / ${enemy.maxHp}`);
   }
   if (enemies.length > 3) lines.push(`...and ${enemies.length - 3} more`);
+  const enclosure = enclosureLine(state, p);
+  if (enclosure) lines.push(enclosure);
   return lines;
+}
+
+/** Which enclosure a tile is in (or walls), and its discount. */
+function enclosureLine(state: GameState, p: Point): string | null {
+  const kind = enclosureAt(state, p.x, p.y);
+  if (kind === KEEP)
+    return `Inside the keep's walls: builds ${percent(ENCLOSURE_DISCOUNT.keep)} off`;
+  if (kind === OUTER) return `Enclosed: builds ${percent(ENCLOSURE_DISCOUNT.outer)} off`;
+  return null;
+}
+
+/** What the selected build tool costs on this tile, e.g. "Wall here: 3g (50% off)". */
+export function priceLine(state: GameState, kind: StructureKind, p: Point): string {
+  const price = priceAt(state, kind, p.x, p.y);
+  const name = (STRUCTURES[kind] as StructureStats).name;
+  // Label with the enclosure's discount (rounding can make the gold saving look different).
+  const discount = discountAt(state, p.x, p.y);
+  return discount > 0
+    ? `${name} here: ${price}g (${percent(discount)} off)`
+    : `${name} here: ${price}g`;
+}
+
+function percent(fraction: number): string {
+  return `${Math.round(fraction * 100)}%`;
 }
 
 /** "Built by Bo", only in games with more than one player. */

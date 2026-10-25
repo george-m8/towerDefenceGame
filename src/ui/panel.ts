@@ -3,7 +3,8 @@ import { incomePerMinute } from "../sim/economy";
 import type { Command, GameState } from "../sim/types";
 import { ARROW_SYMBOLS, GLYPHS, glyphFor } from "../render/palette";
 import { TOOLS, isBuildTool, type UiState } from "./state";
-import { describeTile } from "./tileInfo";
+import { describeTile, priceLine } from "./tileInfo";
+import { priceAt } from "../sim/enclosures";
 import { hasVoted, voteLabel } from "./votes";
 
 export function createPanel(root: HTMLElement, ui: UiState, dispatch: (command: Command) => void) {
@@ -94,9 +95,17 @@ export function createPanel(root: HTMLElement, ui: UiState, dispatch: (command: 
           if (glyph.textContent !== arrow) glyph.textContent = arrow;
         }
         button.classList.toggle("selected", tool === ui.tool);
-        button.disabled = isBuildTool(tool) && player.gold < STRUCTURES[tool].cost;
+        // Affordable here, if hovering a tile (enclosures make some tiles cheaper).
+        const price = isBuildTool(tool)
+          ? ui.hover
+            ? priceAt(state, tool, ui.hover.x, ui.hover.y)
+            : STRUCTURES[tool].cost
+          : 0;
+        button.disabled = isBuildTool(tool) && player.gold < price;
       }
-      info.textContent = ui.hover ? describeTile(state, ui.hover).join("\n") : "";
+      const hoverLines = ui.hover ? describeTile(state, ui.hover) : [];
+      if (ui.hover && isBuildTool(ui.tool)) hoverLines.unshift(priceLine(state, ui.tool, ui.hover));
+      info.textContent = hoverLines.join("\n");
       if (performance.now() < ui.messageUntil) status.textContent = ui.message;
       else status.textContent = state.paused ? "PAUSED - press Space" : "";
     },

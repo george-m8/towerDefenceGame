@@ -1,4 +1,5 @@
-import { ENEMY, GRID_HEIGHT, GRID_WIDTH, KEEP_HP, STRUCTURES } from "./config";
+import { ENEMY, GRID_HEIGHT, GRID_WIDTH, KEEP_HP } from "./config";
+import { priceAt } from "./enclosures";
 import { spawnEnemy, updateEnemies } from "./enemies";
 import { EMPTY, KEEP_TILE, canBuild, placeStructure } from "./grid";
 import { awardBounties, claimChest, collectIncome, sellStructure } from "./economy";
@@ -100,8 +101,18 @@ export function applyCommand(
     case "build": {
       const check = canBuild(state, playerId, command.kind, command.x, command.y);
       if (!check.ok) return check;
-      player.gold -= STRUCTURES[command.kind].cost;
-      placeStructure(state, command.kind, command.x, command.y, command.facing, playerId);
+      // The price depends on the enclosure here before this build changes the grid.
+      const price = priceAt(state, command.kind, command.x, command.y);
+      player.gold -= price;
+      const built = placeStructure(
+        state,
+        command.kind,
+        command.x,
+        command.y,
+        command.facing,
+        playerId,
+      );
+      built.paid = price;
       claimChest(state, playerId, command.x, command.y);
       return { ok: true };
     }

@@ -18,6 +18,7 @@ import type { Facing, GameState, Point, Structure, StructureKind } from "../sim/
 import type { PendingBuild } from "../net/session";
 import { isBuildTool, type UiState } from "../ui/state";
 import { visibleTiles, type VisibleTiles } from "../ui/camera";
+import { KEEP, NONE, getEnclosures } from "../sim/enclosures";
 import {
   AIM_LINE_TILES,
   ARROWS,
@@ -128,6 +129,19 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     }
     const style = TERRAIN_STYLES[terrain];
     drawTile(x, y, style.bg, style.glyph, style.fg);
+  }
+
+  /** Shades enclosed areas and their walls: warm for the keep's enclosure, cool for others. */
+  function drawEnclosures(state: GameState) {
+    const { kind } = getEnclosures(state);
+    for (let y = view.y0; y <= view.y1; y++) {
+      for (let x = view.x0; x <= view.x1; x++) {
+        const k = kind[y * state.width + x];
+        if (k === NONE) continue;
+        ctx!.fillStyle = k === KEEP ? COLOURS.enclosureKeep : COLOURS.enclosureOuter;
+        ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      }
+    }
   }
 
   function drawFeatures(state: GameState) {
@@ -401,6 +415,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       ctx.textBaseline = "middle";
       view = visibleTiles(cam);
       drawGrid(state);
+      drawEnclosures(state);
       drawFeatures(state);
       if (ui.showFlow) drawFlow(state);
       drawEffects(state);
