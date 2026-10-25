@@ -24,6 +24,8 @@ export function bindInput(
   dispatch: (command: Command) => void,
   /** The game being shown, so clicks on a raised block's lifted top pick that block. */
   getState: () => GameState | null = () => null,
+  /** Window keys: J toggles the journal; escape() closes an open window and returns true if it did. */
+  keys?: { journal(): void; escape(): boolean },
 ) {
   let painting = false;
   let debugKind = 0;
@@ -95,8 +97,11 @@ export function bindInput(
       debugKind = (debugKind + 1) % ENEMY_KIND_ORDER.length;
     } else if (e.code === "KeyM" && import.meta.env.DEV) {
       dispatch({ type: "debugSpawn", count: STRESS_TEST_ENEMIES });
+    } else if (e.code === "KeyJ" && keys) {
+      keys.journal();
     } else if (e.code === "Escape") {
-      ui.tool = null;
+      // Closing a window comes first; otherwise Escape drops the current tool.
+      if (!keys?.escape()) ui.tool = null;
     } else {
       const def = TOOLS.find((t) => t.key === e.code);
       if (def) ui.tool = def.tool;

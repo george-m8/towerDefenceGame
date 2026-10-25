@@ -16,6 +16,8 @@ import { rememberedName, showStartScreen } from "./ui/startScreen";
 import { showIntro } from "./ui/intro";
 import { createWebAudioEngine, unlockOnFirstGesture } from "./audio/engine";
 import { loadAudioSettings, saveAudioSettings } from "./audio/settings";
+import { createJournalView } from "./ui/journalView";
+import { loadJournal, saveJournal } from "./ui/journal";
 import { createSoundControls } from "./ui/soundControls";
 import { createCuePlayer, soundForResult } from "./audio/cues";
 import { showSoundTest } from "./ui/soundTest";
@@ -79,12 +81,23 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-zoom]")
   });
 }
 
-const panel = createPanel(element("#panel"), ui, dispatch);
+const journal = loadJournal(deviceStorage());
+const journalView = createJournalView(element("#journal"), journal, () =>
+  saveJournal(deviceStorage(), journal),
+);
+const panel = createPanel(element("#panel"), ui, dispatch, () => journalView.toggle());
 const gameOver = createGameOverDialog(element("#game-over"), () => {
   session?.restart();
   ui.tool = null;
 });
-bindInput(canvas, ui, dispatch, () => session?.state ?? null);
+bindInput(canvas, ui, dispatch, () => session?.state ?? null, {
+  journal: () => journalView.toggle(),
+  escape: () => {
+    if (!journalView.isOpen) return false;
+    journalView.close();
+    return true;
+  },
+});
 
 // Sound: silent until the first click or key press (browsers require a gesture).
 const audio = createWebAudioEngine();
