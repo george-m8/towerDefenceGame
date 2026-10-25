@@ -24,6 +24,7 @@ export const TOOLS: ToolDef[] = [
   { tool: "wallSpikes", key: "Digit6", label: "6", paintable: true },
   { tool: "house", key: "Digit7", label: "7", paintable: false },
   { tool: "bridge", key: "Digit8", label: "8", paintable: true },
+  { tool: "watchtower", key: "Digit9", label: "9", paintable: false },
   { tool: "sell", key: "KeyX", label: "X", paintable: true },
 ];
 

@@ -7,6 +7,7 @@ import {
 import { playerName } from "../sim/players";
 import { KEEP, OUTER, discountAt, enclosureAt, priceAt } from "../sim/enclosures";
 import { refundFor } from "../sim/economy";
+import { IN_SIGHT, UNEXPLORED, isExplored, tierAt } from "../sim/fog";
 import { baseAt, inBounds, isKeepTile, isSpawnTile, mountAt, terrainAt, topAt } from "../sim/grid";
 import type { GameState, Point, Structure, StructureKind, Terrain } from "../sim/types";
 
@@ -24,6 +25,8 @@ const TERRAIN_DESCRIPTIONS: Record<Terrain, string> = {
 /** Human-readable lines describing what is on a tile, for the hover info box. */
 export function describeTile(state: GameState, p: Point): string[] {
   if (!inBounds(state, p.x, p.y)) return [];
+  const tier = tierAt(state, p.x, p.y);
+  if (tier === UNEXPLORED) return ["Unexplored"];
   const lines: string[] = [];
   const top = topAt(state, p.x, p.y);
 
@@ -51,13 +54,18 @@ export function describeTile(state: GameState, p: Point): string[] {
     }
   }
 
-  const enemies = state.enemies.filter((e) => Math.round(e.x) === p.x && Math.round(e.y) === p.y);
+  // Out of sight, enemies aren't shown here either.
+  const enemies =
+    tier === IN_SIGHT
+      ? state.enemies.filter((e) => Math.round(e.x) === p.x && Math.round(e.y) === p.y)
+      : [];
   for (const enemy of enemies.slice(0, 3)) {
     lines.push(`Enemy HP ${Math.ceil(enemy.hp)} / ${enemy.maxHp}`);
   }
   if (enemies.length > 3) lines.push(`...and ${enemies.length - 3} more`);
   const enclosure = enclosureLine(state, p);
   if (enclosure) lines.push(enclosure);
+  if (tier !== IN_SIGHT) lines.push("Out of sight: enemies here aren't shown");
   return lines;
 }
 
@@ -72,8 +80,9 @@ function enclosureLine(state: GameState, p: Point): string | null {
 
 /** What the selected build tool costs on this tile, e.g. "Wall here: 3g (50% off)". */
 export function priceLine(state: GameState, kind: StructureKind, p: Point): string {
-  const price = priceAt(state, kind, p.x, p.y);
   const name = (STRUCTURES[kind] as StructureStats).name;
+  if (!isExplored(state, p.x, p.y)) return `${name}: can't build on unexplored land`;
+  const price = priceAt(state, kind, p.x, p.y);
   // Label with the enclosure's discount (rounding can make the gold saving look different).
   const discount = discountAt(state, p.x, p.y);
   return discount > 0
@@ -111,5 +120,6 @@ function describeStructure(structure: Structure, placement?: string): string[] {
   }
   if (stats.trap) lines.push(`${stats.trap.damage} dmg / ${stats.trap.fireIntervalSeconds}s`);
   if (stats.income) lines.push(`+${stats.income.gold}g / ${stats.income.intervalSeconds}s`);
+  if (stats.sight) lines.push(`Sees ${stats.sight.inner} (land ${stats.sight.outer})`);
   return lines;
 }

@@ -26,14 +26,14 @@ const B = 2;
 
 describe("players", () => {
   it("a new game has one player with the starting gold", () => {
-    const state = createGame(1, { blankMap: true });
+    const state = createGame(1, { blankMap: true, fog: false });
     expect(Object.keys(state.players)).toEqual(["1"]);
     expect(playerName(state, 1)).toBe("Player 1");
     expect(goldOf(state, 1)).toBe(STARTING_GOLD);
   });
 
   it("can start with named players", () => {
-    const state = createGame(1, { blankMap: true, players: ["Ann", "Bo"] });
+    const state = createGame(1, { blankMap: true, fog: false, players: ["Ann", "Bo"] });
     expect(playerName(state, 1)).toBe("Ann");
     expect(playerName(state, 2)).toBe("Bo");
     expect(goldOf(state, 2)).toBe(STARTING_GOLD);
@@ -125,7 +125,7 @@ describe("separate gold", () => {
   });
 
   it("the early-send bonus goes to whoever sent the wave", () => {
-    const state = createGame(1, { blankMap: true });
+    const state = createGame(1, { blankMap: true, fog: false });
     addPlayer(state, "B");
     for (let i = 0; i < TICK_RATE * 5 + 7; i++) tick(state); // 14.65s left
     expect(applyCommand(state, B, { type: "sendWave" })).toEqual({ ok: true });
@@ -282,6 +282,6 @@ describe("multiplayer determinism", () => {
 
 describe("no players", () => {
   it("a game created without players is paused", () => {
-    expect(createGame(1, { blankMap: true, players: [] }).paused).toBe(true);
+    expect(createGame(1, { blankMap: true, fog: false, players: [] }).paused).toBe(true);
   });
 });

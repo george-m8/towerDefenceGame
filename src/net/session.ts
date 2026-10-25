@@ -45,8 +45,10 @@ const LOCAL_PLAYER = 1;
 export function createLocalSession(
   seed: number,
   newSeed: () => number = () => Date.now() >>> 0,
+  /** `fog: false` is the ?fog=off dev switch. */
+  options: { fog?: boolean } = {},
 ): Session {
-  let state = createGame(seed);
+  let state = createGame(seed, options);
   let lastTime: number | null = null;
   let accumulator = 0;
 
@@ -63,7 +65,7 @@ export function createLocalSession(
       this.onResult(applyCommand(state, LOCAL_PLAYER, command));
     },
     restart() {
-      state = createGame(newSeed());
+      state = createGame(newSeed(), options);
       accumulator = 0;
     },
     frame(now) {

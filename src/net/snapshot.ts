@@ -27,12 +27,14 @@ export function toUpdate(state: GameState, lastGridVersion: number): StateUpdate
     paused: state.paused,
     speed: state.speed,
     gameOver: state.gameOver,
+    fog: state.fog,
   };
   if (state.gridVersion !== lastGridVersion) {
     update.terrain = state.terrain;
     update.base = state.base;
     update.mount = state.mount;
     update.features = state.features;
+    update.explored = state.explored;
   }
   return update;
 }

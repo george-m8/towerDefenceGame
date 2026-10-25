@@ -27,6 +27,8 @@ export interface Room {
   emptyMs: number;
   /** False while in the waiting room: no ticks, no commands, until the host starts. */
   started: boolean;
+  /** Fog of war, as the host started the game with; restarts keep it. */
+  fog: boolean;
 }
 
 export type JoinResult =
@@ -45,6 +47,7 @@ export function createRoom(code: string, seed: number, send: SendFn): Room {
     sentGridVersion: state.gridVersion,
     emptyMs: 0,
     started: false,
+    fog: true,
   };
 }
 
@@ -54,11 +57,16 @@ export function hostOf(room: Room): PlayerId | null {
   return connected.length > 0 ? Math.min(...connected.map((p) => p.id)) : null;
 }
 
-/** The host leaves the waiting room and starts the game for everyone. Starting twice does nothing. */
-export function startRoom(room: Room, playerId: PlayerId): CommandResult {
+/**
+ * The host leaves the waiting room and starts the game for everyone, with fog of war unless
+ * `fog` is false (the dev switch). Starting twice does nothing.
+ */
+export function startRoom(room: Room, playerId: PlayerId, fog = true): CommandResult {
   if (room.started) return { ok: true };
   if (playerId !== hostOf(room)) return { ok: false, reason: "Only the host can start" };
   room.started = true;
+  room.fog = fog;
+  room.state.fog = fog;
   room.accumulatorMs = 0;
   broadcastUpdate(room);
   return { ok: true };
@@ -153,7 +161,7 @@ export function advanceRoom(room: Room, elapsedMs: number): void {
 export function restartRoom(room: Room, seed: number): CommandResult {
   const old = room.state;
   if (!old.gameOver) return { ok: false, reason: "The game isn't over" };
-  const state = createGame(seed, { players: [] });
+  const state = createGame(seed, { players: [], fog: room.fog });
   for (const player of Object.values(old.players)) {
     state.players[player.id] = {
       ...player,

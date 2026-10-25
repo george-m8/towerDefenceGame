@@ -38,7 +38,7 @@ describe("fromClientState", () => {
   });
 
   it("fills enemy and structure fields the server leaves out", () => {
-    const server = createGame(4, { blankMap: true });
+    const server = createGame(4, { blankMap: true, fog: false });
     spawnEnemy(server, 0, 12);
     applyCommand(server, 1, { type: "build", kind: "archer", x: 10, y: 10 });
     const view = fromClientState(overTheWire(toClientState(server)));
@@ -50,7 +50,7 @@ describe("fromClientState", () => {
 
 describe("applyUpdate", () => {
   it("copies the dynamic fields, and the grid only when the update carries it", () => {
-    const server = createGame(4, { blankMap: true });
+    const server = createGame(4, { blankMap: true, fog: false });
     const view = fromClientState(overTheWire(toClientState(server)));
     const before = server.gridVersion;
 
@@ -113,7 +113,7 @@ describe("interpolationFraction", () => {
 
 describe("sound cues over the network", () => {
   it("travel in updates and land in the client's state", () => {
-    const server = createGame(1, { blankMap: true });
+    const server = createGame(1, { blankMap: true, fog: false });
     const view = fromClientState(overTheWire(toClientState(server)));
     applyCommand(server, 1, { type: "sendWave" });
     applyUpdate(view, overTheWire(toUpdate(server, server.gridVersion)));

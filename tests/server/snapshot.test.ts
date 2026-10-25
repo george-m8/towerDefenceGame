@@ -22,7 +22,7 @@ describe("toClientState", () => {
   });
 
   it("rounds enemy positions to 2 decimals", () => {
-    const state = createGame(3, { blankMap: true });
+    const state = createGame(3, { blankMap: true, fog: false });
     const enemy = spawnEnemy(state, 0, 12);
     enemy.x = 3.14159;
     expect(toClientState(state).enemies[0]).toMatchObject({ x: 3.14, y: 12 });
@@ -44,7 +44,7 @@ describe("toClientState", () => {
 
 describe("toUpdate", () => {
   it("includes the grid only when it changed since the last update", () => {
-    const state = createGame(3, { blankMap: true });
+    const state = createGame(3, { blankMap: true, fog: false });
     const quiet = toUpdate(state, state.gridVersion);
     expect(quiet).not.toHaveProperty("terrain");
     expect(quiet).not.toHaveProperty("base");
@@ -62,7 +62,7 @@ describe("toUpdate", () => {
   });
 
   it("stays under 30 KB with 200 enemies and 150 structures", () => {
-    const state = createGame(5, { blankMap: true });
+    const state = createGame(5, { blankMap: true, fog: false });
     let built = 0;
     for (let y = 0; y < state.height && built < 150; y += 2) {
       for (let x = 4; x < state.width - 4 && built < 150; x += 3) {

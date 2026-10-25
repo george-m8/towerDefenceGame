@@ -3,7 +3,7 @@ import { createRenderer } from "./render/canvas";
 import { centerOn, panBy, setViewport, tilePixels, zoomBy } from "./ui/camera";
 import { ZOOM_STEP } from "./ui/input";
 import { createMinimap } from "./ui/minimap";
-import { readJoinIntent, serverUrl, tokenKey, type PageIntent } from "./net/join";
+import { fogFromUrl, readJoinIntent, serverUrl, tokenKey, type PageIntent } from "./net/join";
 import { createNetworkSession, type NetworkDeps } from "./net/networkSession";
 import { createLocalSession, type Session } from "./net/session";
 import { createPanel } from "./ui/panel";
@@ -28,6 +28,8 @@ const element = <T extends HTMLElement>(selector: string) => document.querySelec
 
 const ui = createUiState();
 const storage = tabStorage();
+/** Read once at load: the address bar loses the flag when a room code replaces it. */
+const fog = fogFromUrl(location.search);
 let session: Session | null = null;
 /** Online-only parts of the page, updated every frame. */
 const onlineViews: { update(state: GameState | null): void }[] = [];
@@ -100,13 +102,18 @@ createSoundControls(element("#sound"), audioSettings, (settings) => {
 function startSession(intent: Exclude<PageIntent, { mode: "menu" }>) {
   music.fadeOut(MUSIC_FADE_SECONDS); // music is for the title and menus (for now)
   if (intent.mode === "offline") {
-    session = createLocalSession(Date.now() >>> 0);
+    session = createLocalSession(Date.now() >>> 0, undefined, { fog });
   } else {
-    const network = createNetworkSession(serverUrl(location), intent, {
-      WebSocket: WebSocket as unknown as NetworkDeps["WebSocket"],
-      storage,
-      now: () => performance.now(),
-    });
+    const network = createNetworkSession(
+      serverUrl(location),
+      intent,
+      {
+        WebSocket: WebSocket as unknown as NetworkDeps["WebSocket"],
+        storage,
+        now: () => performance.now(),
+      },
+      { fog },
+    );
     // Keep the address shareable and reloadable: ?room=CODE (reloading rejoins with the token).
     network.onWelcome = (room) => history.replaceState(null, "", `?room=${room}`);
     network.onError = (reason) => showNotice(element("#notice"), reason);

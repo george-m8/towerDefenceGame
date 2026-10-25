@@ -50,6 +50,8 @@ export function createNetworkSession(
   url: string,
   intent: JoinIntent,
   deps: NetworkDeps,
+  /** `fog: false` (the ?fog=off dev switch) starts the game without fog, if we're the host. */
+  options: { fog?: boolean } = {},
 ): NetworkSession {
   let socket: WebSocketLike | null = null;
   let view: GameState | null = null;
@@ -83,7 +85,7 @@ export function createNetworkSession(
       return lobby;
     },
     start() {
-      send({ type: "start" });
+      send(options.fog === false ? { type: "start", fog: false } : { type: "start" });
     },
     online: true,
     get status() {

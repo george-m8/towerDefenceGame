@@ -96,7 +96,7 @@ export function handleConnection(hub: Hub, socket: WebSocket): void {
         return;
       case "start": {
         if (!seat) return send({ type: "error", reason: "Join a room first" });
-        const result = startRoom(seat.room, seat.playerId);
+        const result = startRoom(seat.room, seat.playerId, message.fog !== false);
         if (!result.ok) send({ type: "error", reason: result.reason });
         return;
       }

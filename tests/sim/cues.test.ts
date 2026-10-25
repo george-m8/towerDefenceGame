@@ -82,7 +82,7 @@ describe("cues from the game", () => {
 
   it("the same seed and commands give the same cues", () => {
     const play = () => {
-      const s = createGame(7, { blankMap: true });
+      const s = createGame(7, { blankMap: true, fog: false });
       applyCommand(s, 1, { type: "sendWave" });
       run(s, 200);
       return s.cues;

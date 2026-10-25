@@ -6,7 +6,7 @@ import { describeTile } from "../../src/ui/tileInfo";
 
 describe("vote labels", () => {
   it("are plain with one player and show the count with more", () => {
-    const state = createGame(1, { blankMap: true });
+    const state = createGame(1, { blankMap: true, fog: false });
     expect(voteLabel(state, "pause", "Pause")).toBe("Pause");
     addPlayer(state, "Bo");
     applyCommand(state, 2, { type: "togglePause" });
@@ -16,7 +16,7 @@ describe("vote labels", () => {
   });
 
   it("count only connected players", () => {
-    const state = createGame(1, { blankMap: true, players: ["Ann", "Bo", "Cy"] });
+    const state = createGame(1, { blankMap: true, fog: false, players: ["Ann", "Bo", "Cy"] });
     applyCommand(state, 1, { type: "toggleFastForward" });
     setConnected(state, 3, false);
     expect(voteCount(state, "fastForward")).toEqual({ votes: 1, of: 2 });
@@ -25,11 +25,11 @@ describe("vote labels", () => {
 
 describe("Built by", () => {
   it("names the owner in multiplayer, and says nothing in single-player", () => {
-    const solo = createGame(1, { blankMap: true });
+    const solo = createGame(1, { blankMap: true, fog: false });
     applyCommand(solo, 1, { type: "build", kind: "wall", x: 5, y: 5 });
     expect(describeTile(solo, { x: 5, y: 5 }).join("\n")).not.toContain("Built by");
 
-    const duo = createGame(1, { blankMap: true, players: ["Ann", "Bo"] });
+    const duo = createGame(1, { blankMap: true, fog: false, players: ["Ann", "Bo"] });
     applyCommand(duo, 2, { type: "build", kind: "wall", x: 5, y: 5 });
     applyCommand(duo, 2, { type: "build", kind: "archer", x: 5, y: 5 });
     const lines = describeTile(duo, { x: 5, y: 5 });

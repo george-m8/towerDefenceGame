@@ -1,10 +1,16 @@
-// The minimap: the whole map in miniature, with enemies and the current view. Click or drag
-// on it to move the view there.
+// The minimap: the whole map in miniature, with enemies and the current view, through the
+// same fog of war as the map. Click or drag on it to move the view there.
 import type { GameState } from "../sim/types";
 import { baseAt, isKeepTile, isSpawnTile, mountAt, terrainAt } from "../sim/grid";
-import { COLOURS, STRUCTURE_COLOURS, TERRAIN_STYLES } from "../render/palette";
+import {
+  COLOURS,
+  MINIMAP_SEEN_BRIGHTNESS,
+  STRUCTURE_COLOURS,
+  TERRAIN_STYLES,
+} from "../render/palette";
 import { centerOn, tilePixels } from "./camera";
 import { KEEP, NONE, getEnclosures } from "../sim/enclosures";
+import { SEEN, UNEXPLORED, canSeeEnemiesAt, getSight, isExplored } from "../sim/fog";
 import type { UiState } from "./state";
 
 /** The largest the minimap may be, in CSS pixels (it fits the panel). */
@@ -52,21 +58,23 @@ export function createMinimap(canvas: HTMLCanvasElement, ui: UiState) {
 
   function rebuildImage(s: GameState) {
     const { kind } = getEnclosures(s);
+    const sight = getSight(s);
     terrainImage = ctx.createImageData(s.width * scale, s.height * scale);
     const data = terrainImage.data;
     const rgbCache = new Map<string, [number, number, number]>();
     for (let y = 0; y < s.height; y++) {
       for (let x = 0; x < s.width; x++) {
-        const hex = tinted(minimapColour(s, x, y), kind[y * s.width + x]);
+        const i = y * s.width + x;
+        const hex = fogged(tinted(minimapColour(s, x, y), kind[i]), sight[i]);
         let rgb = rgbCache.get(hex);
         if (!rgb) rgbCache.set(hex, (rgb = hexToRgb(hex)));
         for (let py = 0; py < scale; py++) {
           for (let px = 0; px < scale; px++) {
-            const i = ((y * scale + py) * s.width * scale + (x * scale + px)) * 4;
-            data[i] = rgb[0];
-            data[i + 1] = rgb[1];
-            data[i + 2] = rgb[2];
-            data[i + 3] = 255;
+            const p = ((y * scale + py) * s.width * scale + (x * scale + px)) * 4;
+            data[p] = rgb[0];
+            data[p + 1] = rgb[1];
+            data[p + 2] = rgb[2];
+            data[p + 3] = 255;
           }
         }
       }
@@ -86,7 +94,7 @@ export function createMinimap(canvas: HTMLCanvasElement, ui: UiState) {
         canvas.width = width;
         canvas.height = height;
       }
-      const key = `${current.seed}:${current.gridVersion}:${current.width}x${current.height}:${scale}`;
+      const key = `${current.seed}:${current.gridVersion}:${current.fog}:${current.width}x${current.height}:${scale}`;
       if (key !== imageKey) {
         rebuildImage(current);
         imageKey = key;
@@ -95,10 +103,13 @@ export function createMinimap(canvas: HTMLCanvasElement, ui: UiState) {
 
       // Chests, then enemies, as bright dots.
       ctx.fillStyle = COLOURS.chest;
-      for (const f of current.features) ctx.fillRect(f.x * scale, f.y * scale, scale, scale);
+      for (const f of current.features) {
+        if (isExplored(current, f.x, f.y)) ctx.fillRect(f.x * scale, f.y * scale, scale, scale);
+      }
       ctx.fillStyle = COLOURS.enemy;
       for (const e of current.enemies) {
-        ctx.fillRect(Math.round(e.x) * scale, Math.round(e.y) * scale, scale, scale);
+        if (canSeeEnemiesAt(current, e.x, e.y))
+          ctx.fillRect(Math.round(e.x) * scale, Math.round(e.y) * scale, scale, scale);
       }
 
       // The view, as an outline.
@@ -123,6 +134,14 @@ function tinted(hex: string, kind: number): string {
   const base = hexToRgb(hex);
   const mix = base.map((c, i) => Math.round(c * (1 - MINIMAP_TINT) + tint[i] * MINIMAP_TINT));
   return `#${mix.map((c) => c.toString(16).padStart(2, "0")).join("")}`;
+}
+
+/** Fog of war on the minimap: unexplored is dark, seen is dimmed, in sight as it is. */
+export function fogged(hex: string, tier: number): string {
+  if (tier === UNEXPLORED) return COLOURS.fogUnexplored;
+  if (tier !== SEEN) return hex;
+  const dim = hexToRgb(hex).map((c) => Math.round(c * MINIMAP_SEEN_BRIGHTNESS));
+  return `#${dim.map((c) => c.toString(16).padStart(2, "0")).join("")}`;
 }
 
 /** How strongly an enclosure tints the minimap. */

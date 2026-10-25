@@ -60,7 +60,20 @@ export interface StructureStats {
   buildable?: boolean;
   /** Gold when sold at full HP, instead of the usual share of cost. */
   salvageGold?: number;
+  /** How far it lets players see (fog of war). Towers see in the shape of their arc. */
+  sight?: SightStats;
 }
+
+/** Sight radii in tiles, centre to centre: enemies are visible within `inner`, land within `outer`. */
+export interface SightStats {
+  inner: number;
+  outer: number;
+}
+
+/** The keep sees furthest, measured from its nearest tile. */
+export const KEEP_SIGHT: SightStats = { inner: 12, outer: 18 };
+/** Every tower also sees all round this close, so it can see what's attacking it from behind. */
+export const SIGHT_CLOSE_RADIUS = 1.5;
 
 export const STRUCTURES = {
   wall: {
@@ -70,6 +83,7 @@ export const STRUCTURES = {
     cost: 5,
     maxHp: 50,
     blocksMovement: true,
+    sight: { inner: 1, outer: 1.5 },
   },
   archer: {
     name: "Archer",
@@ -86,6 +100,7 @@ export const STRUCTURES = {
       arcDegrees: 90, // fixed, firing through a slit
       turnDegreesPerSecond: 0,
     },
+    sight: { inner: 6, outer: 10 },
   },
   cannon: {
     name: "Cannon",
@@ -102,6 +117,7 @@ export const STRUCTURES = {
       arcDegrees: 360,
       turnDegreesPerSecond: 90,
     },
+    sight: { inner: 5, outer: 9 },
   },
   catapult: {
     name: "Catapult",
@@ -118,6 +134,7 @@ export const STRUCTURES = {
       arcDegrees: 360,
       turnDegreesPerSecond: 30, // very slow to swing round
     },
+    sight: { inner: 10, outer: 14 },
   },
   floorSpikes: {
     name: "Floor spikes",
@@ -126,6 +143,7 @@ export const STRUCTURES = {
     maxHp: 0, // walkable and never attacked
     blocksMovement: false,
     trap: { damage: 15, fireIntervalSeconds: 1.5 },
+    sight: { inner: 2, outer: 4 },
   },
   wallSpikes: {
     name: "Wall spikes",
@@ -135,6 +153,7 @@ export const STRUCTURES = {
     blocksMovement: true,
     directional: true,
     trap: { damage: 20, fireIntervalSeconds: 2 },
+    sight: { inner: 2, outer: 4 },
   },
   house: {
     name: "House",
@@ -143,6 +162,7 @@ export const STRUCTURES = {
     maxHp: 30,
     blocksMovement: true,
     income: { gold: 2, intervalSeconds: 5 },
+    sight: { inner: 3, outer: 6 },
   },
   bridge: {
     name: "Bridge",
@@ -151,6 +171,15 @@ export const STRUCTURES = {
     maxHp: 0, // walkable and never attacked
     blocksMovement: false,
     spansWater: true,
+    sight: { inner: 2, outer: 4 },
+  },
+  watchtower: {
+    name: "Watchtower",
+    layer: "mount",
+    cost: 20,
+    maxHp: 30,
+    blocksMovement: true,
+    sight: { inner: 5, outer: 9 }, // as far as a cannon, all round; never fires
   },
   ruin: {
     name: "Ruin",

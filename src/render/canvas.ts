@@ -20,6 +20,14 @@ import { isBuildTool, type UiState } from "../ui/state";
 import { visibleTiles, type VisibleTiles } from "../ui/camera";
 import { KEEP, NONE, getEnclosures } from "../sim/enclosures";
 import {
+  IN_SIGHT,
+  SEEN,
+  UNEXPLORED,
+  canSeeEnemiesAt,
+  forEachSightTile,
+  getSight,
+} from "../sim/fog";
+import {
   AIM_LINE_TILES,
   ARROWS,
   ARROW_SYMBOLS,
@@ -144,6 +152,22 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     }
   }
 
+  /**
+   * Fog of war, over everything drawn so far: seen land gets a dark wash, unexplored land is
+   * covered. Enemies and effects out of sight are left out before this, not covered by it.
+   */
+  function drawFog(state: GameState) {
+    const tier = getSight(state);
+    for (let y = view.y0; y <= view.y1; y++) {
+      for (let x = view.x0; x <= view.x1; x++) {
+        const t = tier[y * state.width + x];
+        if (t === IN_SIGHT) continue;
+        ctx!.fillStyle = t === UNEXPLORED ? COLOURS.fogUnexplored : COLOURS.fogSeen;
+        ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      }
+    }
+  }
+
   function drawFeatures(state: GameState) {
     for (const feature of state.features) {
       if (feature.kind === "chest") drawGlyph(feature.x, feature.y, "$", COLOURS.chest);
@@ -262,9 +286,13 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     const kind: StructureKind | undefined = placing ?? hovered?.kind;
     if (!kind) return;
     const stats: StructureStats = STRUCTURES[kind];
-    if (!stats.tower) return;
     const centre: Point = placing ? ui.hover : { x: hovered!.x, y: hovered!.y };
     const facing = placing ? ui.facing : hovered!.facing;
+    if (!stats.tower) {
+      // A mount that doesn't fire (a watchtower) shows how far it sees instead.
+      if (stats.layer === "mount") drawSight(state, { kind, ...centre });
+      return;
+    }
     const tower = stats.tower;
     const { range } = tower;
 
@@ -279,6 +307,16 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     }
     drawRangeOutline(centre, tower, facing);
     if (!placing && hovered!.aim !== undefined) drawAimLine(centre, hovered!.aim);
+  }
+
+  /** Tiles a structure sees: brighter where it sees enemies, fainter where it sees land. */
+  function drawSight(state: GameState, viewer: { kind: StructureKind; x: number; y: number }) {
+    forEachSightTile(state, viewer, (i, tier) => {
+      ctx!.fillStyle = tier === SEEN ? COLOURS.sightOuter : COLOURS.sightInner;
+      const x = i % state.width;
+      const y = Math.floor(i / state.width);
+      ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    });
   }
 
   /** A circle for all-round towers, a wedge for fixed ones. */
@@ -340,6 +378,8 @@ export function createRenderer(canvas: HTMLCanvasElement) {
 
   function drawEffects(state: GameState) {
     for (const effect of state.effects) {
+      const lands = effect.kind === "shot" ? { x: effect.toX, y: effect.toY } : effect;
+      if (!canSeeEnemiesAt(state, lands.x, lands.y)) continue;
       if (effect.kind === "shot") {
         ctx!.strokeStyle = COLOURS.shot;
         ctx!.lineWidth = 2;
@@ -378,6 +418,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
 
   function drawEnemies(state: GameState) {
     for (const enemy of state.enemies) {
+      if (!canSeeEnemiesAt(state, enemy.x, enemy.y)) continue;
       drawGlyph(enemy.x, enemy.y, "g", COLOURS.enemy);
       if (enemy.hp < enemy.maxHp) drawHpBar(enemy.x, enemy.y, enemy.hp / enemy.maxHp);
     }
@@ -420,6 +461,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       if (ui.showFlow) drawFlow(state);
       drawEffects(state);
       drawEnemies(state);
+      drawFog(state);
       drawPending(pending);
       drawRange(state, ui);
       drawGhost(state, ui);

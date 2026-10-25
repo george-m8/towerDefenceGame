@@ -1,6 +1,7 @@
 import { SELL_REFUND, STRUCTURES, TICK_RATE, TREE_CLEAR_GOLD, type StructureStats } from "./config";
 import { enemyOccupies, isKeepTile, removeStructure, setTerrain, terrainAt, topAt } from "./grid";
 import { addCue } from "./cues";
+import { isExplored } from "./fog";
 import { addGold, playerName } from "./players";
 import type { CommandResult, GameState, PlayerId, Structure } from "./types";
 
@@ -42,6 +43,7 @@ export function sellStructure(
 ): CommandResult {
   if (state.gameOver) return { ok: false, reason: "Game over" };
   if (isKeepTile(state, x, y)) return { ok: false, reason: "Can't sell the keep" };
+  if (!isExplored(state, x, y)) return { ok: false, reason: "Can't sell on unexplored land" };
   const structure = topAt(state, x, y);
   if (!structure) return clearTerrain(state, player, x, y);
   if (structure.owner !== null && structure.owner !== player) {

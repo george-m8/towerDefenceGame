@@ -20,7 +20,7 @@ export function ring(x0: number, y0: number, x1: number, y1: number): Point[] {
  * path, for testing other systems in isolation.
  */
 export function createGameWithoutWaves(seed = 1): GameState {
-  const state = createGame(seed, { blankMap: true });
+  const state = createGame(seed, { blankMap: true, fog: false });
   state.wave.countdown = Infinity;
   state.wanderChance = 0;
   return state;
