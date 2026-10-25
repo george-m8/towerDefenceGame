@@ -21,6 +21,9 @@ export const COLOURS = {
   /** Enclosed areas and their walls: warm for the keep's enclosure, cool for others. */
   enclosureKeep: "rgba(255, 196, 60, 0.22)",
   enclosureOuter: "rgba(120, 200, 255, 0.16)",
+  /** PvP: the rival's enclosures, where you can't build. */
+  enclosureRival: "rgba(255, 70, 70, 0.2)",
+  enclosureRivalTint: "#ff4646",
   /** The same tints as solid colours, blended into the minimap. */
   enclosureKeepTint: "#ffc43c",
   enclosureOuterTint: "#78c8ff",

@@ -1,6 +1,6 @@
 // All rooms on this server, by code.
 import { randomInt } from "node:crypto";
-import type { PlayerId } from "../src/sim/types";
+import type { GameMode, PlayerId } from "../src/sim/types";
 import { ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, type ServerMessage } from "../src/net/protocol";
 import { EMPTY_ROOM_TTL_MS } from "./config";
 import { advanceRoom, createRoom, type Room } from "./room";
@@ -18,12 +18,15 @@ export function createRegistry(deliver: DeliverFn): Registry {
 }
 
 /** A new room with an unused code and a random seed. */
-export function openRoom(registry: Registry): Room {
+export function openRoom(registry: Registry, mode: GameMode = "endless"): Room {
   let code: string;
   do code = randomCode();
   while (registry.rooms.has(code));
-  const room = createRoom(code, randomSeed(), (playerId, message) =>
-    registry.deliver(code, playerId, message),
+  const room = createRoom(
+    code,
+    randomSeed(),
+    (playerId, message) => registry.deliver(code, playerId, message),
+    mode,
   );
   registry.rooms.set(code, room);
   return room;

@@ -23,7 +23,7 @@ describe("createGame", () => {
   });
 
   it("places a 3x3 keep at the centre with full HP", () => {
-    const { keep } = state;
+    const keep = state.keeps[0];
     expect(keep.size).toBe(KEEP_SIZE);
     expect(keep.hp).toBe(KEEP_HP);
     const cx = Math.floor(GRID_WIDTH / 2);

@@ -13,8 +13,8 @@ export function createPanel(root: HTMLElement, ui: UiState, dispatch: (command: 
       <dt>Gold</dt><dd data-stat="gold"></dd>
       <dt>Income</dt><dd data-stat="income"></dd>
       <dt>Keep</dt><dd data-stat="keep"></dd>
-      <dt>Wave</dt><dd data-stat="wave"></dd>
-      <dt>Next</dt><dd data-stat="next"></dd>
+      <dt data-label="wave">Wave</dt><dd data-stat="wave"></dd>
+      <dt data-label="next">Next</dt><dd data-stat="next"></dd>
       <dt>Seed</dt><dd data-stat="seed"></dd>
     </dl>
     <div class="actions">
@@ -46,6 +46,8 @@ export function createPanel(root: HTMLElement, ui: UiState, dispatch: (command: 
   const wave = field("wave");
   const next = field("next");
   const seed = field("seed");
+  const waveLabel = root.querySelector<HTMLElement>('[data-label="wave"]')!;
+  const nextLabel = root.querySelector<HTMLElement>('[data-label="next"]')!;
   const status = field("status");
   const info = field("info");
   const sendWaveButton = root.querySelector<HTMLButtonElement>('[data-action="sendWave"]')!;
@@ -72,12 +74,24 @@ export function createPanel(root: HTMLElement, ui: UiState, dispatch: (command: 
       const player = state.players[ui.playerId];
       gold.textContent = String(player.gold);
       income.textContent = `+${incomePerMinute(state, ui.playerId)}/min`;
-      keep.textContent = `${state.keep.hp} / ${state.keep.maxHp}`;
-      wave.textContent = String(state.wave.number);
+      const mine = state.keeps.find((k) => k.owner === ui.playerId) ?? state.keeps[0];
+      keep.textContent = `${mine.hp} / ${mine.maxHp}`;
       seed.textContent = String(state.seed);
       const spawning = state.wave.toSpawn > 0;
-      next.textContent = spawning ? "incoming!" : `${Math.ceil(state.wave.countdown / TICK_RATE)}s`;
-      sendWaveButton.disabled = spawning || state.gameOver;
+      if (state.mode === "pvp") {
+        // No waves: show the rival's keep instead.
+        const rival = state.keeps.find((k) => k !== mine);
+        waveLabel.textContent = "Rival";
+        wave.textContent = rival ? `${rival.hp} / ${rival.maxHp}` : "-";
+        nextLabel.textContent = "Mode";
+        next.textContent = "PvP";
+      } else {
+        wave.textContent = String(state.wave.number);
+        next.textContent = spawning
+          ? "incoming!"
+          : `${Math.ceil(state.wave.countdown / TICK_RATE)}s`;
+      }
+      sendWaveButton.disabled = spawning || state.gameOver || state.mode === "pvp";
       // With several players these are votes: show yours, and how many have voted.
       pauseButton.textContent = state.paused ? "Resume" : voteLabel(state, "pause", "Pause");
       pauseButton.classList.toggle(
@@ -98,13 +112,15 @@ export function createPanel(root: HTMLElement, ui: UiState, dispatch: (command: 
         // Affordable here, if hovering a tile (enclosures make some tiles cheaper).
         const price = isBuildTool(tool)
           ? ui.hover
-            ? priceAt(state, tool, ui.hover.x, ui.hover.y)
+            ? priceAt(state, tool, ui.hover.x, ui.hover.y, ui.playerId)
             : STRUCTURES[tool].cost
           : 0;
         button.disabled = isBuildTool(tool) && player.gold < price;
       }
-      const hoverLines = ui.hover ? describeTile(state, ui.hover) : [];
-      if (ui.hover && isBuildTool(ui.tool)) hoverLines.unshift(priceLine(state, ui.tool, ui.hover));
+      const hoverLines = ui.hover ? describeTile(state, ui.hover, ui.playerId) : [];
+      if (ui.hover && isBuildTool(ui.tool)) {
+        hoverLines.unshift(priceLine(state, ui.tool, ui.hover, ui.playerId));
+      }
       info.textContent = hoverLines.join("\n");
       if (performance.now() < ui.messageUntil) status.textContent = ui.message;
       else status.textContent = state.paused ? "PAUSED - press Space" : "";

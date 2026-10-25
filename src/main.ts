@@ -111,6 +111,7 @@ if (import.meta.env.DEV) {
   (window as unknown as { __liveVoices: () => number }).__liveVoices = liveVoiceCount;
   // Lets a test script reach into the game (e.g. place enemies for a visual check).
   (window as unknown as { __state: () => GameState | null }).__state = () => session?.state ?? null;
+  (window as unknown as { __ui: typeof ui }).__ui = ui;
 }
 const soundControls = createSoundControls(
   element("#sound"),
@@ -202,17 +203,21 @@ function frame(now: number) {
     if (state) {
       fitCanvas(state.width, state.height);
       // A new map (first game, restart, or joining a room): start looking at the keep.
-      const mapKey = `${state.seed}:${state.width}x${state.height}`;
+      // (PvP keeps are handed out at the start, so that counts as a new map too.)
+      const mine = state.keeps.findIndex((k) => k.owner === ui.playerId);
+      const mapKey = `${state.seed}:${state.width}x${state.height}:${mine}`;
       if (mapKey !== centredFor) {
         ui.camera.zoom = 1;
-        centerOn(ui.camera, state.keep.x + state.keep.size / 2, state.keep.y + state.keep.size / 2);
+        // Your own keep in PvP (once they're handed out), else the shared one.
+        const keep = state.keeps[mine] ?? state.keeps[0];
+        centerOn(ui.camera, keep.x + keep.size / 2, keep.y + keep.size / 2);
         centredFor = mapKey;
       }
       panWithKeys(seconds);
       renderer.render(state, ui, session.pending);
       minimap.update(state);
       panel.update(state);
-      gameOver.update(state);
+      gameOver.update(state, session.playerId);
       cues.update(state.cues);
     }
   }

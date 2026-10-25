@@ -245,7 +245,7 @@ describe("multiplayer determinism", () => {
     type Entry = { tick: number; player: number; command: Parameters<typeof applyCommand>[2] };
     const play = () => {
       const state = createGame(99, { players: ["A", "B"] });
-      const { keep } = state;
+      const keep = state.keeps[0];
       const log: Entry[] = [
         { tick: 5, player: A, command: { type: "build", kind: "wall", x: keep.x - 2, y: keep.y } },
         { tick: 5, player: B, command: { type: "build", kind: "wall", x: keep.x - 2, y: keep.y } },

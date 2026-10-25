@@ -31,10 +31,10 @@ describe("addCue", () => {
 describe("cues from the game", () => {
   it("an enemy reaching the keep adds keepHit", () => {
     const state = createGameWithoutWaves();
-    spawnEnemy(state, state.keep.x - 1, state.keep.y);
+    spawnEnemy(state, state.keeps[0].x - 1, state.keeps[0].y);
     // Check on the tick the keep is hit: the cue only lives for CUE_TICKS.
-    for (let i = 0; i < 40 && state.keep.hp === state.keep.maxHp; i++) tick(state);
-    expect(state.keep.hp).toBe(state.keep.maxHp - ENEMY.keepDamage);
+    for (let i = 0; i < 40 && state.keeps[0].hp === state.keeps[0].maxHp; i++) tick(state);
+    expect(state.keeps[0].hp).toBe(state.keeps[0].maxHp - ENEMY.keepDamage);
     expect(kinds(state)).toContain("keepHit");
   });
 
@@ -73,8 +73,8 @@ describe("cues from the game", () => {
 
   it("the keep falling adds gameOver, once", () => {
     const state = createGameWithoutWaves();
-    state.keep.hp = ENEMY.keepDamage;
-    spawnEnemy(state, state.keep.x - 1, state.keep.y);
+    state.keeps[0].hp = ENEMY.keepDamage;
+    spawnEnemy(state, state.keeps[0].x - 1, state.keeps[0].y);
     run(state, 40);
     expect(state.gameOver).toBe(true);
     expect(kinds(state).filter((k) => k === "gameOver")).toHaveLength(1);

@@ -11,7 +11,8 @@ const at = (layout: MapLayout, terrain: Terrain[], x: number, y: number) =>
 
 /** Independent flood fill over walkable terrain, starting from the keep. */
 function reachableFromKeep(layout: MapLayout, terrain: Terrain[]): Set<number> {
-  const { width, height, keep } = layout;
+  const { width, height } = layout;
+  const keep = layout.keeps[0];
   const seen = new Set<number>();
   const queue: number[] = [];
   for (let y = keep.y; y < keep.y + keep.size; y++) {
@@ -41,7 +42,8 @@ function reachableFromKeep(layout: MapLayout, terrain: Terrain[]): Set<number> {
 }
 
 function expectGuarantees(layout: MapLayout, terrain: Terrain[]) {
-  const { keep, width } = layout;
+  const { width } = layout;
+  const keep = layout.keeps[0];
   const reach = reachableFromKeep(layout, terrain);
   const problems: string[] = [];
   for (const p of layout.spawnTiles) {
@@ -185,7 +187,7 @@ describe("generateTerrain", { timeout: 30_000 }, () => {
   });
 
   it("places treasure chests on reachable open ground, worth more further from the keep", () => {
-    const { keep } = layout;
+    const keep = layout.keeps[0];
     const centre = { x: keep.x + 1, y: keep.y + 1 };
     for (const seed of SEEDS) {
       const { terrain, ruins, chests } = generateTerrain(layout, seed);

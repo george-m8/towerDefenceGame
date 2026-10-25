@@ -20,7 +20,7 @@ describe("layer data model", () => {
     expect(state).not.toHaveProperty("tiles");
     expect(state.terrain.every((t) => t === "ground")).toBe(true);
     expect(state.mount.every((id) => id === 0)).toBe(true);
-    expect(isKeepTile(state, state.keep.x, state.keep.y)).toBe(true);
+    expect(isKeepTile(state, state.keeps[0].x, state.keeps[0].y)).toBe(true);
   });
 
   it("puts walls, spikes and houses in the base layer", () => {
@@ -50,7 +50,7 @@ describe("blocksAt and attackTargetAt", () => {
     placeStructure(state, "floorSpikes", 5, 5);
     expect(blocksAt(state, 4, 4)).toBe(false);
     expect(blocksAt(state, 5, 5)).toBe(false);
-    expect(blocksAt(state, state.keep.x, state.keep.y)).toBe(false);
+    expect(blocksAt(state, state.keeps[0].x, state.keeps[0].y)).toBe(false);
     expect(attackTargetAt(state, 5, 5)).toBeUndefined();
   });
 
@@ -122,7 +122,7 @@ describe("placement rules", () => {
 
   it("rejects towers on the keep and in the spawn zone", () => {
     const state = withBase();
-    expect(canBuild(state, 1, "archer", state.keep.x, state.keep.y).ok).toBe(false);
+    expect(canBuild(state, 1, "archer", state.keeps[0].x, state.keeps[0].y).ok).toBe(false);
     const spawn = state.spawnTiles[0];
     expect(canBuild(state, 1, "archer", spawn.x, spawn.y).ok).toBe(false);
   });
@@ -166,7 +166,7 @@ describe("combat across layers", () => {
 
   function sealedKeep() {
     const state = createGameWithoutWaves();
-    const { keep } = state;
+    const keep = state.keeps[0];
     const y = keep.y + 1;
     const target = { x: keep.x - 1, y }; // the ring tile an enemy from the left attacks
     buildAt(state, ring(keep.x - 1, keep.y - 1, keep.x + keep.size, keep.y + keep.size));
@@ -194,7 +194,7 @@ describe("combat across layers", () => {
 
   it("a ground tower sealing the route is attacked directly", () => {
     const state = createGameWithoutWaves();
-    const { keep } = state;
+    const keep = state.keeps[0];
     const y = keep.y + 1;
     const gap = { x: keep.x - 1, y };
     buildAt(
@@ -211,7 +211,7 @@ describe("combat across layers", () => {
 
   it("ground towers with an open route around them take no damage", () => {
     const state = createGameWithoutWaves();
-    const y = state.keep.y + 1;
+    const y = state.keeps[0].y + 1;
     const towers = [8, 9, 11, 12].map((x) => placeStructure(state, "archer", 15, y - 10 + x));
     spawnEnemy(state, 0, y, TOUGH);
     run(state, 1000);

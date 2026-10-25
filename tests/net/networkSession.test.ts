@@ -113,7 +113,7 @@ describe("NetworkSession", () => {
     const { b } = await twoSessions();
     const results: CommandResult[] = [];
     b.onResult = (r) => results.push(r);
-    const { keep } = b.state!; // maps are random, but the keep can never be sold
+    const keep = b.state!.keeps[0]; // maps are random, but the keep can never be sold
     b.send({ type: "sell", x: keep.x, y: keep.y });
     await waitFor(() => results.length > 0);
     expect(results[0]).toEqual({ ok: false, reason: "Can't sell the keep" });
@@ -172,7 +172,7 @@ describe("feel", () => {
 
   it("drops a refused build from pending", async () => {
     const { b } = await twoSessions();
-    const { keep } = b.state!;
+    const keep = b.state!.keeps[0];
     b.send({ type: "build", kind: "wall", x: keep.x, y: keep.y });
     expect(b.pending).toHaveLength(1);
     await waitFor(() => b.pending.length === 0, "pending to clear");
@@ -229,9 +229,9 @@ describe("lobby", () => {
     await waitFor(() => a.state);
     const b = open({ mode: "join", room: a.room!, name: "Bo" });
     await waitFor(() => b.state);
-    expect(b.lobby).toEqual({ started: false, host: 1 });
+    expect(b.lobby).toEqual({ started: false, host: 1, mode: "endless" });
     a.start();
     await waitFor(() => b.lobby?.started, "B to see the start");
-    expect(a.lobby).toEqual({ started: true, host: 1 });
+    expect(a.lobby).toEqual({ started: true, host: 1, mode: "endless" });
   });
 });

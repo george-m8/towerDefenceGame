@@ -1,6 +1,6 @@
 import { ENEMY, TICK_RATE } from "./config";
 import { addCue } from "./cues";
-import { attackTargetAt, blocksAt, damageStructure, inBounds, isKeepTile } from "./grid";
+import { attackTargetAt, blocksAt, damageStructure, inBounds, keepAt } from "./grid";
 import { DIRECTIONS, nextStep } from "./pathfinding";
 import { nextRandom, randomInt } from "./rng";
 import type { Enemy, GameState, PlayerId, Point, Structure } from "./types";
@@ -57,8 +57,9 @@ function advance(state: GameState, enemy: Enemy): boolean {
   let budget = STEP;
   while (budget > EPSILON) {
     if (enemy.x === enemy.tx && enemy.y === enemy.ty) {
-      if (isKeepTile(state, enemy.x, enemy.y)) {
-        state.keep.hp = Math.max(0, state.keep.hp - ENEMY.keepDamage);
+      const keep = keepAt(state, enemy.x, enemy.y);
+      if (keep) {
+        keep.hp = Math.max(0, keep.hp - ENEMY.keepDamage);
         addCue(state, "keepHit");
         return false;
       }

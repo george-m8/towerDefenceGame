@@ -43,7 +43,8 @@ export function sellStructure(
 ): CommandResult {
   if (state.gameOver) return { ok: false, reason: "Game over" };
   if (isKeepTile(state, x, y)) return { ok: false, reason: "Can't sell the keep" };
-  if (!isExplored(state, x, y)) return { ok: false, reason: "Can't sell on unexplored land" };
+  if (!isExplored(state, x, y, player))
+    return { ok: false, reason: "Can't sell on unexplored land" };
   const structure = topAt(state, x, y);
   if (!structure) return clearTerrain(state, player, x, y);
   if (structure.owner !== null && structure.owner !== player) {

@@ -30,7 +30,7 @@ describe("LocalSession", () => {
     const session = createLocalSession(1);
     const results: CommandResult[] = [];
     session.onResult = (r) => results.push(r);
-    const { keep } = session.state!;
+    const keep = session.state!.keeps[0];
     session.send({ type: "sell", x: keep.x, y: keep.y });
     session.send({ type: "togglePause" });
     expect(results).toEqual([{ ok: false, reason: "Can't sell the keep" }, { ok: true }]);

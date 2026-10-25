@@ -11,7 +11,7 @@ describe("minimapColour", () => {
     applyCommand(state, 1, { type: "build", kind: "wall", x: 30, y: 5 });
     paintTerrain(state, [{ x: 31, y: 5 }], "river");
     const spawn = state.spawnTiles[0];
-    expect(minimapColour(state, state.keep.x, state.keep.y)).toBe(COLOURS.keep);
+    expect(minimapColour(state, state.keeps[0].x, state.keeps[0].y)).toBe(COLOURS.keep);
     expect(minimapColour(state, 30, 5)).toBe(STRUCTURE_COLOURS.wall.bg);
     expect(minimapColour(state, 31, 5)).toBe(TERRAIN_STYLES.river.bg);
     expect(minimapColour(state, spawn.x, spawn.y)).toBe(COLOURS.spawn);

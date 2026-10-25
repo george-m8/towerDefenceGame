@@ -24,7 +24,7 @@ function foggy(players?: string[]): GameState {
 
 /** The keep's right-hand column, and the row through its middle. */
 function keepEdge(state: GameState) {
-  return { x: state.keep.x + state.keep.size - 1, y: state.keep.y + 1 };
+  return { x: state.keeps[0].x + state.keeps[0].size - 1, y: state.keeps[0].y + 1 };
 }
 
 function build(state: GameState, kind: StructureKind, x: number, y: number, player = 1) {

@@ -1,11 +1,12 @@
 // Fog of war. Every tile is unexplored (black), seen (land shown, enemies hidden) or in sight
 // (everything shown). In sight is live, from what stands now; seen is remembered in
-// state.explored. Sight is shared by every player, and only affects what's drawn and where
+// state.explored. Sight belongs to a team: in Endless everyone shares one, in PvP each player
+// sees only what their own keep and structures see. Fog only affects what's drawn and where
 // players can build: enemies move and fight the same either way.
 import { angleTo, facingAngle, inArc } from "./aiming";
 import { KEEP_SIGHT, SIGHT_CLOSE_RADIUS, STRUCTURES, type StructureStats } from "./config";
 import { inBounds } from "./grid";
-import type { Facing, GameState, StructureKind } from "./types";
+import type { Facing, GameState, Keep, PlayerId, StructureKind } from "./types";
 
 export const UNEXPLORED = 0;
 export const SEEN = 1;
@@ -28,46 +29,74 @@ interface Sight {
   tier: Uint8Array;
 }
 
-// Cached per state, like enclosures, so it never goes over the wire.
-const cache = new WeakMap<GameState, Sight>();
+/**
+ * Whose sight a player shares: everyone is team 0 in Endless; in PvP each player is their own
+ * team. Structures with no owner (ruins, or ones placed by tests) count as team 0.
+ */
+export function teamOf(state: GameState, player: PlayerId | null | undefined): number {
+  return state.mode === "pvp" && player ? player : 0;
+}
 
-/** The tier of every tile. Recomputed only when the grid changes. */
-export function getSight(state: GameState): Uint8Array {
-  const cached = cache.get(state);
+// Cached per state and team, like enclosures, so it never goes over the wire.
+const cache = new WeakMap<GameState, Map<number, Sight>>();
+
+/** The tier of every tile, as `player` sees it. Recomputed only when the grid changes. */
+export function getSight(state: GameState, player?: PlayerId): Uint8Array {
+  const team = teamOf(state, player);
+  let byTeam = cache.get(state);
+  if (!byTeam) cache.set(state, (byTeam = new Map()));
+  const cached = byTeam.get(team);
   if (cached && cached.version === state.gridVersion && cached.fog === state.fog) {
     return cached.tier;
   }
-  const tier = findSight(state);
-  cache.set(state, { version: state.gridVersion, fog: state.fog, tier });
+  const tier = findSight(state, team);
+  byTeam.set(team, { version: state.gridVersion, fog: state.fog, tier });
   return tier;
 }
 
-export function tierAt(state: GameState, x: number, y: number): Tier {
+export function tierAt(state: GameState, x: number, y: number, player?: PlayerId): Tier {
   if (!inBounds(state, x, y)) return UNEXPLORED;
-  return getSight(state)[y * state.width + x] as Tier;
+  return getSight(state, player)[y * state.width + x] as Tier;
 }
 
-/** Whether players can build (and sell) here: anywhere seen or in sight. */
-export function isExplored(state: GameState, x: number, y: number): boolean {
-  return tierAt(state, x, y) !== UNEXPLORED;
+/** Whether `player` can build (and sell) here: anywhere they've seen or have in sight. */
+export function isExplored(state: GameState, x: number, y: number, player?: PlayerId): boolean {
+  return tierAt(state, x, y, player) !== UNEXPLORED;
 }
 
 /** Enemies, shots and splashes are only drawn on tiles in sight. Takes fractional positions. */
-export function canSeeEnemiesAt(state: GameState, x: number, y: number): boolean {
-  return tierAt(state, Math.round(x), Math.round(y)) === IN_SIGHT;
+export function canSeeEnemiesAt(
+  state: GameState,
+  x: number,
+  y: number,
+  player?: PlayerId,
+): boolean {
+  return tierAt(state, Math.round(x), Math.round(y), player) === IN_SIGHT;
 }
 
-/** A fresh explored layer: the keep's outer sight and the spawn strip. */
+/**
+ * A fresh explored layer (bit 0, Endless's one team): the keep's outer sight and the spawn
+ * strip. PvP keeps have no owner yet; assignKeeps reveals each one for its player.
+ */
 export function initialExplored(state: GameState): number[] {
   const explored = new Array<number>(state.width * state.height).fill(0);
-  forEachKeepSightTile(state, (i) => (explored[i] = 1));
-  for (const p of state.spawnTiles) explored[p.y * state.width + p.x] = 1;
+  for (const keep of state.keeps) {
+    if (state.mode !== "pvp") forEachKeepSightTile(state, keep, (i) => (explored[i] |= 1));
+  }
+  for (const p of state.spawnTiles) explored[p.y * state.width + p.x] |= 1;
   return explored;
 }
 
-/** Marks everything a new structure can see as explored, for good. */
-export function reveal(state: GameState, viewer: Viewer): void {
-  forEachSightTile(state, viewer, (i) => (state.explored[i] = 1));
+/** Marks everything a new structure can see as explored by its owner's team, for good. */
+export function reveal(state: GameState, viewer: Viewer & { owner?: PlayerId | null }): void {
+  const bit = 1 << teamOf(state, viewer.owner);
+  forEachSightTile(state, viewer, (i) => (state.explored[i] |= bit));
+}
+
+/** Marks a keep's outer sight as explored by its owner's team. */
+export function revealKeep(state: GameState, keep: Keep): void {
+  const bit = 1 << teamOf(state, keep.owner);
+  forEachKeepSightTile(state, keep, (i) => (state.explored[i] |= bit));
 }
 
 /**
@@ -101,9 +130,12 @@ export function forEachSightTile(
   }
 }
 
-/** The keep sees from its nearest tile. */
-function forEachKeepSightTile(state: GameState, visit: (index: number, tier: Tier) => void) {
-  const { keep } = state;
+/** A keep sees from its nearest tile. */
+function forEachKeepSightTile(
+  state: GameState,
+  keep: Keep,
+  visit: (index: number, tier: Tier) => void,
+) {
   const { inner, outer } = KEEP_SIGHT;
   const reach = Math.floor(outer);
   const last = keep.size - 1;
@@ -118,15 +150,22 @@ function forEachKeepSightTile(state: GameState, visit: (index: number, tier: Tie
   }
 }
 
-function findSight(state: GameState): Uint8Array {
+function findSight(state: GameState, team: number): Uint8Array {
   const tier = new Uint8Array(state.width * state.height);
   if (!state.fog) return tier.fill(IN_SIGHT);
-  for (let i = 0; i < tier.length; i++) if (state.explored[i]) tier[i] = SEEN;
+  const bit = 1 << team;
+  for (let i = 0; i < tier.length; i++) if (state.explored[i] & bit) tier[i] = SEEN;
   const see = (i: number, t: Tier) => {
     if (t > tier[i]) tier[i] = t;
   };
-  forEachKeepSightTile(state, see);
+  for (const keep of state.keeps) {
+    if (teamOf(state, keep.owner) === team && (state.mode !== "pvp" || keep.owner !== null)) {
+      forEachKeepSightTile(state, keep, see);
+    }
+  }
   // Ruins have no sight, so only what players built counts.
-  for (const structure of Object.values(state.structures)) forEachSightTile(state, structure, see);
+  for (const structure of Object.values(state.structures)) {
+    if (teamOf(state, structure.owner) === team) forEachSightTile(state, structure, see);
+  }
   return tier;
 }

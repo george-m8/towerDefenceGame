@@ -19,11 +19,11 @@ describe("bounties", () => {
 
   it("pays nothing when an enemy reaches the keep", () => {
     const state = createGameWithoutWaves();
-    spawnEnemy(state, state.keep.x - 1, state.keep.y);
+    spawnEnemy(state, state.keeps[0].x - 1, state.keeps[0].y);
     const gold = goldOf(state);
     for (let i = 0; i < 40; i++) tick(state);
     expect(state.enemies).toHaveLength(0);
-    expect(state.keep.hp).toBe(state.keep.maxHp - ENEMY.keepDamage);
+    expect(state.keeps[0].hp).toBe(state.keeps[0].maxHp - ENEMY.keepDamage);
     expect(goldOf(state)).toBe(gold);
   });
 });
@@ -100,7 +100,9 @@ describe("selling", () => {
 
   it("rejects selling the keep or an empty tile", () => {
     const state = createGameWithoutWaves();
-    expect(applyCommand(state, 1, { type: "sell", x: state.keep.x, y: state.keep.y })).toEqual({
+    expect(
+      applyCommand(state, 1, { type: "sell", x: state.keeps[0].x, y: state.keeps[0].y }),
+    ).toEqual({
       ok: false,
       reason: "Can't sell the keep",
     });

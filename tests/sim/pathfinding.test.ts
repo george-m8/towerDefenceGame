@@ -22,7 +22,7 @@ const blockedTilesOn = (state: GameState, path: Point[]) =>
   path.filter((p) => topAt(state, p.x, p.y)).length;
 
 function manhattanToKeep(state: GameState, p: Point): number {
-  const { keep } = state;
+  const keep = state.keeps[0];
   const dx = Math.max(keep.x - p.x, 0, p.x - (keep.x + keep.size - 1));
   const dy = Math.max(keep.y - p.y, 0, p.y - (keep.y + keep.size - 1));
   return dx + dy;
@@ -57,7 +57,7 @@ describe("flow field", () => {
 
   it("when the keep is fully enclosed, the path crosses exactly one structure", () => {
     const state = createGame(1, { blankMap: true, fog: false });
-    const { keep } = state;
+    const keep = state.keeps[0];
     buildAt(state, ring(keep.x - 1, keep.y - 1, keep.x + keep.size, keep.y + keep.size));
     const path = pathToKeep(state, state.spawnTiles[0]);
     expect(blockedTilesOn(state, path)).toBe(1);
@@ -65,7 +65,7 @@ describe("flow field", () => {
 
   it("with two rings, the path crosses exactly two structures", () => {
     const state = createGame(1, { blankMap: true, fog: false });
-    const { keep } = state;
+    const keep = state.keeps[0];
     buildAt(state, ring(keep.x - 1, keep.y - 1, keep.x + keep.size, keep.y + keep.size));
     buildAt(state, ring(keep.x - 3, keep.y - 3, keep.x + keep.size + 2, keep.y + keep.size + 2));
     expect(blockedTilesOn(state, pathToKeep(state, state.spawnTiles[0]))).toBe(2);
@@ -100,12 +100,12 @@ describe("flow field", () => {
 
   it("still returns the avoided tile when it is the only best step", () => {
     const state = createGame(1, { blankMap: true, fog: false });
-    const y = state.keep.y + 1; // straight row into the keep: only E gets closer
+    const y = state.keeps[0].y + 1; // straight row into the keep: only E gets closer
     expect(nextStep(state, 5, y, { x: 6, y })).toEqual({ x: 6, y });
   });
 
   it("returns null when already on the keep", () => {
     const state = createGame(1, { blankMap: true, fog: false });
-    expect(nextStep(state, state.keep.x, state.keep.y)).toBeNull();
+    expect(nextStep(state, state.keeps[0].x, state.keeps[0].y)).toBeNull();
   });
 });

@@ -19,42 +19,42 @@ function run(state: GameState, ticks: number, each?: () => void) {
 describe("enemy movement", () => {
   it("walks to the keep in the expected time and deals damage on arrival", () => {
     const state = createGameWithoutWaves();
-    const start = { x: 0, y: state.keep.y + 1 };
-    const tiles = state.keep.x - start.x; // straight line to the keep's left edge
+    const start = { x: 0, y: state.keeps[0].y + 1 };
+    const tiles = state.keeps[0].x - start.x; // straight line to the keep's left edge
     spawnEnemy(state, start.x, start.y);
 
     run(state, Math.floor((tiles - 1) * ticksPerTile));
     expect(state.enemies).toHaveLength(1);
-    expect(state.keep.hp).toBe(state.keep.maxHp);
+    expect(state.keeps[0].hp).toBe(state.keeps[0].maxHp);
 
     run(state, Math.ceil(2 * ticksPerTile));
     expect(state.enemies).toHaveLength(0);
-    expect(state.keep.hp).toBe(state.keep.maxHp - ENEMY.keepDamage);
+    expect(state.keeps[0].hp).toBe(state.keeps[0].maxHp - ENEMY.keepDamage);
   });
 
   it("reroutes around a wall placed in its path and never walks through it", () => {
     const state = createGameWithoutWaves();
-    const y = state.keep.y + 1;
+    const y = state.keeps[0].y + 1;
     spawnEnemy(state, 0, y);
     run(state, Math.ceil(2 * ticksPerTile));
     buildAt(state, [{ x: 10, y }]);
 
     // Long enough for the detour plus the walk to the keep, whatever the map size.
-    run(state, Math.ceil(3 * state.keep.x * ticksPerTile), () => {
+    run(state, Math.ceil(3 * state.keeps[0].x * ticksPerTile), () => {
       for (const e of state.enemies) {
         expect(topAt(state, Math.round(e.x), Math.round(e.y))).toBeUndefined();
       }
     });
     expect(state.enemies).toHaveLength(0);
-    expect(state.keep.hp).toBe(state.keep.maxHp - ENEMY.keepDamage);
+    expect(state.keeps[0].hp).toBe(state.keeps[0].maxHp - ENEMY.keepDamage);
   });
 
   it("ends the game when keep HP reaches 0, and stops ticking", () => {
     const state = createGameWithoutWaves();
-    state.keep.hp = ENEMY.keepDamage;
-    spawnEnemy(state, state.keep.x - 1, state.keep.y);
+    state.keeps[0].hp = ENEMY.keepDamage;
+    spawnEnemy(state, state.keeps[0].x - 1, state.keeps[0].y);
     run(state, Math.ceil(2 * ticksPerTile));
-    expect(state.keep.hp).toBe(0);
+    expect(state.keeps[0].hp).toBe(0);
     expect(state.gameOver).toBe(true);
     const frozen = state.tick;
     tick(state);
@@ -65,7 +65,7 @@ describe("enemy movement", () => {
 describe("building near enemies", () => {
   it("rejects building on a tile an enemy is standing on or moving into", () => {
     const state = createGameWithoutWaves();
-    const y = state.keep.y + 1;
+    const y = state.keeps[0].y + 1;
     spawnEnemy(state, 10, y);
     expect(applyCommand(state, 1, { type: "build", kind: "wall", x: 10, y })).toEqual({
       ok: false,
@@ -82,7 +82,7 @@ describe("wandering", () => {
     for (let seed = 1; seed <= 20; seed++) {
       const state = createGameWithoutWaves(seed);
       state.wanderChance = 1;
-      const y = state.keep.y + 1;
+      const y = state.keeps[0].y + 1;
       const enemy = spawnEnemy(state, 5, y);
       expect(nextStep(state, enemy.x, enemy.y)).toEqual({ x: 6, y }); // path heads east
       tick(state);
@@ -94,7 +94,7 @@ describe("wandering", () => {
   it("never wanders into a structure", () => {
     const state = createGameWithoutWaves();
     state.wanderChance = 1;
-    const y = state.keep.y + 1;
+    const y = state.keeps[0].y + 1;
     // Walls on both sides, so the only open tiles are forward and back: it must go forward.
     buildAt(state, [
       { x: 5, y: y - 1 },
@@ -108,7 +108,7 @@ describe("wandering", () => {
   it("does not wander away from a structure it is attacking", () => {
     const state = createGameWithoutWaves();
     state.wanderChance = 1;
-    const k = state.keep;
+    const k = state.keeps[0];
     buildAt(state, ring(k.x - 1, k.y - 1, k.x + k.size, k.y + k.size));
     const enemy = spawnEnemy(state, k.x - 2, k.y + 1);
     run(state, 3 * TICK_RATE);
@@ -120,7 +120,7 @@ describe("wandering", () => {
     for (let seed = 1; seed <= 20; seed++) {
       const state = createGameWithoutWaves(seed);
       state.wanderChance = 0.5;
-      const enemy = spawnEnemy(state, 2, state.keep.y + 1);
+      const enemy = spawnEnemy(state, 2, state.keeps[0].y + 1);
       const tiles = [`${enemy.x},${enemy.y}`];
       while (state.enemies.length > 0) {
         tick(state);
@@ -134,11 +134,11 @@ describe("wandering", () => {
   it("with the default chance, enemies still reach the keep", () => {
     const state = createGameWithoutWaves();
     state.wanderChance = ENEMY.wanderChance;
-    for (let i = 0; i < 10; i++) spawnEnemy(state, 0, state.keep.y + 1);
+    for (let i = 0; i < 10; i++) spawnEnemy(state, 0, state.keeps[0].y + 1);
     // Wandering adds detours: allow three times the straight walk, whatever the map size.
-    run(state, Math.ceil(3 * state.keep.x * ticksPerTile));
+    run(state, Math.ceil(3 * state.keeps[0].x * ticksPerTile));
     expect(state.enemies).toHaveLength(0);
-    expect(state.keep.hp).toBe(state.keep.maxHp - 10 * ENEMY.keepDamage);
+    expect(state.keeps[0].hp).toBe(state.keeps[0].maxHp - 10 * ENEMY.keepDamage);
   });
 });
 
@@ -147,7 +147,7 @@ describe("breaking through", () => {
 
   it("attacks only the structure on the cheapest route when the keep is enclosed", () => {
     const state = createGameWithoutWaves();
-    const { keep } = state;
+    const keep = state.keeps[0];
     const walls = ring(keep.x - 1, keep.y - 1, keep.x + keep.size, keep.y + keep.size);
     buildAt(state, walls);
     const y = keep.y + 1;
@@ -169,12 +169,12 @@ describe("breaking through", () => {
     // The enemy continues through the gap to the keep.
     run(state, Math.ceil(3 * ticksPerTile));
     expect(state.enemies).toHaveLength(0);
-    expect(state.keep.hp).toBe(state.keep.maxHp - ENEMY.keepDamage);
+    expect(state.keeps[0].hp).toBe(state.keeps[0].maxHp - ENEMY.keepDamage);
   });
 
   it("never damages structures when an open route exists", () => {
     const state = createGameWithoutWaves();
-    const { keep } = state;
+    const keep = state.keeps[0];
     // Enclose the keep except for one gap on the far (right) side.
     const gap = { x: keep.x + keep.size, y: keep.y + 1 };
     const walls = ring(keep.x - 1, keep.y - 1, keep.x + keep.size, keep.y + keep.size).filter(
@@ -184,7 +184,7 @@ describe("breaking through", () => {
     spawnEnemy(state, 0, keep.y + 1);
     // Long enough to walk round to the gap on the far side, whatever the map size.
     run(state, Math.ceil(3 * keep.x * ticksPerTile));
-    expect(state.keep.hp).toBe(state.keep.maxHp - ENEMY.keepDamage);
+    expect(state.keeps[0].hp).toBe(state.keeps[0].maxHp - ENEMY.keepDamage);
     for (const p of walls) {
       const s = topAt(state, p.x, p.y)!;
       expect(s.hp).toBe(s.maxHp);

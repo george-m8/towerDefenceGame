@@ -14,6 +14,8 @@ function rejects(raw: unknown) {
 describe("parseClientMessage", () => {
   it("accepts every valid message form", () => {
     parses({ type: "create", name: "Ann" });
+    parses({ type: "create", name: "Ann", mode: "pvp" });
+    parses({ type: "create", name: "Ann", mode: "endless" });
     parses({ type: "join", room: "ABCD", name: "Bo" });
     parses({ type: "rejoin", room: "WXYZ", token: "a".repeat(32) });
     parses({ type: "restart" });

@@ -1,11 +1,12 @@
 import { facingAngle } from "./aiming";
 import { STRUCTURES, TERRAIN, TICK_RATE, type StructureStats, type TerrainStats } from "./config";
-import { priceAt } from "./enclosures";
+import { priceAt, rivalOwnerAt } from "./enclosures";
 import { isExplored, reveal } from "./fog";
 import { playerName } from "./players";
 import type {
   CommandResult,
   Enemy,
+  Keep,
   Facing,
   GameState,
   PlayerId,
@@ -27,6 +28,11 @@ export function tileIndex(state: GameState, x: number, y: number): number {
 
 export function isKeepTile(state: GameState, x: number, y: number): boolean {
   return inBounds(state, x, y) && state.base[tileIndex(state, x, y)] === KEEP_TILE;
+}
+
+/** The keep covering (x, y), if any. */
+export function keepAt(state: GameState, x: number, y: number): Keep | undefined {
+  return state.keeps.find((k) => x >= k.x && y >= k.y && x < k.x + k.size && y < k.y + k.size);
 }
 
 export function isSpawnTile(state: GameState, x: number, y: number): boolean {
@@ -115,7 +121,13 @@ export function canBuild(
   const stats: StructureStats = STRUCTURES[kind];
   if (stats.buildable === false) return { ok: false, reason: `${stats.name}s can't be built` };
   if (!inBounds(state, x, y)) return { ok: false, reason: "Out of bounds" };
-  if (!isExplored(state, x, y)) return { ok: false, reason: "Can't build on unexplored land" };
+  if (!isExplored(state, x, y, player)) {
+    return { ok: false, reason: "Can't build on unexplored land" };
+  }
+  const rival = rivalOwnerAt(state, x, y, player);
+  if (rival !== null) {
+    return { ok: false, reason: `That's inside ${playerName(state, rival)}'s walls` };
+  }
   if (isKeepTile(state, x, y)) return { ok: false, reason: "Can't build on the keep" };
   if (isSpawnTile(state, x, y)) return { ok: false, reason: "Can't build in the spawn zone" };
   const terrainCheck = canBuildOnTerrain(state, kind, x, y);
@@ -124,7 +136,7 @@ export function canBuild(
     STRUCTURES[kind].layer === "mount" ? canMount(state, player, x, y) : canBuildBase(state, x, y);
   if (!layerCheck.ok) return layerCheck;
   const gold = state.players[player]?.gold ?? 0;
-  if (gold < priceAt(state, kind, x, y)) return { ok: false, reason: "Not enough gold" };
+  if (gold < priceAt(state, kind, x, y, player)) return { ok: false, reason: "Not enough gold" };
   return { ok: true };
 }
 

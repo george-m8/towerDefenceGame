@@ -175,7 +175,7 @@ describe("waiting room over sockets", () => {
     const { room } = await a.next("welcome");
     const b = await client();
     b.send({ type: "join", room, name: "Bo" });
-    expect((await b.next("welcome")).lobby).toEqual({ started: false, host: 1 });
+    expect((await b.next("welcome")).lobby).toEqual({ started: false, host: 1, mode: "endless" });
     b.send({ type: "start" });
     expect(await b.next("error")).toEqual({ type: "error", reason: "Only the host can start" });
   });

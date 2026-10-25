@@ -4,6 +4,7 @@ import {
   canBuild,
   isKeepTile,
   isSpawnTile,
+  keepAt,
   isWalkable,
   mountAt,
   terrainAt,
@@ -14,7 +15,7 @@ import { facingAngle } from "../sim/aiming";
 import { STRUCTURES, type StructureStats, type TowerStats } from "../sim/config";
 import { canTarget } from "../sim/towers";
 import { hitTile } from "../sim/traps";
-import type { Facing, GameState, Point, Structure, StructureKind } from "../sim/types";
+import type { Facing, GameState, PlayerId, Point, Structure, StructureKind } from "../sim/types";
 import type { PendingBuild } from "../net/session";
 import { isBuildTool, type UiState } from "../ui/state";
 import { visibleTiles, type VisibleTiles } from "../ui/camera";
@@ -87,6 +88,8 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   if (!ctx) throw new Error("Canvas 2D context not available");
   /** The tiles on screen this frame. */
   let view: VisibleTiles = { x0: 0, y0: 0, x1: -1, y1: -1 };
+  /** The player looking: in PvP, sight and enclosures are theirs. */
+  let viewer: PlayerId = 1;
   /** The fog image and the sight it was made from. */
   let fog: { tier: Uint8Array; image: HTMLCanvasElement; lift: number } | null = null;
 
@@ -175,15 +178,19 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     }
   }
 
-  /** Keep tiles show "K", except the centre, which shows the keep's HP. */
+  /**
+   * Keep tiles show "K", except the centre, which shows the keep's HP. A PvP keep is drawn in
+   * its owner's colour.
+   */
   function drawKeepTile(state: GameState, x: number, y: number) {
-    const { keep } = state;
+    const keep = keepAt(state, x, y)!;
+    const bg = keep.owner !== null ? playerColour(keep.owner) : COLOURS.keep;
     const centre = Math.floor(keep.size / 2);
     if (x !== keep.x + centre || y !== keep.y + centre) {
-      drawTile(x, y, COLOURS.keep, "K", COLOURS.keepGlyph);
+      drawTile(x, y, bg, "K", COLOURS.keepGlyph);
       return;
     }
-    drawTile(x, y, COLOURS.keep);
+    drawTile(x, y, bg);
     ctx!.font = KEEP_HP_FONT;
     ctx!.fillStyle = COLOURS.keepGlyph;
     ctx!.fillText(
@@ -204,14 +211,23 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     drawTile(x, y, style.bg, style.glyph, style.fg);
   }
 
-  /** Shades enclosed areas and their walls: warm for the keep's enclosure, cool for others. */
+  /**
+   * Shades enclosed areas and their walls: warm for the keep's enclosure, cool for others, and
+   * red for a PvP rival's (where you can't build).
+   */
   function drawEnclosures(state: GameState) {
-    const { kind } = getEnclosures(state);
+    const { kind, owner } = getEnclosures(state);
     for (let y = view.y0; y <= view.y1; y++) {
       for (let x = view.x0; x <= view.x1; x++) {
-        const k = kind[y * state.width + x];
+        const i = y * state.width + x;
+        const k = kind[i];
         if (k === NONE) continue;
-        ctx!.fillStyle = k === KEEP ? COLOURS.enclosureKeep : COLOURS.enclosureOuter;
+        const rival = owner[i] !== 0 && owner[i] !== viewer;
+        ctx!.fillStyle = rival
+          ? COLOURS.enclosureRival
+          : k === KEEP
+            ? COLOURS.enclosureKeep
+            : COLOURS.enclosureOuter;
         ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
       }
     }
@@ -225,7 +241,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
    */
   function drawFog(state: GameState) {
     if (!state.fog) return;
-    const tier = getSight(state);
+    const tier = getSight(state, viewer);
     if (fog?.tier !== tier) fog = { tier, ...fogImage(tier, state.width, state.height) };
     ctx!.imageSmoothingEnabled = false; // hard tile edges
     ctx!.drawImage(fog.image, 0, -fog.lift, state.width * TILE_SIZE, fog.image.height);
@@ -235,7 +251,8 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   /** Chests in one row, drawn with that row so blocks in front hide them. */
   function drawFeatures(state: GameState, row: number) {
     for (const feature of state.features) {
-      if (feature.kind === "chest" && feature.y === row) drawGlyph(feature.x, feature.y, "$", COLOURS.chest);
+      if (feature.kind === "chest" && feature.y === row)
+        drawGlyph(feature.x, feature.y, "$", COLOURS.chest);
     }
   }
 
@@ -453,7 +470,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   function drawEffects(state: GameState) {
     for (const effect of state.effects) {
       const lands = effect.kind === "shot" ? { x: effect.toX, y: effect.toY } : effect;
-      if (!canSeeEnemiesAt(state, lands.x, lands.y)) continue;
+      if (!canSeeEnemiesAt(state, lands.x, lands.y, viewer)) continue;
       if (effect.kind === "shot") {
         ctx!.strokeStyle = COLOURS.shot;
         ctx!.lineWidth = 2;
@@ -492,7 +509,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
 
   function drawEnemies(state: GameState, enemies: GameState["enemies"]) {
     for (const enemy of enemies) {
-      if (!canSeeEnemiesAt(state, enemy.x, enemy.y)) continue;
+      if (!canSeeEnemiesAt(state, enemy.x, enemy.y, viewer)) continue;
       drawGlyph(enemy.x, enemy.y, "g", COLOURS.enemy);
       if (enemy.hp < enemy.maxHp) drawHpBar(enemy.x, enemy.y, enemy.hp / enemy.maxHp);
     }
@@ -519,6 +536,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
 
   return {
     render(state: GameState, ui: UiState, pending: readonly PendingBuild[] = []) {
+      viewer = ui.playerId;
       const cam = ui.camera;
       // Clear to the "off the map" colour, then draw the map scrolled and zoomed.
       ctx.setTransform(1, 0, 0, 1, 0, 0);
