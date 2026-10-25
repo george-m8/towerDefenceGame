@@ -64,8 +64,8 @@ Every game starts on a new, randomly generated map (the seed is shown in the pan
 You start out seeing only the land around your keep. Everything you build lets you see further.
 
 - **In sight** (drawn normally): close to your keep and buildings. You see everything here, enemies included.
-- **Seen** (drawn darker): further out, or anywhere you've seen before. You see the land and what's built on it, but not enemies or shots. Seen land stays seen, even after you sell what revealed it.
-- **Unexplored** (black): never seen. You can't build, sell or clear trees here.
+- **Seen** (under a thin white mist): further out, or anywhere you've seen before. You see the land and what's built on it, but not enemies or shots. Seen land stays seen, even after you sell what revealed it.
+- **Unexplored** (white fog, see-through for a couple of tiles at its edge): never seen. You can't build, sell or clear trees here.
 - You can build on land that's in sight or seen. The enemy spawn strip starts seen, so you know where enemies come from but not when they're on their way.
 - Enemies don't care about the fog: they move and fight the same either way.
 - In co-op, sight is shared, and anyone can build wherever anyone has seen.

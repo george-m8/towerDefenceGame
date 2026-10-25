@@ -2,12 +2,7 @@
 // same fog of war as the map. Click or drag on it to move the view there.
 import type { GameState } from "../sim/types";
 import { baseAt, isKeepTile, isSpawnTile, mountAt, terrainAt } from "../sim/grid";
-import {
-  COLOURS,
-  MINIMAP_SEEN_BRIGHTNESS,
-  STRUCTURE_COLOURS,
-  TERRAIN_STYLES,
-} from "../render/palette";
+import { COLOURS, FOG, STRUCTURE_COLOURS, TERRAIN_STYLES } from "../render/palette";
 import { centerOn, tilePixels } from "./camera";
 import { KEEP, NONE, getEnclosures } from "../sim/enclosures";
 import { SEEN, UNEXPLORED, canSeeEnemiesAt, getSight, isExplored } from "../sim/fog";
@@ -136,12 +131,13 @@ function tinted(hex: string, kind: number): string {
   return `#${mix.map((c) => c.toString(16).padStart(2, "0")).join("")}`;
 }
 
-/** Fog of war on the minimap: unexplored is dark, seen is dimmed, in sight as it is. */
+/** Fog of war on the minimap, like the map's: unexplored is misted over, seen is misted lightly. */
 export function fogged(hex: string, tier: number): string {
-  if (tier === UNEXPLORED) return COLOURS.fogUnexplored;
-  if (tier !== SEEN) return hex;
-  const dim = hexToRgb(hex).map((c) => Math.round(c * MINIMAP_SEEN_BRIGHTNESS));
-  return `#${dim.map((c) => c.toString(16).padStart(2, "0")).join("")}`;
+  const opacity = tier === UNEXPLORED ? FOG.unexplored : tier === SEEN ? FOG.seen : 0;
+  if (opacity === 0) return hex;
+  const fog = hexToRgb(FOG.colour);
+  const mix = hexToRgb(hex).map((c, i) => Math.round(c * (1 - opacity) + fog[i] * opacity));
+  return `#${mix.map((c) => c.toString(16).padStart(2, "0")).join("")}`;
 }
 
 /** How strongly an enclosure tints the minimap. */
