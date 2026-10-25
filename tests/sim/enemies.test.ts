@@ -1,10 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { ENEMY, ENEMY_KINDS, STRUCTURES, TICK_RATE, type EnemyKindId } from "../../src/sim/config";
+import {
+  ENEMY,
+  ENEMY_KINDS,
+  STRUCTURES,
+  TICK_RATE,
+  type EnemyKindId,
+  type MovementProfile,
+} from "../../src/sim/config";
 import { damageEnemy, spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand, createGame, tick } from "../../src/sim/game";
 import { canBuild, isWalkable, placeStructure, topAt } from "../../src/sim/grid";
-import { nextStep } from "../../src/sim/pathfinding";
-import type { GameState } from "../../src/sim/types";
+import { distanceAt, nextStep } from "../../src/sim/pathfinding";
+import type { Enemy, GameState } from "../../src/sim/types";
 import {
   buildAt,
   column,
@@ -519,5 +526,96 @@ describe("marines", () => {
       ok: false,
       reason: "An enemy is in the way",
     });
+  });
+});
+
+describe("bands", () => {
+  /** A tile in the keep's row, `dx` tiles to its left: enemies there walk straight east. */
+  function lane(state: GameState, dx: number) {
+    return { x: state.keeps[0].x - dx, y: state.keeps[0].y + 1 };
+  }
+
+  /** A wall across the whole map `dx` tiles left of the keep, open only at the top row. */
+  function barrier(state: GameState, dx: number, hp: number) {
+    const x = state.keeps[0].x - dx;
+    buildAt(state, column(state, x, [0]));
+    for (const s of Object.values(state.structures)) s.hp = s.maxHp = hp;
+    return () => Object.values(state.structures).reduce((sum, s) => sum + s.hp, 0);
+  }
+
+  const distance = (state: GameState, e: Enemy, profile: MovementProfile) =>
+    distanceAt(state, e.tx, e.ty, profile);
+
+  it("barbarians follow chiefs and dwarves follow thanes", () => {
+    expect(ENEMY_KINDS.barbarian.leader).toBe("barbarianChief");
+    expect(ENEMY_KINDS.dwarf.leader).toBe("dwarfThane");
+    expect(ENEMY_KINDS.barbarianChief.band).toEqual({ kind: "barbarian", min: 2, max: 4 });
+    expect(ENEMY_KINDS.dwarfThane.band).toEqual({ kind: "dwarf", min: 2, max: 3 });
+  });
+
+  it("a member waits rather than get more than 1 tile ahead of its leader", () => {
+    const state = createGameWithoutWaves();
+    const start = lane(state, 17);
+    const chief = spawnEnemy(state, start.x - 3, start.y, { kind: "barbarianChief" });
+    const member = spawnEnemy(state, start.x, start.y, { kind: "barbarian", leader: chief });
+
+    run(state, 20);
+    expect(member.x).toBe(start.x);
+
+    run(state, 20);
+    for (let i = 0; i < 200; i++) {
+      tick(state);
+      expect(distance(state, member, "follower")).toBeGreaterThanOrEqual(
+        distance(state, chief, "follower") - 1,
+      );
+    }
+    expect(member.x).toBeGreaterThan(start.x);
+  });
+
+  it("a member more than 4 tiles behind moves at 1.3x speed", () => {
+    const state = createGameWithoutWaves();
+    const start = lane(state, 20);
+    const chief = spawnEnemy(state, start.x + 6, start.y, { kind: "barbarianChief" });
+    const member = spawnEnemy(state, start.x, start.y, { kind: "barbarian", leader: chief });
+
+    tick(state);
+
+    expect(member.x - start.x).toBeCloseTo((1.3 * ENEMY_KINDS.barbarian.speed) / TICK_RATE);
+  });
+
+  it("members use the leader's profile and pile in on the wall it breaks", () => {
+    const withBand = createGameWithoutWaves();
+    const bandHp = barrier(withBand, 5, 300);
+    const thane = spawnEnemy(withBand, lane(withBand, 10).x, lane(withBand, 10).y, {
+      kind: "dwarfThane",
+    });
+    const member = spawnEnemy(withBand, thane.x, thane.y, { kind: "barbarian", leader: thane });
+
+    const alone = createGameWithoutWaves();
+    const aloneHp = barrier(alone, 5, 300);
+    spawnEnemy(alone, thane.x, thane.y, { kind: "dwarfThane" });
+
+    run(withBand, 300);
+    run(alone, 300);
+
+    expect(Math.abs(member.y - thane.y)).toBeLessThanOrEqual(1); // didn't walk round
+    expect(bandHp()).toBeLessThan(aloneHp());
+  });
+
+  it("members carry on alone with their own profile when the leader dies", () => {
+    const state = createGameWithoutWaves();
+    barrier(state, 5, 300);
+    const p = lane(state, 10);
+    const thane = spawnEnemy(state, p.x, p.y, { kind: "dwarfThane" });
+    const member = spawnEnemy(state, p.x, p.y, { kind: "barbarian", leader: thane });
+    run(state, 5);
+
+    damageEnemy(thane, thane.hp, 1);
+    run(state, 40);
+
+    expect(member.leaderId).toBeNull();
+    const at = { x: Math.round(member.x), y: Math.round(member.y) };
+    run(state, 200);
+    expect(member.y).toBeLessThan(at.y); // heading for the gap at the top, like any barbarian
   });
 });

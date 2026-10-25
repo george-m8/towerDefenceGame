@@ -89,5 +89,6 @@ function enemyAt(x: number, y: number): Enemy {
     attackCooldown: 0,
     mode: "walking",
     targetId: null,
+    leaderId: null,
   };
 }

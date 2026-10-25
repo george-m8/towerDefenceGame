@@ -253,6 +253,15 @@ export interface EnemyAbility {
   search?: number;
 }
 
+/** How band members keep up with their leader, by field distance in tiles. */
+export const BAND = {
+  /** A member waits rather than get further ahead than this. */
+  maxLead: 1,
+  /** Further behind than this, it hurries. */
+  catchUpBehind: 4,
+  catchUpSpeed: 1.3,
+};
+
 /** A version of a kind, rolled at spawn. Multipliers apply to the kind's stats. */
 export interface EnemyVariant {
   name: string;
@@ -275,6 +284,11 @@ export interface EnemyKind {
   profile: MovementProfile;
   behaviour: BehaviourId;
   ability?: EnemyAbility;
+  /** Band members: the kind they follow. Kind ids are strings here (an EnemyKindId would be a
+   * circular type); tests/sim/config.test.ts checks they name real kinds. */
+  leader?: string;
+  /** Leaders: the band spawned with them (stopgap mix). */
+  band?: { kind: string; min: number; max: number };
   hp: number;
   speed: number; // tiles per second
   /** Per hit, against a structure in the way or the keep. */
@@ -352,6 +366,7 @@ export const ENEMY_KINDS = {
     description: "Quick hits, tougher than a goblin. Follows its chief.",
     profile: "follower",
     behaviour: "follower",
+    leader: "barbarianChief",
     hp: 30,
     speed: 1.8,
     damage: 4,
@@ -371,6 +386,7 @@ export const ENEMY_KINDS = {
     description: "Slow, with solid hits. Follows its thane.",
     profile: "breacher",
     behaviour: "follower",
+    leader: "dwarfThane",
     hp: 45,
     speed: 1,
     damage: 8,
@@ -391,6 +407,7 @@ export const ENEMY_KINDS = {
     description: "Leads barbarians. Slow, but hits very fast.",
     profile: "follower",
     behaviour: "follower",
+    band: { kind: "barbarian", min: 2, max: 4 },
     hp: 90,
     speed: 1.2,
     damage: 8,
@@ -407,6 +424,7 @@ export const ENEMY_KINDS = {
     description: "Leads dwarves. A stronger dwarf.",
     profile: "breacher",
     behaviour: "follower",
+    band: { kind: "dwarf", min: 2, max: 3 },
     hp: 120,
     speed: 0.9,
     damage: 14,
@@ -505,6 +523,14 @@ export const ENEMY_KINDS = {
 } satisfies Record<string, EnemyKind>;
 
 export type EnemyKindId = keyof typeof ENEMY_KINDS;
+
+/** A leader's band, or undefined for kinds that don't lead one. */
+export function bandOf(
+  kind: EnemyKindId,
+): { kind: EnemyKindId; min: number; max: number } | undefined {
+  const band = (ENEMY_KINDS[kind] as EnemyKind).band;
+  return band && { ...band, kind: band.kind as EnemyKindId };
+}
 
 /** Roster order; an enemy's index here is its id on the wire. */
 export const ENEMY_KIND_ORDER = Object.keys(ENEMY_KINDS) as EnemyKindId[];

@@ -1,4 +1,5 @@
 import {
+  BAND,
   ENEMY_KINDS,
   TICK_RATE,
   WAVES,
@@ -9,7 +10,7 @@ import {
 import { BEHAVIOURS } from "./behaviours";
 import { addCue } from "./cues";
 import { attackTargetAt, blocksAt, damageStructure, keepAt } from "./grid";
-import { DIRECTIONS, canCross, nextStep } from "./pathfinding";
+import { DIRECTIONS, canCross, distanceAt, nextStep } from "./pathfinding";
 import { stepTo, walk } from "./movement";
 import { nextRandom, randomInt } from "./rng";
 import type { Enemy, GameState, Keep, PlayerId, Point, Structure } from "./types";
@@ -23,6 +24,8 @@ export interface SpawnOptions {
   /** Override the resolved HP and bounty (tests). */
   hp?: number;
   bounty?: number;
+  /** For band members: the leader to follow. */
+  leader?: Enemy;
 }
 
 /** HP multiplier for a wave: +15% per wave after the first. */
@@ -68,6 +71,7 @@ export function spawnEnemy(
     attackCooldown: 0,
     mode: "walking",
     targetId: null,
+    leaderId: options.leader?.id ?? null,
   };
   state.enemies.push(enemy);
   return enemy;
@@ -100,16 +104,47 @@ function advance(state: GameState, enemy: Enemy): void {
   if (enemy.hp <= 0) return; // killed since the last tick; removed with the bounties
   enemy.attackCooldown = Math.max(0, enemy.attackCooldown - 1);
   if (BEHAVIOURS[ENEMY_KINDS[enemy.kind].behaviour](state, enemy)) return;
-  walk(enemy, enemy.speed, () => chooseNextTile(state, enemy));
+  walk(enemy, speedOf(state, enemy), () => chooseNextTile(state, enemy));
+}
+
+/** The leader a band member follows, or null (forgotten for good) once the leader has died. */
+function leaderOf(state: GameState, enemy: Enemy): Enemy | null {
+  if (enemy.leaderId === null) return null;
+  const leader = state.enemies.find((e) => e.id === enemy.leaderId);
+  if (leader && leader.hp > 0) return leader;
+  enemy.leaderId = null;
+  return null;
+}
+
+/** How many tiles of `profile`'s field `enemy` is behind `leader` (negative when ahead). */
+function tilesBehind(state: GameState, enemy: Point, leader: Enemy, profile: MovementProfile) {
+  return (
+    distanceAt(state, enemy.x, enemy.y, profile) - distanceAt(state, leader.tx, leader.ty, profile)
+  );
+}
+
+/** Band members hurry while they're well behind their leader. */
+function speedOf(state: GameState, enemy: Enemy): number {
+  const leader = leaderOf(state, enemy);
+  if (!leader) return enemy.speed;
+  const behind = tilesBehind(
+    state,
+    { x: enemy.tx, y: enemy.ty },
+    leader,
+    ENEMY_KINDS[leader.kind].profile,
+  );
+  return behind > BAND.catchUpBehind ? enemy.speed * BAND.catchUpSpeed : enemy.speed;
 }
 
 /**
  * Sets the next tile to walk to. If the keep or a blocking structure is next, the enemy
- * stays where it is and attacks it instead, and this returns false.
+ * stays where it is and attacks it instead, and this returns false. A band member uses its
+ * leader's field, and waits rather than get too far ahead of it.
  */
 function chooseNextTile(state: GameState, enemy: Enemy): boolean {
   const previous = { x: enemy.px, y: enemy.py };
-  const profile = ENEMY_KINDS[enemy.kind].profile;
+  const leader = leaderOf(state, enemy);
+  const profile = ENEMY_KINDS[(leader ?? enemy).kind].profile;
   const pathStep = nextStep(state, enemy.x, enemy.y, previous, profile);
   // No step means it is already on the keep; attack the keep from there.
   const keep = pathStep ? keepAt(state, pathStep.x, pathStep.y) : keepAt(state, enemy.x, enemy.y);
@@ -122,6 +157,7 @@ function chooseNextTile(state: GameState, enemy: Enemy): boolean {
     attack(state, enemy, attackTargetAt(state, pathStep.x, pathStep.y)!);
     return false;
   }
+  if (leader && -tilesBehind(state, pathStep, leader, profile) > BAND.maxLead) return false;
   // Only walking enemies wander; one breaking through stays on its target.
   const next = wanderStep(state, enemy, pathStep, previous, profile) ?? pathStep;
   stepTo(enemy, next.x, next.y);

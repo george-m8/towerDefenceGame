@@ -71,6 +71,8 @@ export interface Enemy {
   mode: "walking" | "sprinting";
   /** The structure a bomber is heading for. */
   targetId: number | null;
+  /** Band members: the leader they follow, until it dies. */
+  leaderId: number | null;
 }
 
 /** Short-lived visual events recorded by the simulation for the renderer. */

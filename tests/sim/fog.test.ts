@@ -193,6 +193,7 @@ describe("building and selling", () => {
       attackCooldown: 0,
       mode: "walking",
       targetId: null,
+      leaderId: null,
     });
     state.wave.countdown = Infinity;
     tick(state);

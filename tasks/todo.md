@@ -66,12 +66,14 @@ Built: the blast is `ability.amount` (60 / 120); a bomber's ordinary hit (when b
 
 `leader` and `band` on kinds (`b` follows `B`, `d` follows `D`); `Enemy.leaderId`. A band member uses the leader's profile, waits rather than get more than 1 tile ahead (by field distance), and moves at 1.3x while more than 4 tiles behind; on the leader's death it uses its own profile. The stopgap mix spawns a drawn leader with a band (2-4 `b`, 2-3 `d`) on the same tile, within budget.
 
-- [ ] Members stay at most 1 tile ahead and catch up when behind
-- [ ] Members attack the wall their breaching chief or thane stops at
-- [ ] Members carry on alone when the leader dies
-- [ ] The mix never draws a leader whose smallest band doesn't fit the budget; total threat stays within budget
+- [x] Members stay at most 1 tile ahead and catch up when behind
+- [x] Members attack the wall their breaching chief or thane stops at
+- [x] Members carry on alone when the leader dies
+- [x] The mix never draws a leader whose smallest band doesn't fit the budget; total threat stays within budget
 
 Files: `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/enemies.ts`, `src/sim/waves.ts`, `tests/sim/enemies.test.ts`, `tests/sim/waves.test.ts`. Size: M. Depends on: 3, 5.
+
+Built: `leader` and `band.kind` are typed `string` in `EnemyKind` (an `EnemyKindId` there is a circular type), read through `bandOf`, and `tests/sim/config.test.ts` checks they name real kinds. `pickWaveGroup` replaces `pickWaveKind` as the mix's entry point; a band is as big as rolled or as the budget can pay for, never below its minimum.
 
 ## Task 7: Shaman and the heal effect
 

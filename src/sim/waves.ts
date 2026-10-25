@@ -1,4 +1,11 @@
-import { ENEMY_KIND_ORDER, ENEMY_KINDS, TICK_RATE, WAVES, type EnemyKindId } from "./config";
+import {
+  ENEMY_KIND_ORDER,
+  ENEMY_KINDS,
+  TICK_RATE,
+  WAVES,
+  bandOf,
+  type EnemyKindId,
+} from "./config";
 import { addCue } from "./cues";
 import { spawnEnemy } from "./enemies";
 import { nextRandom, randomInt } from "./rng";
@@ -17,14 +24,41 @@ export function waveThreatBudget(wave: number): number {
 }
 
 /**
- * Stopgap mix (until wave-director): a kind for the next spawn, drawn by mix weight from the
- * kinds unlocked by this wave whose threat fits in what's left. Null once nothing fits.
+ * Stopgap mix (until wave-director): the next group to spawn, as kinds. Usually one enemy; a
+ * leader comes with its band (leader first), as big as rolled or as what's left can pay for.
+ * Null once nothing fits.
  */
-export function pickWaveKind(
+export function pickWaveGroup(
   state: GameState,
   wave: number,
   threatLeft: number,
-): EnemyKindId | null {
+): EnemyKindId[] | null {
+  const leader = pickWaveKind(state, wave, threatLeft);
+  if (!leader) return null;
+  const band = bandOf(leader);
+  if (!band) return [leader];
+  const affordable = Math.floor(
+    (threatLeft - ENEMY_KINDS[leader].threat + THREAT_EPSILON) / ENEMY_KINDS[band.kind].threat,
+  );
+  const size = Math.min(randomInt(state, band.min, band.max), affordable);
+  return [leader, ...Array<EnemyKindId>(size).fill(band.kind)];
+}
+
+function threatOf(kinds: EnemyKindId[]): number {
+  return kinds.reduce((sum, kind) => sum + ENEMY_KINDS[kind].threat, 0);
+}
+
+/** What a kind costs at the least: a leader always brings its smallest band. */
+function minimumThreat(id: EnemyKindId): number {
+  const band = bandOf(id);
+  return ENEMY_KINDS[id].threat + (band ? band.min * ENEMY_KINDS[band.kind].threat : 0);
+}
+
+/**
+ * A kind drawn by mix weight from the kinds unlocked by this wave whose minimum threat fits
+ * in what's left. Null once nothing fits.
+ */
+function pickWaveKind(state: GameState, wave: number, threatLeft: number): EnemyKindId | null {
   const fits = kindsThatFit(wave, threatLeft);
   if (fits.length === 0) return null;
   const total = fits.reduce((sum, id) => sum + ENEMY_KINDS[id].mixWeight, 0);
@@ -39,7 +73,7 @@ export function pickWaveKind(
 function kindsThatFit(wave: number, threatLeft: number): EnemyKindId[] {
   return ENEMY_KIND_ORDER.filter((id) => {
     const kind = ENEMY_KINDS[id];
-    return kind.firstWave <= wave && kind.threat <= threatLeft + THREAT_EPSILON;
+    return kind.firstWave <= wave && minimumThreat(id) <= threatLeft + THREAT_EPSILON;
   });
 }
 
@@ -57,11 +91,14 @@ export function updateWaves(state: GameState): void {
 
   wave.spawnTimer--;
   if (wave.spawnTimer > 0) return;
-  const kind = pickWaveKind(state, wave.number, wave.threatLeft);
-  if (kind) {
+  const group = pickWaveGroup(state, wave.number, wave.threatLeft);
+  if (group) {
     const p = state.spawnTiles[randomInt(state, 0, state.spawnTiles.length - 1)];
-    spawnEnemy(state, p.x, p.y, { kind, wave: wave.number, variant: "random" });
-    wave.threatLeft -= ENEMY_KINDS[kind].threat;
+    const [first, ...band] = group;
+    const options = { wave: wave.number, variant: "random" as const };
+    const leader = spawnEnemy(state, p.x, p.y, { ...options, kind: first });
+    for (const kind of band) spawnEnemy(state, p.x, p.y, { ...options, kind, leader });
+    wave.threatLeft -= threatOf(group);
   }
   wave.spawnTimer = SPAWN_INTERVAL_TICKS;
   // Finished as soon as nothing else fits, so the countdown starts straight after the last spawn.
