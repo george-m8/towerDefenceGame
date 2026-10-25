@@ -12,6 +12,9 @@ import { createMapButtons, panelToggle } from "./ui/mapButtons";
 import { hoverText } from "./ui/tileInfo";
 import { bindInput } from "./ui/input";
 import { createUiState, showMessage } from "./ui/state";
+import { createPointerControls } from "./ui/pointerControls";
+import { createPointerLabel } from "./ui/pointerLabel";
+import { loadPointerSettings, pointerCursor, savePointerSettings } from "./ui/pointer";
 import { createGameOverDialog } from "./ui/gameOver";
 import { createOnlinePanel } from "./ui/players";
 import { createWaitingRoom } from "./ui/waitingRoom";
@@ -187,6 +190,13 @@ if (import.meta.env.DEV) {
   (window as unknown as { __state: () => GameState | null }).__state = () => session?.state ?? null;
   (window as unknown as { __ui: typeof ui }).__ui = ui;
 }
+// The map's crosshair, drawn as set in the settings window.
+canvas.style.cursor = pointerCursor(loadPointerSettings(audioStorage));
+createPointerControls(element("#pointer"), loadPointerSettings(audioStorage), (settings) => {
+  canvas.style.cursor = pointerCursor(settings);
+  savePointerSettings(audioStorage, settings);
+});
+const pointerLabel = createPointerLabel(element(".map-window"));
 const soundControls = createSoundControls(
   element("#sound"),
   audioSettings,
@@ -292,6 +302,7 @@ function frame(now: number) {
       minimap.update(state);
       panel.update(state);
       hud.update(state);
+      pointerLabel.update(state, ui);
       if (!infoBox.hidden) infoBox.textContent = hoverText(state, ui) || "Hover a tile for details";
       gameOver.update(state, session.playerId);
       cues.update(state.cues);

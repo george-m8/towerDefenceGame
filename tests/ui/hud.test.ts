@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { STRUCTURES } from "../../src/sim/config";
+import { BUILD_TIME, STRUCTURES } from "../../src/sim/config";
 import { createGame } from "../../src/sim/game";
 import { createUiState } from "../../src/ui/state";
 import { hudContent, hudStats, toggleHudStat } from "../../src/ui/hud";
@@ -18,6 +18,7 @@ describe("hudContent", () => {
     expect(hudContent(state, ui)).toEqual({
       tool: null,
       cost: null,
+      time: null,
       short: false,
       gold: state.players[1].gold,
     });
@@ -41,6 +42,17 @@ describe("hudContent", () => {
     ui.tool = "wall";
     ui.hover = { x: keep.x - 1, y: keep.y - 1 };
     expect(hudContent(state, ui).cost).toBe("3g (50% off)");
+  });
+
+  it("shows how long building takes on the hovered tile", () => {
+    const { state, ui } = setup();
+    const keep = state.keeps[0];
+    ui.tool = "wall";
+    expect(hudContent(state, ui).time).toBeNull(); // off the map
+    ui.hover = { x: keep.x - 1, y: keep.y };
+    expect(hudContent(state, ui).time).toBe("0.0s");
+    ui.hover = { x: keep.x - BUILD_TIME.fullDistance, y: keep.y };
+    expect(hudContent(state, ui).time).toBe(`${BUILD_TIME.maxSeconds.toFixed(1)}s`);
   });
 
   it("marks a price you can't afford", () => {

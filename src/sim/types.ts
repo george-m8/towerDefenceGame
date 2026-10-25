@@ -40,6 +40,13 @@ export interface Structure {
   owner: PlayerId | null;
   /** What was paid for it (after any enclosure discount); refunds are based on this. */
   paid?: number;
+  /**
+   * Ticks of building left; 0 or absent once it's built. Until then it does nothing: see
+   * sim/building.ts.
+   */
+  buildLeft?: number;
+  /** How many ticks building it took in all, for showing progress. */
+  buildTicks?: number;
 }
 
 export interface Enemy {

@@ -52,6 +52,11 @@ export function screenToTile(cam: Camera, sx: number, sy: number): { x: number; 
   return { x: cam.x + sx / tilePixels(cam), y: cam.y + sy / tilePixels(cam) };
 }
 
+/** The screen point over a map point (in tiles): the inverse of screenToTile. */
+export function tileToScreen(cam: Camera, tx: number, ty: number): { x: number; y: number } {
+  return { x: (tx - cam.x) * tilePixels(cam), y: (ty - cam.y) * tilePixels(cam) };
+}
+
 export function panBy(cam: Camera, dxTiles: number, dyTiles: number): void {
   cam.x += dxTiles;
   cam.y += dyTiles;

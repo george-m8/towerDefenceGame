@@ -5,7 +5,14 @@ import { applyCommand, createGame } from "../../src/sim/game";
 import { placeStructure, topAt } from "../../src/sim/grid";
 import { addPlayer } from "../../src/sim/players";
 import type { GameState, Point } from "../../src/sim/types";
-import { buildAt, createGameWithoutWaves, goldOf, paintTerrain, ring } from "./helpers";
+import {
+  buildAt,
+  createGameWithoutWaves,
+  finishBuilding,
+  goldOf,
+  paintTerrain,
+  ring,
+} from "./helpers";
 
 /** Tiles of a rectangle (inclusive). */
 function rect(x0: number, y0: number, x1: number, y1: number): Point[] {
@@ -115,6 +122,7 @@ describe("finding enclosures", () => {
     expect(discountAt(state, 12, 7)).toBe(0);
     applyCommand(state, 1, { type: "sell", x: 12, y: 5 }); // salvage one ruin...
     applyCommand(state, 1, { type: "build", kind: "wall", x: 12, y: 5 }); // ...and wall the gap
+    finishBuilding(state);
     expect(discountAt(state, 12, 7)).toBe(0.25);
   });
 
@@ -199,6 +207,7 @@ describe("paying and selling", () => {
     addPlayer(state, "Bo");
     for (const p of ring(10, 5, 14, 9))
       applyCommand(state, 1, { type: "build", kind: "wall", ...p });
+    finishBuilding(state);
     const gold = goldOf(state, 2);
     applyCommand(state, 2, { type: "build", kind: "house", x: 12, y: 7 });
     expect(goldOf(state, 2)).toBe(gold - Math.round(STRUCTURES.house.cost * 0.75));

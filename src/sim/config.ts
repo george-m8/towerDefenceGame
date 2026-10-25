@@ -24,6 +24,12 @@ export const SPAWN_ZONE = { x: 0, width: 2, height: 12 };
 
 export const STARTING_GOLD = 250;
 
+/**
+ * Building takes longer the further from your keep: no time at all right next to it, rising
+ * to maxSeconds at fullDistance tiles out (counted from the keep's nearest tile) and beyond.
+ */
+export const BUILD_TIME = { maxSeconds: 10, fullDistance: 40 };
+
 export interface TowerStats {
   range: number; // tiles, measured centre to centre
   minRange: number;

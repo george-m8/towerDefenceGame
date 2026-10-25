@@ -1,9 +1,10 @@
-// The HUD along the bottom of the map: the selected tool and what it costs on the tile under
-// the cursor (bottom left), and a box for each stat you've turned on, gold to start with
+// The HUD along the bottom of the map: the selected tool, and what it costs and how long it
+// takes to build on the tile under the cursor (bottom left), and a box for each stat you've turned on, gold to start with
 // (bottom right, side by side). Clicking the tool opens a menu above it to pick another;
 // clicking any stat box opens the stat menu, where each stat toggles on and off. Clicks
 // anywhere else pass through to the map.
-import { SELL_REFUND, STRUCTURES, type StructureStats } from "../sim/config";
+import { SELL_REFUND, STRUCTURES, TICK_RATE, type StructureStats } from "../sim/config";
+import { buildTicksAt } from "../sim/building";
 import { discountAt, priceAt } from "../sim/enclosures";
 import { refundFor } from "../sim/economy";
 import { topAt } from "../sim/grid";
@@ -17,6 +18,8 @@ export interface HudContent {
   tool: { glyph: string; name: string } | null;
   /** What it costs here, e.g. "3g (50% off)", or what selling here pays; null if nothing. */
   cost: string | null;
+  /** How long it takes to build on the hovered tile, e.g. "4.5s"; null off the map. */
+  time: string | null;
   /** True if you can't afford it here: the gold shows red. */
   short: boolean;
   gold: number;
@@ -31,20 +34,24 @@ export function hudContent(state: GameState, ui: UiState): HudContent {
     return {
       tool: { glyph: "$", name: "Sell" },
       cost: target ? `+${refundFor(target)}g` : null,
+      time: null,
       short: false,
       gold,
     };
   }
-  if (!isBuildTool(ui.tool)) return { tool: null, cost: null, short: false, gold };
+  if (!isBuildTool(ui.tool)) return { tool: null, cost: null, time: null, short: false, gold };
   const kind = ui.tool;
   const stats: StructureStats = STRUCTURES[kind];
   const tool = { glyph: glyphFor(kind, ui.facing), name: stats.name };
-  if (!ui.hover) return { tool, cost: `${stats.cost}g`, short: gold < stats.cost, gold };
+  if (!ui.hover) {
+    return { tool, cost: `${stats.cost}g`, time: null, short: gold < stats.cost, gold };
+  }
   const { x, y } = ui.hover;
   const price = priceAt(state, kind, x, y, ui.playerId);
   const discount = discountAt(state, x, y, ui.playerId);
   const cost = discount > 0 ? `${price}g (${Math.round(discount * 100)}% off)` : `${price}g`;
-  return { tool, cost, short: gold < price, gold };
+  const time = `${(buildTicksAt(state, x, y, ui.playerId) / TICK_RATE).toFixed(1)}s`;
+  return { tool, cost, time, short: gold < price, gold };
 }
 
 /**
@@ -82,6 +89,7 @@ export function createHud(root: HTMLElement, ui: UiState) {
         <span data-field="name"></span>
       </button>
       <div class="hud-box hud-cost" data-field="cost"></div>
+      <div class="hud-box hud-cost" data-field="time" title="Time to build here"></div>
       <div class="hud-actions" data-field="actions"></div>
     </div>
     <div class="hud-right">
@@ -95,6 +103,7 @@ export function createHud(root: HTMLElement, ui: UiState) {
   const glyph = field("glyph");
   const name = field("name");
   const cost = field("cost");
+  const time = field("time");
   const statBoxes = field("stats");
   const statPicker = field("statPicker");
   /** The stat boxes by id, rebuilt only when the set shown changes. */
@@ -198,6 +207,8 @@ export function createHud(root: HTMLElement, ui: UiState) {
       name.textContent = hud.tool?.name ?? "Build";
       cost.hidden = hud.cost === null;
       cost.textContent = hud.cost ?? "";
+      time.hidden = hud.time === null;
+      time.textContent = hud.time ?? "";
       updateStatBoxes(hudStats(state, ui), hud.short);
       if (!statPicker.hidden) updateStatPicker(state);
       if (picker.hidden) return;

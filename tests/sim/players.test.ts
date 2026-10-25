@@ -12,7 +12,7 @@ import { applyCommand, createGame, tick } from "../../src/sim/game";
 import { placeStructure, topAt } from "../../src/sim/grid";
 import { addPlayer, playerName, setConnected } from "../../src/sim/players";
 import type { GameState } from "../../src/sim/types";
-import { createGameWithoutWaves, goldOf, paintTerrain } from "./helpers";
+import { createGameWithoutWaves, finishBuilding, goldOf, paintTerrain } from "./helpers";
 
 /** A blank, wave-free game with players 1 (A) and 2 (B). */
 function twoPlayers(): GameState {
@@ -231,6 +231,7 @@ describe("rejoining", () => {
     const state = twoPlayers();
     const income = STRUCTURES.house.income;
     applyCommand(state, B, { type: "build", kind: "house", x: 10, y: 10 });
+    finishBuilding(state);
     const gold = goldOf(state, B);
     setConnected(state, B, false);
     for (let i = 0; i < income.intervalSeconds * TICK_RATE; i++) tick(state);
