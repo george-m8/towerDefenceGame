@@ -1,3 +1,4 @@
+import type { ProjectileKind } from "../sim/config";
 import type { Facing, StructureKind, Terrain } from "../sim/types";
 
 export const TILE_SIZE = 20;
@@ -5,6 +6,18 @@ export const TILE_SIZE = 20;
 export const NOTCH_LENGTH_PX = 8;
 export const NOTCH_DEPTH_PX = 3;
 export const AIM_LINE_TILES = 2;
+/**
+ * How each tower's shot looks in flight: its symbol, and how high its arc rises as a fraction
+ * of how far it flies (the curve's peak is half this). Arrows fly flattest and turn to follow
+ * the curve; catapult stones are lobbed high.
+ */
+export const PROJECTILES: Record<ProjectileKind, { glyph: string; arc: number; turns: boolean }> = {
+  arrow: { glyph: "→", arc: 0.08, turns: true },
+  ball: { glyph: "•", arc: 0.2, turns: false },
+  stone: { glyph: "*", arc: 0.6, turns: false },
+};
+/** Straight pieces a shot's arc is drawn with. */
+export const ARC_SEGMENTS = 16;
 
 /** Height of the strip drawn along the top of a wall-mounted tower. */
 export const BATTLEMENT_PX = 3;
@@ -45,6 +58,8 @@ export const COLOURS = {
   range: "rgba(255, 255, 160, 0.12)",
   rangeEdge: "rgba(255, 255, 160, 0.6)",
   shot: "#fff6c0",
+  /** A shot's projectile in flight. */
+  projectile: "#ffe08a",
   chest: "#ffcc33",
   facingNotch: "#ffffff",
   aimLine: "#ff6b6b",
