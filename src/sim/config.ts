@@ -221,6 +221,9 @@ export type MovementProfile = "follower" | "breacher" | "marine";
  */
 export const BREACH = { referenceDps: 8, referenceSpeed: 1 };
 
+/** What marines pay to swim each kind of water (land is 1). Nobody else can enter water. */
+export const MARINE_COSTS = { river: 2, sea: 4 };
+
 /** A version of a kind, rolled at spawn. Multipliers apply to the kind's stats. */
 export interface EnemyVariant {
   name: string;
@@ -393,6 +396,36 @@ export const ENEMY_KINDS = {
       { name: "stone", weight: 3, hp: 1, speed: 1, damage: 1, size: "normal" },
       { name: "iron", weight: 1, hp: 1.3, speed: 0.9, damage: 1.2, size: "large" },
     ],
+  },
+  marine: {
+    glyph: "m",
+    name: "Marine",
+    description: "Swims rivers and the sea when that's the quicker way in.",
+    profile: "marine",
+    hp: 25,
+    speed: 1.4,
+    damage: 5,
+    attackInterval: 1,
+    bounty: 3,
+    threat: 2,
+    firstWave: 7,
+    mixWeight: 3,
+    variants: [{ name: "raider", weight: 1, hp: 1, speed: 1, damage: 1, size: "normal" }],
+  },
+  marineCaptain: {
+    glyph: "M",
+    name: "Marine captain",
+    description: "A tougher marine, just as happy in the water.",
+    profile: "marine",
+    hp: 60,
+    speed: 1.2,
+    damage: 10,
+    attackInterval: 1,
+    bounty: 8,
+    threat: 5,
+    firstWave: 11,
+    mixWeight: 1,
+    variants: [{ name: "captain", weight: 1, hp: 1, speed: 1, damage: 1, size: "normal" }],
   },
 } satisfies Record<string, EnemyKind>;
 

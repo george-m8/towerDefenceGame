@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ENEMY, ENEMY_KINDS, STRUCTURES, TICK_RATE, type EnemyKindId } from "../../src/sim/config";
 import { damageEnemy, spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand, createGame, tick } from "../../src/sim/game";
-import { isWalkable, placeStructure, topAt } from "../../src/sim/grid";
+import { canBuild, isWalkable, placeStructure, topAt } from "../../src/sim/grid";
 import { nextStep } from "../../src/sim/pathfinding";
 import type { GameState } from "../../src/sim/types";
 import {
@@ -488,5 +488,36 @@ describe("breachers", () => {
       (k) => ENEMY_KINDS[k].profile === "breacher",
     );
     expect(breachers.sort()).toEqual(["dwarf", "dwarfThane", "golem"]);
+  });
+});
+
+describe("marines", () => {
+  it("are marines and marine captains, with the spec's stats", () => {
+    expect(ENEMY_KINDS.marine).toMatchObject({
+      glyph: "m",
+      hp: 25,
+      speed: 1.4,
+      damage: 5,
+      profile: "marine",
+      firstWave: 7,
+    });
+    expect(ENEMY_KINDS.marineCaptain).toMatchObject({
+      glyph: "M",
+      hp: 60,
+      speed: 1.2,
+      damage: 10,
+      profile: "marine",
+      firstWave: 11,
+    });
+  });
+
+  it("stop a bridge being built on the river tile they're in", () => {
+    const state = createGameWithoutWaves();
+    paintTerrain(state, [{ x: 5, y: 5 }], "river");
+    spawnEnemy(state, 5, 5, { kind: "marine" });
+    expect(canBuild(state, 1, "bridge", 5, 5)).toEqual({
+      ok: false,
+      reason: "An enemy is in the way",
+    });
   });
 });

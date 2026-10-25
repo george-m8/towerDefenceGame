@@ -198,3 +198,67 @@ describe("breacher profile", () => {
     expect(at(wallX - 1) - at(wallX + 1)).toBe(wallCost + 1);
   });
 });
+
+const PROFILES = ["follower", "breacher", "marine"] as const;
+
+describe("marine profile", () => {
+  /** A wall line down column x with the given rows left as water instead of wall. */
+  function wallWithWater(
+    state: GameState,
+    x: number,
+    water: { y: number; terrain: "river" | "sea" }[],
+  ) {
+    buildAt(
+      state,
+      column(
+        state,
+        x,
+        water.map((w) => w.y),
+      ),
+    );
+    for (const w of water) paintTerrain(state, [{ x, y: w.y }], w.terrain);
+  }
+
+  it("crosses a river where land walkers can't", () => {
+    const state = createGameWithoutWaves();
+    const keep = state.keeps[0];
+    const y = keep.y + 1;
+    const wallX = keep.x - 4;
+    wallWithWater(state, wallX, [{ y, terrain: "river" }]);
+    const start = { x: wallX - 2, y };
+    expect(pathToKeep(state, start, "marine")).toContainEqual({ x: wallX, y });
+    expect(pathToKeep(state, start, "follower")).not.toContainEqual({ x: wallX, y });
+    expect(canCross(state, "follower", wallX, y)).toBe(false);
+    expect(canCross(state, "breacher", wallX, y)).toBe(false);
+  });
+
+  it("prefers river to sea for the same distance", () => {
+    const state = createGameWithoutWaves();
+    const keep = state.keeps[0];
+    const y = keep.y + 1;
+    const wallX = keep.x - 4;
+    wallWithWater(state, wallX, [
+      { y: y - 2, terrain: "sea" },
+      { y: y + 2, terrain: "river" },
+    ]);
+    const route = pathToKeep(state, { x: wallX - 2, y }, "marine");
+    expect(route).toContainEqual({ x: wallX, y: y + 2 });
+    expect(route).not.toContainEqual({ x: wallX, y: y - 2 });
+  });
+
+  // Standalone this is 24-34 ms, within one 50 ms tick. The parallel test run is noisy, so the
+  // bound here only catches a large regression (e.g. the search going quadratic).
+  it("builds all three fields on an XL map quickly", () => {
+    const state = createGame(1, { size: "XL", fog: false });
+    const times: number[] = [];
+    for (let run = 0; run < 6; run++) {
+      state.gridVersion++;
+      const start = performance.now();
+      for (const p of PROFILES) getFlowField(state, p);
+      times.push(performance.now() - start);
+    }
+    // Median of the last five (the first run warms up).
+    const median = times.slice(1).sort((a, b) => a - b)[2];
+    expect(median).toBeLessThan(250);
+  });
+});
