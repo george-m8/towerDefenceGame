@@ -86,7 +86,19 @@ export type Effect =
       flight: number;
     }
   | { kind: "splash"; x: number; y: number; radius: number; ttl: number }
-  | { kind: "spikes"; x: number; y: number; ttl: number };
+  | { kind: "spikes"; x: number; y: number; ttl: number }
+  /**
+   * Something destroyed: an enemy killed, or a structure broken. Drawn still there for
+   * BURST_DELAY_TICKS, then as its pixels flying apart and fading for BURST_TICKS.
+   */
+  | {
+      kind: "burst";
+      x: number;
+      y: number;
+      ttl: number;
+      enemy?: EnemyKindId;
+      structure?: StructureKind;
+    };
 
 /** Things lying on the map that aren't terrain or structures. `resources` adds deposits and animals. */
 export type MapFeature = { kind: "chest"; x: number; y: number; gold: number };

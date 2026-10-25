@@ -79,11 +79,15 @@ export const COLOURS = {
   enemy: "#ff5f4a",
   hpBack: "#000000",
   hpFront: "#5fdc5f",
+  /** The sliver left on a destroyed thing's emptied health bar. */
+  hpEmpty: "#d22020",
   flowArrow: "rgba(120, 200, 255, 0.55)",
   flowAttack: "rgba(255, 90, 90, 0.9)",
   range: "rgba(255, 255, 160, 0.12)",
   rangeEdge: "rgba(255, 255, 160, 0.6)",
   shot: "#fff6c0",
+  /** The bright flecks in an enemy's burst when it dies. */
+  burstSpark: "#ffffff",
   /** A shot's projectile in flight. */
   projectile: "#ffe08a",
   chest: "#ffcc33",

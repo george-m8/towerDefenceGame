@@ -1,6 +1,7 @@
 import { facingAngle } from "./aiming";
 import { STRUCTURES, TERRAIN, TICK_RATE, type StructureStats, type TerrainStats } from "./config";
 import { priceAt, rivalOwnerAt } from "./enclosures";
+import { addBurst } from "./effects";
 import { isExplored, reveal } from "./fog";
 import { playerName } from "./players";
 import type {
@@ -250,7 +251,14 @@ export function damageKeep(state: GameState, keep: Keep, amount: number): void {
   keep.hp = Math.max(0, keep.hp - amount);
 }
 
+/** Damages a structure; at 0 HP it's destroyed and bursts apart (a tower on it falls too). */
 export function damageStructure(state: GameState, structure: Structure, amount: number): void {
   structure.hp -= amount;
-  if (structure.hp <= 0) removeStructure(state, structure);
+  if (structure.hp > 0) return;
+  const falling =
+    STRUCTURES[structure.kind].layer === "base"
+      ? mountAt(state, structure.x, structure.y)
+      : undefined;
+  for (const s of [structure, falling]) if (s) addBurst(state, s.x, s.y, { structure: s.kind });
+  removeStructure(state, structure);
 }

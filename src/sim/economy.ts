@@ -1,6 +1,7 @@
 import { SELL_REFUND, STRUCTURES, TICK_RATE, TREE_CLEAR_GOLD, type StructureStats } from "./config";
 import { enemyOccupies, isKeepTile, removeStructure, setTerrain, terrainAt, topAt } from "./grid";
 import { addCue } from "./cues";
+import { addBurst } from "./effects";
 import { isExplored } from "./fog";
 import { addGold, playerName } from "./players";
 import type { CommandResult, GameState, PlayerId, Structure } from "./types";
@@ -8,7 +9,9 @@ import type { CommandResult, GameState, PlayerId, Structure } from "./types";
 /** Removes dead enemies and pays each bounty to the player who struck the killing blow. */
 export function awardBounties(state: GameState): void {
   for (const enemy of state.enemies) {
-    if (enemy.hp <= 0) addGold(state, enemy.killedBy, enemy.bounty);
+    if (enemy.hp > 0) continue;
+    addGold(state, enemy.killedBy, enemy.bounty);
+    addBurst(state, enemy.x, enemy.y, { enemy: enemy.kind });
   }
   state.enemies = state.enemies.filter((enemy) => enemy.hp > 0);
 }
