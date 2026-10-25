@@ -481,11 +481,11 @@ These are rough vertical slices, not tasks. Each becomes a proper task list afte
 **Goal:** music follows what the player is doing: an intro piece, menu music, and gameplay music that is either one standard track or switches between **peaceful** and **fight**.
 
 **Behaviour (proposed):**
-- **Places:** `intro`, `menu`, `gameplay`, `peaceful` and `fight` join the song manifest's `plays` list.
+- **Places:** `intro`, `menu`, `gameplay`, `peaceful` and `fight` join the song manifest's `plays` list. Each place can have **a list of songs** (several fight songs, several peaceful songs, and so on), and the director picks one from the list each time.
 - **Intro plays once, to the end.** It starts at the first gesture and isn't cut off by moving to the start screen or starting a game. When it finishes, the director picks what fits *now*: `menu` on the start screen or waiting room, gameplay music once a game is running.
-- **Gameplay music has two modes:**
-  - **Standard:** one `gameplay` track loops all game.
-  - **Peaceful/fight:** `peaceful` while building between waves, `fight` while a wave is on. There's a minimum time in each state (e.g. 8 s) so the music doesn't flip with every enemy.
+- **Gameplay music has two modes, decided by the song lists** (not a player setting):
+  - **Standard:** only `gameplay` songs are listed, so they play all game.
+  - **Peaceful/fight:** once `fight` and `peaceful` songs are listed, a `peaceful` song plays while building between waves and a `fight` song while a wave is on. There's a minimum time in each state (e.g. 8 s) so the music doesn't flip with every enemy.
 - **Fallbacks:** a missing `fight` or `peaceful` track falls back to `gameplay`; with no gameplay songs at all, it's silent. Missing tracks never cause errors.
 - **Transitions** between songs crossfade, or wait for the end of the current phrase (to decide in the spec).
 - **Game over** can play a short sting, then return to menu music.
@@ -495,18 +495,20 @@ These are rough vertical slices, not tasks. Each becomes a proper task list afte
 
 | # | Slice | Size |
 |---|---|---|
-| 1 | Pure music director: given the screen (intro, menu, game), whether the intro is still playing, and fight/peaceful, which place should be playing; with fallbacks, tested | S |
+| 1 | Pure music director: given the screen (intro, menu, game), whether the intro is still playing, fight/peaceful, and which places have songs listed, which place should be playing; with fallbacks, tested | S |
 | 2 | Player and engine support: play once and report when finished; crossfade between two songs (two music sub-buses) | M |
 | 3 | Intro to the end, then hand over to menu or gameplay | S |
 | 4 | Pure combat detector from game state (wave spawning or enemies on the map, with the minimum-time rule), then peaceful/fight switching in game | M |
-| 5 | A "Battle music" setting in the Sound panel (standard or peaceful/fight), and README docs for the new places | S |
+| 5 | Song lists: several songs per place, picked from the list each time a place starts; README docs for the new places and lists | S |
 
 **Open questions for its spec:**
 1. Can a click skip the intro straight to the menu music?
 2. What counts as "fight": any enemy on the map, enemies near the keep, or only while a wave is spawning?
 3. Crossfade (smooth, but two songs can clash) or wait for the current phrase or loop to end (more musical, but slower)?
-4. Is peaceful/fight a player setting, or decided by which songs the manifest lists?
-5. Stings for game over, wave cleared, or the keep in danger?
+4. Stings for game over, wave cleared, or the keep in danger?
+5. How a song is picked from a list: in turn, shuffled, or shuffled without repeats?
+
+**Decided (2026-10-25):** peaceful/fight isn't a player setting. It's decided by the song lists: there's a list of fight songs and a list of peaceful songs, and with only gameplay songs the music is standard.
 
 
 ### `line-of-sight`
