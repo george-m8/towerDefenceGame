@@ -37,6 +37,7 @@ export const ENEMY_COLOURS: Record<EnemyKindId, string> = {
   golem: "#d0d0d0",
   marine: "#5fc8e8",
   marineCaptain: "#5fc8e8",
+  shaman: "#7bd389",
   dwarfBomber: "#ff7a1a",
   dwarfDemolisher: "#ff7a1a",
 };
@@ -91,6 +92,7 @@ export const COLOURS = {
   facingNotch: "#ffffff",
   aimLine: "#ff6b6b",
   splash: "rgba(255, 150, 40, 0.45)",
+  heal: "#5ee36a",
   spikesUp: "#c8c8c8",
   spikesUpGlyph: "#ffffff",
   trapTarget: "rgba(255, 200, 200, 0.35)",

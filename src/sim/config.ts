@@ -218,6 +218,8 @@ export const STRUCTURES = {
 
 /** How long shot and splash effects stay on screen. */
 export const EFFECT_TICKS = 4;
+/** How long a heal's green "+" shows. */
+export const HEAL_EFFECT_TICKS = 10;
 
 export const ENEMY = {
   /** Chance (0-1) at each tile that an enemy steps to a random open neighbour instead of following the path. */
@@ -237,16 +239,18 @@ export const BREACH = { referenceDps: 8, referenceSpeed: 1 };
 export const MARINE_COSTS = { river: 2, sea: 4 };
 
 /** What an enemy does on top of following its profile's field (see sim/behaviours.ts). */
-export type BehaviourId = "follower" | "bomber";
+export type BehaviourId = "follower" | "bomber" | "healer";
 
 /** Numbers for behaviours that need them. Distances in tiles, intervals in seconds. */
 export interface EnemyAbility {
   /** How far it notices a target, straight-line, ignoring fog. */
   sight?: number;
-  /** Bombers: the blast reaches this many tiles each way (1 = the 3x3). */
+  /** Bombers: the blast reaches this many tiles each way (1 = the 3x3). Healers: heal range. */
   radius?: number;
-  /** Bombers: blast damage. */
+  /** Bombers: blast damage. Healers: HP per heal. */
   amount?: number;
+  /** Healers: seconds between heals. */
+  interval?: number;
   /** Bombers: speed multiplier while sprinting. */
   sprint?: number;
   /** Longest walk it will take to reach a target it has noticed. */
@@ -485,6 +489,23 @@ export const ENEMY_KINDS = {
     firstWave: 11,
     mixWeight: 1,
     variants: [{ name: "captain", weight: 1, hp: 1, speed: 1, damage: 1, size: "normal" }],
+  },
+  shaman: {
+    glyph: "s",
+    name: "Shaman",
+    description: "Heals the enemies around it.",
+    profile: "follower",
+    behaviour: "healer",
+    ability: { radius: 2.5, amount: 6, interval: 2 },
+    hp: 30,
+    speed: 1.2,
+    damage: 3,
+    attackInterval: 1,
+    bounty: 6,
+    threat: 4,
+    firstWave: 8,
+    mixWeight: 2,
+    variants: [{ name: "elder", weight: 1, hp: 1, speed: 1, damage: 1, size: "normal" }],
   },
   dwarfBomber: {
     glyph: "x",

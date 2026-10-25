@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ENEMY_KINDS } from "../../src/sim/config";
+import { ENEMY_KINDS, TICK_RATE, type EnemyKindId } from "../../src/sim/config";
 import { damageEnemy, spawnEnemy } from "../../src/sim/enemies";
 import { tick } from "../../src/sim/game";
 import { placeStructure } from "../../src/sim/grid";
@@ -158,5 +158,67 @@ describe("bomber", () => {
     tick(state);
 
     expect(bomber.mode).toBe("walking");
+  });
+});
+
+describe("shaman", () => {
+  const heal = ENEMY_KINDS.shaman.ability;
+  const interval = heal.interval * TICK_RATE;
+
+  /** An enemy that stays put, so distances don't change while the test runs. */
+  function still(state: GameState, x: number, y: number, kind: EnemyKindId = "goblin"): Enemy {
+    const enemy = spawnEnemy(state, x, y, { kind });
+    enemy.speed = 0;
+    return enemy;
+  }
+
+  it("is the spec's shaman", () => {
+    expect(ENEMY_KINDS.shaman).toMatchObject({
+      glyph: "s",
+      hp: 30,
+      speed: 1.2,
+      damage: 3,
+      bounty: 6,
+      threat: 4,
+      firstWave: 8,
+      behaviour: "healer",
+    });
+    expect(heal).toMatchObject({ radius: 2.5, amount: 6, interval: 2 });
+  });
+
+  it("heals others in range every 2 s, up to max HP, but not itself or anyone out of range", () => {
+    const state = createGameWithoutWaves();
+    const p = lane(state, 20);
+    const shaman = still(state, p.x, p.y, "shaman");
+    const near = still(state, p.x + 2, p.y);
+    const far = still(state, p.x, p.y + 3);
+    shaman.hp -= 10;
+    near.hp -= 10;
+    far.hp -= 10;
+
+    tick(state);
+    expect(near.hp).toBe(near.maxHp - 10 + heal.amount);
+    expect(far.hp).toBe(far.maxHp - 10);
+    expect(shaman.hp).toBe(shaman.maxHp - 10);
+
+    run(state, interval - 1);
+    expect(near.hp).toBe(near.maxHp - 10 + heal.amount);
+
+    tick(state);
+    expect(near.hp).toBe(near.maxHp);
+  });
+
+  it("shows a heal effect only on enemies it actually healed", () => {
+    const state = createGameWithoutWaves();
+    const p = lane(state, 20);
+    still(state, p.x, p.y, "shaman");
+    const hurt = still(state, p.x + 1, p.y);
+    still(state, p.x - 1, p.y);
+    hurt.hp -= 10;
+
+    tick(state);
+
+    const heals = state.effects.filter((e) => e.kind === "heal");
+    expect(heals).toEqual([expect.objectContaining({ x: hurt.x, y: hurt.y })]);
   });
 });

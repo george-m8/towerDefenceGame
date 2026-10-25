@@ -3,7 +3,9 @@
 import {
   EFFECT_TICKS,
   ENEMY_KINDS,
+  HEAL_EFFECT_TICKS,
   STRUCTURES,
+  TICK_RATE,
   type BehaviourId,
   type EnemyAbility,
   type EnemyKind,
@@ -19,6 +21,7 @@ type Behaviour = (state: GameState, enemy: Enemy) => boolean;
 export const BEHAVIOURS: Record<BehaviourId, Behaviour> = {
   follower: () => false,
   bomber: bomb,
+  healer: heal,
 };
 
 function abilityOf(enemy: Enemy): EnemyAbility {
@@ -57,6 +60,26 @@ function bomb(state: GameState, enemy: Enemy): boolean {
 function giveUp(enemy: Enemy): false {
   enemy.mode = "walking";
   enemy.targetId = null;
+  return false;
+}
+
+/**
+ * Healers heal every other hurt enemy within range, then wait out their interval. They keep
+ * walking either way.
+ */
+function heal(state: GameState, enemy: Enemy): boolean {
+  enemy.abilityCooldown = Math.max(0, enemy.abilityCooldown - 1);
+  if (enemy.abilityCooldown > 0) return false;
+  const { radius = 0, amount = 0, interval = 0 } = abilityOf(enemy);
+  let healed = false;
+  for (const other of state.enemies) {
+    if (other === enemy || other.hp <= 0 || other.hp >= other.maxHp) continue;
+    if (Math.hypot(other.x - enemy.x, other.y - enemy.y) > radius) continue;
+    other.hp = Math.min(other.maxHp, other.hp + amount);
+    state.effects.push({ kind: "heal", x: other.x, y: other.y, ttl: HEAL_EFFECT_TICKS });
+    healed = true;
+  }
+  if (healed) enemy.abilityCooldown = interval * TICK_RATE;
   return false;
 }
 

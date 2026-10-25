@@ -69,6 +69,7 @@ export function spawnEnemy(
     attackInterval: Math.round(kind.attackInterval * TICK_RATE),
     killedBy: null,
     attackCooldown: 0,
+    abilityCooldown: 0,
     mode: "walking",
     targetId: null,
     leaderId: options.leader?.id ?? null,

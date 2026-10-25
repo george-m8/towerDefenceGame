@@ -103,6 +103,7 @@ function toEnemy(e: ClientEnemy): Enemy {
     attackInterval: 0,
     killedBy: null,
     attackCooldown: 0,
+    abilityCooldown: 0,
     mode: "walking",
     targetId: null,
     leaderId: null,

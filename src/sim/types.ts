@@ -67,6 +67,8 @@ export interface Enemy {
   killedBy: PlayerId | null;
   /** Ticks until it can hit a blocking structure again. */
   attackCooldown: number;
+  /** Ticks until its behaviour's ability (a heal, a dig) is ready again. */
+  abilityCooldown: number;
   /** What it's doing beyond walking its field. */
   mode: "walking" | "sprinting";
   /** The structure a bomber is heading for. */
@@ -92,7 +94,8 @@ export type Effect =
       flight: number;
     }
   | { kind: "splash"; x: number; y: number; radius: number; ttl: number }
-  | { kind: "spikes"; x: number; y: number; ttl: number };
+  | { kind: "spikes"; x: number; y: number; ttl: number }
+  | { kind: "heal"; x: number; y: number; ttl: number };
 
 /** Things lying on the map that aren't terrain or structures. `resources` adds deposits and animals. */
 export type MapFeature = { kind: "chest"; x: number; y: number; gold: number };

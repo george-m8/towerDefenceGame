@@ -79,10 +79,12 @@ Built: `leader` and `band.kind` are typed `string` in `EnemyKind` (an `EnemyKind
 
 Row for `s`; healer behaviour: every 2 s, +6 HP (up to max) to every other enemy within 2.5 tiles. `heal` effect, drawn as a green `+` in sight.
 
-- [ ] Heals others in range every 2 s up to max HP; not itself; not out of range
-- [ ] Heal effects only on enemies actually healed
+- [x] Heals others in range every 2 s up to max HP; not itself; not out of range
+- [x] Heal effects only on enemies actually healed
 
 Files: `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/behaviours.ts`, `src/render/canvas.ts`, `tests/sim/behaviours.test.ts`. Size: S. Depends on: 5.
+
+Built: a heal pulse fires as soon as someone in range is hurt, then waits its 2 s (`Enemy.abilityCooldown`, which diggers reuse). The green `+` floats up over 10 ticks.
 
 ## Task 8: Battering ram and diggers
 

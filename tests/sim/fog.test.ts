@@ -191,6 +191,7 @@ describe("building and selling", () => {
       damage: 5,
       attackInterval: 20,
       attackCooldown: 0,
+      abilityCooldown: 0,
       mode: "walking",
       targetId: null,
       leaderId: null,
