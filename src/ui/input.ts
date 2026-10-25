@@ -1,5 +1,6 @@
-import type { Command, Point } from "../sim/types";
+import type { Command, GameState, Point } from "../sim/types";
 import { screenToTile, zoomAt, zoomBy } from "./camera";
+import { pickTile } from "../render/canvas";
 import { TOOLS, rotateFacing, type UiState } from "./state";
 
 /** Dev-only stress test: M spawns this many enemies at once. */
@@ -20,6 +21,8 @@ export function bindInput(
   canvas: HTMLCanvasElement,
   ui: UiState,
   dispatch: (command: Command) => void,
+  /** The game being shown, so clicks on a raised block's lifted top pick that block. */
+  getState: () => GameState | null = () => null,
 ) {
   let painting = false;
   let lastPainted: Point | null = null;
@@ -28,7 +31,7 @@ export function bindInput(
   function tileFromEvent(e: MouseEvent): Point {
     const rect = canvas.getBoundingClientRect();
     const p = screenToTile(ui.camera, e.clientX - rect.left, e.clientY - rect.top);
-    return { x: Math.floor(p.x), y: Math.floor(p.y) };
+    return pickTile(getState(), p.x, p.y);
   }
 
   // Wheel zooms around the cursor, so the tile under it stays put.

@@ -18,6 +18,7 @@ import type { Facing, GameState, Point, Structure, StructureKind } from "../sim/
 import type { PendingBuild } from "../net/session";
 import { isBuildTool, type UiState } from "../ui/state";
 import { visibleTiles, type VisibleTiles } from "../ui/camera";
+import { minimapColour } from "../ui/minimap";
 import { KEEP, NONE, getEnclosures } from "../sim/enclosures";
 import {
   IN_SIGHT,
@@ -57,6 +58,32 @@ function isTower(kind: StructureKind): boolean {
 }
 
 /**
+ * Raised blocks (a visual prototype): solid things are drawn lifted by their height in
+ * pixels, with a darker front face below, so walls and towers read as 3D blocks.
+ */
+export function blockHeight(state: GameState, x: number, y: number): number {
+  if (isKeepTile(state, x, y)) return 12;
+  const base = baseAt(state, x, y);
+  const mount = mountAt(state, x, y);
+  if (mount) return base ? 11 : 8;
+  if (base) return STRUCTURES[base.kind].blocksMovement ? 6 : 0;
+  const terrain = terrainAt(state, x, y);
+  return terrain === "tree" ? 7 : terrain === "rock" ? 4 : 0;
+}
+
+/**
+ * The tile under a point (fractional tile coordinates). A block's top is drawn lifted into
+ * the row behind it, so a point on that lifted top picks the block, not the tile behind.
+ */
+export function pickTile(state: GameState | null, px: number, py: number): Point {
+  const x = Math.floor(px);
+  const y = Math.floor(py);
+  if (!state) return { x, y };
+  const lift = blockHeight(state, x, y + 1) / TILE_SIZE;
+  return py - y >= 1 - lift ? { x, y: y + 1 } : { x, y };
+}
+
+/**
  * Draws the game through the camera in `ui.camera`. Everything below draws in map pixels
  * (TILE_SIZE per tile); the canvas transform turns that into the zoomed, scrolled view, and
  * only tiles on screen are drawn. The canvas's own size is set by main.ts to fit the window.
@@ -92,20 +119,62 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     ctx!.fill();
   }
 
+  function drawTileContents(state: GameState, x: number, y: number, showOwners: boolean) {
+    const base = baseAt(state, x, y);
+    if (base) drawStructure(base);
+    else if (isKeepTile(state, x, y)) drawKeepTile(state, x, y);
+    else if (isSpawnTile(state, x, y)) drawTile(x, y, COLOURS.spawn, ".", COLOURS.spawnGlyph);
+    else drawTerrain(state, x, y);
+    const mount = mountAt(state, x, y);
+    if (mount && base) drawMountOnWall(mount, base);
+    else if (mount) drawStructure(mount);
+    if (showOwners) drawOwnerMark(mount ?? base);
+  }
+
+  function drawGround(x: number, y: number) {
+    drawTile(x, y, (x + y) % 2 === 0 ? COLOURS.ground : COLOURS.groundAlt);
+  }
+
   function drawGrid(state: GameState) {
     const { x0, y0, x1, y1 } = view;
     const showOwners = Object.keys(state.players).length > 1;
+    // Flat tiles first (ground under raised ones), then raised blocks back to front, so a
+    // block's lifted top covers the row behind it.
     for (let y = y0; y <= y1; y++) {
       for (let x = x0; x <= x1; x++) {
-        const base = baseAt(state, x, y);
-        if (base) drawStructure(base);
-        else if (isKeepTile(state, x, y)) drawKeepTile(state, x, y);
-        else if (isSpawnTile(state, x, y)) drawTile(x, y, COLOURS.spawn, ".", COLOURS.spawnGlyph);
-        else drawTerrain(state, x, y);
-        const mount = mountAt(state, x, y);
-        if (mount && base) drawMountOnWall(mount, base);
-        else if (mount) drawStructure(mount);
-        if (showOwners) drawOwnerMark(mount ?? base);
+        if (blockHeight(state, x, y) > 0) drawGround(x, y);
+        else drawTileContents(state, x, y, showOwners);
+      }
+    }
+    // Shadows cast down and to the right, under every block.
+    ctx!.fillStyle = "rgba(0, 0, 0, 0.3)";
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        const h = blockHeight(state, x, y);
+        if (h > 0) ctx!.fillRect(x * TILE_SIZE + h / 2, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      }
+    }
+    // Enemies go in with their row, so blocks in front of them (further down) hide them.
+    const enemiesByRow = new Map<number, GameState["enemies"]>();
+    for (const enemy of state.enemies) {
+      const row = Math.round(enemy.y);
+      enemiesByRow.set(row, [...(enemiesByRow.get(row) ?? []), enemy]);
+    }
+    for (let y = y0; y <= y1 + 1; y++) {
+      drawFeatures(state, y - 1);
+      drawEnemies(state, enemiesByRow.get(y - 1) ?? []);
+      for (let x = x0; x <= x1; x++) {
+        const h = blockHeight(state, x, y);
+        if (h === 0) continue;
+        // Front face: the block's colour, darkened; the top sits h pixels higher.
+        ctx!.fillStyle = minimapColour(state, x, y);
+        ctx!.fillRect(x * TILE_SIZE, (y + 1) * TILE_SIZE - h, TILE_SIZE, h);
+        ctx!.fillStyle = "rgba(0, 0, 0, 0.45)";
+        ctx!.fillRect(x * TILE_SIZE, (y + 1) * TILE_SIZE - h, TILE_SIZE, h);
+        ctx!.save();
+        ctx!.translate(0, -h);
+        drawTileContents(state, x, y, showOwners);
+        ctx!.restore();
       }
     }
   }
@@ -168,9 +237,10 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     }
   }
 
-  function drawFeatures(state: GameState) {
+  /** Chests in one row, drawn with that row so blocks in front hide them. */
+  function drawFeatures(state: GameState, row: number) {
     for (const feature of state.features) {
-      if (feature.kind === "chest") drawGlyph(feature.x, feature.y, "$", COLOURS.chest);
+      if (feature.kind === "chest" && feature.y === row) drawGlyph(feature.x, feature.y, "$", COLOURS.chest);
     }
   }
 
@@ -254,7 +324,16 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     if (wall.hp < wall.maxHp) drawHpBar(x, y, wall.hp / wall.maxHp);
   }
 
+  /** The ghost sits on top of whatever it's placed on (or selling). */
   function drawGhost(state: GameState, ui: UiState) {
+    if (!ui.tool || !ui.hover) return;
+    ctx!.save();
+    ctx!.translate(0, -blockHeight(state, ui.hover.x, ui.hover.y));
+    drawGhostAt(state, ui);
+    ctx!.restore();
+  }
+
+  function drawGhostAt(state: GameState, ui: UiState) {
     if (!ui.tool || !ui.hover) return;
     const { x, y } = ui.hover;
     if (ui.tool === "sell") {
@@ -416,8 +495,8 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     }
   }
 
-  function drawEnemies(state: GameState) {
-    for (const enemy of state.enemies) {
+  function drawEnemies(state: GameState, enemies: GameState["enemies"]) {
+    for (const enemy of enemies) {
       if (!canSeeEnemiesAt(state, enemy.x, enemy.y)) continue;
       drawGlyph(enemy.x, enemy.y, "g", COLOURS.enemy);
       if (enemy.hp < enemy.maxHp) drawHpBar(enemy.x, enemy.y, enemy.hp / enemy.maxHp);
@@ -457,10 +536,8 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       view = visibleTiles(cam);
       drawGrid(state);
       drawEnclosures(state);
-      drawFeatures(state);
       if (ui.showFlow) drawFlow(state);
       drawEffects(state);
-      drawEnemies(state);
       drawFog(state);
       drawPending(pending);
       drawRange(state, ui);
