@@ -10,19 +10,29 @@ export function fromClientState(client: ClientState): GameState {
     ...client,
     enemies: client.enemies.map(toEnemy),
     structures: toStructures(client.structures),
-    flow: null, // rebuilt lazily by getFlowField when needed
+    flows: {}, // rebuilt lazily by getFlowField when needed
     rngState: 0,
   };
 }
 
 /**
- * Applies an update in place. Structures and tiles only come when they changed; layers are
+ * Applies an update in place and returns its enemies with kind and variant filled in from
+ * what the view already knows. Structures and tiles only come when they changed; layers are
  * updated tile by tile, so the client's arrays stay the ones it was welcomed with.
  */
-export function applyUpdate(view: GameState, update: StateUpdate): void {
+export function applyUpdate(view: GameState, update: StateUpdate): ClientEnemy[] {
+  const known = new Map(view.enemies.map((e) => [e.id, e]));
+  const enemies = update.enemies.map((e): ClientEnemy => {
+    const before = known.get(e.id);
+    return {
+      ...e,
+      kind: e.kind ?? (before ? ENEMY_KIND_ORDER.indexOf(before.kind) : 0),
+      variant: e.variant ?? before?.variant ?? 0,
+    };
+  });
   view.tick = update.tick;
   view.gridVersion = update.gridVersion;
-  view.enemies = update.enemies.map(toEnemy);
+  view.enemies = enemies.map(toEnemy);
   view.effects = update.effects;
   view.cues = update.cues;
   view.players = update.players;
@@ -43,6 +53,7 @@ export function applyUpdate(view: GameState, update: StateUpdate): void {
     for (const [i, bits] of tiles.explored ?? []) view.explored[i] = bits;
   }
   if (update.features) view.features = update.features;
+  return enemies;
 }
 
 /**

@@ -16,6 +16,15 @@ import { rememberedName, showStartScreen } from "./ui/startScreen";
 import { showIntro } from "./ui/intro";
 import { createWebAudioEngine, unlockOnFirstGesture } from "./audio/engine";
 import { loadAudioSettings, saveAudioSettings } from "./audio/settings";
+import { createJournalView } from "./ui/journalView";
+import {
+  createNoticeQueue,
+  currentNotice,
+  discover,
+  loadJournal,
+  pushNotices,
+  saveJournal,
+} from "./ui/journal";
 import { createSoundControls } from "./ui/soundControls";
 import { createCuePlayer, soundForResult } from "./audio/cues";
 import { showSoundTest } from "./ui/soundTest";
@@ -26,7 +35,7 @@ import { SONGS } from "./audio/songs";
 import musicPacks from "virtual:music-packs";
 import { liveVoiceCount } from "./audio/synth";
 import { showNotice } from "./ui/notice";
-import type { Command, GameState } from "./sim/types";
+import type { Command, GameState, PlayerId } from "./sim/types";
 
 const element = <T extends HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
 
@@ -79,12 +88,39 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-zoom]")
   });
 }
 
-const panel = createPanel(element("#panel"), ui, dispatch);
+const journal = loadJournal(deviceStorage());
+const journalView = createJournalView(element("#journal"), journal, () =>
+  saveJournal(deviceStorage(), journal),
+);
+const panel = createPanel(element("#panel"), ui, dispatch, () => journalView.toggle());
+const journalNotices = createNoticeQueue();
+const toast = element("#toast");
+
+/** Unlocks journal entries for enemies this player can see, with a notice and sound. */
+function updateJournal(state: GameState, viewer: PlayerId, now: number) {
+  const found = discover(journal, state, viewer);
+  if (found.length > 0) {
+    saveJournal(deviceStorage(), journal);
+    pushNotices(journalNotices, found);
+    cues.play("discovered");
+    journalView.refresh();
+  }
+  const notice = currentNotice(journalNotices, now);
+  toast.hidden = notice === null;
+  if (notice !== null && toast.textContent !== notice) toast.textContent = notice;
+}
 const gameOver = createGameOverDialog(element("#game-over"), () => {
   session?.restart();
   ui.tool = null;
 });
-bindInput(canvas, ui, dispatch, () => session?.state ?? null);
+bindInput(canvas, ui, dispatch, () => session?.state ?? null, {
+  journal: () => journalView.toggle(),
+  escape: () => {
+    if (!journalView.isOpen) return false;
+    journalView.close();
+    return true;
+  },
+});
 
 // Sound: silent until the first click or key press (browsers require a gesture).
 const audio = createWebAudioEngine();
@@ -219,6 +255,7 @@ function frame(now: number) {
       panel.update(state);
       gameOver.update(state, session.playerId);
       cues.update(state.cues);
+      updateJournal(state, session.playerId, now);
     }
   }
   followMusic();

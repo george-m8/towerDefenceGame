@@ -88,9 +88,9 @@ describe("cannon and catapult", () => {
     placeStructure(state, "catapult", 10, 10, "E");
     placeStructure(state, "cannon", 10, 30, "E");
     placeStructure(state, "archer", 10, 50, "E");
-    spawnEnemy(state, 15, 10, TOUGH);
-    spawnEnemy(state, 12, 30, TOUGH);
-    spawnEnemy(state, 12, 50, TOUGH);
+    spawnEnemy(state, 15, 10, { hp: TOUGH });
+    spawnEnemy(state, 12, 30, { hp: TOUGH });
+    spawnEnemy(state, 12, 50, { hp: TOUGH });
     updateTowers(state);
     const shots = state.effects.filter((e) => e.kind === "shot");
     for (const [y, kind] of [

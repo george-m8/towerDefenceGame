@@ -1,4 +1,4 @@
-import type { EnemyKindId, ProjectileKind, STRUCTURES, TERRAIN } from "./config";
+import type { EnemyKindId, MovementProfile, ProjectileKind, STRUCTURES, TERRAIN } from "./config";
 
 export interface Point {
   x: number;
@@ -146,7 +146,8 @@ export interface GameState {
   nextId: number;
   /** Incremented whenever tile occupancy changes, so pathfinding can recompute lazily. */
   gridVersion: number;
-  flow: FlowField | null;
+  /** Flow fields per movement profile, built lazily. */
+  flows: Partial<Record<MovementProfile, FlowField>>;
   enemies: Enemy[];
   features: MapFeature[];
   effects: Effect[];

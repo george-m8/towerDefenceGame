@@ -47,14 +47,17 @@ export interface LobbyInfo {
 export type ClientEnemy = Pick<Enemy, "id" | "x" | "y" | "hp" | "maxHp" | "variant"> & {
   kind: number;
 };
+/** An enemy in an update: kind and variant never change, so they're only sent once. */
+export type UpdateEnemy = Omit<ClientEnemy, "kind" | "variant"> &
+  Partial<Pick<ClientEnemy, "kind" | "variant">>;
 /** Structures without their firing cooldown, which only the server needs. */
 export type ClientStructure = Omit<Structure, "cooldown">;
 
 /**
- * Everything a client needs to draw the game. `flow` is rebuilt lazily, `rngState` stays on
+ * Everything a client needs to draw the game. `flows` are rebuilt lazily, `rngState` stays on
  * the server, and enemies and structures carry only the fields a client uses.
  */
-export type ClientState = Omit<GameState, "flow" | "rngState" | "enemies" | "structures"> & {
+export type ClientState = Omit<GameState, "flows" | "rngState" | "enemies" | "structures"> & {
   enemies: ClientEnemy[];
   structures: Record<number, ClientStructure>;
 };
@@ -82,7 +85,9 @@ export type TileChanges<T> = [number, T][];
  * built or changed (and the ids of those removed), and when the grid changed, just the tiles
  * that did. Every change sets a value, so applying one twice does no harm.
  */
-export type StateUpdate = Pick<ClientState, DynamicFields> & {
+export type StateUpdate = Omit<Pick<ClientState, DynamicFields>, "enemies"> & {
+  /** Every enemy; `kind` and `variant` only for enemies the clients haven't been sent yet. */
+  enemies: UpdateEnemy[];
   /** Structures built or changed (HP, aim) since the last update. */
   structures?: ClientStructure[];
   /** Ids of structures sold or destroyed since the last update. */

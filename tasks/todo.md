@@ -1,85 +1,117 @@
-# Tasks: enemy-kinds
+# Tasks: enemy-pathing
 
-Spec: [`SPEC-enemy-kinds.md`](../SPEC-enemy-kinds.md)
+Spec: [`SPEC-enemy-pathing.md`](../SPEC-enemy-pathing.md) · Plan: [`plan.md`](plan.md) (`enemy-pathing` section)
 
 Standard verification for every task: `npm run typecheck && npm test && npm run build`
 
-## Task 1: Kind and variant data, today's enemy becomes the goblin grunt
+## Task 1: Fields keyed by profile (refactor)
 
-`EnemyKind`, `EnemyVariant`, `ENEMY_KINDS` (goblin only for now) and `ENEMY_KIND_ORDER` in config; `Enemy` gains `kind`, `variant`, `speed`, `damage`, `attackInterval`; `spawnEnemy(state, x, y, kind?, wave?)` resolves stats at spawn; per-enemy speed replaces the global `STEP`; `waveEnemyHp`/`waveBounty` read the goblin row. Tests that read `ENEMY.speed`, `ENEMY.keepDamage` and so on move to the goblin row (mechanical swap). No behaviour change: the goblin's only variant for now is the grunt.
+`MovementProfile` type; `GameState.flow` becomes `flows: Partial<Record<MovementProfile, FlowField>>`; `getFlowField(state, profile = "follower")`, `nextStep(..., profile)`, `distanceAt(..., profile)`; `canCross(state, profile, x, y)` (follower: today's `isWalkable`). Snapshot, protocol and view drop `flows` like `flow`. Only `follower` is used, so nothing changes in play.
 
-- [x] An enemy spawned with no kind is a goblin grunt with exactly today's numbers
-- [x] Changing config after spawning doesn't change an existing enemy
-- [x] The existing suite passes with only the mechanical swap
+- [x] The existing suite passes untouched (apart from `flow` -> `flows` in any test that reads it)
+- [x] Fields for different profiles are cached separately and rebuilt when `gridVersion` changes
+- [x] A field is only built when first asked for
 
-Files: `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/enemies.ts`, `src/sim/waves.ts`, `tests/sim/*` (swap). Size: M. Depends on: none.
+Files: `src/sim/types.ts`, `src/sim/pathfinding.ts`, `src/sim/game.ts`, `src/net/snapshot.ts`, `src/net/protocol.ts`, `src/net/view.ts`, `tests/sim/pathfinding.test.ts`. Size: S (mechanical). Depends on: none.
 
-## Task 2: Per-kind attacks on structures, and the rest of the roster
+## Task 2: Wandering respects terrain (bug fix)
 
-Enemies hit a blocking structure for their own `damage` once per `attackInterval` (replacing `ENEMY.structureDps`). Rows for zerg, wolf rider, barbarian, dwarf, barbarian chief, dwarf thane and golem, with the spec's stats (variants still one each).
+Wandering only picks tiles the enemy's profile can cross (`canCross`), as well as no structures and no keep.
 
-- [x] Each kind spawns with its spec HP, speed, damage and interval, scaled by wave
-- [x] A golem hits a wall for 40 every 3 s; a zerg for 2 every 0.6 s
-- [x] A wolf rider crosses 10 tiles in half the ticks a goblin needs
+- [x] With wander chance 1 on generated maps, no enemy ever targets a rock, tree or water tile (fails before the fix)
+- [x] Existing wander tests still pass
 
-Files: `src/sim/config.ts`, `src/sim/enemies.ts`, `tests/sim/enemies.test.ts`. Size: S. Depends on: 1.
+Files: `src/sim/enemies.ts`, `tests/sim/enemies.test.ts`. Size: XS. Depends on: 1.
 
-## Task 3: Enemies stand and attack the keep
+## Task 3: Breacher profile
 
-An enemy whose next path step is a keep tile stays on its tile and hits the keep for its damage once per interval until killed; `keepHit` cue on each hit; `KEEP_HP` 99 -> 300. Tests that expected one hit and removal are rewritten for the new rule.
+`profile` on every kind (followers by default); `d`, `D`, `G` become breachers. `BREACH` config; the breacher field costs a blocking structure `1 + ceil(HP / referenceDps x referenceSpeed)` using its HP when the field is built. Enemies step by their own profile's field.
 
-- [x] An enemy next to the keep hits it once per interval and doesn't vanish
-- [x] Killing it stops the hits; enemies standing at the keep can end the game
-- [x] Towers and traps still hit enemies at the keep
+- [x] Detour 20 tiles longer than one wall: a dwarf breaks the wall, a goblin walks round
+- [x] Detour only 4 tiles longer: both walk round
+- [x] After a rebuild, a breacher picks a damaged wall over a full one
 
-Files: `src/sim/enemies.ts`, `src/sim/config.ts`, `tests/sim/enemies.test.ts`, `tests/sim/cues.test.ts`, `tests/sim/economy.test.ts`, `tests/sim/traps.test.ts`. Size: M. Depends on: 1.
+Files: `src/sim/config.ts`, `src/sim/pathfinding.ts`, `src/sim/enemies.ts`, `tests/sim/pathfinding.test.ts`, `tests/sim/enemies.test.ts`. Size: M. Depends on: 2.
 
-## Checkpoint A (after Tasks 1-3)
+## Task 4: Marine profile, marines and a timing test
+
+`MARINE_COSTS` (river 2, sea 4); `canCross` lets marines onto river and sea; marine field. Rows for `m` and `M` (spec stats, descriptions, threat, first wave, mix weight). XL timing test: building all three fields stays within one tick (50 ms).
+
+- [x] A marine takes a river route that's shorter than the land route; a goblin doesn't
+- [x] For equal lengths a marine prefers river to sea; no other kind ever enters water
+- [x] Building a bridge on a river tile with a marine in it is refused
+- [x] All three fields on an XL map build within one tick (50 ms, standalone; revised from 20 ms, measured 24-34 ms); the unit test guards a 250 ms bound
+
+Files: `src/sim/config.ts`, `src/sim/pathfinding.ts`, `tests/sim/pathfinding.test.ts`, `tests/sim/enemies.test.ts`, `tests/sim/economy.test.ts`. Size: M. Depends on: 2.
+
+## Checkpoint C (after Tasks 1-4)
 
 - [x] All tests pass; typecheck and build clean
-- [x] Browser: a goblin-only game plays as before, except enemies now stay at the keep and hit it
-- [x] **Review keep HP and keep damage with George before going on** (2026-10-25: keep 300 kept; enemies at the back of the keep now drawn in front of it, not sunk into its raised top)
+- [ ] Browser: on a maze, dwarves and golems break through while goblins walk round; marines use a river on a generated map; nobody stands on rock, trees or water
+- [ ] **Review breacher eagerness (`BREACH`) with George**
 
-## Task 4: Variants
+## Task 5: Behaviour table and bombers
 
-Variant tables from the spec (name, weight, HP/speed/damage multipliers, size); `rollVariant` with the state RNG at spawn.
+`BehaviourId`, `behaviour` on every kind, `BEHAVIOURS` table in `src/sim/behaviours.ts` (run before movement; true means the turn is used). `Enemy.mode` and `targetId`. Bombers `x`/`X`: spot a player-built wall, tower, house or wall spikes within 3 tiles; sprint (2.5x) to a tile next to it along a search of up to 6 tiles; explode for 60/120 on every structure and the keep in the 3x3; die with no bounty; splash effect and an `explosion` cue (with a sound).
 
-- [x] The same seed gives the same variants
-- [x] Over 10,000 rolls each variant's share is within 2% of its weight
-- [x] Variant multipliers apply on top of kind and wave scaling
+- [ ] Sprints only once a target is within 3 tiles; ignores ruins, bridges, floor spikes and the keep as targets
+- [ ] Explodes next to its target, damaging the 3x3 and nothing outside it; never damages enemies; drops no bounty
+- [ ] No explosion if killed before it arrives; no sprint if there's no short path
 
-Files: `src/sim/config.ts`, `src/sim/enemies.ts`, `tests/sim/enemies.test.ts`. Size: S. Depends on: 2.
+Files: `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/behaviours.ts`, `src/sim/enemies.ts`, `src/audio/sounds.ts` (+ `src/sim/cues.ts`), `tests/sim/behaviours.test.ts`. Size: M. Depends on: 2.
 
-## Task 5: Drawing, hover info and network
+## Task 6: Bands
 
-Glyph and colour per kind, glyph size per variant (small 75%, normal, large 125%, staying inside the tile) in palette and canvas; hover line `<Kind> <variant>, HP x / y` (kind name only for single-variant kinds); `ClientEnemy` gains `kind` and `variant` indices through snapshot, update and view (interpolation keeps them).
+`leader` and `band` on kinds (`b` follows `B`, `d` follows `D`); `Enemy.leaderId`. A band member uses the leader's profile, waits rather than get more than 1 tile ahead (by field distance), and moves at 1.3x while more than 4 tiles behind; on the leader's death it uses its own profile. The stopgap mix spawns a drawn leader with a band (2-4 `b`, 2-3 `d`) on the same tile, within budget.
 
-- [x] Kind and variant survive snapshot and update round trips; the 200-enemy update size test still passes
-- [x] Hover info tests for a multi-variant and a single-variant kind
-- [ ] Browser: each kind recognisable; runts and brutes visibly smaller and larger
+- [ ] Members stay at most 1 tile ahead and catch up when behind
+- [ ] Members attack the wall their breaching chief or thane stops at
+- [ ] Members carry on alone when the leader dies
+- [ ] The mix never draws a leader whose smallest band doesn't fit the budget; total threat stays within budget
 
-Files: `src/net/protocol.ts`, `src/net/snapshot.ts`, `src/net/view.ts`, `src/render/palette.ts`, `src/render/canvas.ts`, `src/ui/tileInfo.ts` (+ tests). Size: M (6 files, but each change is small). Depends on: 4.
+Files: `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/enemies.ts`, `src/sim/waves.ts`, `tests/sim/enemies.test.ts`, `tests/sim/waves.test.ts`. Size: M. Depends on: 3, 5.
 
-## Task 6: Stopgap wave mix and the dev spawn key
+## Task 7: Shaman and the heal effect
 
-Each wave's threat budget is today's count (5 + 3 x wave); enemies are drawn by `mixWeight` from kinds whose `firstWave` has arrived and whose threat fits the remaining budget; the wave ends when nothing fits. `debugSpawn` gains an optional `kind`; `E` cycles through the roster.
+Row for `s`; healer behaviour: every 2 s, +6 HP (up to max) to every other enemy within 2.5 tiles. `heal` effect, drawn as a green `+` in sight.
 
-- [x] Waves 1 and 2 are exactly 8 and 11 goblins
-- [x] No kind appears before its first wave; total threat never exceeds the budget
-- [x] The same seed gives the same wave
+- [ ] Heals others in range every 2 s up to max HP; not itself; not out of range
+- [ ] Heal effects only on enemies actually healed
 
-Files: `src/sim/waves.ts`, `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/game.ts`, `src/ui/input.ts`, `tests/sim/waves.test.ts`. Size: M. Depends on: 2.
+Files: `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/behaviours.ts`, `src/render/canvas.ts`, `tests/sim/behaviours.test.ts`. Size: S. Depends on: 5.
 
-## Checkpoint B (after Tasks 4-6)
+## Task 8: Battering ram and diggers
 
-- [x] All tests pass; coverage 80%+ lines for `src/sim/` (99.6%)
-- [ ] Browser: mixed waves play locally; `E` shows every kind
-- [ ] Online: two clients see the same kinds and variants
+Rows for `R` (breacher, siege behaviour: no extra code yet) and `n`. Digger behaviour: spot a player-built wall or wall spikes within 4 tiles; walk to a tile next to it (search of up to 8 tiles); dig in (`mode: "digging"`), hitting that wall each interval until it falls (with its tower); then walk on. Diggers stay attackable while digging.
 
-## Task 7: Docs
+- [ ] A ram breaks through a maze wall; its hits are 60 every 2.5 s
+- [ ] A digger digs under the nearest wall within 4 tiles, brings it (and its tower) down, then walks on
+- [ ] Towers and traps still hit a digging digger
 
-README (enemy roster table, enemies attacking the keep, keep HP 300, `E` dev key), SPEC.md "Since `enemy-kinds`", plan roadmap status.
+Files: `src/sim/config.ts`, `src/sim/behaviours.ts`, `tests/sim/behaviours.test.ts`, `tests/sim/enemies.test.ts`. Size: M. Depends on: 5.
 
-- [x] Docs match the built behaviour
+## Task 9: Hover words and the network
 
-Files: `README.md`, `SPEC.md`, `tasks/plan.md`. Size: XS. Depends on: 6.
+`ClientEnemy` gains `mode` (only when not walking) and `banded` (only while its leader lives). Hover info adds `sprinting`, `digging`, `with its chief` / `with its thane`.
+
+- [ ] `mode` and `banded` survive snapshot and update round trips, and are left out when not needed
+- [ ] Hover lines for a sprinting bomber, a digging digger and a banded barbarian
+- [ ] The 200-enemy update size test still passes
+
+Files: `src/net/protocol.ts`, `src/net/snapshot.ts`, `src/net/view.ts`, `src/ui/tileInfo.ts`, tests. Size: S. Depends on: 6, 7, 8.
+
+## Checkpoint D (after Tasks 5-9)
+
+- [ ] All tests pass; coverage 80%+ lines for `src/sim/`
+- [ ] Browser: every new kind via `E` (bombers blow holes, shamans heal, bands follow, rams and diggers bring walls down); each gets a journal entry
+- [ ] Online: two clients see the same behaviours
+- [ ] **Review with George**
+
+## Task 10: Determinism test and docs
+
+A test that runs the same seed with every kind for 2,000 ticks twice and compares the state. README (enemy table with the new kinds, profiles and behaviours in plain words), SPEC.md "Since `enemy-pathing`", plan roadmap status.
+
+- [ ] Same seed, same state
+- [ ] Docs match the built behaviour
+
+Files: `tests/sim/game.test.ts`, `README.md`, `SPEC.md`, `tasks/plan.md`. Size: S. Depends on: 9.

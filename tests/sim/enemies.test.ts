@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { ENEMY, ENEMY_KINDS, STRUCTURES, TICK_RATE, type EnemyKindId } from "../../src/sim/config";
 import { damageEnemy, spawnEnemy } from "../../src/sim/enemies";
-import { applyCommand, tick } from "../../src/sim/game";
-import { placeStructure, topAt } from "../../src/sim/grid";
+import { applyCommand, createGame, tick } from "../../src/sim/game";
+import { canBuild, isWalkable, placeStructure, topAt } from "../../src/sim/grid";
 import { nextStep } from "../../src/sim/pathfinding";
 import type { GameState } from "../../src/sim/types";
-import { buildAt, createGameWithoutWaves, ring, standsAtKeep } from "./helpers";
+import {
+  buildAt,
+  column,
+  createGameWithoutWaves,
+  paintTerrain,
+  ring,
+  standsAtKeep,
+} from "./helpers";
 
 const ticksPerTile = TICK_RATE / ENEMY_KINDS.goblin.speed;
 
@@ -392,7 +399,16 @@ describe("variants", () => {
     });
     expect(brute.maxHp).toBe(Math.round(20 * 1.4 * 1.3));
     expect(brute.speed).toBeCloseTo(1.5 * 0.9);
-    expect(brute.damage).toBeCloseTo(5 * 1.3);
+    expect(brute.damage).toBe(7); // 6.5, rounded to whole damage
+  });
+
+  it("always hits for whole damage, so HP never shows fractions", () => {
+    const state = createGameWithoutWaves();
+    for (const kind of Object.keys(ENEMY_KINDS) as EnemyKindId[]) {
+      ENEMY_KINDS[kind].variants.forEach((_, variant) => {
+        expect(Number.isInteger(spawnEnemy(state, 5, 5, { kind, variant }).damage)).toBe(true);
+      });
+    }
   });
 
   it("rolls the same variants for the same seed", () => {
@@ -419,5 +435,89 @@ describe("variants", () => {
     variants.forEach((v, i) =>
       expect(Math.abs(counts[i] / rolls - v.weight / total)).toBeLessThan(0.02),
     );
+  });
+});
+
+describe("wandering and terrain", () => {
+  it("never wanders sideways onto rock or water", () => {
+    for (let seed = 1; seed <= 10; seed++) {
+      const state = createGameWithoutWaves(seed);
+      state.wanderChance = 1;
+      const y = state.keeps[0].y + 1;
+      paintTerrain(state, [{ x: 5, y: y - 1 }], "rock");
+      paintTerrain(state, [{ x: 5, y: y + 1 }], "river");
+      const enemy = spawnEnemy(state, 5, y);
+      tick(state);
+      expect({ x: enemy.tx, y: enemy.ty }).toEqual({ x: 6, y });
+    }
+  });
+
+  it("keeps every enemy on crossable ground on generated maps", () => {
+    for (let seed = 1; seed <= 3; seed++) {
+      const state = createGame(seed, { fog: false });
+      state.wanderChance = 0.5;
+      state.wave.countdown = 1;
+      for (let t = 0; t < 40 * TICK_RATE && !state.gameOver; t++) {
+        tick(state);
+        for (const e of state.enemies) expect(isWalkable(state, e.tx, e.ty)).toBe(true);
+      }
+    }
+  });
+});
+
+describe("breachers", () => {
+  it("a dwarf breaks through a long wall line while a goblin walks round it", () => {
+    const damagedBy = (kind: EnemyKindId) => {
+      const state = createGameWithoutWaves();
+      const keep = state.keeps[0];
+      const wallX = keep.x - 4;
+      buildAt(state, column(state, wallX, [0]));
+      spawnEnemy(state, wallX - 2, keep.y + 1, { kind, hp: 1e6 });
+      run(state, 30 * TICK_RATE);
+      return column(state, wallX, [0]).filter((p) => {
+        const wall = topAt(state, p.x, p.y);
+        return !wall || wall.hp < wall.maxHp;
+      }).length;
+    };
+    expect(damagedBy("dwarf")).toBeGreaterThan(0);
+    expect(damagedBy("goblin")).toBe(0);
+  });
+
+  it("dwarves, thanes and golems breach; the rest follow", () => {
+    const breachers = (Object.keys(ENEMY_KINDS) as EnemyKindId[]).filter(
+      (k) => ENEMY_KINDS[k].profile === "breacher",
+    );
+    expect(breachers.sort()).toEqual(["dwarf", "dwarfThane", "golem"]);
+  });
+});
+
+describe("marines", () => {
+  it("are marines and marine captains, with the spec's stats", () => {
+    expect(ENEMY_KINDS.marine).toMatchObject({
+      glyph: "m",
+      hp: 25,
+      speed: 1.4,
+      damage: 5,
+      profile: "marine",
+      firstWave: 7,
+    });
+    expect(ENEMY_KINDS.marineCaptain).toMatchObject({
+      glyph: "M",
+      hp: 60,
+      speed: 1.2,
+      damage: 10,
+      profile: "marine",
+      firstWave: 11,
+    });
+  });
+
+  it("stop a bridge being built on the river tile they're in", () => {
+    const state = createGameWithoutWaves();
+    paintTerrain(state, [{ x: 5, y: 5 }], "river");
+    spawnEnemy(state, 5, 5, { kind: "marine" });
+    expect(canBuild(state, 1, "bridge", 5, 5)).toEqual({
+      ok: false,
+      reason: "An enemy is in the way",
+    });
   });
 });

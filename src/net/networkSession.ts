@@ -172,13 +172,13 @@ export function createNetworkSession(
         if (!view) return;
         const { update } = message;
         lobby = message.lobby;
-        applyUpdate(view, update);
+        const enemies = applyUpdate(view, update);
         const at = deps.now();
         // Updates sent straight after a command repeat the same tick: refresh, don't shift.
         if (newest && newest.tick !== update.tick)
           previous = { enemies: newest.enemies, at: newest.at };
-        newest = { enemies: update.enemies, at, tick: update.tick };
-        previous ??= { enemies: update.enemies, at };
+        newest = { enemies, at, tick: update.tick };
+        previous ??= { enemies, at };
         for (const [s, build] of pending) if (build.confirmed) pending.delete(s);
         return;
       }

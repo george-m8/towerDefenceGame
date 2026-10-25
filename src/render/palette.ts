@@ -35,6 +35,8 @@ export const ENEMY_COLOURS: Record<EnemyKindId, string> = {
   dwarf: "#f2d16b",
   dwarfThane: "#f2d16b",
   golem: "#d0d0d0",
+  marine: "#5fc8e8",
+  marineCaptain: "#5fc8e8",
 };
 
 /** Glyph size per variant size, relative to the normal glyph. Large still fits in a tile. */

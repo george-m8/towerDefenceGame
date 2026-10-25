@@ -12,7 +12,13 @@ import {
 } from "../sim/grid";
 import { nextStep } from "../sim/pathfinding";
 import { facingAngle } from "../sim/aiming";
-import { ENEMY_KINDS, STRUCTURES, type StructureStats, type TowerStats } from "../sim/config";
+import {
+  EFFECT_TICKS,
+  ENEMY_KINDS,
+  STRUCTURES,
+  type StructureStats,
+  type TowerStats,
+} from "../sim/config";
 import { canTarget } from "../sim/towers";
 import { hitTile } from "../sim/traps";
 import type {

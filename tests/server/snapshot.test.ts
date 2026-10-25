@@ -14,7 +14,7 @@ describe("toClientState", () => {
     spawnEnemy(state, 0, 12);
     tick(state);
     const client = toClientState(state);
-    expect(client).not.toHaveProperty("flow");
+    expect(client).not.toHaveProperty("flows");
     expect(client).not.toHaveProperty("rngState");
     expect(Object.keys(client.enemies[0]).sort()).toEqual([
       "hp",
@@ -37,7 +37,18 @@ describe("toClientState", () => {
       kind: ENEMY_KIND_ORDER.indexOf("dwarf"),
       variant: 2,
     });
-    expect(toUpdate(state, state.gridVersion).enemies[0]).toMatchObject({ variant: 2 });
+  });
+
+  it("sends an enemy's kind and variant in updates only the first time", () => {
+    const state = createGame(3, { blankMap: true, fog: false });
+    spawnEnemy(state, 0, 12, { kind: "golem" }); // in the welcome snapshot
+    const sent = sentStateOf(state);
+    spawnEnemy(state, 0, 14, { kind: "dwarf", variant: 2 }); // new since
+    const [known, fresh] = toUpdate(state, sent).enemies;
+    expect(known).not.toHaveProperty("kind");
+    expect(known).not.toHaveProperty("variant");
+    expect(fresh).toMatchObject({ kind: ENEMY_KIND_ORDER.indexOf("dwarf"), variant: 2 });
+    expect(toUpdate(state, sent).enemies[1]).not.toHaveProperty("kind");
   });
 
   it("rounds enemy positions to 2 decimals", () => {
@@ -50,7 +61,7 @@ describe("toClientState", () => {
   it("is enough for the client to rebuild the flow field", () => {
     const state = createGame(3);
     const client = toClientState(state);
-    const rebuilt = getFlowField({ ...client, flow: null } as unknown as GameState);
+    const rebuilt = getFlowField({ ...client, flows: {} } as unknown as GameState);
     expect(rebuilt.dist).toEqual(getFlowField(state).dist);
   });
 

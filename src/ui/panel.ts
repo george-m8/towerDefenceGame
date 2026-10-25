@@ -7,7 +7,12 @@ import { describeTile, priceLine } from "./tileInfo";
 import { priceAt } from "../sim/enclosures";
 import { hasVoted, voteLabel } from "./votes";
 
-export function createPanel(root: HTMLElement, ui: UiState, dispatch: (command: Command) => void) {
+export function createPanel(
+  root: HTMLElement,
+  ui: UiState,
+  dispatch: (command: Command) => void,
+  onJournal: () => void,
+) {
   root.innerHTML = `
     <dl class="stats">
       <dt>Gold</dt><dd data-stat="gold"></dd>
@@ -21,6 +26,9 @@ export function createPanel(root: HTMLElement, ui: UiState, dispatch: (command: 
       <button class="button" data-action="sendWave">Send wave</button>
       <button class="button" data-action="pause">Pause</button>
       <button class="button" data-action="fastForward" title="Fast forward (F)">&gt;&gt;</button>
+    </div>
+    <div class="actions">
+      <button class="button" data-action="journal" title="Monster journal (J)">Monster journal (J)</button>
     </div>
     <h2 class="section">Build</h2>
     <div class="tools">
@@ -37,7 +45,7 @@ export function createPanel(root: HTMLElement, ui: UiState, dispatch: (command: 
     <p class="status" data-stat="status"></p>
     <h2 class="section">Info</h2>
     <p class="info" data-stat="info"></p>
-    <p class="help">Space pause · F fast · R rotate · D paths · Esc cancel · drag to paint · arrows move · wheel or +/- zoom</p>
+    <p class="help">Space pause · F fast · R rotate · D paths · J journal · Esc cancel · drag to paint · arrows move · wheel or +/- zoom</p>
   `;
   const field = (name: string) => root.querySelector<HTMLElement>(`[data-stat="${name}"]`)!;
   const gold = field("gold");
@@ -62,6 +70,7 @@ export function createPanel(root: HTMLElement, ui: UiState, dispatch: (command: 
   sendWaveButton.addEventListener("click", () => dispatch({ type: "sendWave" }));
   pauseButton.addEventListener("click", () => dispatch({ type: "togglePause" }));
   fastForwardButton.addEventListener("click", () => dispatch({ type: "toggleFastForward" }));
+  root.querySelector('[data-action="journal"]')!.addEventListener("click", onJournal);
   for (const button of toolButtons) {
     button.addEventListener("click", () => {
       const tool = button.dataset.tool as UiState["tool"];

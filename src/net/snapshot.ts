@@ -1,11 +1,17 @@
 // Turns the server's GameState into what clients receive. Shared and pure.
 import { ENEMY_KIND_ORDER } from "../sim/config";
 import type { GameState, Structure } from "../sim/types";
-import type { ClientEnemy, ClientState, ClientStructure, StateUpdate } from "./protocol";
+import type {
+  ClientEnemy,
+  ClientState,
+  ClientStructure,
+  StateUpdate,
+  UpdateEnemy,
+} from "./protocol";
 
 /** The whole game as a client needs it (sent on welcome and restart). */
 export function toClientState(state: GameState): ClientState {
-  const { flow: _flow, rngState: _rng, enemies, structures, ...rest } = state;
+  const { flows: _flows, rngState: _rng, enemies, structures, ...rest } = state;
   return {
     ...rest,
     enemies: enemies.map(toClientEnemy),
@@ -26,6 +32,8 @@ export interface SentState {
   /** The chest list as sent; claiming a chest replaces the list, so a new list means a change. */
   features: GameState["features"];
   structures: Map<number, ClientStructure>;
+  /** Enemies whose kind and variant the clients already have. */
+  enemies: Set<number>;
 }
 
 /** A baseline matching `state` as it is now (what a welcome snapshot carries). */
@@ -40,6 +48,7 @@ export function sentStateOf(state: GameState): SentState {
     structures: new Map(
       Object.values(state.structures).map((s) => [s.id, toClientStructure(s)] as const),
     ),
+    enemies: new Set(state.enemies.map((e) => e.id)),
   };
 }
 
@@ -51,7 +60,7 @@ export function toUpdate(state: GameState, sent: SentState): StateUpdate {
   const update: StateUpdate = {
     tick: state.tick,
     gridVersion: state.gridVersion,
-    enemies: state.enemies.map(toClientEnemy),
+    enemies: state.enemies.map((e) => toUpdateEnemy(e, sent.enemies.has(e.id))),
     effects: state.effects,
     cues: state.cues,
     players: state.players,
@@ -63,6 +72,8 @@ export function toUpdate(state: GameState, sent: SentState): StateUpdate {
     gameOver: state.gameOver,
     fog: state.fog,
   };
+
+  sent.enemies = new Set(state.enemies.map((e) => e.id));
 
   const changed: ClientStructure[] = [];
   for (const structure of Object.values(state.structures)) {
@@ -127,6 +138,13 @@ function toClientEnemy(enemy: GameState["enemies"][number]): ClientEnemy {
     kind: ENEMY_KIND_ORDER.indexOf(enemy.kind),
     variant: enemy.variant,
   };
+}
+
+/** An enemy as an update carries it: kind and variant only if the clients don't have them. */
+function toUpdateEnemy(enemy: GameState["enemies"][number], known: boolean): UpdateEnemy {
+  if (!known) return toClientEnemy(enemy);
+  const { kind: _kind, variant: _variant, ...rest } = toClientEnemy(enemy);
+  return rest;
 }
 
 function toClientStructures(

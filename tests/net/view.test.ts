@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ENEMY_KIND_ORDER } from "../../src/sim/config";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand, createGame, tick } from "../../src/sim/game";
 import { canBuild, topAt } from "../../src/sim/grid";
@@ -52,7 +53,7 @@ describe("fromClientState", () => {
       variant: 1,
     });
     expect(Object.values(view.structures)[0].cooldown).toBe(0);
-    expect(view.flow).toBeNull();
+    expect(view.flows).toEqual({});
   });
 });
 
@@ -169,5 +170,26 @@ describe("sound cues over the network", () => {
     applyCommand(server, 1, { type: "sendWave" });
     applyUpdate(view, overTheWire(toUpdate(server, sentStateOf(server))));
     expect(view.cues.map((c) => c.kind)).toContain("waveStart");
+  });
+});
+
+describe("enemy kinds over updates", () => {
+  it("fills in kind and variant for enemies the client already knows", () => {
+    const server = createGame(4, { blankMap: true, fog: false });
+    spawnEnemy(server, 0, 12, { kind: "golem", variant: 1 });
+    const view = fromClientState(overTheWire(toClientState(server)));
+    const sent = sentStateOf(server);
+    spawnEnemy(server, 0, 14, { kind: "zerg" });
+    tick(server);
+    const enemies = applyUpdate(view, overTheWire(toUpdate(server, sent)));
+    expect(enemies.map((e) => [e.kind, e.variant])).toEqual([
+      [ENEMY_KIND_ORDER.indexOf("golem"), 1],
+      [ENEMY_KIND_ORDER.indexOf("zerg"), 0],
+    ]);
+    expect(view.enemies.map((e) => e.kind)).toEqual(["golem", "zerg"]);
+    // The next update carries neither kind; the view still knows both.
+    tick(server);
+    applyUpdate(view, overTheWire(toUpdate(server, sent)));
+    expect(view.enemies.map((e) => e.kind)).toEqual(["golem", "zerg"]);
   });
 });

@@ -4,7 +4,7 @@ import type { SimCueKind } from "../sim/types";
 import type { VoiceSettings } from "./synth";
 
 /** Game events (cued by the simulation) plus sounds the UI plays for the player's own actions. */
-export type CueKind = SimCueKind | "build" | "sell" | "denied";
+export type CueKind = SimCueKind | "build" | "sell" | "denied" | "discovered";
 
 export interface SoundNote {
   voice: VoiceSettings;
@@ -136,6 +136,19 @@ export const SOUNDS: Record<CueKind, SoundEffect> = {
     ),
     maxPerWindow: 1,
     windowSeconds: 0.25,
+  },
+  discovered: {
+    notes: phrase(
+      blip(0.25, 0.16),
+      [
+        ["E", 5],
+        ["B", 5],
+        ["E", 6],
+      ],
+      0.06,
+    ),
+    maxPerWindow: 1,
+    windowSeconds: 0.3,
   },
   waveStart: {
     notes: phrase(
