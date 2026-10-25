@@ -102,7 +102,9 @@ describe("music player", () => {
       setInterval: vi.fn((fn: () => void) => ((tick = fn), 1)),
       clearInterval: vi.fn(() => (tick = null)),
     };
-    const player = createMusicPlayer(engine, { ...timers, fetchBytes: vi.fn() });
+    // The built-in theme, whatever songs are listed first in the real manifest.
+    const builtIn = SONGS.find((s) => s.notes)!;
+    const player = createMusicPlayer(engine, { ...timers, fetchBytes: vi.fn(), songs: [builtIn] });
     return { engine, player, timers, runTick: () => tick?.() };
   }
 

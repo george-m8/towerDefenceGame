@@ -216,6 +216,16 @@ function placeholderTheme(): MidiSong {
 
 export const SONGS: SongEntry[] = [
   {
+    id: "concertino-in-d-john-baston",
+    title: "Concertino in D by John Baston",
+    plays: ["title", "menu"],
+    loop: true,
+    source: "https://www.midiworld.com/",
+    licence: "PD",
+    file: "baston.mid",
+    channels: { 0: "lead", 1: "harmony", 2: "bass" },
+  },
+  {
     id: "placeholder-theme",
     title: "Keep Theme (placeholder)",
     plays: ["title", "menu"],

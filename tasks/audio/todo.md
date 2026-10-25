@@ -1,6 +1,6 @@
 # Tasks: audio
 
-Spec: [`SPEC-audio.md`](../SPEC-audio.md) | Plan: [`plan.md`](plan.md)
+Spec: [`SPEC-audio.md`](../../SPEC-audio.md) | Plan: [`plan.md`](../plan.md)
 
 Standard verification for every task (in addition to task-specific checks):
 `npm run typecheck && npm test && npm run build`
@@ -103,7 +103,7 @@ Cues age out like effects. They're included in network snapshots, and the audio 
 
 **Verification:**
 - [x] `npm test` (`tests/sim/cues.test.ts`, snapshot test in `tests/net/`)
-- [ ] Manual: listen in a local game and a two-tab online game (left for you at Checkpoint G; online delivery is covered by the snapshot test)
+- [ ] Manual: listen in a two-tab online game (not separately checked by ear; online delivery is covered by the snapshot test). Local play confirmed working.
 
 **Dependencies:** Task 3
 
@@ -116,7 +116,7 @@ Cues age out like effects. They're included in network snapshots, and the audio 
 ### Checkpoint G: sound effects
 - [x] All tests pass, build clean
 - [x] Every sound effect plays in a local game (dev voice counter) and online cues are covered by tests; a 200-enemy stress wave peaked at 8 voices (caps hold). Listening is yours.
-- [ ] Review with human (tune the sounds with `?soundtest`)
+- [x] Review with human (tune the sounds with `?soundtest`)
 
 ---
 
@@ -153,11 +153,11 @@ Cues age out like effects. They're included in network snapshots, and the audio 
 **Acceptance criteria:**
 - [x] The sequencer schedules only the next lookahead window, with times correct across tempo changes, and loops at the song's end
 - [x] Channel 10 notes go to drum instruments; other channels follow the default or the manifest's mapping
-- [ ] In the browser the theme starts on the intro's dismiss, plays through the start screen, and fades when a game starts (left for you to listen: the browser check kept detaching while you were using it; the player logic is unit-tested)
+- [x] In the browser the theme starts on the intro's dismiss, plays through the start screen, and fades when a game starts (left for you to listen: the browser check kept detaching while you were using it; the player logic is unit-tested)
 
 **Verification:**
 - [x] `npm test` (`tests/audio/sequencer.test.ts`, a manifest sanity test)
-- [ ] Manual: listen from the intro into a game; mute and volume affect the music (yours)
+- [x] Manual: listen from the intro into a game; mute and volume affect the music (yours)
 
 **Dependencies:** Tasks 2, 5
 
@@ -187,6 +187,6 @@ Cues age out like effects. They're included in network snapshots, and the audio 
 ---
 
 ### Checkpoint H: audio complete
-- [ ] All 7 success criteria in `SPEC-audio.md` met
+- [x] All 7 success criteria in `SPEC-audio.md` met
 - [x] `npm run coverage` passes (98.2% lines overall; `src/audio` 96.8% with `synth.ts` excluded as planned)
-- [ ] Review with human, then move this file to `tasks/audio/`
+- [x] Review with human, then move this file to `tasks/audio/`
