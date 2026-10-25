@@ -126,3 +126,46 @@ Build order: `audio` -> `music-packs` -> `music-director`
 ### Open questions (for the `music-director` spec)
 
 Skipping the intro, what counts as "fight", crossfade versus waiting for a phrase end, and stings (picking from a list is settled by `music-packs`: shuffled without repeats). See the outline in [`tasks/plan.md`](tasks/plan.md).
+
+---
+
+# Capability Map: Armies (enemy roster, enemy AI, waves, journal, player units)
+
+Status: APPROVED (2026-10-25)
+Last updated: 2026-10-25
+
+Today there is one enemy (`g`). It follows a single flow field from the keep and only breaks walls when no open route is left. It spawns from one fixed strip on the left edge, and it is removed when it reaches the keep. This map turns that into a varied roster with different kinds of AI, edge spawns that change from group to group, a monster journal, and player-made defensive and offensive units with gold and food costs.
+
+It **replaces** the `units` row in the post-MVP map. That row is split into `units` (defensive, guard towers) and `field-units` (offensive and exploring), and `mode-barbarians` then also depends on `field-units`.
+
+| Module id | Responsibility | Depends on |
+|---|---|---|
+| `enemy-kinds` | Enemies come from a config table. Each kind has: glyph, colour, name, HP, speed, attack damage, attack interval, keep damage, bounty, threat cost, first wave it can appear in, behaviour id and movement profile. **Variants:** each enemy picks a variant of its kind when it spawns (e.g. goblin runt / grunt / brute), with stat multipliers and a colour shade, so two `g`s can differ. Today's enemy becomes goblin `g`. First roster: `g`, `G` golem, `b`/`B` barbarians, `d`/`D` dwarves, `z` zergs, `w` wolf riders (fast, fragile), all using today's "follower" AI. Enemies hit structures **and the keep** using their own attack stats: an enemy that reaches the keep stays and attacks it until killed, instead of hitting once and vanishing. The snapshot and protocol carry kind and variant. | core |
+| `enemy-pathing` | **Movement profiles:** one cached flow field per profile, rebuilt when `gridVersion` changes. *Follower* (today's rule: walls cost more than any open route). *Breacher* (a wall costs its HP divided by the enemy's damage per second, so it breaks through whenever that beats walking round). *Marine* (can cross river and sea, with sea costing more than river). **Behaviours:** follower, breacher, bomber (`x`/`X` dwarf bombers: short sight; on seeing a structure it sprints to it and explodes, splash damage) leader/follower groups (`b` stays with `B`, `d` with `D`), healer (`s` shaman heals nearby enemies), siege (`R` battering ram: attacks structures only, very high HP) and digger (`n` diggers walk to a wall and dig under it to damage it from below; they don't make a tunnel). Adds dwarf bombers, marines `m`/`M`, shamans, rams and diggers to the roster. | enemy-kinds |
+| `enemy-targeting` | Enemies choose **what** to attack: the keep, houses or towers. One cached field per (movement profile, goal type), leading to the nearest building of that type and rebuilt when `gridVersion` changes. Score = the kind's liking for the goal x the building's value (its cost, plus income for houses) / the field's cost to reach it (including wall-breaking for breachers). **Intelligence** per kind: *low* (g, z, G, R) always go for the keep; *medium* (b/B, w) head for the keep but turn aside to a house or tower they see if it's cheap to reach; *high* (d/D, m/M, s) score every goal when they spawn and again when the grid changes or their target falls. After destroying a target they choose again, and the keep is always an option. | enemy-pathing |
+| `wave-director` | **Waves are put together by code:** each wave gets a threat budget that grows with the wave number, spent on group templates (e.g. a warband is 1 `B` + 3-6 `b`, a swarm is 15-30 `z`). Kinds unlock by wave. **Edge spawns:** each group enters at one point on the map edge, and different groups in the same wave can use different points. A point qualifies if it is walkable, has nothing built on it, and has a terrain route to the keep (water edges count for marines). This replaces the fixed spawn zone, and `enclosures` and `fog-of-war` then measure reachability from the edge instead of from the spawn zone. | enemy-kinds (marine spawns arrive with `enemy-pathing`) |
+| `bestiary` | Monster journal panel. An entry unlocks the first time a kind is **in sight**. It shows glyph, name, variants, stats, a one-line behaviour description and the first wave seen. Unlocks are saved per device. | enemy-kinds |
+| `units` | Player units: entity with faction, owner, HP, armour, attack, range, speed and sight. Combat runs both ways: enemies stop to fight units that block them. Units give fog sight. Each unit costs `{ gold, food }`, but only gold is charged until `resources` adds food (with the economy off, gold only, as already decided). **Guard towers** spawn units, with a unit limit, a respawn timer and the facing as their guard spot. Defensive roster: swordsman (moves a little to attack), archer (guards and shoots, moves a little), paladin (stays put and blocks: high armour, less damage than a swordsman). | enemy-kinds, tile-layers, fog-of-war |
+| `field-units` | Offensive and exploring units from a **barracks**. Each unit finds its own path, over explored land only. **Scout:** walks to the nearest fog frontier. **Soldier / knight / ranger** (the ranger is the offensive ranged unit, a separate type from the defensive archer): go to a known enemy keep; else to known enemy walls (circle them to look inside; if they still can't see in, break through); else patrol the fog edge, fighting what they meet. **Horsemen:** only move on explored land, and only once an enemy keep, wall or tower is known. In Endless, where there is no enemy keep, they explore and hunt enemies. Their full behaviour shows in PvP and later in `mode-barbarians`. | units |
+
+Build order: `enemy-kinds` -> `bestiary` -> `enemy-pathing` -> `enemy-targeting` -> `wave-director` -> `units` -> `field-units`
+
+`line-of-sight` (spec drafted) stays independent. Units aim by range and fog until it lands, then switch to its `canSee`.
+
+### Decisions captured
+
+- The enemy roster, variants, waves and costs are all config rows, so a new kind is a row plus (at most) a behaviour function.
+- Several flow fields, one per movement profile, not one per enemy, so cost doesn't grow with the number of enemies.
+- Every unit has a gold and a food cost from day one. Food is only charged once `resources` exists.
+- Added enemies (2026-10-25): `w` wolf riders, `s` shaman, `R` battering ram, `n` diggers (damage walls from underneath, no tunnel). No flying enemies for now.
+- Dwarf bombers are `x`/`X` (barbarians keep `b`/`B`). Diggers are `n`.
+- Two archer types: defensive `archer` (guard tower) and offensive `ranger` (barracks).
+- Enemies that reach the keep stand and attack it with their own stats (2026-10-25). A balance change, tuned in `enemy-kinds`.
+- Paladin: high armour, blocks, stays put, less damage than a swordsman.
+- Some enemies target houses or towers instead of the keep, chosen by intelligence, building value and cost of reaching it (2026-10-25). Fields per goal type, not per enemy.
+
+### Open questions (settled in module specs, with proposed defaults)
+
+- `enemy-pathing`: bombers damage structures and units, not other enemies. When a leader dies, followers carry on with normal pathing. Breachers "notice" through the shared cost field, not per-enemy vision; bombers and diggers use real short-range sight.
+- `enemy-targeting`: the starting liking and intelligence values per kind (raiders like houses, dwarves like towers); whether medium-intelligence enemies give up on a diversion that turns out costly.
+- `wave-director`: a marker on the edge where each group is about to enter, shown even in fog.
