@@ -449,7 +449,7 @@ T1 Synth voice + pure maths
 - [ ] Every sound effect heard in a local and an online game; a busy wave stays under the hit cap
 - [ ] Review with human (tune the sounds with `?soundtest`)
 
-- [ ] Task 5: MIDI file reader
+- [x] Task 5: MIDI file reader
 - [ ] Task 6: Sequencer and title/menu music
 - [ ] Task 7: Docs
 

@@ -127,12 +127,12 @@ Cues age out like effects. They're included in network snapshots, and the audio 
 **Description:** `src/audio/midi.ts`, pure: turns MIDI file bytes into `{ notes: { time, duration, midi, velocity, channel }[], length }` in seconds. Handles format 0 and 1, variable-length quantities, running status, tempo changes (including mid-song), note-on with velocity 0 as note-off, and skips meta and sysex events. A corrupt or truncated file gives a clear error instead of throwing something random.
 
 **Acceptance criteria:**
-- [ ] Hand-built byte fixtures for format 0 and format 1 produce the expected notes and timings
-- [ ] Running status, velocity-0 note-offs and a mid-song tempo change are all handled
-- [ ] Corrupt and truncated files are rejected with a clear error
+- [x] Hand-built byte fixtures for format 0 and format 1 produce the expected notes and timings
+- [x] Running status, velocity-0 note-offs and a mid-song tempo change are all handled
+- [x] Corrupt and truncated files are rejected with a clear error
 
 **Verification:**
-- [ ] `npm test` (`tests/audio/midi.test.ts`)
+- [x] `npm test` (`tests/audio/midi.test.ts`)
 
 **Dependencies:** None
 
