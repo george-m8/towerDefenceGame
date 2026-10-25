@@ -54,11 +54,13 @@ Files: `src/sim/config.ts`, `src/sim/pathfinding.ts`, `tests/sim/pathfinding.tes
 
 `BehaviourId`, `behaviour` on every kind, `BEHAVIOURS` table in `src/sim/behaviours.ts` (run before movement; true means the turn is used). `Enemy.mode` and `targetId`. Bombers `x`/`X`: spot a player-built wall, tower, house or wall spikes within 3 tiles; sprint (2.5x) to a tile next to it along a search of up to 6 tiles; explode for 60/120 on every structure and the keep in the 3x3; die with no bounty; splash effect and an `explosion` cue (with a sound).
 
-- [ ] Sprints only once a target is within 3 tiles; ignores ruins, bridges, floor spikes and the keep as targets
-- [ ] Explodes next to its target, damaging the 3x3 and nothing outside it; never damages enemies; drops no bounty
-- [ ] No explosion if killed before it arrives; no sprint if there's no short path
+- [x] Sprints only once a target is within 3 tiles; ignores ruins, bridges, floor spikes and the keep as targets
+- [x] Explodes next to its target, damaging the 3x3 and nothing outside it; never damages enemies; drops no bounty
+- [x] No explosion if killed before it arrives; no sprint if there's no short path
 
 Files: `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/behaviours.ts`, `src/sim/enemies.ts`, `src/audio/sounds.ts` (+ `src/sim/cues.ts`), `tests/sim/behaviours.test.ts`. Size: M. Depends on: 2.
+
+Built: the blast is `ability.amount` (60 / 120); a bomber's ordinary hit (when blocked, or at the keep) is a small `damage` (3 / 5), so a bomber that reaches the keep doesn't hit it for 60 a second. Tile-to-tile stepping moved to `src/sim/movement.ts` so sprinting reuses it. Enemies at 0 HP no longer act before they're removed.
 
 ## Task 6: Bands
 

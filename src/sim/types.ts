@@ -67,6 +67,10 @@ export interface Enemy {
   killedBy: PlayerId | null;
   /** Ticks until it can hit a blocking structure again. */
   attackCooldown: number;
+  /** What it's doing beyond walking its field. */
+  mode: "walking" | "sprinting";
+  /** The structure a bomber is heading for. */
+  targetId: number | null;
 }
 
 /** Short-lived visual events recorded by the simulation for the renderer. */
@@ -92,7 +96,8 @@ export type Effect =
 export type MapFeature = { kind: "chest"; x: number; y: number; gold: number };
 
 /** Game events that make a sound. The audio layer adds UI-only sounds on top. */
-export type SimCueKind = "enemyHit" | "keepHit" | "treasure" | "splash" | "waveStart" | "gameOver";
+export type SimCueKind =
+  "enemyHit" | "keepHit" | "treasure" | "splash" | "explosion" | "waveStart" | "gameOver";
 
 export interface SoundCue {
   id: number;

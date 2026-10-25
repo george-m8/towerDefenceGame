@@ -236,6 +236,23 @@ export const BREACH = { referenceDps: 8, referenceSpeed: 1 };
 /** What marines pay to swim each kind of water (land is 1). Nobody else can enter water. */
 export const MARINE_COSTS = { river: 2, sea: 4 };
 
+/** What an enemy does on top of following its profile's field (see sim/behaviours.ts). */
+export type BehaviourId = "follower" | "bomber";
+
+/** Numbers for behaviours that need them. Distances in tiles, intervals in seconds. */
+export interface EnemyAbility {
+  /** How far it notices a target, straight-line, ignoring fog. */
+  sight?: number;
+  /** Bombers: the blast reaches this many tiles each way (1 = the 3x3). */
+  radius?: number;
+  /** Bombers: blast damage. */
+  amount?: number;
+  /** Bombers: speed multiplier while sprinting. */
+  sprint?: number;
+  /** Longest walk it will take to reach a target it has noticed. */
+  search?: number;
+}
+
 /** A version of a kind, rolled at spawn. Multipliers apply to the kind's stats. */
 export interface EnemyVariant {
   name: string;
@@ -256,6 +273,8 @@ export interface EnemyKind {
   description: string;
   /** Which tiles it can cross and what walls cost it (see BREACH). */
   profile: MovementProfile;
+  behaviour: BehaviourId;
+  ability?: EnemyAbility;
   hp: number;
   speed: number; // tiles per second
   /** Per hit, against a structure in the way or the keep. */
@@ -277,6 +296,7 @@ export const ENEMY_KINDS = {
     name: "Goblin",
     description: "Weak all round, but cheap and plentiful.",
     profile: "follower",
+    behaviour: "follower",
     hp: 20,
     speed: 1.5,
     damage: 5,
@@ -296,6 +316,7 @@ export const ENEMY_KINDS = {
     name: "Zerg",
     description: "Tiny and cheap, comes in numbers.",
     profile: "follower",
+    behaviour: "follower",
     hp: 6,
     speed: 1.8,
     damage: 2,
@@ -311,6 +332,7 @@ export const ENEMY_KINDS = {
     name: "Wolf rider",
     description: "Fast and fragile.",
     profile: "follower",
+    behaviour: "follower",
     hp: 14,
     speed: 3,
     damage: 4,
@@ -329,6 +351,7 @@ export const ENEMY_KINDS = {
     name: "Barbarian",
     description: "Quick hits, tougher than a goblin. Follows its chief.",
     profile: "follower",
+    behaviour: "follower",
     hp: 30,
     speed: 1.8,
     damage: 4,
@@ -347,6 +370,7 @@ export const ENEMY_KINDS = {
     name: "Dwarf",
     description: "Slow, with solid hits. Follows its thane.",
     profile: "breacher",
+    behaviour: "follower",
     hp: 45,
     speed: 1,
     damage: 8,
@@ -366,6 +390,7 @@ export const ENEMY_KINDS = {
     name: "Barbarian chief",
     description: "Leads barbarians. Slow, but hits very fast.",
     profile: "follower",
+    behaviour: "follower",
     hp: 90,
     speed: 1.2,
     damage: 8,
@@ -381,6 +406,7 @@ export const ENEMY_KINDS = {
     name: "Dwarf thane",
     description: "Leads dwarves. A stronger dwarf.",
     profile: "breacher",
+    behaviour: "follower",
     hp: 120,
     speed: 0.9,
     damage: 14,
@@ -396,6 +422,7 @@ export const ENEMY_KINDS = {
     name: "Golem",
     description: "Rare, slow and huge, with slow crushing hits.",
     profile: "breacher",
+    behaviour: "follower",
     hp: 250,
     speed: 0.6,
     damage: 40,
@@ -414,6 +441,7 @@ export const ENEMY_KINDS = {
     name: "Marine",
     description: "Swims rivers and the sea when that's the quicker way in.",
     profile: "marine",
+    behaviour: "follower",
     hp: 25,
     speed: 1.4,
     damage: 5,
@@ -429,6 +457,7 @@ export const ENEMY_KINDS = {
     name: "Marine captain",
     description: "A tougher marine, just as happy in the water.",
     profile: "marine",
+    behaviour: "follower",
     hp: 60,
     speed: 1.2,
     damage: 10,
@@ -438,6 +467,40 @@ export const ENEMY_KINDS = {
     firstWave: 11,
     mixWeight: 1,
     variants: [{ name: "captain", weight: 1, hp: 1, speed: 1, damage: 1, size: "normal" }],
+  },
+  dwarfBomber: {
+    glyph: "x",
+    name: "Dwarf bomber",
+    description: "Spots a wall, tower or house, runs at it and blows it up.",
+    profile: "follower",
+    behaviour: "bomber",
+    ability: { sight: 3, radius: 1, amount: 60, sprint: 2.5, search: 6 },
+    hp: 18,
+    speed: 1,
+    damage: 3,
+    attackInterval: 1,
+    bounty: 4,
+    threat: 3,
+    firstWave: 8,
+    mixWeight: 2,
+    variants: [{ name: "sapper", weight: 1, hp: 1, speed: 1, damage: 1, size: "normal" }],
+  },
+  dwarfDemolisher: {
+    glyph: "X",
+    name: "Dwarf demolisher",
+    description: "A bigger bomber with a bigger bang.",
+    profile: "follower",
+    behaviour: "bomber",
+    ability: { sight: 3, radius: 1, amount: 120, sprint: 2.5, search: 6 },
+    hp: 40,
+    speed: 0.9,
+    damage: 5,
+    attackInterval: 1,
+    bounty: 9,
+    threat: 6,
+    firstWave: 11,
+    mixWeight: 1,
+    variants: [{ name: "demolisher", weight: 1, hp: 1, speed: 1, damage: 1, size: "normal" }],
   },
 } satisfies Record<string, EnemyKind>;
 

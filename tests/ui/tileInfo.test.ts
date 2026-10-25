@@ -87,5 +87,7 @@ function enemyAt(x: number, y: number): Enemy {
     damage: 5,
     attackInterval: 20,
     attackCooldown: 0,
+    mode: "walking",
+    targetId: null,
   };
 }

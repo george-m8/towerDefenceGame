@@ -6,13 +6,13 @@ import {
   type EnemyKindId,
   type MovementProfile,
 } from "./config";
+import { BEHAVIOURS } from "./behaviours";
 import { addCue } from "./cues";
 import { attackTargetAt, blocksAt, damageStructure, keepAt } from "./grid";
 import { DIRECTIONS, canCross, nextStep } from "./pathfinding";
+import { stepTo, walk } from "./movement";
 import { nextRandom, randomInt } from "./rng";
 import type { Enemy, GameState, Keep, PlayerId, Point, Structure } from "./types";
-
-const EPSILON = 1e-9;
 
 export interface SpawnOptions {
   kind?: EnemyKindId;
@@ -66,6 +66,8 @@ export function spawnEnemy(
     attackInterval: Math.round(kind.attackInterval * TICK_RATE),
     killedBy: null,
     attackCooldown: 0,
+    mode: "walking",
+    targetId: null,
   };
   state.enemies.push(enemy);
   return enemy;
@@ -93,19 +95,12 @@ export function updateEnemies(state: GameState): void {
   for (const enemy of state.enemies) advance(state, enemy);
 }
 
-/**
- * Move the enemy one tick's worth of distance, carrying leftover movement
- * across tile centres so speed stays constant.
- */
+/** One tick for one enemy: its behaviour first, then walking its field if that's still to do. */
 function advance(state: GameState, enemy: Enemy): void {
+  if (enemy.hp <= 0) return; // killed since the last tick; removed with the bounties
   enemy.attackCooldown = Math.max(0, enemy.attackCooldown - 1);
-  let budget = enemy.speed / TICK_RATE;
-  while (budget > EPSILON) {
-    if (enemy.x === enemy.tx && enemy.y === enemy.ty && !chooseNextTile(state, enemy)) {
-      return; // waiting or attacking
-    }
-    budget -= moveTowardsTarget(enemy, budget);
-  }
+  if (BEHAVIOURS[ENEMY_KINDS[enemy.kind].behaviour](state, enemy)) return;
+  walk(enemy, enemy.speed, () => chooseNextTile(state, enemy));
 }
 
 /**
@@ -129,10 +124,7 @@ function chooseNextTile(state: GameState, enemy: Enemy): boolean {
   }
   // Only walking enemies wander; one breaking through stays on its target.
   const next = wanderStep(state, enemy, pathStep, previous, profile) ?? pathStep;
-  enemy.px = enemy.x;
-  enemy.py = enemy.y;
-  enemy.tx = next.x;
-  enemy.ty = next.y;
+  stepTo(enemy, next.x, next.y);
   return true;
 }
 
@@ -175,20 +167,4 @@ function attack(state: GameState, enemy: Enemy, target: Structure) {
   if (enemy.attackCooldown > 0) return;
   damageStructure(state, target, enemy.damage);
   enemy.attackCooldown = enemy.attackInterval;
-}
-
-/** Moves up to `budget` tiles towards the target and returns the distance moved. */
-function moveTowardsTarget(enemy: Enemy, budget: number): number {
-  // Movement is always along one axis between adjacent tile centres.
-  const dx = enemy.tx - enemy.x;
-  const dy = enemy.ty - enemy.y;
-  const remaining = Math.abs(dx) + Math.abs(dy);
-  if (remaining <= budget + EPSILON) {
-    enemy.x = enemy.tx;
-    enemy.y = enemy.ty;
-    return remaining;
-  }
-  enemy.x += Math.sign(dx) * budget;
-  enemy.y += Math.sign(dy) * budget;
-  return budget;
 }
