@@ -29,6 +29,11 @@ function testRoom({ waiting = false } = {}) {
   return { room, sent, last, ofType };
 }
 
+/** Open ground beside the keep: in sight, so it can be built on through the fog. */
+function nearKeep(room: Room) {
+  return { x: room.state.keep.x - 2, y: room.state.keep.y };
+}
+
 function join(room: Room, name: string) {
   const joined = joinRoom(room, name);
   if (!joined.ok) throw new Error(joined.reason);
@@ -74,7 +79,7 @@ describe("joining", () => {
   it("a player who left can rejoin with their token as the same player", () => {
     const { room, ofType } = testRoom();
     const ann = join(room, "Ann");
-    applyRoomCommand(room, ann.playerId, 1, { type: "build", kind: "wall", x: 5, y: 5 });
+    applyRoomCommand(room, ann.playerId, 1, { type: "build", kind: "wall", ...nearKeep(room) });
     leaveRoom(room, ann.playerId);
     expect(room.state.players[1].connected).toBe(false);
     expect(rejoinRoom(room, ann.token)).toEqual({ ok: true, playerId: 1 });
@@ -95,7 +100,7 @@ describe("commands", () => {
     const { room, ofType } = testRoom();
     join(room, "Ann");
     const bo = join(room, "Bo");
-    applyRoomCommand(room, bo.playerId, 42, { type: "build", kind: "wall", x: 5, y: 5 });
+    applyRoomCommand(room, bo.playerId, 42, { type: "build", kind: "wall", ...nearKeep(room) });
     expect(ofType(2, "result").at(-1)).toEqual({ type: "result", seq: 42, result: { ok: true } });
     const wall = Object.values(room.state.structures).find((s) => s.kind === "wall");
     expect(wall?.owner).toBe(2);
@@ -119,7 +124,7 @@ describe("commands", () => {
     const { room, ofType } = testRoom();
     const ann = join(room, "Ann");
     const updates = ofType(1, "update").length;
-    applyRoomCommand(room, ann.playerId, 1, { type: "sell", x: 5, y: 5 });
+    applyRoomCommand(room, ann.playerId, 1, { type: "sell", ...nearKeep(room) });
     expect(ofType(1, "update").length).toBe(updates);
   });
 });
@@ -184,7 +189,7 @@ describe("restart", () => {
     const { room, last } = testRoom();
     const ann = join(room, "Ann");
     const bo = join(room, "Bo");
-    applyRoomCommand(room, bo.playerId, 1, { type: "build", kind: "wall", x: 5, y: 5 });
+    applyRoomCommand(room, bo.playerId, 1, { type: "build", kind: "wall", ...nearKeep(room) });
     leaveRoom(room, bo.playerId);
     room.state.gameOver = true;
 
@@ -209,7 +214,7 @@ describe("waiting room", () => {
     const ann = join(room, "Ann");
     advanceRoom(room, 1000);
     expect(room.state.tick).toBe(0);
-    applyRoomCommand(room, ann.playerId, 1, { type: "build", kind: "wall", x: 5, y: 5 });
+    applyRoomCommand(room, ann.playerId, 1, { type: "build", kind: "wall", ...nearKeep(room) });
     expect(ofType(1, "result").at(-1)?.result).toEqual({
       ok: false,
       reason: "The game hasn't started",
@@ -254,5 +259,16 @@ describe("waiting room", () => {
     room.state.gameOver = true;
     restartRoom(room, 5);
     expect(room.started).toBe(true);
+  });
+
+  it("the host can start without fog (the dev switch), and restarts keep it", () => {
+    const { room } = testRoom({ waiting: true });
+    const ann = join(room, "Ann");
+    expect(room.state.fog).toBe(true);
+    expect(startRoom(room, ann.playerId, false)).toEqual({ ok: true });
+    expect(room.state.fog).toBe(false);
+    room.state.gameOver = true;
+    restartRoom(room, 5);
+    expect(room.state.fog).toBe(false);
   });
 });

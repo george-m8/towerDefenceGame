@@ -49,7 +49,16 @@ export const COLOURS = {
   spikesUp: "#c8c8c8",
   spikesUpGlyph: "#ffffff",
   trapTarget: "rgba(255, 200, 200, 0.35)",
+  /** Fog of war: a dark wash over land that's seen but out of sight, and unexplored land. */
+  fogSeen: "rgba(0, 0, 0, 0.5)",
+  fogUnexplored: "#0b0906",
+  /** A watchtower's sight while placing or hovering it: in sight, then seen. */
+  sightInner: "rgba(160, 220, 255, 0.14)",
+  sightOuter: "rgba(160, 220, 255, 0.06)",
 };
+
+/** How much of a seen tile's colour is kept on the minimap (the rest goes dark). */
+export const MINIMAP_SEEN_BRIGHTNESS = 0.5;
 
 export const GLYPHS: Record<StructureKind, string> = {
   wall: "#",
@@ -60,6 +69,7 @@ export const GLYPHS: Record<StructureKind, string> = {
   wallSpikes: "↑",
   house: "h",
   bridge: "=",
+  watchtower: "T",
   ruin: "#",
 };
 
@@ -131,6 +141,7 @@ export const STRUCTURE_COLOURS: Record<StructureKind, { bg: string; fg: string }
   wallSpikes: { bg: "#8a7a5c", fg: "#e8e8e8" },
   house: { bg: "#7a3b2e", fg: "#ffd28a" },
   bridge: { bg: "#6b4f2a", fg: "#d9b77a" },
+  watchtower: { bg: "#4a5a6b", fg: "#e0ecff" },
   ruin: { bg: "#55524c", fg: "#2e2c28" },
 };
 

@@ -28,8 +28,8 @@ export type ClientMessage =
   | { type: "rejoin"; room: string; token: string }
   | { type: "command"; seq: number; command: OnlineCommand }
   | { type: "restart" }
-  /** Host only: leave the waiting room and start the game. */
-  | { type: "start" };
+  /** Host only: leave the waiting room and start the game. `fog: false` is the ?fog=off dev switch. */
+  | { type: "start"; fog?: false };
 
 /** The waiting room: whether the game has started, and who can start it. */
 export interface LobbyInfo {
@@ -52,7 +52,7 @@ export type ClientState = Omit<GameState, "flow" | "rngState" | "enemies" | "str
   structures: Record<number, ClientStructure>;
 };
 
-type GridFields = "terrain" | "base" | "mount" | "features";
+type GridFields = "terrain" | "base" | "mount" | "features" | "explored";
 type DynamicFields =
   | "tick"
   | "gridVersion"
@@ -65,7 +65,8 @@ type DynamicFields =
   | "keep"
   | "paused"
   | "speed"
-  | "gameOver";
+  | "gameOver"
+  | "fog";
 
 /** Sent every few ticks. The grid fields are only present when the grid changed. */
 export type StateUpdate = Pick<ClientState, DynamicFields> & Partial<Pick<ClientState, GridFields>>;
@@ -120,7 +121,7 @@ export function parseClientMessage(raw: string): ParseResult {
     case "restart":
       return ok({ type: "restart" });
     case "start":
-      return ok({ type: "start" });
+      return ok(data.fog === false ? { type: "start", fog: false } : { type: "start" });
     default:
       return fail("Unknown message type");
   }

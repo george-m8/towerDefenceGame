@@ -1,6 +1,7 @@
 import { facingAngle } from "./aiming";
 import { STRUCTURES, TERRAIN, TICK_RATE, type StructureStats, type TerrainStats } from "./config";
 import { priceAt } from "./enclosures";
+import { isExplored, reveal } from "./fog";
 import { playerName } from "./players";
 import type {
   CommandResult,
@@ -114,6 +115,7 @@ export function canBuild(
   const stats: StructureStats = STRUCTURES[kind];
   if (stats.buildable === false) return { ok: false, reason: `${stats.name}s can't be built` };
   if (!inBounds(state, x, y)) return { ok: false, reason: "Out of bounds" };
+  if (!isExplored(state, x, y)) return { ok: false, reason: "Can't build on unexplored land" };
   if (isKeepTile(state, x, y)) return { ok: false, reason: "Can't build on the keep" };
   if (isSpawnTile(state, x, y)) return { ok: false, reason: "Can't build in the spawn zone" };
   const terrainCheck = canBuildOnTerrain(state, kind, x, y);
@@ -206,6 +208,7 @@ export function placeStructure(
   if (stats.tower && stats.tower.turnDegreesPerSecond > 0) structure.aim = facingAngle(facing);
   state.structures[structure.id] = structure;
   layerOf(state, kind)[tileIndex(state, x, y)] = structure.id;
+  reveal(state, structure);
   state.gridVersion++;
   return structure;
 }

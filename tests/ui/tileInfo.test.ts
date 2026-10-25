@@ -4,7 +4,7 @@ import { describeTile, priceLine } from "../../src/ui/tileInfo";
 import { buildAt, ring } from "../sim/helpers";
 
 function walledGame() {
-  const state = createGame(1, { blankMap: true });
+  const state = createGame(1, { blankMap: true, fog: false });
   const { keep } = state;
   buildAt(state, ring(keep.x - 2, keep.y - 2, keep.x + keep.size + 1, keep.y + keep.size + 1));
   buildAt(state, ring(10, 5, 14, 9));
@@ -35,3 +35,41 @@ describe("priceLine", () => {
     expect(priceLine(state, "wall", { x: 30, y: 30 })).toBe("Wall here: 5g");
   });
 });
+
+describe("fog hover info", () => {
+  it("says Unexplored, and hides enemies on land out of sight", () => {
+    const state = createGame(1, { blankMap: true });
+    const { keep } = state;
+    expect(describeTile(state, { x: 0, y: 0 })).toEqual(["Unexplored"]);
+    const seen = { x: keep.x + keep.size + 15, y: keep.y };
+    state.enemies.push({ ...enemyAt(seen.x, seen.y) });
+    const lines = describeTile(state, seen);
+    expect(lines).toContain("Out of sight: enemies here aren't shown");
+    expect(lines.join("\n")).not.toContain("Enemy");
+    const near = { x: keep.x + keep.size + 1, y: keep.y };
+    state.enemies.push({ ...enemyAt(near.x, near.y) });
+    expect(describeTile(state, near).join("\n")).toContain("Enemy HP");
+  });
+
+  it("the price line says why you can't build on unexplored land", () => {
+    const state = createGame(1, { blankMap: true });
+    expect(priceLine(state, "wall", { x: 0, y: 0 })).toBe("Wall: can't build on unexplored land");
+  });
+});
+
+function enemyAt(x: number, y: number) {
+  return {
+    id: 1,
+    x,
+    y,
+    tx: x,
+    ty: y,
+    px: x,
+    py: y,
+    hp: 20,
+    maxHp: 20,
+    bounty: 1,
+    killedBy: null,
+    attackCooldown: 0,
+  };
+}

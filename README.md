@@ -39,6 +39,7 @@ Enemies (`g`) spawn from the red strip on the left edge and walk to your keep (`
 | `6` | Wall spikes | arrow `↑→↓←` | 20 | A wall section that fires every 2s, dealing 20 damage to the one tile it faces. Press `R` to rotate before placing. |
 | `7` | House | `h` | 40 | +2 gold every 5s. Blocks movement. |
 | `8` | Bridge | `=` | 10 | Only on river tiles. Makes the river walkable there (for enemies too). |
+| `9` | Watchtower | `T` | 20 | Doesn't attack. Sees all round, as far as a cannon (see [Fog of war](#fog-of-war)). Stands on open ground or a wall, like a tower. |
 | `X` | Sell | `$` | - | Refunds 50% of cost, less if damaged. Sells the top layer first (a tower before the wall under it). Also clears trees. |
 
 ### The map
@@ -57,6 +58,31 @@ Every game starts on a new, randomly generated map (the seed is shown in the pan
 - **Ruins** (`#` in dark stone) are old, damaged walls. They block enemies, can hold a tower, and sell for a little salvage. You can't build new ones.
 - **Treasure chests** (`$` in gold) are piles of gold lying on the map (20-60, more the further from the keep). Build anything on one to claim it.
 - There is always a walkable route from the spawn to the keep, and nothing walkable is ever cut off.
+
+### Fog of war
+
+You start out seeing only the land around your keep. Everything you build lets you see further.
+
+- **In sight** (drawn normally): close to your keep and buildings. You see everything here, enemies included.
+- **Seen** (drawn darker): further out, or anywhere you've seen before. You see the land and what's built on it, but not enemies or shots. Seen land stays seen, even after you sell what revealed it.
+- **Unexplored** (black): never seen. You can't build, sell or clear trees here.
+- You can build on land that's in sight or seen. The enemy spawn strip starts seen, so you know where enemies come from but not when they're on their way.
+- Enemies don't care about the fog: they move and fight the same either way.
+- In co-op, sight is shared, and anyone can build wherever anyone has seen.
+
+How far each building sees (in sight / seen, in tiles):
+
+| Building | In sight | Seen | |
+|---|---|---|---|
+| Keep | 12 | 18 | |
+| Catapult | 10 | 14 | |
+| Archer | 6 | 10 | only along its 90° arc, plus the tiles right around it |
+| Cannon, watchtower | 5 | 9 | |
+| House | 3 | 6 | |
+| Spikes, bridge | 2 | 4 | |
+| Wall | 1 | 1.5 | enough to see what's attacking it |
+
+Walls barely see past themselves, so build watchtowers to explore. Hover a structure to see its sight, and hover a watchtower (or place one) to see the area it covers. Every tower sees at least as far as it shoots. For testing, add `fog=off` to the address (e.g. `?solo&fog=off`) to play with the whole map visible; online, the host's switch applies to the room.
 
 ### Enclosures
 
@@ -92,7 +118,7 @@ Towers always shoot the enemy closest to the keep. Traps fire on a fixed timer f
 
 | Input | Action |
 |---|---|
-| `1`-`8`, `X` or click a tool | Select a build tool / sell |
+| `1`-`9`, `X` or click a tool | Select a build tool / sell |
 | Left click | Place (or sell) |
 | Left drag | Paint walls, spikes, bridges, or sell/clear along the dragged tiles |
 | Right click or `Esc` | Clear the selected tool |

@@ -28,10 +28,12 @@ export function applyUpdate(view: GameState, update: StateUpdate): void {
   view.paused = update.paused;
   view.speed = update.speed;
   view.gameOver = update.gameOver;
+  view.fog = update.fog;
   if (update.terrain) view.terrain = update.terrain;
   if (update.base) view.base = update.base;
   if (update.mount) view.mount = update.mount;
   if (update.features) view.features = update.features;
+  if (update.explored) view.explored = update.explored;
 }
 
 /**

@@ -61,7 +61,8 @@ function openTile(state: GameState) {
     const x = i % state.width;
     const y = Math.floor(i / state.width);
     const spawn = state.spawnTiles.some((p) => p.x === x && p.y === y);
-    if (state.terrain[i] === "ground" && state.base[i] === EMPTY && !spawn) return { x, y };
+    const open = state.terrain[i] === "ground" && state.base[i] === EMPTY && !spawn;
+    if (open && state.explored[i] === 1) return { x, y }; // through the fog: seen land only
   }
   throw new Error("No open tile");
 }

@@ -62,6 +62,7 @@ A browser-based, top-down, grid-based tower defence game where the player grows 
 - **Since `net-client`:** the browser plays online through the server (`?create&name=` / `?room=CODE`), via a `Session` that is either the local simulation or the server's game. See [`SPEC-net-client.md`](SPEC-net-client.md).
 - **Since `enclosures`:** areas enemies can't reach from the spawn (closed by walls, other structures, terrain or the map edge, with at least one player-built piece) make building cheaper: 50% off in the keep's enclosure, 25% elsewhere, inside and on their walls. Refunds are half of what was paid. See [`SPEC-enclosures.md`](SPEC-enclosures.md).
 - **Since `lobby`:** the page opens on a start screen (name, Play solo, Create room, Join by code), and new rooms wait until their host starts the game. See [`SPEC-lobby.md`](SPEC-lobby.md).
+- **Since `fog-of-war`:** players start seeing only the land around the keep. The keep and everything built see a region (inner: enemies visible; outer: land only), and land once seen stays seen; unexplored land is black and can't be built on. A new **watchtower** (`9`, 20g) only gives sight. Sight is shared in co-op. See [`SPEC-fog-of-war.md`](SPEC-fog-of-war.md).
 - **Since `audio`:** our own Web Audio chiptune synth plays sound effects from simulation cues (`state.cues`, played once each, capped per sound) and MIDI music on the title and start screens. See [`SPEC-audio.md`](SPEC-audio.md).
 
 **Enemies** (one type for the MVP)

@@ -12,7 +12,7 @@ import {
 import { isKeepTile, isSpawnTile } from "../../src/sim/grid";
 
 describe("createGame", () => {
-  const state = createGame(1, { blankMap: true });
+  const state = createGame(1, { blankMap: true, fog: false });
 
   it("creates a grid of the configured size", () => {
     expect(state.width).toBe(GRID_WIDTH);
@@ -53,14 +53,14 @@ describe("createGame", () => {
 
 describe("tick and pause", () => {
   it("advances the tick count when not paused", () => {
-    const state = createGame(1, { blankMap: true });
+    const state = createGame(1, { blankMap: true, fog: false });
     tick(state);
     tick(state);
     expect(state.tick).toBe(2);
   });
 
   it("does not advance while paused, and resumes after unpausing", () => {
-    const state = createGame(1, { blankMap: true });
+    const state = createGame(1, { blankMap: true, fog: false });
     expect(applyCommand(state, 1, { type: "togglePause" })).toEqual({ ok: true });
     tick(state);
     expect(state.tick).toBe(0);
@@ -72,7 +72,7 @@ describe("tick and pause", () => {
 
 describe("fast forward", () => {
   it("starts at normal speed and toggles between normal and fast", () => {
-    const state = createGame(1, { blankMap: true });
+    const state = createGame(1, { blankMap: true, fog: false });
     expect(state.speed).toBe(1);
     expect(applyCommand(state, 1, { type: "toggleFastForward" })).toEqual({ ok: true });
     expect(state.speed).toBe(FAST_FORWARD_SPEED);
@@ -101,7 +101,7 @@ describe("ownership", () => {
     expect(ruins.length).toBeGreaterThan(0);
     expect(ruins.every((r) => r.owner === null)).toBe(true);
 
-    const blank = createGame(1, { blankMap: true });
+    const blank = createGame(1, { blankMap: true, fog: false });
     expect(applyCommand(blank, 1, { type: "build", kind: "wall", x: 5, y: 5 })).toEqual({
       ok: true,
     });

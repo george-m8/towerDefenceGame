@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { inviteLink, readJoinIntent, serverUrl } from "../../src/net/join";
+import { fogFromUrl, inviteLink, readJoinIntent, serverUrl } from "../../src/net/join";
 
 describe("readJoinIntent", () => {
   it("opens the start screen without a room, a create or a name", () => {
@@ -44,5 +44,14 @@ describe("links", () => {
   it("connects to /ws on the page's own host, securely on https", () => {
     expect(serverUrl({ protocol: "http:", host: "localhost:5173" })).toBe("ws://localhost:5173/ws");
     expect(serverUrl({ protocol: "https:", host: "td.example" })).toBe("wss://td.example/ws");
+  });
+});
+
+describe("fogFromUrl", () => {
+  it("is on unless the address says ?fog=off", () => {
+    expect(fogFromUrl("")).toBe(true);
+    expect(fogFromUrl("?solo")).toBe(true);
+    expect(fogFromUrl("?solo&fog=off")).toBe(false);
+    expect(fogFromUrl("?create&name=Ann&fog=off")).toBe(false);
   });
 });

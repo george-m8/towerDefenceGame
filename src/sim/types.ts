@@ -142,6 +142,10 @@ export interface GameState {
   wanderChance: number;
   gameOver: boolean;
   rngState: number;
+  /** False turns fog of war off: every tile is in sight. */
+  fog: boolean;
+  /** Per tile: 1 once anyone has seen it (it stays seen), else 0. See sim/fog.ts. */
+  explored: number[];
 }
 
 export type Command =

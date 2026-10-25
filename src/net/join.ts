@@ -18,6 +18,11 @@ export function readJoinIntent(search: string): PageIntent {
   return room ? { mode: "menu", room } : { mode: "menu" };
 }
 
+/** The dev switch `?fog=off` turns fog of war off (for testing in the browser). */
+export function fogFromUrl(search: string): boolean {
+  return new URLSearchParams(search).get("fog") !== "off";
+}
+
 export function inviteLink(origin: string, room: string): string {
   return `${origin}/?room=${room}`;
 }

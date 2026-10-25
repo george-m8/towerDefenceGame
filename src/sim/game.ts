@@ -5,6 +5,7 @@ import { EMPTY, KEEP_TILE, canBuild, placeStructure } from "./grid";
 import { awardBounties, claimChest, collectIncome, sellStructure } from "./economy";
 import { addCue, updateCues } from "./cues";
 import { updateEffects } from "./effects";
+import { initialExplored } from "./fog";
 import { generateTerrain, layoutFor } from "./mapgen";
 import { randomInt } from "./rng";
 import { updateTowers } from "./towers";
@@ -18,6 +19,8 @@ export interface GameOptions {
   blankMap?: boolean;
   /** Names of the players to start with (default: one player). */
   players?: string[];
+  /** Fog of war (default on). Off, every tile is in sight. */
+  fog?: boolean;
 }
 
 export function createGame(seed: number, options: GameOptions = {}): GameState {
@@ -62,7 +65,10 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     wanderChance: ENEMY.wanderChance,
     gameOver: false,
     rngState: seed,
+    fog: options.fog ?? true,
+    explored: [],
   };
+  state.explored = initialExplored(state);
   for (const name of options.players ?? ["Player 1"]) addPlayer(state, name);
   updateVotes(state); // with no players, the game starts paused
   for (const spot of map.ruins) {

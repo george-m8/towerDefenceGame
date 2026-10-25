@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { applyCommand, createGame } from "../../src/sim/game";
 import { COLOURS, STRUCTURE_COLOURS, TERRAIN_STYLES } from "../../src/render/palette";
-import { minimapColour } from "../../src/ui/minimap";
+import { fogged, minimapColour } from "../../src/ui/minimap";
+import { IN_SIGHT, SEEN, UNEXPLORED } from "../../src/sim/fog";
 import { paintTerrain } from "../sim/helpers";
 
 describe("minimapColour", () => {
   it("shows the keep, structures, the spawn and terrain in their map colours", () => {
-    const state = createGame(1, { blankMap: true });
+    const state = createGame(1, { blankMap: true, fog: false });
     applyCommand(state, 1, { type: "build", kind: "wall", x: 30, y: 5 });
     paintTerrain(state, [{ x: 31, y: 5 }], "river");
     const spawn = state.spawnTiles[0];
@@ -24,5 +25,13 @@ describe("minimapColour", () => {
         expect(minimapColour(state, x, y)).toMatch(/^#[0-9a-f]{6}$/i);
       }
     }
+  });
+});
+
+describe("fogged", () => {
+  it("darkens unexplored land fully, dims seen land, and leaves land in sight alone", () => {
+    expect(fogged("#808080", UNEXPLORED)).toBe(COLOURS.fogUnexplored);
+    expect(fogged("#808080", SEEN)).toBe("#404040");
+    expect(fogged("#808080", IN_SIGHT)).toBe("#808080");
   });
 });

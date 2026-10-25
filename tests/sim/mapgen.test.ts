@@ -266,7 +266,7 @@ describe("createGame map generation", () => {
   });
 
   it("gives an open field with blankMap", () => {
-    const state = createGame(42, { blankMap: true });
+    const state = createGame(42, { blankMap: true, fog: false });
     expect(state.terrain.every((t) => t === "ground")).toBe(true);
   });
 });
