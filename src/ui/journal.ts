@@ -90,3 +90,35 @@ export function foundCount(journal: Journal): string {
   const found = ENEMY_KIND_ORDER.filter((kind) => journal.found[kind]).length;
   return `${found} of ${ENEMY_KIND_ORDER.length} found`;
 }
+
+const NOTICE_MS = 4000;
+
+/** "New in the journal" notices, one per kind, shown one after another. */
+export interface NoticeQueue {
+  kinds: EnemyKindId[];
+  /** When the front notice first showed; null until it does. */
+  shownSince: number | null;
+}
+
+export function createNoticeQueue(): NoticeQueue {
+  return { kinds: [], shownSince: null };
+}
+
+export function pushNotices(queue: NoticeQueue, kinds: EnemyKindId[]): void {
+  queue.kinds.push(...kinds);
+}
+
+/** The notice to show at `now` (ms), or null. A notice's time starts when it first shows. */
+export function currentNotice(queue: NoticeQueue, now: number): string | null {
+  if (queue.kinds.length === 0) return null;
+  queue.shownSince ??= now;
+  while (now - queue.shownSince >= NOTICE_MS) {
+    queue.kinds.shift();
+    queue.shownSince += NOTICE_MS;
+    if (queue.kinds.length === 0) {
+      queue.shownSince = null;
+      return null;
+    }
+  }
+  return `New in the journal: ${ENEMY_KINDS[queue.kinds[0]].name} (J to open)`;
+}

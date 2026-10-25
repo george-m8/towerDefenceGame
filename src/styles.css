@@ -605,3 +605,22 @@ a.button {
 .journal-actions {
   margin: 8px 0 0;
 }
+
+/* A short message over the top of the map (e.g. a new journal entry). */
+.toast {
+  position: absolute;
+  top: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 2px 12px;
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  box-shadow: 2px 2px 0 var(--ink);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.toast[hidden] {
+  display: none;
+}

@@ -26,7 +26,9 @@ export function createPanel(
       <button class="button" data-action="sendWave">Send wave</button>
       <button class="button" data-action="pause">Pause</button>
       <button class="button" data-action="fastForward" title="Fast forward (F)">&gt;&gt;</button>
-      <button class="button" data-action="journal" title="Monster journal (J)">Journal</button>
+    </div>
+    <div class="actions">
+      <button class="button" data-action="journal" title="Monster journal (J)">Monster journal (J)</button>
     </div>
     <h2 class="section">Build</h2>
     <div class="tools">

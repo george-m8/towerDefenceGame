@@ -3,11 +3,14 @@ import { ENEMY_KIND_ORDER, ENEMY_KINDS } from "../../src/sim/config";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { createGame } from "../../src/sim/game";
 import {
+  createNoticeQueue,
+  currentNotice,
   discover,
   emptyJournal,
   entryLines,
   foundCount,
   loadJournal,
+  pushNotices,
   saveJournal,
   variantSummary,
 } from "../../src/ui/journal";
@@ -136,5 +139,26 @@ describe("entries", () => {
   it("gives every kind a description", () => {
     for (const kind of ENEMY_KIND_ORDER)
       expect(ENEMY_KINDS[kind].description.length).toBeGreaterThan(0);
+  });
+});
+
+describe("notices", () => {
+  it("shows one notice per new kind, each for 4 seconds, one after another", () => {
+    const queue = createNoticeQueue();
+    pushNotices(queue, ["zerg", "golem"]);
+    expect(currentNotice(queue, 1000)).toBe("New in the journal: Zerg (J to open)");
+    expect(currentNotice(queue, 4999)).toBe("New in the journal: Zerg (J to open)");
+    expect(currentNotice(queue, 5000)).toBe("New in the journal: Golem (J to open)");
+    expect(currentNotice(queue, 8999)).toBe("New in the journal: Golem (J to open)");
+    expect(currentNotice(queue, 9000)).toBeNull();
+  });
+
+  it("starts a later notice when it arrives, not when the queue was made", () => {
+    const queue = createNoticeQueue();
+    expect(currentNotice(queue, 0)).toBeNull();
+    pushNotices(queue, ["wolfRider"]);
+    expect(currentNotice(queue, 60_000)).toBe("New in the journal: Wolf rider (J to open)");
+    expect(currentNotice(queue, 63_999)).not.toBeNull();
+    expect(currentNotice(queue, 64_000)).toBeNull();
   });
 });
