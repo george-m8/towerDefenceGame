@@ -27,7 +27,7 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | 1. Basics (continued) | `tower-aiming` | Done |
 | | `line-of-sight` | Spec drafted |
 | 1d. Armies (see below) | `enemy-kinds` | Done (tasks in [`tasks/enemy-kinds/`](enemy-kinds/todo.md)) |
-| | `bestiary` | **Spec approved; tasks in [`tasks/todo.md`](todo.md)** |
+| | `bestiary` | Built; browser check with George pending (tasks in [`tasks/todo.md`](todo.md)) |
 | | `enemy-pathing` | Spec approved ([`SPEC-enemy-pathing.md`](../SPEC-enemy-pathing.md)); tasks after `bestiary` |
 | | `enemy-targeting` | Outline |
 | | `wave-director` | Outline |

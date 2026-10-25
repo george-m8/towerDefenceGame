@@ -42,6 +42,6 @@ Files: `src/ui/journalView.ts`, `src/main.ts`, `src/audio/sounds.ts`, `tests/ui/
 
 README (the journal, `J`), SPEC.md "Since `bestiary`", plan roadmap status.
 
-- [ ] Docs match the built behaviour
+- [x] Docs match the built behaviour
 
 Files: `README.md`, `SPEC.md`, `tasks/plan.md`. Size: XS. Depends on: 3.

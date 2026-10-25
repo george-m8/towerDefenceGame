@@ -44,6 +44,10 @@ Waves 1 and 2 are all goblins. Later waves mix in other kinds from the wave show
 
 Most kinds come in **variants**, shown by glyph size: a small `g` is a goblin runt (weaker, faster), a large one a brute (tougher, hits harder). Hover an enemy to see which it is, e.g. `Goblin brute, HP 18 / 28`. All the numbers live in `ENEMY_KINDS` in `src/sim/config.ts`.
 
+### Monster journal
+
+The first time a kind of enemy comes into sight (not while it's hidden in fog), it gets an entry in the monster journal and a notice pops up over the map. Press `J`, or the **Monster journal** button, to read it: each kind you've found shows its glyph, what it does, its stats, the wave it first turns up in and the wave you first saw it, and its variants. Kinds you haven't met yet show as `?` with the wave they can first appear in. The journal is remembered on this device across games; **Forget** clears it.
+
 ### Structures
 
 | Key | Structure | Glyph | Cost | What it does |
@@ -144,6 +148,7 @@ Towers always shoot the enemy closest to the keep. Traps fire on a fixed timer f
 | `F` or `>>` button | Toggle fast forward (2x game speed) |
 | Send wave button | Start the next wave now, for +1 gold per second skipped |
 | `D` | Toggle the path overlay (arrows show where enemies will walk; red means "will attack this") |
+| `J` | Open or close the monster journal (`Esc` also closes it) |
 | Hover a tile | Show its details in the Info box, and a tower's range |
 | Arrow keys | Move the view around the map |
 | Mouse wheel, or `+` / `-` | Zoom in and out (the wheel zooms around the cursor) |
