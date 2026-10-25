@@ -228,6 +228,8 @@ export interface EnemyVariant {
 export interface EnemyKind {
   glyph: string;
   name: string;
+  /** One line for the monster journal. */
+  description: string;
   hp: number;
   speed: number; // tiles per second
   /** Per hit, against a structure in the way or the keep. */
@@ -247,6 +249,7 @@ export const ENEMY_KINDS = {
   goblin: {
     glyph: "g",
     name: "Goblin",
+    description: "Weak all round, but cheap and plentiful.",
     hp: 20,
     speed: 1.5,
     damage: 5,
@@ -264,6 +267,7 @@ export const ENEMY_KINDS = {
   zerg: {
     glyph: "z",
     name: "Zerg",
+    description: "Tiny and cheap, comes in numbers.",
     hp: 6,
     speed: 1.8,
     damage: 2,
@@ -277,6 +281,7 @@ export const ENEMY_KINDS = {
   wolfRider: {
     glyph: "w",
     name: "Wolf rider",
+    description: "Fast and fragile.",
     hp: 14,
     speed: 3,
     damage: 4,
@@ -293,6 +298,7 @@ export const ENEMY_KINDS = {
   barbarian: {
     glyph: "b",
     name: "Barbarian",
+    description: "Quick hits, tougher than a goblin. Follows its chief.",
     hp: 30,
     speed: 1.8,
     damage: 4,
@@ -309,6 +315,7 @@ export const ENEMY_KINDS = {
   dwarf: {
     glyph: "d",
     name: "Dwarf",
+    description: "Slow, with solid hits. Follows its thane.",
     hp: 45,
     speed: 1,
     damage: 8,
@@ -326,6 +333,7 @@ export const ENEMY_KINDS = {
   barbarianChief: {
     glyph: "B",
     name: "Barbarian chief",
+    description: "Leads barbarians. Slow, but hits very fast.",
     hp: 90,
     speed: 1.2,
     damage: 8,
@@ -339,6 +347,7 @@ export const ENEMY_KINDS = {
   dwarfThane: {
     glyph: "D",
     name: "Dwarf thane",
+    description: "Leads dwarves. A stronger dwarf.",
     hp: 120,
     speed: 0.9,
     damage: 14,
@@ -352,6 +361,7 @@ export const ENEMY_KINDS = {
   golem: {
     glyph: "G",
     name: "Golem",
+    description: "Rare, slow and huge, with slow crushing hits.",
     hp: 250,
     speed: 0.6,
     damage: 40,

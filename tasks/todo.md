@@ -8,9 +8,9 @@ Standard verification for every task: `npm run typecheck && npm test && npm run 
 
 `description` on every kind in `ENEMY_KINDS` (spec table). `src/ui/journal.ts`: `Journal`, `loadJournal`/`saveJournal` (key `keep-journal`, guarded like `src/audio/settings.ts`), `discover` (kinds the viewer can see now, first-seen wave, roster order), `variantSummary`, and pure entry builders (`entryLines(kind, journal)` for found and locked entries, `foundCount`).
 
-- [ ] An enemy in sight unlocks its kind with the current wave; one in fog doesn't; found kinds aren't returned again; new kinds come back in roster order
-- [ ] Storage round trip; missing, throwing and corrupt storage give an empty journal; unknown kind ids are dropped
-- [ ] Variant summaries for runt, brute and a standard variant; found and locked entry lines; `5 of 8 found` count
+- [x] An enemy in sight unlocks its kind with the current wave; one in fog doesn't; found kinds aren't returned again; new kinds come back in roster order
+- [x] Storage round trip; missing, throwing and corrupt storage give an empty journal; unknown kind ids are dropped
+- [x] Variant summaries for runt, brute and a standard variant; found and locked entry lines; `5 of 8 found` count
 
 Files: `src/sim/config.ts`, `src/ui/journal.ts`, `tests/ui/journal.test.ts`. Size: S. Depends on: none.
 
