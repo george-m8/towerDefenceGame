@@ -59,8 +59,8 @@ describe("instrumentFor", () => {
 });
 
 describe("the song manifest", () => {
-  it("has a title song, and every song records its source and licence", () => {
-    expect(SONGS.some((s) => s.plays.includes("title"))).toBe(true);
+  it("has an intro song, and every song records its source and licence", () => {
+    expect(SONGS.some((s) => s.plays.includes("intro"))).toBe(true);
     for (const s of SONGS) {
       expect(s.source.length).toBeGreaterThan(0);
       expect(s.licence.length).toBeGreaterThan(0);
@@ -108,9 +108,9 @@ describe("music player", () => {
     return { engine, player, timers, runTick: () => tick?.() };
   }
 
-  it("schedules the title song's first notes on the music bus", async () => {
+  it("schedules the intro song's first notes on the music bus", async () => {
     const { engine, player, runTick } = setup();
-    await player.play("title");
+    await player.play("intro");
     runTick();
     expect(engine.notes.length).toBeGreaterThan(0);
     expect(engine.notes.every((args) => args[3] === "music")).toBe(true);
@@ -119,14 +119,14 @@ describe("music player", () => {
 
   it("playing the same place again doesn't restart it", async () => {
     const { player, timers } = setup();
-    await player.play("title");
-    await player.play("title");
+    await player.play("intro");
+    await player.play("intro");
     expect(timers.setInterval).toHaveBeenCalledTimes(1);
   });
 
   it("fading out stops scheduling and fades the music bus", async () => {
     const { engine, player, timers, runTick } = setup();
-    await player.play("title");
+    await player.play("intro");
     player.fadeOut(1);
     expect(engine.fades).toEqual([1]);
     expect(timers.clearInterval).toHaveBeenCalled();
@@ -138,7 +138,7 @@ describe("music player", () => {
   it("does nothing until audio is unlocked", async () => {
     const { engine, player, timers } = setup();
     (engine as { unlocked: boolean }).unlocked = false;
-    await player.play("title");
+    await player.play("intro");
     expect(timers.setInterval).not.toHaveBeenCalled();
   });
 });
@@ -165,7 +165,7 @@ describe("music player with a MIDI file", () => {
     const song: SongEntry = {
       id: "file-song",
       title: "File song",
-      plays: ["title"],
+      plays: ["intro"],
       loop: false,
       source: "test",
       licence: "test",
@@ -177,7 +177,7 @@ describe("music player with a MIDI file", () => {
       setInterval: (fn: () => void) => ((tick = fn), 1),
       clearInterval: () => {},
     });
-    await player.play("title");
+    await player.play("intro");
     tick();
     expect(fetchBytes).toHaveBeenCalledWith("/music/file-song.mid");
     expect(notes).toHaveLength(1);

@@ -9,9 +9,9 @@ Spec: [`SPEC-music-packs.md`](../SPEC-music-packs.md). Plan: [`tasks/plan.md`](p
 - Files: `src/audio/midi.ts`, `tests/audio/midi.test.ts`
 
 ## Task 2: Pack scan and Vite plugin
-- [ ] `scanMusicPacks(dir)` returns `{ pack: { category: [files] } }`, only `.mid` files, only known categories, sorted
-- [ ] `virtual:music-packs` gives the game that list in dev and build; the dev server reloads when a pack file changes
-- [ ] Pack contents are git-ignored; `public/music/music-packs/.gitkeep` keeps the folder
+- [x] `scanMusicPacks(dir)` returns `{ pack: { category: [files] } }`, only `.mid` files, only known categories, sorted
+- [x] `virtual:music-packs` gives the game that list in dev and build; the dev server reloads when a pack file changes
+- [x] Pack contents are git-ignored; `public/music/music-packs/.gitkeep` keeps the folder
 - Files: `tools/musicPacks.ts`, `vite.config.ts`, `src/vite-env.d.ts`, `.gitignore`, `tests/tools/musicPacks.test.ts`
 
 ## Task 3: Playlist and chosen pack

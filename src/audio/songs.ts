@@ -2,10 +2,12 @@
 // instruments themselves. Add your own songs here (see README: "Adding a song").
 import { noteToMidi } from "./envelopes";
 import type { MidiNote, MidiSong } from "./midi";
+import type { MusicPlace } from "./places";
 import type { VoiceSettings } from "./synth";
 
+export type { MusicPlace };
+
 export type Instrument = "lead" | "harmony" | "bass" | "arp" | "kick" | "snare" | "hihat";
-export type MusicPlace = "title" | "menu";
 
 export interface InstrumentDef {
   voice: VoiceSettings;
@@ -218,7 +220,7 @@ export const SONGS: SongEntry[] = [
   {
     id: "concertino-in-d-john-baston",
     title: "Concertino in D by John Baston",
-    plays: ["title", "menu"],
+    plays: ["intro", "menu"],
     loop: true,
     source: "https://www.midiworld.com/",
     licence: "PD",
@@ -228,7 +230,7 @@ export const SONGS: SongEntry[] = [
   {
     id: "placeholder-theme",
     title: "Keep Theme (placeholder)",
-    plays: ["title", "menu"],
+    plays: ["intro", "menu"],
     loop: true,
     source: "Written for this game",
     licence: "Same as this project",

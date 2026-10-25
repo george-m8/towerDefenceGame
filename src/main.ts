@@ -144,7 +144,7 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has("soundtest")
   // Direct room links and rejoins skip the intro; everyone else sees it before the menu.
   // Dismissing the intro is the first gesture, so audio is unlocked by then.
   showIntro(element("#intro"), () => {
-    void music.play("title");
+    void music.play("intro");
     showStartScreen(element("#start"), { room: intent.room, onChoose: startSession });
     void music.play("menu"); // the same song carries on unless the manifest says otherwise
   });
