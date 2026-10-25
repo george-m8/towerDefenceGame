@@ -34,6 +34,12 @@ export function createGameWithoutWaves(seed = 1): GameState {
   return state;
 }
 
+/** Finishes everything still being built, for tests about what structures do once built. */
+export function finishBuilding(state: GameState) {
+  for (const s of Object.values(state.structures)) s.buildLeft = 0;
+  state.gridVersion++;
+}
+
 /** Paint terrain directly, for terrain-rule tests on an otherwise blank map. */
 export function paintTerrain(state: GameState, points: Point[], terrain: Terrain) {
   for (const p of points) state.terrain[p.y * state.width + p.x] = terrain;

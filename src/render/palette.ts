@@ -21,6 +21,12 @@ export const ARC_SEGMENTS = 16;
 
 /** Height of the strip drawn along the top of a wall-mounted tower. */
 export const BATTLEMENT_PX = 3;
+/** How solid a structure still being built is drawn. */
+export const CONSTRUCTION_ALPHA = 0.45;
+/** How thick the build-time border round the tile being placed on is. */
+export const BUILD_BORDER_PX = 3;
+/** From this much of the longest build time on, the build-time border turns orange. */
+export const BUILD_BORDER_LONG = 0.75;
 export const GLYPH_FONT = `bold ${TILE_SIZE - 4}px Menlo, Consolas, monospace`;
 /** Slightly smaller font so a two-digit HP fits inside one tile. */
 export const KEEP_HP_FONT = `bold ${TILE_SIZE - 6}px Menlo, Consolas, monospace`;
@@ -79,6 +85,10 @@ export const COLOURS = {
   enemy: "#ff5f4a",
   hpBack: "#000000",
   hpFront: "#5fdc5f",
+  /** The bar over a structure still being built, filling as it goes up. */
+  buildFront: "#ffcd46",
+  /** The empty part of the build-time border. */
+  buildTrack: "rgba(0, 0, 0, 0.45)",
   /** The sliver left on a destroyed thing's emptied health bar. */
   hpEmpty: "#d22020",
   flowArrow: "rgba(120, 200, 255, 0.55)",

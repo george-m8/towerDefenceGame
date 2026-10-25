@@ -1,5 +1,13 @@
 import { SELL_REFUND, STRUCTURES, TICK_RATE, TREE_CLEAR_GOLD, type StructureStats } from "./config";
-import { enemyOccupies, isKeepTile, removeStructure, setTerrain, terrainAt, topAt } from "./grid";
+import {
+  enemyOccupies,
+  isBuilt,
+  isKeepTile,
+  removeStructure,
+  setTerrain,
+  terrainAt,
+  topAt,
+} from "./grid";
 import { addCue } from "./cues";
 import { addBurst } from "./effects";
 import { isExplored } from "./fog";
@@ -20,7 +28,7 @@ export function awardBounties(state: GameState): void {
 export function collectIncome(state: GameState): void {
   for (const structure of Object.values(state.structures)) {
     const { income }: StructureStats = STRUCTURES[structure.kind];
-    if (!income) continue;
+    if (!income || !isBuilt(structure)) continue;
     structure.cooldown--;
     if (structure.cooldown > 0) continue;
     addGold(state, structure.owner, income.gold);
@@ -31,7 +39,7 @@ export function collectIncome(state: GameState): void {
 export function incomePerMinute(state: GameState, player: PlayerId): number {
   let total = 0;
   for (const structure of Object.values(state.structures)) {
-    if (structure.owner !== player) continue;
+    if (structure.owner !== player || !isBuilt(structure)) continue;
     const { income }: StructureStats = STRUCTURES[structure.kind];
     if (income) total += income.gold * (60 / income.intervalSeconds);
   }

@@ -5,7 +5,7 @@ import { applyCommand, tick } from "../../src/sim/game";
 import { placeStructure, topAt } from "../../src/sim/grid";
 import { getFlowField, nextStep } from "../../src/sim/pathfinding";
 import { updateTraps } from "../../src/sim/traps";
-import { createGameWithoutWaves } from "./helpers";
+import { createGameWithoutWaves, finishBuilding } from "./helpers";
 
 const TOUGH = 10_000;
 const FLOOR = STRUCTURES.floorSpikes.trap;
@@ -75,6 +75,7 @@ describe("wall spikes", () => {
       ).toEqual({
         ok: true,
       });
+      finishBuilding(state);
       const neighbours = Object.entries(offsets).map(([dir, [dx, dy]]) => ({
         dir,
         enemy: spawnEnemy(state, 10 + dx, 10 + dy, { hp: TOUGH }),

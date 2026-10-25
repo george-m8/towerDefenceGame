@@ -6,7 +6,15 @@ import {
   type MovementProfile,
   type StructureStats,
 } from "./config";
-import { attackTargetAt, inBounds, isKeepTile, isWalkable, terrainAt, tileIndex } from "./grid";
+import {
+  attackTargetAt,
+  inBounds,
+  isBuilt,
+  isKeepTile,
+  isWalkable,
+  terrainAt,
+  tileIndex,
+} from "./grid";
 import type { FlowField, GameState, Point } from "./types";
 
 // Neighbour order doubles as the tie-break order: N, E, S, W.
@@ -129,12 +137,15 @@ function tileCosts(state: GameState, profile: MovementProfile): Float64Array {
   const { terrain, base, mount, structures } = state;
   const cost = new Float64Array(terrain.length);
   for (let i = 0; i < terrain.length; i++) {
+    // Anything still being built is left out: it doesn't block or bridge yet.
     const baseStats: StructureStats | undefined =
-      base[i] > 0 ? STRUCTURES[structures[base[i]].kind] : undefined;
+      base[i] > 0 && isBuilt(structures[base[i]])
+        ? STRUCTURES[structures[base[i]].kind]
+        : undefined;
     const ground = TERRAIN[terrain[i]].walkable || baseStats?.spansWater === true;
     const water = MARINE_COSTS[terrain[i] as keyof typeof MARINE_COSTS];
     if (!ground && !(profile === "marine" && water !== undefined)) cost[i] = Infinity;
-    else if (mount[i] > 0 || baseStats?.blocksMovement) {
+    else if ((mount[i] > 0 && isBuilt(structures[mount[i]])) || baseStats?.blocksMovement) {
       cost[i] =
         profile === "breacher"
           ? breachCost(state, i % state.width, Math.floor(i / state.width))

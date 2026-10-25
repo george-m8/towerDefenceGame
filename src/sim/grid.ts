@@ -58,7 +58,7 @@ export function isWalkable(state: GameState, x: number, y: number): boolean {
 }
 
 function isBridge(structure: Structure | undefined): boolean {
-  if (!structure) return false;
+  if (!structure || !isBuilt(structure)) return false;
   const stats: StructureStats = STRUCTURES[structure.kind];
   return stats.spansWater === true;
 }
@@ -84,18 +84,27 @@ export function topAt(state: GameState, x: number, y: number): Structure | undef
   return mountAt(state, x, y) ?? baseAt(state, x, y);
 }
 
-/** True if enemies can't walk onto the tile: a blocking base, or any tower. */
+/** False while it's still being built (see sim/building.ts): until then it does nothing. */
+export function isBuilt(structure: Structure): boolean {
+  return !structure.buildLeft;
+}
+
+/** A built structure that enemies can't walk through: a wall, a house, any tower. */
+function blocks(structure: Structure | undefined): structure is Structure {
+  return structure !== undefined && isBuilt(structure) && STRUCTURES[structure.kind].blocksMovement;
+}
+
+/** True if enemies can't walk onto the tile: a blocking base, or any tower (once built). */
 export function blocksAt(state: GameState, x: number, y: number): boolean {
-  if (mountAt(state, x, y)) return true;
-  const base = baseAt(state, x, y);
-  return base !== undefined && STRUCTURES[base.kind].blocksMovement;
+  return blocks(mountAt(state, x, y)) || blocks(baseAt(state, x, y));
 }
 
 /** What an enemy hits when this tile blocks its route: the wall first, so it shields its tower. */
 export function attackTargetAt(state: GameState, x: number, y: number): Structure | undefined {
   const base = baseAt(state, x, y);
-  if (base && STRUCTURES[base.kind].blocksMovement) return base;
-  return mountAt(state, x, y);
+  if (blocks(base)) return base;
+  const mount = mountAt(state, x, y);
+  return blocks(mount) ? mount : undefined;
 }
 
 /** A tower is elevated when it stands on a wall rather than open ground. */

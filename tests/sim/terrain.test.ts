@@ -5,7 +5,7 @@ import { applyCommand } from "../../src/sim/game";
 import { canBuild, isKeepTile, isWalkable, placeStructure, terrainAt } from "../../src/sim/grid";
 import { nextStep } from "../../src/sim/pathfinding";
 import type { GameState, Point } from "../../src/sim/types";
-import { column, createGameWithoutWaves, paintTerrain, goldOf } from "./helpers";
+import { column, createGameWithoutWaves, finishBuilding, paintTerrain, goldOf } from "./helpers";
 
 function pathToKeep(state: GameState, start: Point): Point[] | null {
   const path = [start];
@@ -89,6 +89,8 @@ describe("bridges", () => {
     expect(applyCommand(state, 1, { type: "build", kind: "bridge", x: 10, y: 5 })).toEqual({
       ok: true,
     });
+    expect(isWalkable(state, 10, 5)).toBe(false); // not until it's built
+    finishBuilding(state);
     expect(isWalkable(state, 10, 5)).toBe(true);
     expect(pathToKeep(state, { x: 2, y: 5 })).toContainEqual({ x: 10, y: 5 });
   });

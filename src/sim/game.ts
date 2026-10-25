@@ -1,4 +1,5 @@
 import { DEFAULT_MAP_SIZE, ENEMY, KEEP_HP, MAP_SIZES, PVP, type MapSize } from "./config";
+import { buildTicksAt, updateBuilding } from "./building";
 import { priceAt } from "./enclosures";
 import { spawnEnemy, updateEnemies } from "./enemies";
 import { EMPTY, KEEP_TILE, canBuild, placeStructure } from "./grid";
@@ -110,6 +111,7 @@ export function tick(state: GameState): void {
   state.tick++;
   updateEffects(state);
   updateCues(state);
+  updateBuilding(state);
   updateEnemies(state);
   updateWaves(state);
   updateTowers(state);
@@ -158,6 +160,8 @@ export function applyCommand(
         playerId,
       );
       built.paid = price;
+      const buildTicks = buildTicksAt(state, command.x, command.y, playerId);
+      if (buildTicks > 0) built.buildLeft = built.buildTicks = buildTicks;
       claimChest(state, playerId, command.x, command.y);
       return { ok: true };
     }

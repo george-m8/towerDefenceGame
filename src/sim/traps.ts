@@ -1,12 +1,13 @@
 import { EFFECT_TICKS, STRUCTURES, TICK_RATE, type StructureStats, type TrapStats } from "./config";
 import { addCue } from "./cues";
 import { damageEnemy } from "./enemies";
+import { isBuilt } from "./grid";
 import type { Facing, GameState, Point, Structure } from "./types";
 
 export function updateTraps(state: GameState): void {
   for (const structure of Object.values(state.structures)) {
     const stats: StructureStats = STRUCTURES[structure.kind];
-    if (stats.trap) updateTrap(state, structure, stats.trap);
+    if (stats.trap && isBuilt(structure)) updateTrap(state, structure, stats.trap);
   }
 }
 

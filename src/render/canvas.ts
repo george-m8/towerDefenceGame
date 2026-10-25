@@ -2,6 +2,7 @@ import {
   baseAt,
   blocksAt,
   canBuild,
+  isBuilt,
   isKeepTile,
   isSpawnTile,
   keepAt,
@@ -11,6 +12,7 @@ import {
   topAt,
 } from "../sim/grid";
 import { nextStep } from "../sim/pathfinding";
+import { buildFractionAt, buildProgress } from "../sim/building";
 import { facingAngle } from "../sim/aiming";
 import {
   EFFECT_TICKS,
@@ -48,6 +50,8 @@ import {
   NOTCH_LENGTH_PX,
   KEEP_HP_FONT,
   BATTLEMENT_PX,
+  BUILD_BORDER_PX,
+  CONSTRUCTION_ALPHA,
   ENEMY_COLOURS,
   GLYPH_FONT,
   STRUCTURE_COLOURS,
@@ -60,6 +64,7 @@ import {
 } from "./palette";
 import { fogImage } from "./fog";
 import { burstPixels, burstWaiting } from "./burst";
+import { borderColour, borderTrace } from "./buildBorder";
 
 /** Compass degrees (0 = north, clockwise) to canvas radians (0 = east, clockwise). */
 function toCanvasAngle(compassDegrees: number): number {
@@ -77,8 +82,10 @@ function isTower(kind: StructureKind): boolean {
  */
 export function blockHeight(state: GameState, x: number, y: number): number {
   if (isKeepTile(state, x, y)) return 12;
-  const base = baseAt(state, x, y);
-  const mount = mountAt(state, x, y);
+  // Anything still being built lies flat until it's finished.
+  const built = (s: Structure | undefined) => (s && isBuilt(s) ? s : undefined);
+  const base = built(baseAt(state, x, y));
+  const mount = built(mountAt(state, x, y));
   if (mount) return base ? 11 : 8;
   if (base) return STRUCTURES[base.kind].blocksMovement ? 6 : 0;
   const terrain = terrainAt(state, x, y);
@@ -148,6 +155,8 @@ export function createRenderer(canvas: HTMLCanvasElement) {
 
   function drawTileContents(state: GameState, x: number, y: number, showOwners: boolean) {
     const base = baseAt(state, x, y);
+    // A construction site shows the ground through it.
+    if (base && !isBuilt(base)) drawTerrain(state, x, y);
     if (base) drawStructure(base);
     else if (isKeepTile(state, x, y)) drawKeepTile(state, x, y);
     else if (isSpawnTile(state, x, y)) drawTile(x, y, COLOURS.spawn, ".", COLOURS.spawnGlyph);
@@ -343,25 +352,38 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     return isTower(kind) && !ARROW_SYMBOLS[kind];
   }
 
+  /** A structure still being built is see-through (the caller draws what's under it). */
   function drawStructure(structure: Structure) {
     const { x, y } = structure;
     const colours = STRUCTURE_COLOURS[structure.kind];
+    if (!isBuilt(structure)) ctx!.globalAlpha = CONSTRUCTION_ALPHA;
     drawTile(x, y, colours.bg);
     drawSymbol(x, y, structure.kind, structure.facing, colours.fg, structure.aim);
     if (needsNotch(structure.kind)) drawFacingNotch(x, y, structure.facing);
-    if (structure.hp < structure.maxHp) drawHpBar(x, y, structure.hp / structure.maxHp);
+    ctx!.globalAlpha = 1;
+    drawBars(structure, structure);
   }
 
   /** A tower on a wall: the wall shows through, the tower glyph sits on it under a battlement strip. */
   function drawMountOnWall(tower: Structure, wall: Structure) {
     const { x, y } = tower;
     const towerColour = STRUCTURE_COLOURS[tower.kind].bg;
+    if (!isBuilt(wall)) ctx!.globalAlpha = CONSTRUCTION_ALPHA;
     drawTile(x, y, STRUCTURE_COLOURS[wall.kind].bg);
+    ctx!.globalAlpha = isBuilt(tower) ? 1 : CONSTRUCTION_ALPHA;
     drawSymbol(x, y, tower.kind, tower.facing, towerColour, tower.aim);
     ctx!.fillStyle = towerColour;
     ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, BATTLEMENT_PX);
     if (needsNotch(tower.kind)) drawFacingNotch(x, y, tower.facing);
-    if (wall.hp < wall.maxHp) drawHpBar(x, y, wall.hp / wall.maxHp);
+    ctx!.globalAlpha = 1;
+    drawBars(isBuilt(wall) ? tower : wall, wall);
+  }
+
+  /** How far `building` has got while it's going up, else how damaged `hp` is. */
+  function drawBars(building: Structure, hp: Structure) {
+    const { x, y } = building;
+    if (!isBuilt(building)) drawHpBar(x, y, buildProgress(building), COLOURS.buildFront);
+    else if (hp.hp < hp.maxHp) drawHpBar(x, y, hp.hp / hp.maxHp);
   }
 
   /** The ghost sits on top of whatever it's placed on (or selling). */
@@ -395,6 +417,35 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       ctx!.fillStyle = COLOURS.trapTarget;
       ctx!.fillRect(target.x * TILE_SIZE, target.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
     }
+    drawBuildBorder(x, y, buildFractionAt(state, x, y, ui.playerId));
+  }
+
+  /**
+   * How long building here takes: the tile's border fills clockwise from the top middle, over
+   * a dark track, leaving the ghost inside in view. Nothing at all where building is instant.
+   */
+  function drawBuildBorder(x: number, y: number, fraction: number) {
+    const filled = borderTrace(fraction);
+    if (filled.length === 0) return;
+    // Drawn just inside the tile, so neighbouring tiles stay clear.
+    const inset = BUILD_BORDER_PX / 2;
+    const span = TILE_SIZE - BUILD_BORDER_PX;
+    const trace = (points: Point[]) => {
+      ctx!.beginPath();
+      points.forEach((p, i) => {
+        const px = x * TILE_SIZE + inset + p.x * span;
+        const py = y * TILE_SIZE + inset + p.y * span;
+        if (i === 0) ctx!.moveTo(px, py);
+        else ctx!.lineTo(px, py);
+      });
+      ctx!.stroke();
+    };
+    ctx!.lineWidth = BUILD_BORDER_PX;
+    ctx!.strokeStyle = COLOURS.buildTrack;
+    trace(borderTrace(1));
+    ctx!.strokeStyle = borderColour(fraction);
+    trace(filled);
+    ctx!.lineWidth = 1;
   }
 
   /** Range of the tower being placed, or of the tower under the cursor. */

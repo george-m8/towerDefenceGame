@@ -10,7 +10,7 @@ import {
 import { angleBetween, angleTo, facingAngle, inArc, turnTowards } from "./aiming";
 import { addCue } from "./cues";
 import { damageEnemy } from "./enemies";
-import { baseAt, damageKeep, damageStructure, inBounds, keepAt, mountAt } from "./grid";
+import { baseAt, damageKeep, damageStructure, inBounds, isBuilt, keepAt, mountAt } from "./grid";
 import { distanceAt } from "./pathfinding";
 import { addGold } from "./players";
 import type { Enemy, Facing, GameState, Keep, PlayerId, Point, Structure } from "./types";
@@ -18,7 +18,7 @@ import type { Enemy, Facing, GameState, Keep, PlayerId, Point, Structure } from 
 export function updateTowers(state: GameState): void {
   for (const structure of Object.values(state.structures)) {
     const stats: StructureStats = STRUCTURES[structure.kind];
-    if (stats.tower) updateTower(state, structure, stats.tower);
+    if (stats.tower && isBuilt(structure)) updateTower(state, structure, stats.tower);
   }
 }
 
