@@ -3,6 +3,7 @@ import { MAP_SIZES, STRUCTURES, type MapSize, type StructureStats } from "../sim
 import type {
   Command,
   CommandResult,
+  DebugCommand,
   Enemy,
   Facing,
   GameMode,
@@ -21,7 +22,7 @@ const MAX_TOKEN_LENGTH = 64;
 const MAX_COORDINATE = 4096;
 
 /** Commands a player may send online (no debug commands). */
-export type OnlineCommand = Exclude<Command, { type: "debugSpawn" }>;
+export type OnlineCommand = Exclude<Command, DebugCommand>;
 
 export type ClientMessage =
   | { type: "create"; name: string; mode?: GameMode; size?: MapSize }

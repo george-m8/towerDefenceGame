@@ -11,7 +11,7 @@ import {
   type EnemyKind,
 } from "./config";
 import { addCue } from "./cues";
-import { baseAt, blocksAt, damageStructure, inBounds, keepAt, mountAt } from "./grid";
+import { baseAt, blocksAt, damageKeep, damageStructure, inBounds, keepAt, mountAt } from "./grid";
 import { atTileCentre, stepTo, walk } from "./movement";
 import { DIRECTIONS, canCross } from "./pathfinding";
 import type { Enemy, GameState, Keep, Point, Structure } from "./types";
@@ -217,7 +217,7 @@ function explode(state: GameState, enemy: Enemy, ability: EnemyAbility) {
       if (!inBounds(state, x, y)) continue;
       const keep = keepAt(state, x, y);
       if (keep && !keepsHit.has(keep)) {
-        keep.hp = Math.max(0, keep.hp - amount);
+        damageKeep(state, keep, amount);
         keepsHit.add(keep);
       }
       // The tower first: if the wall falls, the tower goes with it.

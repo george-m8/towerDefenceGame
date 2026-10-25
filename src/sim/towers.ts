@@ -10,7 +10,7 @@ import {
 import { angleBetween, angleTo, facingAngle, inArc, turnTowards } from "./aiming";
 import { addCue } from "./cues";
 import { damageEnemy } from "./enemies";
-import { baseAt, damageStructure, inBounds, keepAt, mountAt } from "./grid";
+import { baseAt, damageKeep, damageStructure, inBounds, keepAt, mountAt } from "./grid";
 import { distanceAt } from "./pathfinding";
 import { addGold } from "./players";
 import type { Enemy, Facing, GameState, Keep, PlayerId, Point, Structure } from "./types";
@@ -190,7 +190,7 @@ function updateSiegeTower(
   const keepsHit = new Set<Keep>();
   for (const hit of hits) {
     if (hit.keep) {
-      if (!keepsHit.has(hit.keep)) hit.keep.hp = Math.max(0, hit.keep.hp - tower.damage);
+      if (!keepsHit.has(hit.keep)) damageKeep(state, hit.keep, tower.damage);
       keepsHit.add(hit.keep);
       addCue(state, "keepHit");
     } else if (hit.structure) {

@@ -9,7 +9,7 @@ import {
 } from "./config";
 import { BEHAVIOURS } from "./behaviours";
 import { addCue } from "./cues";
-import { attackTargetAt, blocksAt, damageStructure, keepAt } from "./grid";
+import { attackTargetAt, blocksAt, damageKeep, damageStructure, keepAt } from "./grid";
 import { DIRECTIONS, canCross, distanceAt, nextStep } from "./pathfinding";
 import { stepTo, walk } from "./movement";
 import { nextRandom, randomInt } from "./rng";
@@ -200,7 +200,7 @@ function wanderStep(
 
 function attackKeep(state: GameState, enemy: Enemy, keep: Keep) {
   if (enemy.attackCooldown > 0) return;
-  keep.hp = Math.max(0, keep.hp - enemy.damage);
+  damageKeep(state, keep, enemy.damage);
   enemy.attackCooldown = enemy.attackInterval;
   addCue(state, "keepHit");
 }

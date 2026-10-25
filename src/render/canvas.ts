@@ -60,6 +60,7 @@ import {
   playerColour,
 } from "./palette";
 import { fogImage } from "./fog";
+import { burstPixels, burstWaiting } from "./burst";
 
 /** Compass degrees (0 = north, clockwise) to canvas radians (0 = east, clockwise). */
 function toCanvasAngle(compassDegrees: number): number {
@@ -547,6 +548,8 @@ export function createRenderer(canvas: HTMLCanvasElement) {
         ctx!.font = GLYPH_FONT;
         ctx!.fillStyle = COLOURS.heal;
         ctx!.fillText("+", (effect.x + 0.5) * TILE_SIZE, (effect.y + 0.2) * TILE_SIZE - rise);
+      } else if (effect.kind === "burst") {
+        drawBurst(effect);
       } else {
         if (effect.ttl > EFFECT_TICKS) continue; // the shot is still in the air
         const size = (effect.radius * 2 + 1) * TILE_SIZE;
@@ -559,6 +562,47 @@ export function createRenderer(canvas: HTMLCanvasElement) {
         );
       }
     }
+  }
+
+  /**
+   * Something destroyed: still there a moment with its health bar emptied (black, with a
+   * sliver of red), then its pixels flying apart and fading: an enemy in its colour with a few
+   * sparks, a structure in its fill with bits of its symbol colour. The emptied bar fades out
+   * with the pieces.
+   */
+  function drawBurst(burst: Extract<GameState["effects"][number], { kind: "burst" }>) {
+    const colours = burst.enemy
+      ? [ENEMY_COLOURS[burst.enemy], ENEMY_COLOURS[burst.enemy], COLOURS.burstSpark]
+      : burst.structure
+        ? [
+            STRUCTURE_COLOURS[burst.structure].bg,
+            STRUCTURE_COLOURS[burst.structure].bg,
+            STRUCTURE_COLOURS[burst.structure].fg,
+          ]
+        : [COLOURS.burstSpark];
+    if (burstWaiting(burst)) {
+      // Still there for a moment, health bar emptied, before it bursts.
+      if (burst.enemy) {
+        const kind = ENEMY_KINDS[burst.enemy];
+        ctx!.font = enemyFont(kind.variants[0].size);
+        ctx!.fillStyle = ENEMY_COLOURS[burst.enemy];
+        ctx!.fillText(kind.glyph, (burst.x + 0.5) * TILE_SIZE, (burst.y + 0.5) * TILE_SIZE + 1);
+      } else if (burst.structure) {
+        const look = STRUCTURE_COLOURS[burst.structure];
+        drawTile(burst.x, burst.y, look.bg, glyphFor(burst.structure), look.fg);
+      }
+      drawHpBar(burst.x, burst.y, 0, COLOURS.hpEmpty);
+      return;
+    }
+    const pixels = burstPixels(burst, colours.length);
+    ctx!.globalAlpha = pixels[0]?.alpha ?? 0;
+    drawHpBar(burst.x, burst.y, 0, COLOURS.hpEmpty);
+    for (const p of pixels) {
+      ctx!.globalAlpha = p.alpha;
+      ctx!.fillStyle = colours[p.colour];
+      ctx!.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+    }
+    ctx!.globalAlpha = 1;
   }
 
   function drawFlow(state: GameState) {
@@ -585,13 +629,14 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     }
   }
 
-  function drawHpBar(x: number, y: number, fraction: number) {
+  /** A health bar over a tile; `front` colours what's left (always at least a sliver). */
+  function drawHpBar(x: number, y: number, fraction: number, front = COLOURS.hpFront) {
     const left = x * TILE_SIZE + 2;
     const top = y * TILE_SIZE;
     const barWidth = TILE_SIZE - 4;
     ctx!.fillStyle = COLOURS.hpBack;
     ctx!.fillRect(left, top, barWidth, 3);
-    ctx!.fillStyle = COLOURS.hpFront;
+    ctx!.fillStyle = front;
     ctx!.fillRect(left, top, Math.max(1, barWidth * fraction), 3);
   }
 

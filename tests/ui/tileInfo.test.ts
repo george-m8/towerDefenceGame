@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { createGame } from "../../src/sim/game";
 import type { Enemy } from "../../src/sim/types";
-import { describeTile, priceLine } from "../../src/ui/tileInfo";
+import { describeTile, hoverText, priceLine } from "../../src/ui/tileInfo";
+import { createUiState } from "../../src/ui/state";
 import { buildAt, ring } from "../sim/helpers";
 
 function walledGame() {
@@ -113,3 +114,15 @@ function enemyAt(x: number, y: number): Enemy {
     leaderId: null,
   };
 }
+
+describe("hoverText", () => {
+  it("is empty off the map, the tile's details on it, with the selected tool's price first", () => {
+    const state = createGame(1, { blankMap: true, fog: false });
+    const ui = createUiState();
+    expect(hoverText(state, ui)).toBe("");
+    ui.hover = { x: 30, y: 30 };
+    expect(hoverText(state, ui)).toBe("Open ground");
+    ui.tool = "wall";
+    expect(hoverText(state, ui)).toBe("Wall here: 5g\nOpen ground");
+  });
+});

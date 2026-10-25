@@ -1,6 +1,7 @@
 import { facingAngle } from "./aiming";
 import { STRUCTURES, TERRAIN, TICK_RATE, type StructureStats, type TerrainStats } from "./config";
 import { priceAt, rivalOwnerAt } from "./enclosures";
+import { addBurst } from "./effects";
 import { isExplored, reveal } from "./fog";
 import { playerName } from "./players";
 import type {
@@ -136,7 +137,9 @@ export function canBuild(
     STRUCTURES[kind].layer === "mount" ? canMount(state, player, x, y) : canBuildBase(state, x, y);
   if (!layerCheck.ok) return layerCheck;
   const gold = state.players[player]?.gold ?? 0;
-  if (gold < priceAt(state, kind, x, y, player)) return { ok: false, reason: "Not enough gold" };
+  if (!state.debug.infiniteGold && gold < priceAt(state, kind, x, y, player)) {
+    return { ok: false, reason: "Not enough gold" };
+  }
   return { ok: true };
 }
 
@@ -242,7 +245,20 @@ export function removeStructure(state: GameState, structure: Structure): void {
   state.gridVersion++;
 }
 
+/** Damages a keep, never below 0, unless the infinite keep health debug option is on. */
+export function damageKeep(state: GameState, keep: Keep, amount: number): void {
+  if (state.debug.infiniteKeep) return;
+  keep.hp = Math.max(0, keep.hp - amount);
+}
+
+/** Damages a structure; at 0 HP it's destroyed and bursts apart (a tower on it falls too). */
 export function damageStructure(state: GameState, structure: Structure, amount: number): void {
   structure.hp -= amount;
-  if (structure.hp <= 0) removeStructure(state, structure);
+  if (structure.hp > 0) return;
+  const falling =
+    STRUCTURES[structure.kind].layer === "base"
+      ? mountAt(state, structure.x, structure.y)
+      : undefined;
+  for (const s of [structure, falling]) if (s) addBurst(state, s.x, s.y, { structure: s.kind });
+  removeStructure(state, structure);
 }

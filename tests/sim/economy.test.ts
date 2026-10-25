@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { STRUCTURES, TICK_RATE } from "../../src/sim/config";
-import { incomePerMinute } from "../../src/sim/economy";
+import { awardBounties, incomePerMinute } from "../../src/sim/economy";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand, tick } from "../../src/sim/game";
-import { baseAt, mountAt, placeStructure, removeStructure, topAt } from "../../src/sim/grid";
+import {
+  baseAt,
+  damageStructure,
+  mountAt,
+  placeStructure,
+  removeStructure,
+  topAt,
+} from "../../src/sim/grid";
 import { createGameWithoutWaves, goldOf } from "./helpers";
 
 describe("bounties", () => {
@@ -184,5 +191,28 @@ describe("treasure chests", () => {
     spawnEnemy(state, 8, 10);
     for (let i = 0; i < 100; i++) tick(state);
     expect(state.features).toHaveLength(1);
+  });
+});
+
+describe("bursts", () => {
+  it("a killed enemy and a destroyed structure (and the tower on it) burst; a sale doesn't", () => {
+    const state = createGameWithoutWaves();
+    const enemy = spawnEnemy(state, 20, 20);
+    enemy.hp = 0;
+    awardBounties(state);
+    expect(state.effects).toContainEqual(
+      expect.objectContaining({ kind: "burst", x: 20, y: 20, enemy: enemy.kind }),
+    );
+
+    const wall = placeStructure(state, "wall", 30, 30, "N", 1);
+    placeStructure(state, "archer", 30, 30, "N", 1);
+    damageStructure(state, wall, wall.hp);
+    const bursts = state.effects.filter((e) => e.kind === "burst" && e.structure);
+    expect(bursts.map((e) => e.kind === "burst" && e.structure)).toEqual(["wall", "archer"]);
+
+    state.effects = [];
+    placeStructure(state, "wall", 40, 40, "N", 1);
+    applyCommand(state, 1, { type: "sell", x: 40, y: 40 });
+    expect(state.effects).toEqual([]);
   });
 });

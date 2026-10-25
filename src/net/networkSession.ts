@@ -1,6 +1,7 @@
 // A Session backed by the game server: sends commands, draws what the server sends.
 import type { MapSize } from "../sim/config";
 import type { Command, CommandResult, GameMode, GameState, PlayerId } from "../sim/types";
+import { isDebugCommand } from "../sim/types";
 import { tokenKey } from "./join";
 import type { ClientEnemy, ClientMessage, LobbyInfo, ServerMessage } from "./protocol";
 import type { PendingBuild, Session } from "./session";
@@ -103,6 +104,10 @@ export function createNetworkSession(
     onWelcome: () => {},
     send(command: Command) {
       if (command.type === "debugSpawn") return; // dev-only, never online
+      if (isDebugCommand(command)) {
+        session.onResult({ ok: false, reason: "Debug options are offline only" });
+        return;
+      }
       if (!welcomed || socket?.readyState !== OPEN) {
         session.onResult({ ok: false, reason: "Not connected" });
         return;

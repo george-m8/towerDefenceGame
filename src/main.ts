@@ -7,6 +7,9 @@ import { fogFromUrl, readJoinIntent, serverUrl, tokenKey, type PageIntent } from
 import { createNetworkSession, type NetworkDeps, type NetworkSession } from "./net/networkSession";
 import { createLocalSession, type Session } from "./net/session";
 import { createPanel } from "./ui/panel";
+import { createHud } from "./ui/hud";
+import { createMapButtons, panelToggle } from "./ui/mapButtons";
+import { hoverText } from "./ui/tileInfo";
 import { bindInput } from "./ui/input";
 import { createUiState, showMessage } from "./ui/state";
 import { createGameOverDialog } from "./ui/gameOver";
@@ -35,7 +38,7 @@ import { SONGS } from "./audio/songs";
 import musicPacks from "virtual:music-packs";
 import { liveVoiceCount } from "./audio/synth";
 import { showNotice } from "./ui/notice";
-import type { Command, GameState, PlayerId } from "./sim/types";
+import type { Command, DebugOption, GameState, PlayerId } from "./sim/types";
 
 const element = <T extends HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
 
@@ -92,7 +95,6 @@ const journal = loadJournal(deviceStorage());
 const journalView = createJournalView(element("#journal"), journal, () =>
   saveJournal(deviceStorage(), journal),
 );
-const panel = createPanel(element("#panel"), ui, dispatch, () => journalView.toggle());
 const journalNotices = createNoticeQueue();
 const toast = element("#toast");
 
@@ -109,6 +111,42 @@ function updateJournal(state: GameState, viewer: PlayerId, now: number) {
   toast.hidden = notice === null;
   if (notice !== null && toast.textContent !== notice) toast.textContent = notice;
 }
+const hud = createHud(element("#hud"), ui);
+const keysBox = element("#panel");
+const panel = createPanel(
+  { actions: hud.actions, keys: keysBox, status: element("#status") },
+  ui,
+  dispatch,
+);
+const infoBox = element("#info-box");
+/** A Debug menu row for a game debug option (offline only; online refuses it). */
+const debugToggle = (label: string, option: DebugOption) => ({
+  label,
+  isOn: () => session?.state?.debug[option] === true,
+  toggle: () =>
+    dispatch({ type: "debugOption", option, on: session?.state?.debug[option] !== true }),
+});
+createMapButtons(element("#map-buttons"), {
+  view: [
+    panelToggle("Map", element("#minimap-box")),
+    panelToggle("Info", infoBox),
+    panelToggle("Keys", keysBox),
+    // Only in an online game, where the room, invite link and players are shown.
+    panelToggle("Players", element("#online"), () => session?.online === true),
+  ],
+  debug: [
+    debugToggle("Infinite keep health", "infiniteKeep"),
+    debugToggle("Infinite money", "infiniteGold"),
+    {
+      label: "Fog of war",
+      isOn: () => session?.state?.fog === true,
+      toggle: () => dispatch({ type: "debugFog", on: session?.state?.fog !== true }),
+    },
+    { label: "Show paths", isOn: () => ui.showFlow, toggle: () => (ui.showFlow = !ui.showFlow) },
+  ],
+  settings: element("#settings"),
+  journal: () => journalView.toggle(),
+});
 const gameOver = createGameOverDialog(element("#game-over"), () => {
   session?.restart();
   ui.tool = null;
@@ -253,6 +291,8 @@ function frame(now: number) {
       renderer.render(state, ui, session.pending);
       minimap.update(state);
       panel.update(state);
+      hud.update(state);
+      if (!infoBox.hidden) infoBox.textContent = hoverText(state, ui) || "Hover a tile for details";
       gameOver.update(state, session.playerId);
       cues.update(state.cues);
       updateJournal(state, session.playerId, now);

@@ -18,11 +18,11 @@ body {
   font-size: 20px;
 }
 
+/* The map fills the window; the sidebar sits flush against its right edge. */
 .desktop {
   display: flex;
-  gap: 16px;
-  align-items: flex-start;
-  padding: 16px;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .window {
@@ -48,17 +48,7 @@ body {
 
 #map {
   display: block;
-  margin: 4px;
   image-rendering: pixelated;
-}
-
-.panel-window {
-  width: 240px;
-  flex-shrink: 0;
-}
-
-.panel {
-  padding: 8px 12px 12px;
 }
 
 .stats {
@@ -115,11 +105,6 @@ body {
   background: var(--ink);
 }
 
-.tool:disabled {
-  color: #888;
-  cursor: default;
-}
-
 .tool kbd {
   font: inherit;
   text-align: center;
@@ -128,11 +113,156 @@ body {
 
 .map-window {
   position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 100vh;
+}
+
+/* The HUD along the bottom of the map: tool and cost on the left, gold on the right. */
+.hud {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  pointer-events: none; /* clicks go through to the map */
+}
+.hud[hidden] {
+  display: none;
+}
+.hud-box {
+  padding: 3px 15px;
+  font-size: 30px; /* 1.5x the page's 20px */
+  line-height: 1.1;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.hud-box[hidden] {
+  display: none;
+}
+.hud-glyph {
+  display: inline-block;
+  min-width: 1em;
+  margin-right: 6px;
+  font-weight: bold;
+  text-align: center;
+}
+/* Send wave, Pause and fast forward, beside the tool */
+.hud-actions {
+  display: flex;
+  gap: 12px;
+}
+.hud-action {
+  font-family: inherit;
+  color: var(--ink);
+  white-space: nowrap;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.hud-action:active,
+.hud-action.selected {
+  color: var(--paper);
+  background: var(--ink);
+}
+.hud-action:disabled {
+  color: #888;
+  cursor: default;
+}
+/* Pause and fast forward, joined into one box split by a line */
+.hud-segment {
+  display: flex;
+  padding: 0;
+}
+.hud-segment .hud-action {
+  min-width: 2.2em;
+  padding: 3px 15px;
+  font-size: inherit;
+  line-height: inherit;
+  text-align: center;
+  background: var(--paper);
+  border: none;
+}
+.hud-segment .hud-action + .hud-action {
+  border-left: 2px solid var(--ink);
+}
+.hud-segment .hud-action:active,
+.hud-segment .hud-action.selected {
+  color: var(--paper);
+  background: var(--ink);
+}
+
+/* The stat box, and its menu above it, on the right. */
+.hud-right {
+  position: relative;
+  margin-left: auto;
+}
+.hud-stats {
+  display: flex;
+  gap: 12px;
+}
+.hud-stat {
+  font-family: inherit;
+  color: var(--ink);
+  cursor: pointer;
+  pointer-events: auto;
+}
+.hud-stat:active {
+  color: var(--paper);
+  background: var(--ink);
+}
+.hud-picker.hud-stat-picker {
+  left: auto;
+  right: 0;
+  width: 280px;
+}
+.stat-choice {
+  grid-template-columns: 1fr auto;
+}
+/* Not enough gold for the selected tool here (while the stat box shows gold). */
+.hud-stat.short {
+  color: var(--paper);
+  background: #d22;
+}
+/* The tool box and the picker above it take clicks; the rest of the HUD doesn't. */
+.hud-left {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+.hud-tool {
+  font-family: inherit;
+  color: var(--ink);
+  cursor: pointer;
+  pointer-events: auto;
+}
+.hud-tool:active {
+  color: var(--paper);
+  background: var(--ink);
+}
+.hud-picker {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 12px);
+  width: 300px;
+  padding: 8px;
+  font-size: 24px;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+  pointer-events: auto;
+}
+.hud-picker[hidden] {
+  display: none;
 }
 
 .dialog {
   position: absolute;
   inset: 0;
+  z-index: 10; /* over the HUD, the map buttons and the minimap */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -217,46 +347,15 @@ body {
   border-top: 1px dotted var(--ink);
 }
 
-.tool:disabled .cost {
-  text-decoration: line-through;
-}
-
-.tool:disabled.selected {
-  color: #bbb;
-}
-
 /* The map view fills the space beside the panel; the camera scrolls and zooms inside it. */
 #map {
-  width: calc(100vw - 300px);
-  height: calc(100vh - 70px);
+  width: 100%;
+  height: 100%;
   cursor: crosshair;
   touch-action: none;
 }
 
-@media (max-width: 900px) {
-  .desktop {
-    flex-direction: column;
-  }
-
-  #map {
-    width: calc(100vw - 40px);
-    height: 60vh;
-  }
-
-  .panel-window {
-    width: 100%;
-  }
-}
-
-.panel {
-  max-height: calc(100vh - 64px);
-  overflow-y: auto;
-}
-
-/* Online play: the room section sits above the panel, divided from it. */
-.online {
-  border-bottom: 1px dotted var(--ink);
-}
+/* Online play: the room, invite link and players, a panel down the right of the map. */
 .online[hidden] {
   display: none;
 }
@@ -447,15 +546,127 @@ a.button {
   }
 }
 
-/* Minimap and zoom buttons, at the top of the panel */
+/* Top left of the map: the View and Settings buttons, and the Controls panel below them */
+.map-left {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+}
+.map-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+/* The panels over the map (Controls, Info, Players): framed boxes like the HUD's */
+.overlay-box {
+  width: 240px;
+  padding: 6px 10px 8px;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.overlay-box[hidden] {
+  display: none;
+}
+.controls-box .help {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+/* Messages (a refused build, "PAUSED"), along the top middle of the map */
+.status-line {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  margin: 0;
+  padding: 2px 14px;
+  transform: translateX(-50%);
+  color: var(--paper);
+  background: var(--ink);
+  pointer-events: none;
+}
+.status-line[hidden] {
+  display: none;
+}
+.map-toggle {
+  box-shadow:
+    0 0 0 1px var(--paper),
+    0 0 0 2px var(--ink),
+    3px 3px 0 2px var(--ink);
+}
+.map-toggle[aria-pressed="true"] {
+  color: var(--paper);
+  background: var(--ink);
+}
+
+/* The View and Debug menus, under their buttons */
+.menu-anchor {
+  position: relative;
+}
+.hud-picker.toggle-menu {
+  top: calc(100% + 10px);
+  bottom: auto;
+  width: 240px;
+  font-size: 20px;
+}
+.toggle-choice {
+  grid-template-columns: 1fr;
+}
+.toggle-choice[hidden] {
+  display: none;
+}
+
+/* Panels down the top right of the map, each shown and hidden from View */
+.map-side {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  gap: 12px;
+  justify-items: end;
+}
+.info-box {
+  min-height: 3em;
+  white-space: pre-line;
+}
+
+/* Minimap and zoom buttons, the first panel down the right */
 .minimap-box {
+  width: 240px; /* as wide as the other panels */
   display: grid;
   gap: 6px;
   justify-items: center;
-  border-bottom: 1px dotted var(--ink);
+  padding: 8px;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.minimap-box[hidden] {
+  display: none;
+}
+
+/* The settings window, over the map */
+.settings-window {
+  display: grid;
+  gap: 10px;
+  width: 320px;
+  padding-top: 0;
+  text-align: left;
+}
+.settings-window .title-bar {
+  margin: 2px -20px 0;
+}
+.settings-window [data-action="close-settings"] {
+  justify-self: center;
 }
 #minimap {
   display: block;
+  width: 100%; /* the whole box: drawn larger, scaled down to fit */
+  height: auto;
   border: 1px solid var(--ink);
   cursor: pointer;
   image-rendering: pixelated;
@@ -623,4 +834,81 @@ a.button {
 
 .toast[hidden] {
   display: none;
+}
+
+/*
+ * Trial: translucent HUD and map overlays, so they stand out less against the map. Backgrounds
+ * let the map show through and borders and shadows are softer; text stays solid. Hovering a
+ * box (or opening a menu) makes it solid again. Delete this block to go back.
+ */
+:root {
+  --hud-paper: rgba(200, 200, 200, 0.55); /* light grey, so the boxes sit back from the map */
+  --hud-ink: rgba(0, 0, 0, 0.6);
+  --hud-line: rgba(0, 0, 0, 0.38);
+  --hud-shadow: rgba(0, 0, 0, 0.18);
+  /* A faint white halo keeps black text readable over dark ground. */
+  --hud-text-halo: 0 0 3px rgba(235, 235, 235, 0.8);
+}
+.hud-box,
+.overlay-box,
+.minimap-box,
+.map-toggle {
+  text-shadow: var(--hud-text-halo);
+  background: var(--hud-paper);
+  border-color: var(--hud-line);
+  box-shadow: 3px 3px 0 var(--hud-shadow);
+  transition: background-color 0.15s;
+}
+.map-toggle {
+  box-shadow:
+    0 0 0 1px var(--hud-paper),
+    0 0 0 2px var(--hud-line),
+    3px 3px 0 2px var(--hud-shadow);
+}
+.hud-segment .hud-action {
+  background: transparent;
+}
+.hud-segment .hud-action + .hud-action {
+  border-left-color: var(--hud-line);
+}
+.zoom-controls .button {
+  background: var(--hud-paper);
+  border-color: var(--hud-line);
+}
+#minimap {
+  border-color: var(--hud-line);
+}
+/* Pressed and selected states: see-through ink rather than solid black. */
+.hud-action.selected,
+.hud-segment .hud-action.selected,
+.map-toggle[aria-pressed="true"] {
+  background: var(--hud-ink);
+}
+.hud-stat.short {
+  background: rgba(221, 34, 34, 0.75);
+}
+/* White text on the see-through ink and red doesn't want the white halo. */
+.hud-action.selected,
+.map-toggle[aria-pressed="true"],
+.hud-stat.short {
+  text-shadow: none;
+}
+/* Solid again under the pointer, so what you're about to click is clear. */
+.hud-box:hover,
+.overlay-box:hover,
+.minimap-box:hover,
+.map-toggle:hover,
+.zoom-controls .button:hover {
+  background: var(--paper);
+  border-color: var(--ink);
+}
+.hud-segment:hover .hud-action:not(.selected) {
+  background: var(--paper);
+}
+.map-toggle[aria-pressed="true"]:hover,
+.hud-action.selected:hover {
+  background: var(--ink);
+}
+.hud-stat.short:hover {
+  background: #d22;
 }

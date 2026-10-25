@@ -133,6 +133,18 @@ describe("bomber", () => {
     expect(keep.hp).toBe(keep.maxHp - blast);
   });
 
+  it("leaves the keep alone with the debug infinite keep on", () => {
+    const state = createGameWithoutWaves();
+    state.debug.infiniteKeep = true;
+    const keep = state.keeps[0];
+    sturdy(owned(state, "wall", keep.x - 1, keep.y + 1));
+    spawnEnemy(state, keep.x - 1, keep.y, { kind: "dwarfBomber" });
+
+    tick(state);
+
+    expect(keep.hp).toBe(keep.maxHp);
+  });
+
   it("doesn't explode if killed on the way", () => {
     const state = createGameWithoutWaves();
     const p = lane(state, 20);

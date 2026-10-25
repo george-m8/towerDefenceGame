@@ -37,6 +37,7 @@ import type {
   StructureKind,
   Terrain,
 } from "../sim/types";
+import { isBuildTool, type UiState } from "./state";
 
 const FACING_NAMES = { N: "north", E: "east", S: "south", W: "west" };
 
@@ -173,4 +174,12 @@ function enemyDoing(state: GameState, enemy: Enemy): string | null {
   if (!leader) return null;
   // The last word of the leader's name: "Barbarian chief" leads "with its chief".
   return `with its ${ENEMY_KINDS[leader.kind].name.split(" ").pop()!.toLowerCase()}`;
+}
+
+/** What the info boxes show: the price of the selected tool here, then the tile's details. */
+export function hoverText(state: GameState, ui: UiState): string {
+  if (!ui.hover) return "";
+  const lines = describeTile(state, ui.hover, ui.playerId);
+  if (isBuildTool(ui.tool)) lines.unshift(priceLine(state, ui.tool, ui.hover, ui.playerId));
+  return lines.join("\n");
 }
