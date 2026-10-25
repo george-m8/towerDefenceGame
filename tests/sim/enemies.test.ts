@@ -392,7 +392,16 @@ describe("variants", () => {
     });
     expect(brute.maxHp).toBe(Math.round(20 * 1.4 * 1.3));
     expect(brute.speed).toBeCloseTo(1.5 * 0.9);
-    expect(brute.damage).toBeCloseTo(5 * 1.3);
+    expect(brute.damage).toBe(7); // 6.5, rounded to whole damage
+  });
+
+  it("always hits for whole damage, so HP never shows fractions", () => {
+    const state = createGameWithoutWaves();
+    for (const kind of Object.keys(ENEMY_KINDS) as EnemyKindId[]) {
+      ENEMY_KINDS[kind].variants.forEach((_, variant) => {
+        expect(Number.isInteger(spawnEnemy(state, 5, 5, { kind, variant }).damage)).toBe(true);
+      });
+    }
   });
 
   it("rolls the same variants for the same seed", () => {

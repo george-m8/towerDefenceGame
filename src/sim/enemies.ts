@@ -55,7 +55,7 @@ export function spawnEnemy(
     kind: kindId,
     variant,
     speed: kind.speed * v.speed,
-    damage: kind.damage * v.damage,
+    damage: Math.round(kind.damage * v.damage), // whole damage, so HP never shows fractions
     attackInterval: Math.round(kind.attackInterval * TICK_RATE),
     killedBy: null,
     attackCooldown: 0,
