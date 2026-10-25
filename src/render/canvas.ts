@@ -15,7 +15,7 @@ import { facingAngle } from "../sim/aiming";
 import { STRUCTURES, type StructureStats, type TowerStats } from "../sim/config";
 import { canTarget } from "../sim/towers";
 import { hitTile } from "../sim/traps";
-import type { Facing, GameState, PlayerId, Point, Structure, StructureKind } from "../sim/types";
+import type { Enemy, Facing, GameState, PlayerId, Point, Structure, StructureKind } from "../sim/types";
 import type { PendingBuild } from "../net/session";
 import { isBuildTool, type UiState } from "../ui/state";
 import { visibleTiles, type VisibleTiles } from "../ui/camera";
@@ -64,6 +64,15 @@ export function blockHeight(state: GameState, x: number, y: number): number {
   if (base) return STRUCTURES[base.kind].blocksMovement ? 6 : 0;
   const terrain = terrainAt(state, x, y);
   return terrain === "tree" ? 7 : terrain === "rock" ? 4 : 0;
+}
+
+/**
+ * The row an enemy is drawn with. Blocks in front hide it, except the keep: an enemy standing
+ * against the back of the keep (attacking it) is drawn in front, not sunk under the keep's top.
+ */
+export function enemyDrawRow(state: GameState, enemy: Enemy): number {
+  const row = Math.round(enemy.y);
+  return isKeepTile(state, Math.round(enemy.x), row + 1) ? row + 1 : row;
 }
 
 /**
@@ -156,7 +165,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     // Enemies go in with their row, so blocks in front of them (further down) hide them.
     const enemiesByRow = new Map<number, GameState["enemies"]>();
     for (const enemy of state.enemies) {
-      const row = Math.round(enemy.y);
+      const row = enemyDrawRow(state, enemy);
       enemiesByRow.set(row, [...(enemiesByRow.get(row) ?? []), enemy]);
     }
     for (let y = y0; y <= y1 + 1; y++) {

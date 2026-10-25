@@ -37,8 +37,8 @@ Files: `src/sim/enemies.ts`, `src/sim/config.ts`, `tests/sim/enemies.test.ts`, `
 ## Checkpoint A (after Tasks 1-3)
 
 - [x] All tests pass; typecheck and build clean
-- [ ] Browser: a goblin-only game plays as before, except enemies now stay at the keep and hit it
-- [ ] **Review keep HP and keep damage with George before going on**
+- [x] Browser: a goblin-only game plays as before, except enemies now stay at the keep and hit it
+- [x] **Review keep HP and keep damage with George before going on** (2026-10-25: keep 300 kept; enemies at the back of the keep now drawn in front of it, not sunk into its raised top)
 
 ## Task 4: Variants
 
