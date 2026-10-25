@@ -6,7 +6,7 @@ import { applyCommand, assignKeeps, createGame, tick } from "../src/sim/game";
 import { addPlayer, setConnected, updateVotes } from "../src/sim/players";
 import type { Command, CommandResult, GameMode, GameState, PlayerId } from "../src/sim/types";
 import { uniqueName, type LobbyInfo, type ServerMessage } from "../src/net/protocol";
-import { toClientState, toUpdate } from "../src/net/snapshot";
+import { sentStateOf, toClientState, toUpdate, type SentState } from "../src/net/snapshot";
 import { MAX_PLAYERS, MAX_TICKS_PER_ADVANCE, PVP_PLAYERS, UPDATE_EVERY_TICKS } from "./config";
 
 const TICK_MS = 1000 / TICK_RATE;
@@ -21,8 +21,8 @@ export interface Room {
   send: SendFn;
   accumulatorMs: number;
   ticksSinceUpdate: number;
-  /** gridVersion as of the last update everyone received. */
-  sentGridVersion: number;
+  /** What the last update brought everyone to, so the next only carries changes. */
+  sent: SentState;
   /** How long nobody has been connected; the registry deletes the room after a while. */
   emptyMs: number;
   /** False while in the waiting room: no ticks, no commands, until the host starts. */
@@ -52,7 +52,7 @@ export function createRoom(
     send,
     accumulatorMs: 0,
     ticksSinceUpdate: 0,
-    sentGridVersion: state.gridVersion,
+    sent: sentStateOf(state),
     emptyMs: 0,
     started: false,
     fog: true,
@@ -197,7 +197,7 @@ export function restartRoom(room: Room, seed: number): CommandResult {
   room.state = state;
   room.accumulatorMs = 0;
   room.ticksSinceUpdate = 0;
-  room.sentGridVersion = state.gridVersion;
+  room.sent = sentStateOf(state);
   for (const player of Object.values(state.players)) {
     if (player.connected) welcome(room, player.id);
   }
@@ -223,10 +223,9 @@ function lobbyInfo(room: Room): LobbyInfo {
 function broadcastUpdate(room: Room) {
   const message: ServerMessage = {
     type: "update",
-    update: toUpdate(room.state, room.sentGridVersion),
+    update: toUpdate(room.state, room.sent),
     lobby: lobbyInfo(room),
   };
-  room.sentGridVersion = room.state.gridVersion;
   room.ticksSinceUpdate = 0;
   for (const player of Object.values(room.state.players)) {
     if (player.connected) room.send(player.id, message);

@@ -15,14 +15,26 @@ export function fromClientState(client: ClientState): GameState {
   };
 }
 
-/** Applies an update in place. Grid fields are only present when the grid changed. */
-export function applyUpdate(view: GameState, update: StateUpdate): void {
+/**
+ * Applies an update in place and returns its enemies with kind and variant filled in from
+ * what the view already knows. Structures and tiles only come when they changed; layers are
+ * updated tile by tile, so the client's arrays stay the ones it was welcomed with.
+ */
+export function applyUpdate(view: GameState, update: StateUpdate): ClientEnemy[] {
+  const known = new Map(view.enemies.map((e) => [e.id, e]));
+  const enemies = update.enemies.map((e): ClientEnemy => {
+    const before = known.get(e.id);
+    return {
+      ...e,
+      kind: e.kind ?? (before ? ENEMY_KIND_ORDER.indexOf(before.kind) : 0),
+      variant: e.variant ?? before?.variant ?? 0,
+    };
+  });
   view.tick = update.tick;
   view.gridVersion = update.gridVersion;
-  view.enemies = update.enemies.map(toEnemy);
+  view.enemies = enemies.map(toEnemy);
   view.effects = update.effects;
   view.cues = update.cues;
-  view.structures = toStructures(update.structures);
   view.players = update.players;
   view.wave = update.wave;
   view.keeps = update.keeps;
@@ -31,11 +43,17 @@ export function applyUpdate(view: GameState, update: StateUpdate): void {
   view.speed = update.speed;
   view.gameOver = update.gameOver;
   view.fog = update.fog;
-  if (update.terrain) view.terrain = update.terrain;
-  if (update.base) view.base = update.base;
-  if (update.mount) view.mount = update.mount;
+  for (const s of update.structures ?? []) view.structures[s.id] = toStructure(s);
+  for (const id of update.removed ?? []) delete view.structures[id];
+  const { tiles } = update;
+  if (tiles) {
+    for (const [i, t] of tiles.terrain ?? []) view.terrain[i] = t;
+    for (const [i, id] of tiles.base ?? []) view.base[i] = id;
+    for (const [i, id] of tiles.mount ?? []) view.mount[i] = id;
+    for (const [i, bits] of tiles.explored ?? []) view.explored[i] = bits;
+  }
   if (update.features) view.features = update.features;
-  if (update.explored) view.explored = update.explored;
+  return enemies;
 }
 
 /**
@@ -90,6 +108,10 @@ function toEnemy(e: ClientEnemy): Enemy {
 
 function toStructures(structures: Record<number, ClientStructure>): Record<number, Structure> {
   const result: Record<number, Structure> = {};
-  for (const s of Object.values(structures)) result[s.id] = { ...s, cooldown: 0 };
+  for (const s of Object.values(structures)) result[s.id] = toStructure(s);
   return result;
+}
+
+function toStructure(s: ClientStructure): Structure {
+  return { ...s, cooldown: 0 };
 }

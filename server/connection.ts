@@ -22,9 +22,14 @@ export interface Hub {
 
 export function createHub(): Hub {
   const sockets = new Map<string, WebSocket>();
+  // A broadcast hands every player the same message: turn it into text once, not per player.
+  const text = new WeakMap<ServerMessage, string>();
   const registry = createRegistry((code, playerId, message) => {
     const socket = sockets.get(key(code, playerId));
-    if (socket && socket.readyState === socket.OPEN) socket.send(JSON.stringify(message));
+    if (!socket || socket.readyState !== socket.OPEN) return;
+    let json = text.get(message);
+    if (json === undefined) text.set(message, (json = JSON.stringify(message)));
+    socket.send(json);
   });
   return { registry, sockets };
 }

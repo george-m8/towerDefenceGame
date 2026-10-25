@@ -35,7 +35,13 @@ export interface TowerStats {
   arcDegrees: number;
   /** 0 = fixed: never turns, fires at anything in its arc. */
   turnDegreesPerSecond: number;
+  /** What it fires, and how long a shot is seen flying before it lands (see ProjectileKind). */
+  projectile: ProjectileKind;
+  flightTicks: number;
 }
+
+/** What a tower's shot looks like in flight; the renderer gives each its symbol and arc. */
+export type ProjectileKind = "arrow" | "ball" | "stone";
 
 /** A turning tower fires once its aim is this close to the target. */
 export const AIM_TOLERANCE_DEGREES = 5;
@@ -110,6 +116,8 @@ export const STRUCTURES = {
       splashRadius: 0,
       arcDegrees: 90, // fixed, firing through a slit
       turnDegreesPerSecond: 0,
+      projectile: "arrow",
+      flightTicks: 4,
     },
     sight: { inner: 6, outer: 10 },
   },
@@ -127,6 +135,8 @@ export const STRUCTURES = {
       splashRadius: 1,
       arcDegrees: 360,
       turnDegreesPerSecond: 90,
+      projectile: "ball",
+      flightTicks: 6,
     },
     sight: { inner: 5, outer: 9 },
   },
@@ -144,6 +154,8 @@ export const STRUCTURES = {
       splashRadius: 2,
       arcDegrees: 360,
       turnDegreesPerSecond: 30, // very slow to swing round
+      projectile: "stone",
+      flightTicks: 10,
     },
     sight: { inner: 10, outer: 14 },
   },
