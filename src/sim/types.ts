@@ -121,6 +121,12 @@ export interface WaveState {
 /** Endless: hold one shared keep against waves. PvP: two players, a keep each, no waves. */
 export type GameMode = "endless" | "pvp";
 
+/**
+ * Test options, from the Debug menu: keeps that take no damage, and gold that never runs out
+ * (builds are free).
+ */
+export type DebugOption = "infiniteKeep" | "infiniteGold";
+
 export interface Keep {
   x: number; // top-left tile
   y: number;
@@ -174,6 +180,8 @@ export interface GameState {
   rngState: number;
   /** False turns fog of war off: every tile is in sight. */
   fog: boolean;
+  /** Debug options (offline only), all off to start with. */
+  debug: Record<DebugOption, boolean>;
   /**
    * Per tile, one bit per team that has seen it (it stays seen). Endless has one team (bit 0,
    * value 1); in PvP each player is their own team. See sim/fog.ts.
@@ -187,7 +195,20 @@ export type Command =
   | { type: "build"; kind: StructureKind; x: number; y: number; facing?: Facing }
   /** Dev only: spawn enemies at random spawn tiles. */
   | { type: "debugSpawn"; count: number; kind?: EnemyKindId }
+  /** Dev only (offline): turns a debug option on or off. */
+  | { type: "debugOption"; option: DebugOption; on: boolean }
+  /** Dev only (offline): turns fog of war on or off. */
+  | { type: "debugFog"; on: boolean }
   | { type: "sendWave" }
   | { type: "sell"; x: number; y: number };
+
+/** Commands for testing: offline only, refused online. */
+export type DebugCommand = Extract<Command, { type: "debugSpawn" | "debugOption" | "debugFog" }>;
+
+export function isDebugCommand(command: Command): command is DebugCommand {
+  return (
+    command.type === "debugSpawn" || command.type === "debugOption" || command.type === "debugFog"
+  );
+}
 
 export type CommandResult = { ok: true } | { ok: false; reason: string };

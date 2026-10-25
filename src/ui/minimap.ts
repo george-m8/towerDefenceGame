@@ -8,9 +8,15 @@ import { KEEP, NONE, getEnclosures } from "../sim/enclosures";
 import { SEEN, UNEXPLORED, canSeeEnemiesAt, getSight, isExplored } from "../sim/fog";
 import type { UiState } from "./state";
 
-/** The largest the minimap may be, in CSS pixels (it fits the panel). */
-const MAX_WIDTH = 216;
-const MAX_HEIGHT = 160;
+/**
+ * How wide the minimap is drawn, at least, in canvas pixels: about twice the width of its box
+ * on screen, which it's stretched (pixelated) to fill, so it stays sharp on high-density
+ * screens. A whole number of pixels per tile.
+ */
+const DRAW_WIDTH = 440;
+/** The view outline, in screen pixels: a white line under black dashes, seen on any ground. */
+const VIEW_LINE_PX = 2;
+const VIEW_DASH_PX = 4;
 
 /** The colour of one tile on the minimap: the keep, a structure, the spawn, or the ground. */
 export function minimapColour(state: GameState, x: number, y: number): string {
@@ -80,10 +86,7 @@ export function createMinimap(canvas: HTMLCanvasElement, ui: UiState) {
   return {
     update(current: GameState) {
       state = current;
-      scale = Math.max(
-        1,
-        Math.floor(Math.min(MAX_WIDTH / current.width, MAX_HEIGHT / current.height)),
-      );
+      scale = Math.max(1, Math.ceil(DRAW_WIDTH / current.width));
       const width = current.width * scale;
       const height = current.height * scale;
       if (canvas.width !== width || canvas.height !== height) {
@@ -109,17 +112,27 @@ export function createMinimap(canvas: HTMLCanvasElement, ui: UiState) {
           ctx.fillRect(Math.round(e.x) * scale, Math.round(e.y) * scale, scale, scale);
       }
 
-      // The view, as an outline.
+      // The view, as an outline: white with black dashes over it, so it shows on the white
+      // fog and on dark ground alike. Sized in screen pixels (the canvas is stretched to fit).
       const cam = ui.camera;
       const tiles = tilePixels(cam);
+      const perScreenPixel = canvas.width / (canvas.clientWidth || canvas.width);
+      const line = Math.max(1, Math.round(VIEW_LINE_PX * perScreenPixel));
+      const inset = line / 2;
+      const rect: [number, number, number, number] = [
+        Math.round(cam.x * scale) + inset,
+        Math.round(cam.y * scale) + inset,
+        Math.round((cam.viewWidth / tiles) * scale) - line,
+        Math.round((cam.viewHeight / tiles) * scale) - line,
+      ];
+      ctx.lineWidth = line;
+      ctx.setLineDash([]);
       ctx.strokeStyle = COLOURS.minimapView;
-      ctx.lineWidth = 1;
-      ctx.strokeRect(
-        Math.round(cam.x * scale) + 0.5,
-        Math.round(cam.y * scale) + 0.5,
-        Math.round((cam.viewWidth / tiles) * scale) - 1,
-        Math.round((cam.viewHeight / tiles) * scale) - 1,
-      );
+      ctx.strokeRect(...rect);
+      ctx.setLineDash([VIEW_DASH_PX * perScreenPixel, VIEW_DASH_PX * perScreenPixel]);
+      ctx.strokeStyle = COLOURS.minimapViewDash;
+      ctx.strokeRect(...rect);
+      ctx.setLineDash([]);
     },
   };
 }

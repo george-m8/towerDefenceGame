@@ -11,9 +11,33 @@
   </head>
   <body>
     <main class="desktop">
-      <section class="window map-window">
-        <header class="title-bar"><span class="title">Keep Defence</span></header>
+      <section class="map-window">
         <canvas id="map"></canvas>
+        <div id="hud" class="hud" hidden></div>
+        <div class="map-left">
+          <div id="map-buttons" class="map-buttons"></div>
+          <div id="panel" class="overlay-box controls-box" hidden></div>
+        </div>
+        <p id="status" class="status-line" hidden></p>
+        <div class="map-side">
+          <div id="minimap-box" class="minimap-box">
+            <canvas id="minimap" title="Click or drag to move the view"></canvas>
+            <div class="zoom-controls">
+              <button class="button" data-zoom="out" title="Zoom out (-)">-</button>
+              <button class="button" data-zoom="in" title="Zoom in (+)">+</button>
+              <button class="button" data-zoom="fit" title="Show the whole map">Fit</button>
+            </div>
+          </div>
+          <div id="info-box" class="overlay-box info-box" hidden></div>
+          <div id="online" class="overlay-box online" hidden></div>
+        </div>
+        <div id="settings" class="dialog settings-dialog" hidden>
+          <div class="window dialog-window settings-window">
+            <header class="title-bar"><span class="title">Settings</span></header>
+            <div id="sound" class="sound"></div>
+            <button class="button" data-action="close-settings">Close</button>
+          </div>
+        </div>
         <div id="game-over" class="dialog" hidden></div>
         <div id="waiting" class="dialog" hidden></div>
         <div id="start" class="dialog" hidden></div>
@@ -21,20 +45,6 @@
         <div id="journal" class="dialog" hidden></div>
         <p id="toast" class="toast" hidden></p>
       </section>
-      <aside class="window panel-window">
-        <header class="title-bar"><span class="title">Keep</span></header>
-        <div class="panel minimap-box">
-          <canvas id="minimap" title="Click or drag to move the view"></canvas>
-          <div class="zoom-controls">
-            <button class="button" data-zoom="out" title="Zoom out (-)">-</button>
-            <button class="button" data-zoom="in" title="Zoom in (+)">+</button>
-            <button class="button" data-zoom="fit" title="Show the whole map">Fit</button>
-          </div>
-        </div>
-        <div id="online" class="panel online" hidden></div>
-        <div id="panel" class="panel"></div>
-        <div id="sound" class="panel sound"></div>
-      </aside>
     </main>
     <div id="intro" class="intro" hidden></div>
     <script type="module" src="/src/main.ts"></script>

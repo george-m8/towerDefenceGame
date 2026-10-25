@@ -1,5 +1,7 @@
 import { goldOf } from "./helpers";
 import { describe, expect, it } from "vitest";
+import { spawnEnemy } from "../../src/sim/enemies";
+import { isExplored } from "../../src/sim/fog";
 import { applyCommand, createGame, tick } from "../../src/sim/game";
 import {
   FAST_FORWARD_SPEED,
@@ -11,7 +13,7 @@ import {
   KEEP_SIZE,
   STARTING_GOLD,
 } from "../../src/sim/config";
-import { isKeepTile, isSpawnTile } from "../../src/sim/grid";
+import { isKeepTile, isSpawnTile, placeStructure } from "../../src/sim/grid";
 
 describe("createGame", () => {
   const state = createGame(1, { blankMap: true, fog: false });
@@ -139,5 +141,55 @@ describe("debugSpawn", () => {
     });
     applyCommand(state, 1, { type: "debugSpawn", count: 1 });
     expect(state.enemies.map((e) => e.kind)).toEqual(["golem", "golem", "goblin"]);
+  });
+});
+
+describe("debug: infinite keep health", () => {
+  it("keeps take no damage from enemies or rival towers while it's on", () => {
+    const state = createGame(1, { blankMap: true, fog: false });
+    expect(
+      applyCommand(state, 1, { type: "debugOption", option: "infiniteKeep", on: true }),
+    ).toEqual({ ok: true });
+    const keep = state.keeps[0];
+    for (let i = 0; i < 20; i++) spawnEnemy(state, keep.x - 1, keep.y);
+    state.wave.countdown = Infinity;
+    for (let t = 0; t < 30 * 20; t++) tick(state);
+    expect(keep.hp).toBe(keep.maxHp);
+
+    const pvp = createGame(1, { blankMap: true, mode: "pvp", players: ["Ann", "Bo"] });
+    pvp.debug.infiniteKeep = true;
+    const rival = pvp.keeps[1];
+    placeStructure(pvp, "catapult", rival.x - 6, rival.y + 1, "E", 1);
+    for (let t = 0; t < 20 * 20; t++) tick(pvp);
+    expect(rival.hp).toBe(rival.maxHp);
+
+    applyCommand(state, 1, { type: "debugOption", option: "infiniteKeep", on: false });
+    for (let t = 0; t < 30 * 20 && keep.hp === keep.maxHp; t++) tick(state);
+    expect(keep.hp).toBeLessThan(keep.maxHp);
+  });
+});
+
+describe("debug: infinite money", () => {
+  it("lets you build anything without gold, and charges nothing", () => {
+    const state = createGame(1, { blankMap: true, fog: false });
+    state.players[1].gold = 0;
+    const keep = state.keeps[0];
+    const build = () =>
+      applyCommand(state, 1, { type: "build", kind: "catapult", x: keep.x - 4, y: keep.y });
+    expect(build()).toEqual({ ok: false, reason: "Not enough gold" });
+    applyCommand(state, 1, { type: "debugOption", option: "infiniteGold", on: true });
+    expect(build()).toEqual({ ok: true });
+    expect(state.players[1].gold).toBe(0);
+  });
+});
+
+describe("debug: fog of war", () => {
+  it("turns fog off and on again", () => {
+    const state = createGame(1, { blankMap: true });
+    expect(isExplored(state, 0, 0)).toBe(false);
+    applyCommand(state, 1, { type: "debugFog", on: false });
+    expect(isExplored(state, 0, 0)).toBe(true);
+    applyCommand(state, 1, { type: "debugFog", on: true });
+    expect(isExplored(state, 0, 0)).toBe(false);
   });
 });
