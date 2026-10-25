@@ -3,7 +3,7 @@ import { addCue } from "./cues";
 import { attackTargetAt, blocksAt, damageStructure, inBounds, keepAt } from "./grid";
 import { DIRECTIONS, nextStep } from "./pathfinding";
 import { nextRandom, randomInt } from "./rng";
-import type { Enemy, GameState, PlayerId, Point, Structure } from "./types";
+import type { Enemy, GameState, Keep, PlayerId, Point, Structure } from "./types";
 
 const EPSILON = 1e-9;
 
@@ -70,39 +70,37 @@ export function damageEnemy(enemy: Enemy, amount: number, by: PlayerId | null): 
 }
 
 export function updateEnemies(state: GameState): void {
-  const survivors: Enemy[] = [];
-  for (const enemy of state.enemies) {
-    if (advance(state, enemy)) survivors.push(enemy);
-  }
-  state.enemies = survivors;
+  for (const enemy of state.enemies) advance(state, enemy);
 }
 
 /**
  * Move the enemy one tick's worth of distance, carrying leftover movement
- * across tile centres so speed stays constant. Returns false once it is spent.
+ * across tile centres so speed stays constant.
  */
-function advance(state: GameState, enemy: Enemy): boolean {
+function advance(state: GameState, enemy: Enemy): void {
   enemy.attackCooldown = Math.max(0, enemy.attackCooldown - 1);
   let budget = enemy.speed / TICK_RATE;
   while (budget > EPSILON) {
-    if (enemy.x === enemy.tx && enemy.y === enemy.ty) {
-      const keep = keepAt(state, enemy.x, enemy.y);
-      if (keep) {
-        keep.hp = Math.max(0, keep.hp - enemy.damage);
-        addCue(state, "keepHit");
-        return false;
-      }
-      if (!chooseNextTile(state, enemy)) return true; // waiting or attacking
+    if (enemy.x === enemy.tx && enemy.y === enemy.ty && !chooseNextTile(state, enemy)) {
+      return; // waiting or attacking
     }
     budget -= moveTowardsTarget(enemy, budget);
   }
-  return true;
 }
 
-/** Sets the next tile to walk to. If a structure blocks the way, attacks it instead and returns false. */
+/**
+ * Sets the next tile to walk to. If the keep or a blocking structure is next, the enemy
+ * stays where it is and attacks it instead, and this returns false.
+ */
 function chooseNextTile(state: GameState, enemy: Enemy): boolean {
   const previous = { x: enemy.px, y: enemy.py };
   const pathStep = nextStep(state, enemy.x, enemy.y, previous);
+  // No step means it is already on the keep; attack the keep from there.
+  const keep = pathStep ? keepAt(state, pathStep.x, pathStep.y) : keepAt(state, enemy.x, enemy.y);
+  if (keep) {
+    attackKeep(state, enemy, keep);
+    return false;
+  }
   if (!pathStep) return false;
   if (blocksAt(state, pathStep.x, pathStep.y)) {
     attack(state, enemy, attackTargetAt(state, pathStep.x, pathStep.y)!);
@@ -137,9 +135,18 @@ function wanderStep(
     const x = enemy.x + d.x;
     const y = enemy.y + d.y;
     if (x === previous.x && y === previous.y) continue;
-    if (inBounds(state, x, y) && !blocksAt(state, x, y)) options.push({ x, y });
+    if (inBounds(state, x, y) && !blocksAt(state, x, y) && !keepAt(state, x, y)) {
+      options.push({ x, y });
+    }
   }
   return options.length > 0 ? options[randomInt(state, 0, options.length - 1)] : null;
+}
+
+function attackKeep(state: GameState, enemy: Enemy, keep: Keep) {
+  if (enemy.attackCooldown > 0) return;
+  keep.hp = Math.max(0, keep.hp - enemy.damage);
+  enemy.attackCooldown = enemy.attackInterval;
+  addCue(state, "keepHit");
 }
 
 function attack(state: GameState, enemy: Enemy, target: Structure) {

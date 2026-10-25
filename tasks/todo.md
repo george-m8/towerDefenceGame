@@ -28,15 +28,15 @@ Files: `src/sim/config.ts`, `src/sim/enemies.ts`, `tests/sim/enemies.test.ts`. S
 
 An enemy whose next path step is a keep tile stays on its tile and hits the keep for its damage once per interval until killed; `keepHit` cue on each hit; `KEEP_HP` 99 -> 300. Tests that expected one hit and removal are rewritten for the new rule.
 
-- [ ] An enemy next to the keep hits it once per interval and doesn't vanish
-- [ ] Killing it stops the hits; enemies standing at the keep can end the game
-- [ ] Towers and traps still hit enemies at the keep
+- [x] An enemy next to the keep hits it once per interval and doesn't vanish
+- [x] Killing it stops the hits; enemies standing at the keep can end the game
+- [x] Towers and traps still hit enemies at the keep
 
 Files: `src/sim/enemies.ts`, `src/sim/config.ts`, `tests/sim/enemies.test.ts`, `tests/sim/cues.test.ts`, `tests/sim/economy.test.ts`, `tests/sim/traps.test.ts`. Size: M. Depends on: 1.
 
 ## Checkpoint A (after Tasks 1-3)
 
-- [ ] All tests pass; typecheck and build clean
+- [x] All tests pass; typecheck and build clean
 - [ ] Browser: a goblin-only game plays as before, except enemies now stay at the keep and hit it
 - [ ] **Review keep HP and keep damage with George before going on**
 

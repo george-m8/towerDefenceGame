@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import { ENEMY, ENEMY_KINDS, STRUCTURES, TICK_RATE, type EnemyKindId } from "../../src/sim/config";
 import { damageEnemy, spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand, tick } from "../../src/sim/game";
-import { topAt } from "../../src/sim/grid";
+import { placeStructure, topAt } from "../../src/sim/grid";
 import { nextStep } from "../../src/sim/pathfinding";
 import type { GameState } from "../../src/sim/types";
-import { buildAt, createGameWithoutWaves, ring } from "./helpers";
+import { buildAt, createGameWithoutWaves, ring, standsAtKeep } from "./helpers";
 
 const ticksPerTile = TICK_RATE / ENEMY_KINDS.goblin.speed;
 
@@ -17,19 +17,18 @@ function run(state: GameState, ticks: number, each?: () => void) {
 }
 
 describe("enemy movement", () => {
-  it("walks to the keep in the expected time and deals damage on arrival", () => {
+  it("walks to the keep in the expected time and attacks it on arrival", () => {
     const state = createGameWithoutWaves();
     const start = { x: 0, y: state.keeps[0].y + 1 };
-    const tiles = state.keeps[0].x - start.x; // straight line to the keep's left edge
-    spawnEnemy(state, start.x, start.y);
+    const tiles = state.keeps[0].x - 1 - start.x; // straight line to the tile beside the keep
+    const enemy = spawnEnemy(state, start.x, start.y);
 
     run(state, Math.floor((tiles - 1) * ticksPerTile));
-    expect(state.enemies).toHaveLength(1);
     expect(state.keeps[0].hp).toBe(state.keeps[0].maxHp);
 
-    run(state, Math.ceil(2 * ticksPerTile));
-    expect(state.enemies).toHaveLength(0);
+    run(state, Math.ceil(ticksPerTile));
     expect(state.keeps[0].hp).toBe(state.keeps[0].maxHp - ENEMY_KINDS.goblin.damage);
+    expect({ x: enemy.x, y: enemy.y }).toEqual({ x: state.keeps[0].x - 1, y: start.y });
   });
 
   it("reroutes around a wall placed in its path and never walks through it", () => {
@@ -45,8 +44,8 @@ describe("enemy movement", () => {
         expect(topAt(state, Math.round(e.x), Math.round(e.y))).toBeUndefined();
       }
     });
-    expect(state.enemies).toHaveLength(0);
-    expect(state.keeps[0].hp).toBe(state.keeps[0].maxHp - ENEMY_KINDS.goblin.damage);
+    expect(state.enemies.every((e) => standsAtKeep(state, e))).toBe(true);
+    expect(state.keeps[0].hp).toBeLessThan(state.keeps[0].maxHp);
   });
 
   it("ends the game when keep HP reaches 0, and stops ticking", () => {
@@ -122,7 +121,9 @@ describe("wandering", () => {
       state.wanderChance = 0.5;
       const enemy = spawnEnemy(state, 2, state.keeps[0].y + 1);
       const tiles = [`${enemy.x},${enemy.y}`];
-      while (state.enemies.length > 0) {
+      // Until it reaches the keep, where it stays to attack (the walk plus detours, with room to spare).
+      const k = state.keeps[0];
+      for (let t = 0; t < 3 * k.x * ticksPerTile && k.hp === k.maxHp; t++) {
         tick(state);
         const target = `${enemy.tx},${enemy.ty}`;
         if (target !== tiles[tiles.length - 1]) tiles.push(target);
@@ -137,8 +138,9 @@ describe("wandering", () => {
     for (let i = 0; i < 10; i++) spawnEnemy(state, 0, state.keeps[0].y + 1);
     // Wandering adds detours: allow three times the straight walk, whatever the map size.
     run(state, Math.ceil(3 * state.keeps[0].x * ticksPerTile));
-    expect(state.enemies).toHaveLength(0);
-    expect(state.keeps[0].hp).toBe(state.keeps[0].maxHp - 10 * ENEMY_KINDS.goblin.damage);
+    expect(state.enemies).toHaveLength(10);
+    expect(state.enemies.every((e) => standsAtKeep(state, e))).toBe(true);
+    expect(state.keeps[0].hp).toBeLessThan(state.keeps[0].maxHp);
   });
 });
 
@@ -168,8 +170,8 @@ describe("breaking through", () => {
 
     // The enemy continues through the gap to the keep.
     run(state, Math.ceil(3 * ticksPerTile));
-    expect(state.enemies).toHaveLength(0);
-    expect(state.keeps[0].hp).toBe(state.keeps[0].maxHp - ENEMY_KINDS.goblin.damage);
+    expect(state.enemies.every((e) => standsAtKeep(state, e))).toBe(true);
+    expect(state.keeps[0].hp).toBeLessThan(state.keeps[0].maxHp);
   });
 
   it("never damages structures when an open route exists", () => {
@@ -184,7 +186,7 @@ describe("breaking through", () => {
     spawnEnemy(state, 0, keep.y + 1);
     // Long enough to walk round to the gap on the far side, whatever the map size.
     run(state, Math.ceil(3 * keep.x * ticksPerTile));
-    expect(state.keeps[0].hp).toBe(state.keeps[0].maxHp - ENEMY_KINDS.goblin.damage);
+    expect(state.keeps[0].hp).toBeLessThan(state.keeps[0].maxHp);
     for (const p of walls) {
       const s = topAt(state, p.x, p.y)!;
       expect(s.hp).toBe(s.maxHp);
@@ -311,5 +313,47 @@ describe("the roster", () => {
     const wolf = spawnEnemy(state, 0, y, { kind: "wolfRider" });
     run(state, 2 * TICK_RATE);
     expect(wolf.x).toBeCloseTo(2 * goblin.x);
+  });
+});
+
+describe("attacking the keep", () => {
+  it("stands next to the keep and hits it once per interval instead of vanishing", () => {
+    const state = createGameWithoutWaves();
+    const keep = state.keeps[0];
+    const enemy = spawnEnemy(state, keep.x - 1, keep.y);
+    tick(state);
+    expect(keep.hp).toBe(keep.maxHp - enemy.damage);
+    run(state, enemy.attackInterval - 1);
+    expect(keep.hp).toBe(keep.maxHp - enemy.damage);
+    tick(state);
+    expect(keep.hp).toBe(keep.maxHp - 2 * enemy.damage);
+    expect(state.enemies).toEqual([enemy]);
+    expect({ x: enemy.x, y: enemy.y }).toEqual({ x: keep.x - 1, y: keep.y });
+  });
+
+  it("stops hitting once killed", () => {
+    const state = createGameWithoutWaves();
+    const keep = state.keeps[0];
+    const enemy = spawnEnemy(state, keep.x - 1, keep.y);
+    tick(state);
+    damageEnemy(enemy, enemy.hp, 1);
+    run(state, 5 * TICK_RATE);
+    expect(state.enemies).toHaveLength(0);
+    expect(keep.hp).toBe(keep.maxHp - enemy.damage);
+  });
+
+  it("can be shot by a tower while it stands at the keep", () => {
+    const state = createGameWithoutWaves();
+    const keep = state.keeps[0];
+    placeStructure(state, "archer", keep.x - 3, keep.y, "E", 1);
+    spawnEnemy(state, keep.x - 1, keep.y);
+    run(state, 10 * TICK_RATE);
+    expect(state.enemies).toHaveLength(0);
+    expect(keep.hp).toBeGreaterThan(0);
+  });
+
+  it("starts the keep at 300 HP", () => {
+    const state = createGameWithoutWaves();
+    expect(state.keeps[0].maxHp).toBe(300);
   });
 });

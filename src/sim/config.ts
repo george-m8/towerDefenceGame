@@ -17,7 +17,7 @@ export const TICK_RATE = 20; // simulation ticks per second
 export const FAST_FORWARD_SPEED = 2; // game-speed multiplier while fast-forwarding
 
 export const KEEP_SIZE = 3;
-export const KEEP_HP = 99;
+export const KEEP_HP = 300;
 
 // Spawn zone: a strip on the left edge of the map, centred vertically.
 export const SPAWN_ZONE = { x: 0, width: 2, height: 12 };
