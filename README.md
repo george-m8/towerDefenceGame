@@ -58,6 +58,17 @@ Every game starts on a new, randomly generated map (the seed is shown in the pan
 - **Treasure chests** (`$` in gold) are piles of gold lying on the map (20-60, more the further from the keep). Build anything on one to claim it.
 - There is always a walkable route from the spawn to the keep, and nothing walkable is ever cut off.
 
+### Enclosures
+
+Close off an area and building there gets cheaper. An area is enclosed when enemies can't walk to it from their spawn. Walls, towers, houses, ruins, rock, water, trees and the map edge can all form the barrier, but at least one piece of it must be something you built (ruins alone don't count).
+
+- **Inside the keep's walls: 50% off.** This covers an enclosure that touches the keep, including walls hugging the keep and pockets walled off against its side.
+- **Any other enclosure: 25% off.**
+- The discount covers everything inside and the walls around it, so towers mounted on those walls are cheaper too. The wall that closes the ring pays full price.
+- Enclosed areas and their walls are shaded: gold for the keep, blue for others, on the map and the minimap. Hover shows the discount, and with a build tool selected the info box shows the price on that tile.
+- Selling refunds half of what you paid. If enemies can reach the area again (a wall sold or destroyed), the discount stops.
+- In co-op, anyone building in an enclosure gets its discount.
+
 ### Towers on walls
 
 Archers, cannons and catapults can stand on **open ground** or on **top of a wall**:

@@ -189,6 +189,8 @@ export const WAVES = {
 
 /** Selling refunds this fraction of cost, scaled by remaining HP. */
 export const SELL_REFUND = 0.5;
+/** Build discounts in enclosed areas: inside the keep's walls, and inside any other walls. */
+export const ENCLOSURE_DISCOUNT = { keep: 0.5, outer: 0.25 };
 
 export interface TerrainStats {
   name: string;

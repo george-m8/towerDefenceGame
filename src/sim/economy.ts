@@ -59,7 +59,8 @@ export function sellStructure(
 export function refundFor(structure: Structure): number {
   const condition = structure.maxHp > 0 ? structure.hp / structure.maxHp : 1;
   const stats: StructureStats = STRUCTURES[structure.kind];
-  const fullValue = stats.salvageGold ?? stats.cost * SELL_REFUND;
+  // Half of what was actually paid, so a discounted build can't be sold for more than it cost.
+  const fullValue = stats.salvageGold ?? (structure.paid ?? stats.cost) * SELL_REFUND;
   return Math.floor(fullValue * condition);
 }
 

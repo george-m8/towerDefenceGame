@@ -38,6 +38,8 @@ export interface Structure {
   aim?: number;
   /** Who built it; null for neutral map structures (ruins). */
   owner: PlayerId | null;
+  /** What was paid for it (after any enclosure discount); refunds are based on this. */
+  paid?: number;
 }
 
 export interface Enemy {

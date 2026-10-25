@@ -18,6 +18,12 @@ export const COLOURS = {
   offMap: "#15110b",
   /** The view's outline on the minimap. */
   minimapView: "#ffffff",
+  /** Enclosed areas and their walls: warm for the keep's enclosure, cool for others. */
+  enclosureKeep: "rgba(255, 196, 60, 0.22)",
+  enclosureOuter: "rgba(120, 200, 255, 0.16)",
+  /** The same tints as solid colours, blended into the minimap. */
+  enclosureKeepTint: "#ffc43c",
+  enclosureOuterTint: "#78c8ff",
   groundAlt: "#2f2819",
   spawn: "#4a1c1c",
   spawnGlyph: "#8a3a3a",
