@@ -72,7 +72,7 @@ Files: `src/sim/waves.ts`, `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/gam
 
 ## Checkpoint B (after Tasks 4-6)
 
-- [ ] All tests pass; coverage 80%+ lines for `src/sim/`
+- [x] All tests pass; coverage 80%+ lines for `src/sim/` (99.6%)
 - [ ] Browser: mixed waves play locally; `E` shows every kind
 - [ ] Online: two clients see the same kinds and variants
 
@@ -80,6 +80,6 @@ Files: `src/sim/waves.ts`, `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/gam
 
 README (enemy roster table, enemies attacking the keep, keep HP 300, `E` dev key), SPEC.md "Since `enemy-kinds`", plan roadmap status.
 
-- [ ] Docs match the built behaviour
+- [x] Docs match the built behaviour
 
 Files: `README.md`, `SPEC.md`, `tasks/plan.md`. Size: XS. Depends on: 6.

@@ -28,7 +28,7 @@ A browser-based, top-down, grid-based tower defence game where the player grows 
 **Map**
 - Fixed-size grid, default 153 x 102 tiles (configurable; was 48 x 32 until the map controls arrived).
 - The map view scrolls and zooms: arrow keys pan, the mouse wheel and `+`/`-` zoom (from the whole map up to 3x), and a minimap in the panel shows the whole map, enemies and the current view, and moves the view when clicked or dragged.
-- Keep: 3x3 footprint at map centre, has HP (default 99).
+- Keep: 3x3 footprint at map centre, has HP (default 99; 300 since `enemy-kinds`).
 - Spawn zone: a marked strip on the map edge. MVP has a single fixed zone on the left edge. Nothing can be built inside it.
 - Terrain: all tiles are open ground for the MVP (no rocks/water yet).
 - Build area: anywhere in bounds except the keep, the spawn zone, occupied tiles, and tiles with an enemy currently on them (stops enemies being trapped inside walls).
@@ -63,6 +63,7 @@ A browser-based, top-down, grid-based tower defence game where the player grows 
 - **Since `enclosures`:** areas enemies can't reach from the spawn (closed by walls, other structures, terrain or the map edge, with at least one player-built piece) make building cheaper: 50% off in the keep's enclosure, 25% elsewhere, inside and on their walls. Refunds are half of what was paid. See [`SPEC-enclosures.md`](SPEC-enclosures.md).
 - **Since `lobby`:** the page opens on a start screen (name, Play solo, Create room, Join by code), and new rooms wait until their host starts the game. See [`SPEC-lobby.md`](SPEC-lobby.md).
 - **Since `fog-of-war`:** players start seeing only the land around the keep. The keep and everything built see a region (inner: enemies visible; outer: land only), and land once seen stays seen; unexplored land is black and can't be built on. A new **watchtower** (`9`, 20g) only gives sight. Sight is shared in co-op. See [`SPEC-fog-of-war.md`](SPEC-fog-of-war.md).
+- **Since `enemy-kinds`:** enemies come from a roster of eight kinds (goblin, zerg, wolf rider, barbarian, dwarf, barbarian chief, dwarf thane, golem), each with variants shown by glyph size. Each hits with its own damage and interval, and enemies that reach the keep stay and attack it until killed (keep HP 300). Until `wave-director`, each wave spends a threat budget of `5 + 3N` on the kinds unlocked by that wave, so waves 1-2 are unchanged. The Enemies and Waves tables below describe the MVP. See [`SPEC-enemy-kinds.md`](SPEC-enemy-kinds.md).
 - **Since `audio`:** our own Web Audio chiptune synth plays sound effects from simulation cues (`state.cues`, played once each, capped per sound) and MIDI music on the title and start screens. See [`SPEC-audio.md`](SPEC-audio.md).
 
 **Enemies** (one type for the MVP)

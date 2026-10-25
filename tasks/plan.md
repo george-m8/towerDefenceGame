@@ -26,7 +26,7 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | | `lobby` | **Spec approved; tasks in [`tasks/lobby/`](lobby/todo.md)** |
 | 1. Basics (continued) | `tower-aiming` | Done |
 | | `line-of-sight` | Spec drafted |
-| 1d. Armies (see below) | `enemy-kinds` | **Spec approved; tasks in [`tasks/todo.md`](todo.md)** |
+| 1d. Armies (see below) | `enemy-kinds` | **Built; browser and online check at Checkpoint B pending (tasks in [`tasks/todo.md`](todo.md))** |
 | | `bestiary` | Outline |
 | | `enemy-pathing` | Outline |
 | | `enemy-targeting` | Outline |
