@@ -1,7 +1,7 @@
 # Implementation Plan: Post-MVP Phases
 
 Capability map: [`CAPABILITIES.md`](../CAPABILITIES.md)
-Current module spec: [`SPEC-enemy-kinds.md`](../SPEC-enemy-kinds.md) (Armies)
+Current module spec: none; next is `bestiary` (Armies)
 Task list (current module only): `tasks/todo.md`, written when the next module's spec is approved
 Finished modules: [`tasks/tile-layers/`](tile-layers/todo.md), [`tasks/tower-aiming/`](tower-aiming/todo.md), [`tasks/audio/`](audio/todo.md), [`tasks/map-gen/`](map-gen/todo.md), [`tasks/players/`](players/todo.md), [`tasks/game-server/`](game-server/todo.md) (awaiting the cross-machine probe and review), [`tasks/net-client/`](net-client/todo.md)
 Previous plan (MVP, complete except a Firefox/Safari smoke test): [`tasks/mvp/`](mvp/plan.md)
@@ -26,7 +26,7 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | | `lobby` | **Spec approved; tasks in [`tasks/lobby/`](lobby/todo.md)** |
 | 1. Basics (continued) | `tower-aiming` | Done |
 | | `line-of-sight` | Spec drafted |
-| 1d. Armies (see below) | `enemy-kinds` | **Built; browser and online check at Checkpoint B pending (tasks in [`tasks/todo.md`](todo.md))** |
+| 1d. Armies (see below) | `enemy-kinds` | Done (tasks in [`tasks/enemy-kinds/`](enemy-kinds/todo.md)) |
 | | `bestiary` | Outline |
 | | `enemy-pathing` | Outline |
 | | `enemy-targeting` | Outline |

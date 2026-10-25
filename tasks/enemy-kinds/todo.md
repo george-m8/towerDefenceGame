@@ -1,6 +1,6 @@
 # Tasks: enemy-kinds
 
-Spec: [`SPEC-enemy-kinds.md`](../SPEC-enemy-kinds.md)
+Spec: [`SPEC-enemy-kinds.md`](../../SPEC-enemy-kinds.md)
 
 Standard verification for every task: `npm run typecheck && npm test && npm run build`
 
@@ -56,7 +56,7 @@ Glyph and colour per kind, glyph size per variant (small 75%, normal, large 125%
 
 - [x] Kind and variant survive snapshot and update round trips; the 200-enemy update size test still passes
 - [x] Hover info tests for a multi-variant and a single-variant kind
-- [ ] Browser: each kind recognisable; runts and brutes visibly smaller and larger
+- [x] Browser: each kind recognisable; runts and brutes visibly smaller and larger
 
 Files: `src/net/protocol.ts`, `src/net/snapshot.ts`, `src/net/view.ts`, `src/render/palette.ts`, `src/render/canvas.ts`, `src/ui/tileInfo.ts` (+ tests). Size: M (6 files, but each change is small). Depends on: 4.
 
@@ -73,8 +73,8 @@ Files: `src/sim/waves.ts`, `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/gam
 ## Checkpoint B (after Tasks 4-6)
 
 - [x] All tests pass; coverage 80%+ lines for `src/sim/` (99.6%)
-- [ ] Browser: mixed waves play locally; `E` shows every kind
-- [ ] Online: two clients see the same kinds and variants
+- [x] Browser: mixed waves play locally; `E` shows every kind
+- [x] Online: two clients see the same kinds and variants (signed off 2026-10-25)
 
 ## Task 7: Docs
 
