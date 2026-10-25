@@ -1,4 +1,5 @@
 import { ENEMY, TICK_RATE, WAVES } from "./config";
+import { addCue } from "./cues";
 import { spawnEnemy } from "./enemies";
 import { randomInt } from "./rng";
 import { addGold } from "./players";
@@ -56,4 +57,5 @@ function startWave(state: GameState) {
   wave.toSpawn = waveEnemyCount(wave.number);
   wave.spawnTimer = 1; // first enemy spawns on the next update
   wave.countdown = 0;
+  addCue(state, "waveStart");
 }

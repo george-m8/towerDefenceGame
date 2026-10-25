@@ -443,7 +443,7 @@ T1 Synth voice + pure maths
 - [x] Task 1: Synth voice and pure note maths
 - [x] Task 2: Audio engine, gesture unlock and sound settings
 - [x] Task 3: Sound-effect table, cue player and UI sounds
-- [ ] Task 4: Sound cues from the simulation
+- [x] Task 4: Sound cues from the simulation
 
 **Checkpoint G: sound effects**
 - [ ] Every sound effect heard in a local and an online game; a busy wave stays under the hit cap

@@ -110,3 +110,13 @@ describe("interpolationFraction", () => {
     expect(interpolationFraction(1000, 1000, 1000)).toBe(1);
   });
 });
+
+describe("sound cues over the network", () => {
+  it("travel in updates and land in the client's state", () => {
+    const server = createGame(1, { blankMap: true });
+    const view = fromClientState(overTheWire(toClientState(server)));
+    applyCommand(server, 1, { type: "sendWave" });
+    applyUpdate(view, overTheWire(toUpdate(server, server.gridVersion)));
+    expect(view.cues.map((c) => c.kind)).toContain("waveStart");
+  });
+});

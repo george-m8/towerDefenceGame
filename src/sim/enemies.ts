@@ -1,4 +1,5 @@
 import { ENEMY, TICK_RATE } from "./config";
+import { addCue } from "./cues";
 import { attackTargetAt, blocksAt, damageStructure, inBounds, isKeepTile } from "./grid";
 import { DIRECTIONS, nextStep } from "./pathfinding";
 import { nextRandom, randomInt } from "./rng";
@@ -58,6 +59,7 @@ function advance(state: GameState, enemy: Enemy): boolean {
     if (enemy.x === enemy.tx && enemy.y === enemy.ty) {
       if (isKeepTile(state, enemy.x, enemy.y)) {
         state.keep.hp = Math.max(0, state.keep.hp - ENEMY.keepDamage);
+        addCue(state, "keepHit");
         return false;
       }
       if (!chooseNextTile(state, enemy)) return true; // waiting or attacking

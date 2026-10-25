@@ -69,6 +69,15 @@ export type Effect =
 /** Things lying on the map that aren't terrain or structures. `resources` adds deposits and animals. */
 export type MapFeature = { kind: "chest"; x: number; y: number; gold: number };
 
+/** Game events that make a sound. The audio layer adds UI-only sounds on top. */
+export type SimCueKind = "enemyHit" | "keepHit" | "treasure" | "splash" | "waveStart" | "gameOver";
+
+export interface SoundCue {
+  id: number;
+  kind: SimCueKind;
+  ttl: number;
+}
+
 export interface FlowField {
   /** gridVersion this field was computed for. */
   version: number;
@@ -114,6 +123,9 @@ export interface GameState {
   enemies: Enemy[];
   features: MapFeature[];
   effects: Effect[];
+  /** Audible events for the audio layer; see sim/cues.ts. */
+  cues: SoundCue[];
+  nextCueId: number;
   spawnTiles: Point[];
   keep: Keep;
   wave: WaveState;

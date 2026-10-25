@@ -1,17 +1,10 @@
 // Every sound effect in the game, tuned here. Play them all on the dev page: ?soundtest
 import { noteToHz } from "./envelopes";
+import type { SimCueKind } from "../sim/types";
 import type { VoiceSettings } from "./synth";
 
-export type CueKind =
-  | "enemyHit"
-  | "keepHit"
-  | "treasure"
-  | "splash"
-  | "build"
-  | "sell"
-  | "denied"
-  | "waveStart"
-  | "gameOver";
+/** Game events (cued by the simulation) plus sounds the UI plays for the player's own actions. */
+export type CueKind = SimCueKind | "build" | "sell" | "denied";
 
 export interface SoundNote {
   voice: VoiceSettings;

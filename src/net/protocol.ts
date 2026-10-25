@@ -58,6 +58,7 @@ type DynamicFields =
   | "gridVersion"
   | "enemies"
   | "effects"
+  | "cues"
   | "structures"
   | "players"
   | "wave"

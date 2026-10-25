@@ -97,13 +97,13 @@ Add `src/audio/synth.ts`: a Web Audio voice with pulse (duty cycle and optional 
 Cues age out like effects. They're included in network snapshots, and the audio layer feeds them through the cue player every frame, for local and online sessions alike.
 
 **Acceptance criteria:**
-- [ ] Each event adds exactly one cue with an increasing id; cues expire after a few ticks; same seed and commands give the same cues
-- [ ] Cues reach online clients in snapshots (snapshot test), and replaying the same snapshot plays nothing twice
-- [ ] In a local game you hear hits, splashes, keep damage, treasure, wave starts and game over
+- [x] Each event adds exactly one cue with an increasing id; cues expire after a few ticks; same seed and commands give the same cues
+- [x] Cues reach online clients in snapshots (snapshot test), and replaying the same snapshot plays nothing twice
+- [x] In a local game the cues play (dev voice counter: up to 8 voices at once during a 200-enemy stress wave reaching the keep, no errors). Listening is for you at Checkpoint G.
 
 **Verification:**
-- [ ] `npm test` (`tests/sim/cues.test.ts`, snapshot test in `tests/net/`)
-- [ ] Manual: a local game and a two-tab online game, listening for each sound
+- [x] `npm test` (`tests/sim/cues.test.ts`, snapshot test in `tests/net/`)
+- [ ] Manual: listen in a local game and a two-tab online game (left for you at Checkpoint G; online delivery is covered by the snapshot test)
 
 **Dependencies:** Task 3
 

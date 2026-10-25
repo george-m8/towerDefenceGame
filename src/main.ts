@@ -19,6 +19,7 @@ import { loadAudioSettings, saveAudioSettings } from "./audio/settings";
 import { createSoundControls } from "./ui/soundControls";
 import { createCuePlayer, soundForResult } from "./audio/cues";
 import { showSoundTest } from "./ui/soundTest";
+import { liveVoiceCount } from "./audio/synth";
 import { showNotice } from "./ui/notice";
 import type { Command, GameState } from "./sim/types";
 
@@ -83,6 +84,10 @@ const audioSettings = loadAudioSettings(audioStorage);
 audio.setVolumes(audioSettings);
 unlockOnFirstGesture(audio);
 const cues = createCuePlayer(audio);
+if (import.meta.env.DEV) {
+  // Lets you check from the console that sounds are playing (and cleaning up).
+  (window as unknown as { __liveVoices: () => number }).__liveVoices = liveVoiceCount;
+}
 createSoundControls(element("#sound"), audioSettings, (settings) => {
   audio.setVolumes(settings);
   saveAudioSettings(audioStorage, settings);
@@ -153,6 +158,7 @@ function frame(now: number) {
       minimap.update(state);
       panel.update(state);
       gameOver.update(state);
+      cues.update(state.cues);
     }
   }
   requestAnimationFrame(frame);

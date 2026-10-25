@@ -226,3 +226,6 @@ export const MAP_GEN = {
 
 /** Gold of timber for clearing one tree with the sell tool. */
 export const TREE_CLEAR_GOLD = 1;
+
+/** How long a sound cue stays in the state: long enough to reach online clients in an update. */
+export const CUE_TICKS = 10;
