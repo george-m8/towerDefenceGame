@@ -7,7 +7,20 @@ import type { VoiceSettings } from "./synth";
 
 export type { MusicPlace };
 
-export type Instrument = "lead" | "harmony" | "bass" | "arp" | "kick" | "snare" | "hihat";
+/** Medieval-flavoured chiptune voices: General MIDI families map onto these (see PROGRAMS). */
+export type Instrument =
+  | "harpsichord"
+  | "lute"
+  | "bass"
+  | "organ"
+  | "viol"
+  | "recorder"
+  | "shawm"
+  | "sackbut"
+  | "bells"
+  | "drum"
+  | "tabor"
+  | "tambourine";
 
 export interface InstrumentDef {
   voice: VoiceSettings;
@@ -15,62 +28,88 @@ export interface InstrumentDef {
   fixedHz?: number;
 }
 
+/** A plucked string: bright at first, dying away whether the note is held or not. */
+const plucked = (decay: number) => ({ attack: 0.003, decay, sustain: 0, release: 0.15 });
+/** A blown or bowed note: swells in and holds while the note lasts. */
+const held = (attack: number, sustain = 0.85) => ({ attack, decay: 0.08, sustain, release: 0.1 });
+
 export const INSTRUMENTS: Record<Instrument, InstrumentDef> = {
-  lead: {
-    voice: {
-      wave: "pulse",
-      duty: 0.25,
-      pwm: { rate: 5, depth: 0.1 },
-      volume: 0.16,
-      envelope: { attack: 0.005, decay: 0.1, sustain: 0.6, release: 0.08 },
-    },
+  harpsichord: {
+    voice: { wave: "pulse", duty: 0.2, lowpass: 4500, volume: 0.13, envelope: plucked(0.7) },
   },
-  harmony: {
-    voice: {
-      wave: "pulse",
-      duty: 0.5,
-      volume: 0.1,
-      envelope: { attack: 0.01, decay: 0.1, sustain: 0.5, release: 0.1 },
-    },
+  lute: {
+    voice: { wave: "pulse", duty: 0.35, lowpass: 2200, volume: 0.17, envelope: plucked(0.45) },
   },
   bass: {
     voice: {
       wave: "triangle",
       volume: 0.3,
-      envelope: { attack: 0.005, decay: 0.05, sustain: 0.8, release: 0.05 },
+      envelope: { attack: 0.005, decay: 0.5, sustain: 0.35, release: 0.08 },
     },
   },
-  arp: {
+  organ: {
+    voice: { wave: "pulse", duty: 0.5, lowpass: 2500, volume: 0.06, envelope: held(0.03, 0.9) },
+  },
+  viol: {
+    voice: {
+      wave: "sawtooth",
+      lowpass: 1800,
+      volume: 0.09,
+      envelope: held(0.08, 0.8),
+      vibrato: { rate: 5.5, depth: 0.15 },
+    },
+  },
+  recorder: {
+    voice: {
+      wave: "triangle",
+      volume: 0.22,
+      envelope: held(0.03),
+      vibrato: { rate: 5, depth: 0.12 },
+    },
+  },
+  shawm: {
     voice: {
       wave: "pulse",
-      duty: 0.125,
-      volume: 0.07,
-      envelope: { attack: 0.001, decay: 0.05, sustain: 0.2, release: 0.03 },
+      duty: 0.15,
+      lowpass: 2800,
+      volume: 0.09,
+      envelope: held(0.02, 0.8),
+      vibrato: { rate: 6, depth: 0.08 },
     },
   },
-  kick: {
+  sackbut: {
+    voice: { wave: "sawtooth", lowpass: 1200, volume: 0.12, envelope: held(0.05, 0.8) },
+  },
+  bells: {
     voice: {
       wave: "sine",
-      volume: 0.5,
-      envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.02 },
-      pitchEnvelope: { semitones: 24, time: 0.06 },
+      volume: 0.15,
+      envelope: { attack: 0.001, decay: 0.9, sustain: 0, release: 0.3 },
     },
-    fixedHz: 55,
   },
-  snare: {
+  drum: {
+    voice: {
+      wave: "sine",
+      volume: 0.45,
+      envelope: { attack: 0.001, decay: 0.18, sustain: 0, release: 0.03 },
+      pitchEnvelope: { semitones: 12, time: 0.08 },
+    },
+    fixedHz: 70,
+  },
+  tabor: {
     voice: {
       wave: "noise",
-      volume: 0.22,
-      envelope: { attack: 0.001, decay: 0.08, sustain: 0, release: 0.03 },
-      lowpass: 6000,
+      volume: 0.2,
+      envelope: { attack: 0.001, decay: 0.12, sustain: 0, release: 0.03 },
+      lowpass: 2500,
     },
     fixedHz: 0,
   },
-  hihat: {
+  tambourine: {
     voice: {
       wave: "noise",
-      volume: 0.07,
-      envelope: { attack: 0.001, decay: 0.02, sustain: 0, release: 0.01 },
+      volume: 0.06,
+      envelope: { attack: 0.001, decay: 0.06, sustain: 0, release: 0.02 },
     },
     fixedHz: 0,
   },
@@ -89,36 +128,71 @@ export interface SongEntry {
   file?: string;
   /** ...or notes written in code (the built-in placeholder). */
   notes?: () => MidiSong;
-  /** Override the default channel mapping (MIDI channels 0-15; 9 is drums). */
+  /** Override the instrument per channel (MIDI channels 0-15; 9 is drums). */
   channels?: Partial<Record<number, Instrument>>;
 }
 
 /** Channel 10 (index 9) drum notes we play; other GM drums are skipped. */
-const DRUMS: [number, number, Instrument][] = [
-  [35, 36, "kick"],
-  [37, 40, "snare"],
-  [42, 46, "hihat"],
+const DRUMS: [number[], Instrument][] = [
+  [[35, 36, 41, 43, 45, 47, 48, 50], "drum"], // kicks and toms
+  [[37, 38, 39, 40], "tabor"], // side stick, snares, clap
+  [[42, 44, 46, 49, 51, 52, 53, 54, 55, 56, 57, 59], "tambourine"], // hi-hats and cymbals
 ];
 const DRUM_CHANNEL = 9;
-const MELODIC_ORDER: Instrument[] = ["lead", "harmony", "bass", "arp"];
 
 /**
- * The instrument for a note. `channels` lists the song's channels in order of first
- * appearance; melodic channels take lead, harmony, bass and arp in that order.
+ * General MIDI programs, eight to a family, onto our instruments: [first program, instrument].
+ * Each entry holds until the next. null: not played (sound effects).
+ */
+const PROGRAMS: [number, Instrument | null][] = [
+  [0, "harpsichord"], // pianos, harpsichord, clavinet
+  [8, "bells"], // chromatic percussion
+  [16, "organ"],
+  [24, "lute"], // guitars
+  [32, "bass"],
+  [40, "viol"], // strings
+  [45, "lute"], // pizzicato, harp
+  [47, "drum"], // timpani
+  [48, "viol"], // string ensembles
+  [52, "organ"], // choirs
+  [55, "sackbut"], // orchestra hit, then brass
+  [64, "shawm"], // reeds
+  [72, "recorder"], // pipes, then synth leads
+  [88, "organ"], // synth pads
+  [96, "bells"], // synth effects
+  [104, "lute"], // sitar, banjo, shamisen, koto, kalimba
+  [109, "shawm"], // bagpipe
+  [110, "viol"], // fiddle
+  [111, "shawm"], // shanai
+  [112, "bells"], // tinkle bell, agogo, steel drums
+  [115, "tabor"], // woodblock
+  [116, "drum"], // taiko, melodic tom, synth drum
+  [119, null], // reverse cymbal, then sound effects
+];
+/** For songs with no program changes at all, in order of channel appearance. */
+const MELODIC_ORDER: Instrument[] = ["recorder", "lute", "bass", "harpsichord"];
+
+/**
+ * The instrument for a note: the song's override for its channel, else a drum on channel 10,
+ * else its General MIDI program's instrument. A note with no program takes from MELODIC_ORDER
+ * by its channel's place among `channels` (the song's channels in order of first appearance).
  */
 export function instrumentFor(
   song: SongEntry,
   channels: readonly number[],
-  channel: number,
-  midi: number,
+  note: Pick<MidiNote, "channel" | "midi" | "program">,
 ): Instrument | null {
-  const override = song.channels?.[channel];
+  const override = song.channels?.[note.channel];
   if (override) return override;
-  if (channel === DRUM_CHANNEL) {
-    return DRUMS.find(([lo, hi]) => midi >= lo && midi <= hi)?.[2] ?? null;
+  if (note.channel === DRUM_CHANNEL) {
+    return DRUMS.find(([notes]) => notes.includes(note.midi))?.[1] ?? null;
+  }
+  if (note.program !== undefined) {
+    const program = note.program;
+    return [...PROGRAMS].reverse().find(([first]) => program >= first)![1];
   }
   const melodic = channels.filter((c) => c !== DRUM_CHANNEL);
-  const index = melodic.indexOf(channel);
+  const index = melodic.indexOf(note.channel);
   return MELODIC_ORDER[Math.max(0, index) % MELODIC_ORDER.length];
 }
 
@@ -225,7 +299,7 @@ export const SONGS: SongEntry[] = [
     source: "https://www.midiworld.com/",
     licence: "PD",
     file: "baston.mid",
-    channels: { 0: "lead", 1: "harmony", 2: "bass" },
+    channels: { 0: "recorder", 1: "harpsichord", 2: "bass" },
   },
   {
     id: "placeholder-theme",
@@ -235,6 +309,6 @@ export const SONGS: SongEntry[] = [
     source: "Written for this game",
     licence: "Same as this project",
     notes: placeholderTheme,
-    channels: { 0: "lead", 2: "bass", 3: "arp" },
+    channels: { 0: "recorder", 2: "bass", 3: "lute" },
   },
 ];

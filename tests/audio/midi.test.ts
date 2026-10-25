@@ -182,6 +182,64 @@ describe("parseMidi", () => {
     expect(near(song.duration)).toBe(0.5); // no junk timings from the misread bytes
   });
 
+  it("gives each note the program (GM instrument) its channel had when it started", () => {
+    const song = parseMidi(
+      midi(
+        header(1, 2),
+        track([
+          [0, 0x90, 60, 100], // before any program change: unknown
+          [480, 0x80, 60, 0],
+          [0, 0xc0, 24], // nylon guitar
+          [0, 0x90, 62, 100],
+          [480, 0x80, 62, 0],
+        ]),
+        track([
+          [0, 0xc1, 73], // flute, on channel 2 only
+          [0, 0x91, 72, 100],
+          [480, 0x81, 72, 0],
+        ]),
+      ),
+    );
+    expect(song.notes.map((n) => [n.channel, n.midi, n.program])).toEqual([
+      [0, 60, undefined],
+      [1, 72, 73],
+      [0, 62, 24],
+    ]);
+  });
+
+  it("reads tracks whose writer ORed a channel past 15 into the status byte", () => {
+    // Online Sequencer: channel 0x65 turns program change 0xC0 and note-off 0x80 into 0xE5,
+    // and note-on 0x90 into 0xF5. Silent (velocity 0) notes draw pictures and stay silent.
+    const song = parseMidi(
+      midi(
+        header(1, 3),
+        track([
+          [0, 0x99, 36, 100], // a well-formed drum track
+          [480, 0x89, 36, 0],
+        ]),
+        track([
+          [0, 0xe5, 33], // program change: electric bass
+          [0, 0xf5, 40, 90], // note on
+          [480, 0xe5, 40, 0], // note off
+          [0, 0xf5, 0x20, 0], // a silent "pixel"
+          [96, 0xe5, 0x20, 0],
+        ]),
+        track([
+          [0, 0xe9, 0], // program 0, channel 0x69: low nibble 9, but not drums
+          [0, 0xf9, 64, 80],
+          [240, 0xe9, 64, 0],
+        ]),
+      ),
+    );
+    expect(song.notes.map((n) => [n.channel, n.midi, n.velocity, n.program])).toEqual([
+      [9, 36, 100, undefined],
+      [17, 40, 90, 33],
+      [18, 64, 80, 0],
+    ]);
+    expect(near(song.notes[1].duration)).toBe(0.5);
+    expect(near(song.duration)).toBe(0.6); // the pixel track ends at 576 ticks
+  });
+
   it("rejects files that aren't MIDI, or are cut short, with a clear error", () => {
     expect(() => parseMidi(new Uint8Array(ascii("RIFF0000WAVE")))).toThrow(MidiError);
     expect(() => parseMidi(new Uint8Array(ascii("RIFF0000WAVE")))).toThrow(/not a MIDI file/i);

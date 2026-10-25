@@ -37,25 +37,49 @@ describe("notesInWindow", () => {
 
 describe("instrumentFor", () => {
   const plain: SongEntry = { ...SONGS[0], channels: undefined };
+  const note = (channel: number, midi: number, program?: number) => ({ channel, midi, program });
 
-  it("plays GM drums from channel 10 on kick, snare and hi-hat", () => {
-    expect(instrumentFor(plain, [9], 9, 36)).toBe("kick");
-    expect(instrumentFor(plain, [9], 9, 38)).toBe("snare");
-    expect(instrumentFor(plain, [9], 9, 42)).toBe("hihat");
-    expect(instrumentFor(plain, [9], 9, 81)).toBeNull(); // unmapped drum: skipped
+  it("plays GM drums from channel 10 on a drum, tabor and tambourine", () => {
+    expect(instrumentFor(plain, [9], note(9, 36))).toBe("drum"); // kick
+    expect(instrumentFor(plain, [9], note(9, 45))).toBe("drum"); // tom
+    expect(instrumentFor(plain, [9], note(9, 38))).toBe("tabor"); // snare
+    expect(instrumentFor(plain, [9], note(9, 42))).toBe("tambourine"); // hi-hat
+    expect(instrumentFor(plain, [9], note(9, 57))).toBe("tambourine"); // crash
+    expect(instrumentFor(plain, [9], note(9, 81))).toBeNull(); // unmapped drum: skipped
   });
 
-  it("gives other channels lead, harmony, bass and arp in order of appearance", () => {
+  it("plays each General MIDI family on a medieval instrument", () => {
+    const on = (program: number) => instrumentFor(plain, [0], note(0, 60, program));
+    expect(on(0)).toBe("harpsichord"); // acoustic grand
+    expect(on(4)).toBe("harpsichord"); // electric piano
+    expect(on(13)).toBe("bells"); // xylophone
+    expect(on(19)).toBe("organ"); // church organ
+    expect(on(25)).toBe("lute"); // steel guitar
+    expect(on(30)).toBe("lute"); // distortion guitar
+    expect(on(33)).toBe("bass"); // finger bass
+    expect(on(40)).toBe("viol"); // violin
+    expect(on(48)).toBe("viol"); // string ensemble
+    expect(on(57)).toBe("sackbut"); // trombone
+    expect(on(68)).toBe("shawm"); // oboe
+    expect(on(73)).toBe("recorder"); // flute
+    expect(on(80)).toBe("recorder"); // square lead
+    expect(on(90)).toBe("organ"); // polysynth pad
+    expect(on(105)).toBe("lute"); // banjo
+    expect(on(109)).toBe("shawm"); // bagpipe
+    expect(on(122)).toBeNull(); // seashore: sound effects are skipped
+  });
+
+  it("without any programs, gives channels recorder, lute, bass and harpsichord in order", () => {
     const channels = [2, 5, 7, 9, 11];
-    expect(instrumentFor(plain, channels, 2, 60)).toBe("lead");
-    expect(instrumentFor(plain, channels, 5, 60)).toBe("harmony");
-    expect(instrumentFor(plain, channels, 7, 60)).toBe("bass");
-    expect(instrumentFor(plain, channels, 11, 60)).toBe("arp");
+    expect(instrumentFor(plain, channels, note(2, 60))).toBe("recorder");
+    expect(instrumentFor(plain, channels, note(5, 60))).toBe("lute");
+    expect(instrumentFor(plain, channels, note(7, 60))).toBe("bass");
+    expect(instrumentFor(plain, channels, note(11, 60))).toBe("harpsichord");
   });
 
   it("lets a song override the mapping", () => {
     const custom: SongEntry = { ...plain, channels: { 2: "bass" } };
-    expect(instrumentFor(custom, [2, 5], 2, 60)).toBe("bass");
+    expect(instrumentFor(custom, [2, 5], note(2, 60, 73))).toBe("bass");
   });
 });
 

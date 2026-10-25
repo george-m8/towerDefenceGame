@@ -2,6 +2,7 @@
 // clock (so timing never drifts with frame rate). Which notes fall in a slice is pure.
 import { midiToHz } from "./envelopes";
 import type { AudioEngine } from "./engine";
+import { loudness, normalisingGain } from "./loudness";
 import { parseMidi, type MidiNote, type MidiSong } from "./midi";
 import type { MusicPlace } from "./places";
 import { SHUFFLED_PLACES, pickSong } from "./playlist";
@@ -71,6 +72,8 @@ interface Playing {
   song: MidiSong;
   /** Channels in order of first appearance, for the default instrument mapping. */
   channels: number[];
+  /** Evens out loudness between songs (see loudness.ts). */
+  gain: number;
   start: number;
   scheduledUntil: number;
 }
@@ -146,7 +149,12 @@ export function createMusicPlayer(engine: AudioEngine, overrides: Partial<Player
     lastId = entry.id;
     const start = Math.max(engine.now(), quietFrom) + START_DELAY;
     const channels = [...new Set(song.notes.map((n) => n.channel))];
-    playing = { place: next, entry, song, channels, start, scheduledUntil: start };
+    const voiceOf = (note: MidiNote) => {
+      const instrument = instrumentFor(entry, channels, note);
+      return instrument && INSTRUMENTS[instrument].voice;
+    };
+    const gain = normalisingGain(loudness(song.notes, voiceOf, song.duration));
+    playing = { place: next, entry, song, channels, gain, start, scheduledUntil: start };
     timer = deps.setInterval(tick, TICK_MS);
     player.onSongChange?.(entry);
   };
@@ -158,13 +166,13 @@ export function createMusicPlayer(engine: AudioEngine, overrides: Partial<Player
 
   const tick = () => {
     if (!playing) return;
-    const { place: current, entry, song, channels, start } = playing;
+    const { place: current, entry, song, channels, gain, start } = playing;
     const to = engine.now() + LOOKAHEAD;
     for (const { at, note } of notesInWindow(song, start, playing.scheduledUntil, to, entry.loop)) {
-      const instrument = instrumentFor(entry, channels, note.channel, note.midi);
+      const instrument = instrumentFor(entry, channels, note);
       if (!instrument) continue;
       const def = INSTRUMENTS[instrument];
-      const voice = { ...def.voice, volume: (def.voice.volume * note.velocity) / 127 };
+      const voice = { ...def.voice, volume: (def.voice.volume * note.velocity * gain) / 127 };
       engine.playNote(
         voice,
         def.fixedHz ?? midiToHz(note.midi),

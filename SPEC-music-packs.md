@@ -114,6 +114,16 @@ Vitest, written first:
 3. **Menu music shuffles** like in-play.
 4. **Now playing and Skip** sit under the mute button (added 2026-10-25).
 
+## Update (2026-10-25): medieval instruments, Online Sequencer files, even loudness
+
+**Medieval instruments.** The MIDI reader keeps each note's General MIDI program (the instrument the file asks for). Each GM family plays on a medieval-flavoured chiptune voice: pianos on harpsichord, guitars and plucked strings on lute, basses on a plucked bass, organs and pads on a portative organ, strings on viol, brass on sackbut, reeds on shawm, pipes and synth leads on recorder, chromatic percussion and synth effects on bells. Drums become a low drum, a tabor and a tambourine. Sound-effect programs are skipped. A song with no program changes at all takes recorder, lute, bass and harpsichord in order of channel appearance. Manifest songs can still override per channel.
+
+**Online Sequencer files.** That site gives each track its own channel number (past 15) and ORs it into the status byte, so `0x90` (note on) comes out as e.g. `0xF5` and note off / program change as `0xE5`. A track that fails a strict read (invalid status byte, a data byte of 0x80 or more, an unterminated sysex) is read again this way: its first event (if it could be a program change) is the program, and every later channel event is a note, on when the velocity is above 0, off when it's 0. The track gets a channel of its own (16 and up), so it never collides with the drums on channel 10. If that read also fails, the strict read's notes up to the bad byte are kept, as before. Notes with velocity 0 stay silent: people draw pictures on that site with silent notes.
+
+**Even loudness.** When a song loads, its loudness is estimated from its notes (each note's volume and envelope, over the song's length) and a gain brings it towards a common level, limited to between a quarter and four times, so a dense arrangement doesn't blast and a quiet one isn't lost.
+
+**Success criteria (added):** Creep, Buddy Holly, Numb and Are We Still Friends play their melodic parts; every song plays on the medieval voices; I'm Still Standing is no longer much louder than the rest. Tests cover the overflowed-channel read, program capture, the program-to-instrument map and the loudness gain.
+
 ## Open questions
 
 None.
