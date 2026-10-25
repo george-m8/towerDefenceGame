@@ -1,7 +1,7 @@
 # Implementation Plan: Post-MVP Phases
 
 Capability map: [`CAPABILITIES.md`](../CAPABILITIES.md)
-Current module spec: [`SPEC-bestiary.md`](../SPEC-bestiary.md) (Armies); next [`SPEC-enemy-pathing.md`](../SPEC-enemy-pathing.md)
+Current module spec: [`SPEC-enemy-pathing.md`](../SPEC-enemy-pathing.md) (Armies)
 Task list (current module only): `tasks/todo.md`, written when the next module's spec is approved
 Finished modules: [`tasks/tile-layers/`](tile-layers/todo.md), [`tasks/tower-aiming/`](tower-aiming/todo.md), [`tasks/audio/`](audio/todo.md), [`tasks/map-gen/`](map-gen/todo.md), [`tasks/players/`](players/todo.md), [`tasks/game-server/`](game-server/todo.md) (awaiting the cross-machine probe and review), [`tasks/net-client/`](net-client/todo.md)
 Previous plan (MVP, complete except a Firefox/Safari smoke test): [`tasks/mvp/`](mvp/plan.md)
@@ -27,8 +27,8 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | 1. Basics (continued) | `tower-aiming` | Done |
 | | `line-of-sight` | Spec drafted |
 | 1d. Armies (see below) | `enemy-kinds` | Done (tasks in [`tasks/enemy-kinds/`](enemy-kinds/todo.md)) |
-| | `bestiary` | Built; browser check with George pending (tasks in [`tasks/todo.md`](todo.md)) |
-| | `enemy-pathing` | Spec approved ([`SPEC-enemy-pathing.md`](../SPEC-enemy-pathing.md)); tasks after `bestiary` |
+| | `bestiary` | Built; browser check with George pending (tasks in [`tasks/bestiary/`](bestiary/todo.md)) |
+| | `enemy-pathing` | **Spec approved; tasks in [`tasks/todo.md`](todo.md)** |
 | | `enemy-targeting` | Outline |
 | | `wave-director` | Outline |
 | | `units` | Outline (replaces the earlier `units` row) |
@@ -574,18 +574,53 @@ enemy-kinds ──┬─ bestiary
 
 ### `enemy-pathing`
 
-| # | Slice | Size |
+Spec: [`SPEC-enemy-pathing.md`](../SPEC-enemy-pathing.md) (approved). Tasks: [`tasks/todo.md`](todo.md).
+
+**Architecture decisions**
+- **Refactor first, fix second, behaviour third.** Task 1 keys fields by profile with only `follower` in use (no behaviour change). Task 2 fixes the existing wander bug on its own, so its effect on the suite is visible in isolation. Only then do new profiles and behaviours arrive.
+- **One walkability rule per profile.** `canCross(state, profile, x, y)` is used by the field builder, wandering and the bomber/digger short searches, so no code path can disagree about where an enemy may stand.
+- **Behaviours run before movement** and return true when they've used the enemy's turn (`BEHAVIOURS[kind.behaviour]`). Followers, breachers and marines need no behaviour code at all; the profile does the work.
+- **Bands borrow the leader's profile** rather than having their own pathing: they read the leader's field and only add "wait if ahead, hurry if behind". When the leader dies they read their own.
+- **Short targeted searches are bounded** (6 tiles for bombers, 8 for diggers) breadth-first searches over `canCross` tiles, run only when a target is first spotted, never per tick over the whole map.
+
+**Dependency graph**
+```
+T1 Fields keyed by profile (refactor)
+ └─ T2 Wander respects terrain (bug fix)
+     ├─ T3 Breacher profile ─────────────┐
+     ├─ T4 Marine profile + m/M          │
+     │   (Checkpoint C after T4)         │
+     └─ T5 Behaviour table + bombers     │
+         ├─ T6 Bands (uses T3: chiefs/thanes breach)
+         ├─ T7 Shaman + heal effect
+         └─ T8 Ram + diggers
+             └─ T9 Hover words and network (mode, banded)
+                 └─ T10 Determinism test and docs  (Checkpoint D after T9)
+```
+
+| # | Task | Size |
 |---|---|---|
 | 1 | Fields keyed by profile, follower only (refactor, behaviour unchanged) | S |
-| 2 | Breacher profile (wall cost = HP / the enemy's damage per second) and breacher behaviour | M |
-| 3 | Marine profile (river and sea walkable, sea costs more) and `m`/`M` | M |
-| 4 | Behaviour table and bombers `x`/`X`: short sight, sprint, explode with splash to structures and units | M |
-| 5 | Leader and follower groups (`b` with `B`, `d` with `D`); followers fall back to normal pathing when the leader dies | M |
-| 6 | Shaman `s`: heals nearby enemies on a cooldown | S |
-| 7 | Battering ram `R`: attacks structures only, never units, very high HP | S |
-| 8 | Diggers `n`: walk to a wall in sight, dig under it and damage it from below (no tunnel); still attackable while digging | S |
+| 2 | Wandering only onto tiles the profile can cross (fixes enemies on rock, trees and water) | S |
+| 3 | Breacher profile; `d`, `D`, `G` become breachers | M |
+| 4 | Marine profile (river 2, sea 4); `m`/`M`; XL field-rebuild timing test | M |
+| 5 | Behaviour table and bombers `x`/`X` (sight, sprint, 3x3 blast, explosion cue) | M |
+| 6 | Bands: `b` with `B`, `d` with `D`; stopgap mix spawns leaders with bands | M |
+| 7 | Shaman `s` and the heal effect | S |
+| 8 | Battering ram `R` and diggers `n` (still attackable while digging) | M |
+| 9 | Hover words (`sprinting`, `digging`, `with its chief`) and `mode`/`banded` on the wire | S |
+| 10 | Determinism test with every kind; README and SPEC.md | S |
 
-**Checkpoint C (after 3):** breachers break through a long maze and followers don't; marines take a river route; field rebuild time measured on an XL map. **Checkpoint D (after 8):** each behaviour seen in the browser; online games stay in sync.
+**Checkpoint C (after 4):** breachers break through a long maze and followers don't; marines take a river route; nobody stands on rock, trees or water; field rebuild time on an XL map. **Checkpoint D (after 9):** each behaviour seen in the browser via `E`; an online game with two clients stays in sync.
+
+| Risk | Impact | Mitigation |
+|---|---|---|
+| The wander fix changes existing test outcomes | Med | Its own task and commit; any test that relied on wandering into terrain is a test of the bug |
+| Three fields rebuilt on every grid change slow XL maps | Med | Lazy per profile; timing test in Task 4 (under 20 ms for all three) |
+| Breachers too eager or too timid | Low | `BREACH` numbers in config; tuned at Checkpoint C |
+| Bands bunch up or jitter around a slow leader | Low | Wait-if-ahead uses field distance, not position; hurry factor and leash in config |
+| Bomber or digger searches get expensive with many on screen | Low | Searches are bounded and run once per target spotted |
+| New kinds need journal descriptions | Low | `description` is required by the type, so the compiler insists |
 
 ### `enemy-targeting`
 
