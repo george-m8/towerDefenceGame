@@ -3,7 +3,7 @@ import { spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand, createGame, tick } from "../../src/sim/game";
 import { canBuild, topAt } from "../../src/sim/grid";
 import { getFlowField } from "../../src/sim/pathfinding";
-import { toClientState, toUpdate } from "../../src/net/snapshot";
+import { sentStateOf, toClientState, toUpdate } from "../../src/net/snapshot";
 import {
   applyUpdate,
   fromClientState,
@@ -49,22 +49,57 @@ describe("fromClientState", () => {
 });
 
 describe("applyUpdate", () => {
-  it("copies the dynamic fields, and the grid only when the update carries it", () => {
+  it("copies the dynamic fields, and brings in builds", () => {
     const server = createGame(4, { blankMap: true, fog: false });
     const view = fromClientState(overTheWire(toClientState(server)));
-    const before = server.gridVersion;
+    const sent = sentStateOf(server);
 
     tick(server);
-    applyUpdate(view, overTheWire(toUpdate(server, server.gridVersion)));
+    applyUpdate(view, overTheWire(toUpdate(server, sent)));
     expect(view.tick).toBe(1);
 
     applyCommand(server, 1, { type: "build", kind: "wall", x: 5, y: 5 });
-    view.base[0] = 123; // a stale value that only a grid update would overwrite
-    applyUpdate(view, overTheWire(toUpdate(server, before)));
+    applyUpdate(view, overTheWire(toUpdate(server, sent)));
     expect(view.base).toEqual(server.base);
     expect(view.gridVersion).toBe(server.gridVersion);
     expect(topAt(view, 5, 5)?.owner).toBe(1);
     expect(view.players[1].gold).toBe(server.players[1].gold);
+  });
+
+  it("keeps a client identical to the server through builds, fighting, sales and losses", () => {
+    const server = createGame(6, { players: ["Ann", "Bo"] });
+    const view = fromClientState(overTheWire(toClientState(server)));
+    const sent = sentStateOf(server);
+    const keep = server.keeps[0];
+    // A ring of walls round the keep (enemies break through it), towers on some of it.
+    for (let x = keep.x - 3; x <= keep.x + keep.size + 2; x++) {
+      for (const y of [keep.y - 3, keep.y + keep.size + 2]) {
+        applyCommand(server, 1, { type: "build", kind: "wall", x, y });
+      }
+    }
+    for (let y = keep.y - 2; y <= keep.y + keep.size + 1; y++) {
+      for (const x of [keep.x - 3, keep.x + keep.size + 2]) {
+        applyCommand(server, 2, { type: "build", kind: "wall", x, y });
+      }
+    }
+    applyCommand(server, 1, { type: "build", kind: "cannon", x: keep.x - 3, y: keep.y + 1 });
+    applyCommand(server, 1, { type: "sendWave" });
+    for (let t = 0; t < 60 * 20; t++) {
+      tick(server);
+      if (t === 300) applyCommand(server, 2, { type: "sell", x: keep.x - 3, y: keep.y });
+      if (t % 2 === 0) applyUpdate(view, overTheWire(toUpdate(server, sent)));
+    }
+    applyUpdate(view, overTheWire(toUpdate(server, sent)));
+    const client = overTheWire(toClientState(server));
+    expect(view.base).toEqual(server.base);
+    expect(view.mount).toEqual(server.mount);
+    expect(view.terrain).toEqual(server.terrain);
+    expect(view.explored).toEqual(server.explored);
+    expect(view.features).toEqual(server.features);
+    expect(Object.keys(view.structures).sort()).toEqual(Object.keys(client.structures).sort());
+    for (const s of Object.values(client.structures)) {
+      expect(view.structures[s.id]).toEqual({ ...s, cooldown: 0 });
+    }
   });
 });
 
@@ -116,7 +151,7 @@ describe("sound cues over the network", () => {
     const server = createGame(1, { blankMap: true, fog: false });
     const view = fromClientState(overTheWire(toClientState(server)));
     applyCommand(server, 1, { type: "sendWave" });
-    applyUpdate(view, overTheWire(toUpdate(server, server.gridVersion)));
+    applyUpdate(view, overTheWire(toUpdate(server, sentStateOf(server))));
     expect(view.cues.map((c) => c.kind)).toContain("waveStart");
   });
 });

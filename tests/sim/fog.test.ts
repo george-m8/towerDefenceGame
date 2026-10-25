@@ -11,7 +11,7 @@ import {
   tierAt,
 } from "../../src/sim/fog";
 import { mountAt, placeStructure } from "../../src/sim/grid";
-import { toClientState, toUpdate } from "../../src/net/snapshot";
+import { sentStateOf, toClientState, toUpdate } from "../../src/net/snapshot";
 import { applyUpdate, fromClientState } from "../../src/net/view";
 import type { GameState, StructureKind } from "../../src/sim/types";
 
@@ -225,20 +225,20 @@ describe("over the network", () => {
     expect(client.explored).toEqual(server.explored);
 
     const edge = keepEdge(server);
-    const sent = server.gridVersion;
+    const sent = sentStateOf(server);
     build(server, "watchtower", edge.x + KEEP_SIGHT.outer, edge.y);
     const update = toUpdate(server, sent);
-    expect(update.explored).toBeDefined();
+    expect(update.tiles?.explored?.length).toBeGreaterThan(0);
     applyUpdate(client, JSON.parse(JSON.stringify(update)));
     expect(isExplored(client, edge.x + KEEP_SIGHT.outer + 9, edge.y)).toBe(true);
-    expect(toUpdate(server, server.gridVersion)).not.toHaveProperty("explored");
+    expect(toUpdate(server, sent)).not.toHaveProperty("tiles");
   });
 
   it("the fog setting goes in every update", () => {
     const server = foggy();
     const client = fromClientState(toClientState(server));
     server.fog = false;
-    applyUpdate(client, toUpdate(server, server.gridVersion));
+    applyUpdate(client, toUpdate(server, sentStateOf(server)));
     expect(tierAt(client, 0, 0)).toBe(IN_SIGHT);
   });
 });
