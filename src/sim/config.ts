@@ -218,6 +218,12 @@ export const STRUCTURES = {
 
 /** How long shot and splash effects stay on screen. */
 export const EFFECT_TICKS = 4;
+/**
+ * Something destroyed stays a moment (BURST_DELAY_TICKS, with its emptied health bar), then
+ * bursts apart, its pieces flying and fading for BURST_TICKS.
+ */
+export const BURST_DELAY_TICKS = 6;
+export const BURST_TICKS = 24;
 
 export const ENEMY = {
   /** Chance (0-1) at each tile that an enemy steps to a random open neighbour instead of following the path. */
