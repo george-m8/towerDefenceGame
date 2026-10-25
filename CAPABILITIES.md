@@ -156,7 +156,7 @@ Build order: `enemy-kinds` -> `bestiary` -> `enemy-pathing` -> `enemy-targeting`
 
 - The enemy roster, variants, waves and costs are all config rows, so a new kind is a row plus (at most) a behaviour function.
 - Several flow fields, one per movement profile, not one per enemy, so cost doesn't grow with the number of enemies.
-- Every unit has a gold and a food cost from day one. Food is only charged once `resources` exists.
+- ~~Every unit has a gold and a food cost from day one.~~ Superseded by the AoE update (2026-10-25): spawner buildings cost gold and units spawn free up to the building's quota. A food cost for defensive and offensive units may come later.
 - Added enemies (2026-10-25): `w` wolf riders, `s` shaman, `R` battering ram, `n` diggers (damage walls from underneath, no tunnel). No flying enemies for now.
 - Dwarf bombers are `x`/`X` (barbarians keep `b`/`B`). Diggers are `n`.
 - Two archer types: defensive `archer` (guard tower) and offensive `ranger` (barracks).
@@ -169,3 +169,49 @@ Build order: `enemy-kinds` -> `bestiary` -> `enemy-pathing` -> `enemy-targeting`
 - `enemy-pathing`: bombers damage structures and units, not other enemies. When a leader dies, followers carry on with normal pathing. Breachers "notice" through the shared cost field, not per-enemy vision; bombers and diggers use real short-range sight.
 - `enemy-targeting`: the starting liking and intelligence values per kind (raiders like houses, dwarves like towers); whether medium-intelligence enemies give up on a diversion that turns out costly.
 - `wave-director`: a marker on the edge where each group is about to enter, shown even in fog.
+
+---
+
+# Capability Map: AoE update (economy, workers, unit spawners)
+
+Status: APPROVED (2026-10-25)
+Last updated: 2026-10-25
+
+Gatherer buildings spawn workers that go out and chop trees, mine rocks and forage berries, paying out gold and food as they go. Guard towers spawn defensive units, and barracks spawn offensive ones. Every spawner is a building that costs gold and spawns its units free, one per minute, up to a quota.
+
+This map **changes** earlier rows:
+- `units` (Armies) is split. Its entity, combat and spawning go into the new `unit-core`, and `units` keeps only the guard towers and the defensive roster.
+- `resources` (post-MVP) now depends on `unit-core` instead of `units`. Workers pay out with each hit and don't carry loads home. Trees and rocks replace the timber, copper, iron and gold deposits.
+- The Armies build order changes: `enemy-targeting` and `wave-director` now come after `field-units`.
+
+| Module id | Responsibility | Depends on |
+|---|---|---|
+| `game-setup` | **Deferred (2026-10-25), built with `food`.** An economy toggle on the mode screen: **food + gold** or **gold only**. It's passed into `createGame` as a rules config and carried to online games. Spec drafted: [`SPEC-game-setup.md`](SPEC-game-setup.md). | core, lobby |
+| `unit-core` | A shared unit entity: faction, owner, HP, speed, attack, range, sight and a home building. A unit finds its own path to a target and attacks it. Enemies fight units that block them or come within reach, enemy towers (PvP) shoot them, and units give fog sight. **Spawner contract:** a building kind names its unit kind, a quota (most alive at once) and an interval (default one per minute). Spawning is free. | enemy-kinds, tile-layers, fog-of-war |
+| `resources` | **Gold only for now.** Trees, rocks and berry bushes get HP, and each hit pays its owner gold straight away. **Trees** give gold (timber is sold). **Rocks** give gold, with richer rocks holding more and looking different. **Berry bushes** are walkable green tiles with a red `b`, and pay gold until `food` makes them pay food. A resource disappears at 0 HP, and a mined tree or rock becomes open ground (so mining can open new enemy routes). **Gatherer buildings** (timber yard, mine, forager hut) each spawn one worker per minute, up to 5 alive. A worker walks to the nearest reachable resource of its type, even in fog, and hits it until it's gone, then finds the next. | unit-core, map-gen |
+| `town-economy` | Income once map resources run low: farms and other civic buildings make gold per minute (food per minute once `food` lands). A **Civic** build tab, which absorbs today's houses. | resources |
+| `food` *(deferred)* | Food as a second currency, switched on by `game-setup`'s economy toggle. Berry bushes, forager huts and farms make food instead of gold. In gold-only games they keep paying gold. A food counter in the panel, and later food costs for units. | game-setup, resources, town-economy |
+| `units` | Defensive units from **guard towers**. Units stand in front of the tower on its facing side and attack enemies that come near. Roster: swordsman, archer, paladin (see the Armies map). | unit-core |
+| `field-units` | Offensive and exploring units from a barracks, as described in the Armies map. | units |
+
+Build order (after `enemy-pathing` is finished): `unit-core` -> `resources` -> `town-economy` -> `units` -> `field-units`, then `enemy-targeting` -> `wave-director`. Later: `game-setup` -> `food`.
+
+### Decisions captured
+
+- Food is deferred (2026-10-25). Food gatherers (forager hut, berry bushes) are built now but pay gold. `game-setup` waits for `food`, because the toggle has nothing to switch until then.
+- Workers are units that only attack resources. They are killed by enemies and enemy towers like any unit, and the building's timer replaces them.
+- Units outlive their spawner: selling or losing a building leaves its units alive, but nothing replaces them.
+- Enemies fight a unit that's in their way or right next to them.
+- PvP towers shoot rival units before structures. Endless tower targeting is unchanged.
+- Spawners cost gold to build. Units and workers spawn free up to the quota. Food costs for units are deferred.
+- The quota and the one-per-minute rate apply per building.
+- Collection goes straight into the owner's purse with each hit. Carrying loads home is a possible later option.
+- A mined tree or rock becomes open ground.
+- ~~Gold-only mode: no berry bushes and no forager huts.~~ Superseded: berry bushes and forager huts exist in every game and pay gold until `food`.
+- The sell tool can still clear a tree for 1 gold.
+
+### Open questions (for module specs)
+
+- `resources`: HP and payout for trees, rocks and berry bushes, how many berry bushes there are and where they go, and whether existing maps' rocks all become mineable or only some.
+- `resources`: whether workers flee from enemies.
+- `food`: what food is spent on (unit costs, houses that eat food to make gold).
