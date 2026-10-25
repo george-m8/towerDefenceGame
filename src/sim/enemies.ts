@@ -1,4 +1,11 @@
-import { ENEMY_KINDS, TICK_RATE, WAVES, type EnemyKind, type EnemyKindId } from "./config";
+import {
+  ENEMY_KINDS,
+  TICK_RATE,
+  WAVES,
+  type EnemyKind,
+  type EnemyKindId,
+  type MovementProfile,
+} from "./config";
 import { addCue } from "./cues";
 import { attackTargetAt, blocksAt, damageStructure, keepAt } from "./grid";
 import { DIRECTIONS, canCross, nextStep } from "./pathfinding";
@@ -107,7 +114,8 @@ function advance(state: GameState, enemy: Enemy): void {
  */
 function chooseNextTile(state: GameState, enemy: Enemy): boolean {
   const previous = { x: enemy.px, y: enemy.py };
-  const pathStep = nextStep(state, enemy.x, enemy.y, previous);
+  const profile = ENEMY_KINDS[enemy.kind].profile;
+  const pathStep = nextStep(state, enemy.x, enemy.y, previous, profile);
   // No step means it is already on the keep; attack the keep from there.
   const keep = pathStep ? keepAt(state, pathStep.x, pathStep.y) : keepAt(state, enemy.x, enemy.y);
   if (keep) {
@@ -120,7 +128,7 @@ function chooseNextTile(state: GameState, enemy: Enemy): boolean {
     return false;
   }
   // Only walking enemies wander; one breaking through stays on its target.
-  const next = wanderStep(state, enemy, pathStep, previous) ?? pathStep;
+  const next = wanderStep(state, enemy, pathStep, previous, profile) ?? pathStep;
   enemy.px = enemy.x;
   enemy.py = enemy.y;
   enemy.tx = next.x;
@@ -138,6 +146,7 @@ function wanderStep(
   enemy: Enemy,
   pathStep: Point,
   previous: Point,
+  profile: MovementProfile,
 ): Point | null {
   if (state.wanderChance <= 0 || nextRandom(state) >= state.wanderChance) return null;
   const forward = { x: pathStep.x - enemy.x, y: pathStep.y - enemy.y };
@@ -148,7 +157,7 @@ function wanderStep(
     const x = enemy.x + d.x;
     const y = enemy.y + d.y;
     if (x === previous.x && y === previous.y) continue;
-    if (canCross(state, "follower", x, y) && !blocksAt(state, x, y) && !keepAt(state, x, y)) {
+    if (canCross(state, profile, x, y) && !blocksAt(state, x, y) && !keepAt(state, x, y)) {
       options.push({ x, y });
     }
   }

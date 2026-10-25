@@ -27,9 +27,9 @@ Files: `src/sim/enemies.ts`, `tests/sim/enemies.test.ts`. Size: XS. Depends on: 
 
 `profile` on every kind (followers by default); `d`, `D`, `G` become breachers. `BREACH` config; the breacher field costs a blocking structure `1 + ceil(HP / referenceDps x referenceSpeed)` using its HP when the field is built. Enemies step by their own profile's field.
 
-- [ ] Detour 20 tiles longer than one wall: a dwarf breaks the wall, a goblin walks round
-- [ ] Detour only 4 tiles longer: both walk round
-- [ ] After a rebuild, a breacher picks a damaged wall over a full one
+- [x] Detour 20 tiles longer than one wall: a dwarf breaks the wall, a goblin walks round
+- [x] Detour only 4 tiles longer: both walk round
+- [x] After a rebuild, a breacher picks a damaged wall over a full one
 
 Files: `src/sim/config.ts`, `src/sim/pathfinding.ts`, `src/sim/enemies.ts`, `tests/sim/pathfinding.test.ts`, `tests/sim/enemies.test.ts`. Size: M. Depends on: 2.
 

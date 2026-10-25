@@ -1,5 +1,5 @@
-import type { MovementProfile } from "./config";
-import { blocksAt, inBounds, isKeepTile, isWalkable, tileIndex } from "./grid";
+import { BREACH, type MovementProfile } from "./config";
+import { attackTargetAt, blocksAt, inBounds, isKeepTile, isWalkable, tileIndex } from "./grid";
 import type { FlowField, GameState, Point } from "./types";
 
 // Neighbour order doubles as the tie-break order: N, E, S, W.
@@ -71,8 +71,9 @@ export function distanceAt(
 }
 
 /**
- * Dijkstra outwards from the keep. Entering a blocking structure costs more than
- * any open route could, so enemies only break through when there is no other way.
+ * Dijkstra outwards from the keep. For followers and marines, entering a blocking structure
+ * costs more than any open route could, so they only break through when there is no other
+ * way. Breachers price it by how long it takes to break (see BREACH).
  */
 function computeDistances(state: GameState, profile: MovementProfile): number[] {
   const blockedCost = state.width * state.height + 1;
@@ -97,7 +98,11 @@ function computeDistances(state: GameState, profile: MovementProfile): number[] 
       const nx = x + dir.x;
       const ny = y + dir.y;
       if (!canCross(state, profile, nx, ny)) continue;
-      const cost = blocksAt(state, nx, ny) ? blockedCost : 1;
+      const cost = !blocksAt(state, nx, ny)
+        ? 1
+        : profile === "breacher"
+          ? breachCost(state, nx, ny)
+          : blockedCost;
       const ni = tileIndex(state, nx, ny);
       if (d + cost < dist[ni]) {
         dist[ni] = d + cost;
@@ -106,6 +111,12 @@ function computeDistances(state: GameState, profile: MovementProfile): number[] 
     }
   }
   return dist;
+}
+
+/** What breaking through (x, y) costs a breacher, in tiles it could have walked instead. */
+function breachCost(state: GameState, x: number, y: number): number {
+  const hp = attackTargetAt(state, x, y)!.hp;
+  return 1 + Math.ceil((hp / BREACH.referenceDps) * BREACH.referenceSpeed);
 }
 
 /** Minimal binary heap of [priority, value] pairs. */

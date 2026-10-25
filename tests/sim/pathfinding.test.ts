@@ -1,15 +1,20 @@
 import { describe, expect, it } from "vitest";
+import { BREACH, STRUCTURES, type MovementProfile } from "../../src/sim/config";
 import { createGame } from "../../src/sim/game";
 import { isKeepTile, topAt } from "../../src/sim/grid";
 import { canCross, getFlowField, nextStep } from "../../src/sim/pathfinding";
 import type { GameState, Point } from "../../src/sim/types";
-import { buildAt, createGameWithoutWaves, paintTerrain, ring } from "./helpers";
+import { buildAt, column, createGameWithoutWaves, paintTerrain, ring } from "./helpers";
 
-function pathToKeep(state: GameState, start: Point): Point[] {
+function pathToKeep(
+  state: GameState,
+  start: Point,
+  profile: MovementProfile = "follower",
+): Point[] {
   const path: Point[] = [start];
   let p = start;
   while (!isKeepTile(state, p.x, p.y)) {
-    const next = nextStep(state, p.x, p.y);
+    const next = nextStep(state, p.x, p.y, undefined, profile);
     if (!next) throw new Error(`No step from ${p.x},${p.y}`);
     path.push(next);
     p = next;
@@ -135,5 +140,61 @@ describe("fields per movement profile", () => {
     expect(canCross(state, "follower", 3, 3)).toBe(false);
     expect(canCross(state, "follower", 4, 3)).toBe(true);
     expect(canCross(state, "follower", -1, 3)).toBe(false);
+  });
+});
+
+describe("breacher profile", () => {
+  /** A wall line down column x, leaving gaps at the given rows. */
+  function wallLine(state: GameState, x: number, gaps: number[] = []) {
+    buildAt(state, column(state, x, gaps));
+  }
+
+  it("breaks a wall when walking round is much longer; followers walk round", () => {
+    const state = createGameWithoutWaves();
+    const keep = state.keeps[0];
+    const wallX = keep.x - 4;
+    wallLine(state, wallX, [0]); // the only gap is at the top edge: a long detour
+    const start = { x: wallX - 2, y: keep.y + 1 };
+    // The breacher's route goes into the wall; the follower's goes round through the gap.
+    expect(pathToKeep(state, start, "breacher").some((p) => p.x === wallX && p.y !== 0)).toBe(true);
+    expect(pathToKeep(state, start, "follower").some((p) => p.x === wallX && p.y === 0)).toBe(true);
+  });
+
+  it("walks round a short wall like everyone else", () => {
+    const state = createGameWithoutWaves();
+    const keep = state.keeps[0];
+    const y = keep.y + 1;
+    const wallX = keep.x - 4;
+    buildAt(
+      state,
+      [y - 1, y, y + 1].map((wy) => ({ x: wallX, y: wy })),
+    ); // 4 tiles longer round
+    const start = { x: wallX - 2, y };
+    expect(pathToKeep(state, start, "breacher").some((p) => topAt(state, p.x, p.y))).toBe(false);
+  });
+
+  it("prefers a damaged wall once its field is rebuilt", () => {
+    const state = createGameWithoutWaves();
+    const keep = state.keeps[0];
+    const y = keep.y + 1;
+    const wallX = keep.x - 4;
+    wallLine(state, wallX);
+    topAt(state, wallX, y + 2)!.hp = 1;
+    state.gridVersion++; // as a build or sale elsewhere would
+    const route = pathToKeep(state, { x: wallX - 2, y }, "breacher");
+    expect(route).toContainEqual({ x: wallX, y: y + 2 });
+  });
+
+  it("costs a full wall 1 + ceil(HP / dps x speed) tiles", () => {
+    const state = createGameWithoutWaves();
+    const keep = state.keeps[0];
+    const wallX = keep.x - 4;
+    wallLine(state, wallX);
+    const y = keep.y + 1;
+    const through = getFlowField(state, "breacher").dist;
+    const at = (x: number) => through[y * state.width + x];
+    const wallCost =
+      1 + Math.ceil((STRUCTURES.wall.maxHp / BREACH.referenceDps) * BREACH.referenceSpeed);
+    expect(at(wallX - 1) - at(wallX + 1)).toBe(wallCost + 1);
   });
 });

@@ -5,7 +5,14 @@ import { applyCommand, createGame, tick } from "../../src/sim/game";
 import { isWalkable, placeStructure, topAt } from "../../src/sim/grid";
 import { nextStep } from "../../src/sim/pathfinding";
 import type { GameState } from "../../src/sim/types";
-import { buildAt, createGameWithoutWaves, paintTerrain, ring, standsAtKeep } from "./helpers";
+import {
+  buildAt,
+  column,
+  createGameWithoutWaves,
+  paintTerrain,
+  ring,
+  standsAtKeep,
+} from "./helpers";
 
 const ticksPerTile = TICK_RATE / ENEMY_KINDS.goblin.speed;
 
@@ -455,5 +462,31 @@ describe("wandering and terrain", () => {
         for (const e of state.enemies) expect(isWalkable(state, e.tx, e.ty)).toBe(true);
       }
     }
+  });
+});
+
+describe("breachers", () => {
+  it("a dwarf breaks through a long wall line while a goblin walks round it", () => {
+    const damagedBy = (kind: EnemyKindId) => {
+      const state = createGameWithoutWaves();
+      const keep = state.keeps[0];
+      const wallX = keep.x - 4;
+      buildAt(state, column(state, wallX, [0]));
+      spawnEnemy(state, wallX - 2, keep.y + 1, { kind, hp: 1e6 });
+      run(state, 30 * TICK_RATE);
+      return column(state, wallX, [0]).filter((p) => {
+        const wall = topAt(state, p.x, p.y);
+        return !wall || wall.hp < wall.maxHp;
+      }).length;
+    };
+    expect(damagedBy("dwarf")).toBeGreaterThan(0);
+    expect(damagedBy("goblin")).toBe(0);
+  });
+
+  it("dwarves, thanes and golems breach; the rest follow", () => {
+    const breachers = (Object.keys(ENEMY_KINDS) as EnemyKindId[]).filter(
+      (k) => ENEMY_KINDS[k].profile === "breacher",
+    );
+    expect(breachers.sort()).toEqual(["dwarf", "dwarfThane", "golem"]);
   });
 });

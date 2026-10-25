@@ -215,6 +215,12 @@ export const ENEMY = {
 /** Which tiles an enemy can cross and what each costs; one cached flow field per profile. */
 export type MovementProfile = "follower" | "breacher" | "marine";
 
+/**
+ * Breachers price a blocking structure at the tiles they could have walked while breaking it:
+ * 1 + ceil(HP / referenceDps x referenceSpeed). A full 50 HP wall costs 8 tiles.
+ */
+export const BREACH = { referenceDps: 8, referenceSpeed: 1 };
+
 /** A version of a kind, rolled at spawn. Multipliers apply to the kind's stats. */
 export interface EnemyVariant {
   name: string;
@@ -233,6 +239,8 @@ export interface EnemyKind {
   name: string;
   /** One line for the monster journal. */
   description: string;
+  /** Which tiles it can cross and what walls cost it (see BREACH). */
+  profile: MovementProfile;
   hp: number;
   speed: number; // tiles per second
   /** Per hit, against a structure in the way or the keep. */
@@ -253,6 +261,7 @@ export const ENEMY_KINDS = {
     glyph: "g",
     name: "Goblin",
     description: "Weak all round, but cheap and plentiful.",
+    profile: "follower",
     hp: 20,
     speed: 1.5,
     damage: 5,
@@ -271,6 +280,7 @@ export const ENEMY_KINDS = {
     glyph: "z",
     name: "Zerg",
     description: "Tiny and cheap, comes in numbers.",
+    profile: "follower",
     hp: 6,
     speed: 1.8,
     damage: 2,
@@ -285,6 +295,7 @@ export const ENEMY_KINDS = {
     glyph: "w",
     name: "Wolf rider",
     description: "Fast and fragile.",
+    profile: "follower",
     hp: 14,
     speed: 3,
     damage: 4,
@@ -302,6 +313,7 @@ export const ENEMY_KINDS = {
     glyph: "b",
     name: "Barbarian",
     description: "Quick hits, tougher than a goblin. Follows its chief.",
+    profile: "follower",
     hp: 30,
     speed: 1.8,
     damage: 4,
@@ -319,6 +331,7 @@ export const ENEMY_KINDS = {
     glyph: "d",
     name: "Dwarf",
     description: "Slow, with solid hits. Follows its thane.",
+    profile: "breacher",
     hp: 45,
     speed: 1,
     damage: 8,
@@ -337,6 +350,7 @@ export const ENEMY_KINDS = {
     glyph: "B",
     name: "Barbarian chief",
     description: "Leads barbarians. Slow, but hits very fast.",
+    profile: "follower",
     hp: 90,
     speed: 1.2,
     damage: 8,
@@ -351,6 +365,7 @@ export const ENEMY_KINDS = {
     glyph: "D",
     name: "Dwarf thane",
     description: "Leads dwarves. A stronger dwarf.",
+    profile: "breacher",
     hp: 120,
     speed: 0.9,
     damage: 14,
@@ -365,6 +380,7 @@ export const ENEMY_KINDS = {
     glyph: "G",
     name: "Golem",
     description: "Rare, slow and huge, with slow crushing hits.",
+    profile: "breacher",
     hp: 250,
     speed: 0.6,
     damage: 40,
