@@ -24,8 +24,8 @@ Enemies spawn from the red strip on the left edge and walk to your keep (`K`, 30
 
 - Kill enemies with towers and traps to earn gold.
 - Build houses for steady income.
-- Enemies always take an open route if one exists, however long. They only break through your walls when the keep is completely sealed off, and then they attack the weakest point on their route.
-- Enemies mostly stick to that route, but at each tile there is a small chance (10% by default, `ENEMY.wanderChance` in `src/sim/config.ts`) that one drifts sideways onto an open tile instead. They never step backwards, double back onto the tile they just left, or wander into structures.
+- Most enemies take an open route if one exists, however long, and only break through your walls when the keep is completely sealed off. **Breachers** (dwarves, thanes, golems and rams) work out when smashing a wall is quicker than walking round, and go through the weakest point. **Marines** swim rivers and the sea when that's the quicker way in.
+- Enemies mostly stick to their route, but at each tile there is a small chance (10% by default, `ENEMY.wanderChance` in `src/sim/config.ts`) that one drifts sideways onto an open tile instead. They never step backwards, double back onto the tile they just left, wander into structures, or step onto rock, trees or water (unless they can swim).
 
 ### Enemies
 
@@ -40,7 +40,24 @@ Waves 1 and 2 are all goblins. Later waves mix in other kinds from the wave show
 | `d` | Dwarf | 45 | 1.0 | 8 every 1.2s | 4 | 6 |
 | `B` | Barbarian chief | 90 | 1.2 | 8 every 0.5s | 10 | 7 |
 | `D` | Dwarf thane | 120 | 0.9 | 14 every 1.2s | 12 | 9 |
+| `m` | Marine | 25 | 1.4 | 5 every 1s | 3 | 7 |
+| `x` | Dwarf bomber | 18 | 1.0 | 3 every 1s; blast 60 | 4 | 8 |
+| `s` | Shaman | 30 | 1.2 | 3 every 1s | 6 | 8 |
+| `n` | Digger | 20 | 1.2 | 6 every 1s | 4 | 9 |
 | `G` | Golem | 250 | 0.6 | 40 every 3s | 20 | 10 |
+| `M` | Marine captain | 60 | 1.2 | 10 every 1s | 8 | 11 |
+| `X` | Dwarf demolisher | 40 | 0.9 | 5 every 1s; blast 120 | 9 | 11 |
+| `R` | Battering ram | 400 | 0.5 | 60 every 2.5s | 30 | 12 |
+
+What some of them do on top of walking:
+
+- **Bands:** a barbarian chief arrives with 2-4 barbarians, a dwarf thane with 2-3 dwarves. They follow their leader's route (through the wall it breaks, if it's a breacher), never get more than a tile ahead, hurry to catch up, and attack whatever it attacks. When the leader dies they carry on alone.
+- **Bombers** (`x`, `X`) spot a wall, tower, house or wall spikes you built within 3 tiles, sprint at it and explode, damaging everything in the 3x3 around them (the keep too, if it's in the blast, but never other enemies). They drop no bounty. Kill them before they arrive and nothing happens.
+- **Shamans** (`s`) heal every other enemy within 2.5 tiles by 6 HP every 2 seconds (a green `+`).
+- **Diggers** (`n`) walk to a wall or wall spikes you built within 4 tiles and dig under it until it falls, taking any tower on it down too. Towers and traps can still hit them while they dig.
+- **Battering rams** (`R`) are slow breachers with huge hits.
+
+Hover an enemy to see what it's doing, e.g. `Dwarf bomber, HP 18 / 18, sprinting` or `Barbarian raider, HP 30 / 30, with its chief`.
 
 Most kinds come in **variants**, shown by glyph size: a small `g` is a goblin runt (weaker, faster), a large one a brute (tougher, hits harder). Hover an enemy to see which it is, e.g. `Goblin brute, HP 18 / 28`. All the numbers live in `ENEMY_KINDS` in `src/sim/config.ts`.
 
@@ -305,8 +322,10 @@ src/sim/              Pure, deterministic game simulation (no DOM, seeded RNG)
   config.ts           All tunable numbers: structures, enemies, waves, economy
   game.ts             createGame, tick, applyCommand
   grid.ts             Placement rules and tile occupancy
-  pathfinding.ts      Flow field (Dijkstra from the keep)
-  enemies.ts          Movement and attacking
+  pathfinding.ts      Flow fields from the keep, one per movement profile (follower, breacher, marine)
+  enemies.ts          Spawning, walking, bands and attacking
+  behaviours.ts       Bombers, shamans and diggers
+  movement.ts         Tile-to-tile stepping shared by walking and sprinting
   towers.ts           Tower targeting and damage
   traps.ts            Spike trap cycles
   waves.ts            Wave formulas and scheduling

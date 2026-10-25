@@ -1,7 +1,8 @@
-import { goldOf } from "./helpers";
+import { goldOf, ring } from "./helpers";
 import { describe, expect, it } from "vitest";
 import { applyCommand, createGame, tick } from "../../src/sim/game";
 import {
+  ENEMY_KIND_ORDER,
   FAST_FORWARD_SPEED,
   GRID_HEIGHT,
   GRID_WIDTH,
@@ -11,7 +12,7 @@ import {
   KEEP_SIZE,
   STARTING_GOLD,
 } from "../../src/sim/config";
-import { isKeepTile, isSpawnTile } from "../../src/sim/grid";
+import { canBuild, isKeepTile, isSpawnTile, placeStructure } from "../../src/sim/grid";
 
 describe("createGame", () => {
   const state = createGame(1, { blankMap: true, fog: false });
@@ -93,6 +94,35 @@ describe("determinism", () => {
       return JSON.stringify(s);
     };
     expect(run()).toBe(run());
+  });
+
+  it("stays identical over 2,000 ticks with every kind of enemy and walls to attack", () => {
+    const run = () => {
+      const s = createGame(42);
+      const keep = s.keeps[0];
+      keep.hp = keep.maxHp = 1_000_000; // so the game doesn't end and freeze
+      // A ring of walls round the keep, for bombers, diggers and breachers to work on.
+      for (const p of ring(
+        keep.x - 3,
+        keep.y - 3,
+        keep.x + keep.size + 2,
+        keep.y + keep.size + 2,
+      )) {
+        if (canBuild(s, 1, "wall", p.x, p.y).ok) placeStructure(s, "wall", p.x, p.y, "N", 1);
+      }
+      for (const kind of ENEMY_KIND_ORDER) {
+        applyCommand(s, 1, { type: "debugSpawn", count: 2, kind });
+      }
+      const modes = new Set<string>();
+      for (let i = 0; i < 2000; i++) {
+        tick(s);
+        for (const e of s.enemies) modes.add(e.mode);
+      }
+      return { json: JSON.stringify(s), modes };
+    };
+    const first = run();
+    expect(first.json).toBe(run().json);
+    expect(first.modes).toEqual(new Set(["walking", "sprinting", "digging"]));
   });
 });
 

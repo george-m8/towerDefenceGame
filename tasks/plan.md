@@ -28,7 +28,7 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | | `line-of-sight` | Spec drafted |
 | 1d. Armies (see below) | `enemy-kinds` | Done (tasks in [`tasks/enemy-kinds/`](enemy-kinds/todo.md)) |
 | | `bestiary` | Built; browser check with George pending (tasks in [`tasks/bestiary/`](bestiary/todo.md)) |
-| | `enemy-pathing` | **Spec approved; tasks in [`tasks/todo.md`](todo.md)** |
+| | `enemy-pathing` | **Built (Tasks 1-10); browser checkpoints C and D and review with George pending** (tasks in [`tasks/todo.md`](todo.md)) |
 | | `enemy-targeting` | Outline (moved after `field-units` by the AoE update) |
 | | `wave-director` | Outline (moved after `field-units` by the AoE update) |
 | 1e. AoE update (see [`CAPABILITIES.md`](../CAPABILITIES.md)) | `unit-core` | **Spec approved; tasks in [`tasks/unit-core/`](unit-core/todo.md)** (starts after `enemy-pathing`) |

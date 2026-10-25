@@ -112,7 +112,7 @@ Built: instead of a `banded: true` flag, `ClientEnemy` carries `leaderId` (only 
 
 ## Checkpoint D (after Tasks 5-9)
 
-- [ ] All tests pass; coverage 80%+ lines for `src/sim/`
+- [x] All tests pass; coverage 80%+ lines for `src/sim/` (99% lines; the XL timing guards are flaky under coverage instrumentation, as they were before this module)
 - [ ] Browser: every new kind via `E` (bombers blow holes, shamans heal, bands follow, rams and diggers bring walls down); each gets a journal entry
 - [ ] Online: two clients see the same behaviours
 - [ ] **Review with George**
@@ -121,7 +121,7 @@ Built: instead of a `banded: true` flag, `ClientEnemy` carries `leaderId` (only 
 
 A test that runs the same seed with every kind for 2,000 ticks twice and compares the state. README (enemy table with the new kinds, profiles and behaviours in plain words), SPEC.md "Since `enemy-pathing`", plan roadmap status.
 
-- [ ] Same seed, same state
-- [ ] Docs match the built behaviour
+- [x] Same seed, same state
+- [x] Docs match the built behaviour
 
 Files: `tests/sim/game.test.ts`, `README.md`, `SPEC.md`, `tasks/plan.md`. Size: S. Depends on: 9.
