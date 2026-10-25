@@ -130,3 +130,14 @@ describe("map sizes", () => {
     }
   });
 });
+
+describe("debugSpawn", () => {
+  it("spawns the given kind, or goblins when none is given", () => {
+    const state = createGame(1, { blankMap: true, fog: false });
+    expect(applyCommand(state, 1, { type: "debugSpawn", count: 2, kind: "golem" })).toEqual({
+      ok: true,
+    });
+    applyCommand(state, 1, { type: "debugSpawn", count: 1 });
+    expect(state.enemies.map((e) => e.kind)).toEqual(["golem", "golem", "goblin"]);
+  });
+});

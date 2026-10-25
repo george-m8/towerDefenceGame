@@ -1,4 +1,4 @@
-import type { ProjectileKind } from "../sim/config";
+import type { EnemyKindId, EnemyVariant, ProjectileKind } from "../sim/config";
 import type { Facing, StructureKind, Terrain } from "../sim/types";
 
 export const TILE_SIZE = 20;
@@ -24,6 +24,29 @@ export const BATTLEMENT_PX = 3;
 export const GLYPH_FONT = `bold ${TILE_SIZE - 4}px Menlo, Consolas, monospace`;
 /** Slightly smaller font so a two-digit HP fits inside one tile. */
 export const KEEP_HP_FONT = `bold ${TILE_SIZE - 6}px Menlo, Consolas, monospace`;
+
+/** Each enemy kind's glyph colour. Variants never change it; they change the glyph size. */
+export const ENEMY_COLOURS: Record<EnemyKindId, string> = {
+  goblin: "#ff5f4a",
+  zerg: "#c77dff",
+  wolfRider: "#d9a35f",
+  barbarian: "#ff9f43",
+  barbarianChief: "#ff9f43",
+  dwarf: "#f2d16b",
+  dwarfThane: "#f2d16b",
+  golem: "#d0d0d0",
+};
+
+/** Glyph size per variant size, relative to the normal glyph. Large still fits in a tile. */
+export const ENEMY_GLYPH_SCALE: Record<EnemyVariant["size"], number> = {
+  small: 0.75,
+  normal: 1,
+  large: 1.25,
+};
+
+export function enemyFont(size: EnemyVariant["size"]): string {
+  return `bold ${Math.round((TILE_SIZE - 4) * ENEMY_GLYPH_SCALE[size])}px Menlo, Consolas, monospace`;
+}
 
 export const COLOURS = {
   ground: "#2b2418",

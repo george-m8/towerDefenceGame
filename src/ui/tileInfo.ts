@@ -1,5 +1,6 @@
 import {
   ENCLOSURE_DISCOUNT,
+  ENEMY_KINDS,
   STRUCTURES,
   TREE_CLEAR_GOLD,
   type StructureStats,
@@ -79,7 +80,10 @@ export function describeTile(state: GameState, p: Point, viewer?: PlayerId): str
       ? state.enemies.filter((e) => Math.round(e.x) === p.x && Math.round(e.y) === p.y)
       : [];
   for (const enemy of enemies.slice(0, 3)) {
-    lines.push(`Enemy HP ${Math.ceil(enemy.hp)} / ${enemy.maxHp}`);
+    const kind = ENEMY_KINDS[enemy.kind];
+    const name =
+      kind.variants.length > 1 ? `${kind.name} ${kind.variants[enemy.variant].name}` : kind.name;
+    lines.push(`${name}, HP ${Math.ceil(enemy.hp)} / ${enemy.maxHp}`);
   }
   if (enemies.length > 3) lines.push(`...and ${enemies.length - 3} more`);
   const enclosure = enclosureLine(state, p, viewer);

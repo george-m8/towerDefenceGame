@@ -77,7 +77,7 @@ export function createPanel(root: HTMLElement, ui: UiState, dispatch: (command: 
       const mine = state.keeps.find((k) => k.owner === ui.playerId) ?? state.keeps[0];
       keep.textContent = `${mine.hp} / ${mine.maxHp}`;
       seed.textContent = String(state.seed);
-      const spawning = state.wave.toSpawn > 0;
+      const spawning = state.wave.threatLeft > 0;
       if (state.mode === "pvp") {
         // No waves: show the rival's keep instead.
         const rival = state.keeps.find((k) => k !== mine);

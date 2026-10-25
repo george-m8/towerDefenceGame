@@ -1,20 +1,46 @@
-import { ENEMY, TICK_RATE } from "./config";
+import { ENEMY_KINDS, TICK_RATE, WAVES, type EnemyKind, type EnemyKindId } from "./config";
 import { addCue } from "./cues";
 import { attackTargetAt, blocksAt, damageStructure, inBounds, keepAt } from "./grid";
 import { DIRECTIONS, nextStep } from "./pathfinding";
 import { nextRandom, randomInt } from "./rng";
-import type { Enemy, GameState, PlayerId, Point, Structure } from "./types";
+import type { Enemy, GameState, Keep, PlayerId, Point, Structure } from "./types";
 
-const STEP = ENEMY.speed / TICK_RATE;
 const EPSILON = 1e-9;
 
+export interface SpawnOptions {
+  kind?: EnemyKindId;
+  /** The wave it belongs to, for HP and bounty scaling. Defaults to 1. */
+  wave?: number;
+  /** A variant index, or "random" to roll one by weight. Defaults to the standard variant (0). */
+  variant?: number | "random";
+  /** Override the resolved HP and bounty (tests). */
+  hp?: number;
+  bounty?: number;
+}
+
+/** HP multiplier for a wave: +15% per wave after the first. */
+export function waveHpScale(wave: number): number {
+  return 1 + WAVES.hpGrowthPerWave * (wave - 1);
+}
+
+/** Bounty added for a wave: +1 every few waves. */
+export function waveBountyBonus(wave: number): number {
+  return Math.floor((wave - 1) / WAVES.bountyStepWaves);
+}
+
+/** Spawns an enemy with its stats resolved now (kind x variant x wave). */
 export function spawnEnemy(
   state: GameState,
   x: number,
   y: number,
-  hp = ENEMY.baseHp,
-  bounty = ENEMY.baseBounty,
+  options: SpawnOptions = {},
 ): Enemy {
+  const kindId = options.kind ?? "goblin";
+  const wave = options.wave ?? 1;
+  const kind = ENEMY_KINDS[kindId];
+  const variant = options.variant === "random" ? rollVariant(state, kind) : (options.variant ?? 0);
+  const v = kind.variants[variant];
+  const hp = options.hp ?? Math.round(kind.hp * v.hp * waveHpScale(wave));
   const enemy: Enemy = {
     id: state.nextId++,
     x,
@@ -25,12 +51,28 @@ export function spawnEnemy(
     py: y,
     hp,
     maxHp: hp,
-    bounty,
+    bounty: options.bounty ?? kind.bounty + waveBountyBonus(wave),
+    kind: kindId,
+    variant,
+    speed: kind.speed * v.speed,
+    damage: kind.damage * v.damage,
+    attackInterval: Math.round(kind.attackInterval * TICK_RATE),
     killedBy: null,
     attackCooldown: 0,
   };
   state.enemies.push(enemy);
   return enemy;
+}
+
+/** Rolls a variant by weight, using the state RNG so online games stay in sync. */
+function rollVariant(state: GameState, kind: EnemyKind): number {
+  const total = kind.variants.reduce((sum, v) => sum + v.weight, 0);
+  let roll = nextRandom(state) * total;
+  for (let i = 0; i < kind.variants.length; i++) {
+    roll -= kind.variants[i].weight;
+    if (roll < 0) return i;
+  }
+  return kind.variants.length - 1;
 }
 
 /** Deals damage and records who struck the killing blow. */
@@ -41,39 +83,37 @@ export function damageEnemy(enemy: Enemy, amount: number, by: PlayerId | null): 
 }
 
 export function updateEnemies(state: GameState): void {
-  const survivors: Enemy[] = [];
-  for (const enemy of state.enemies) {
-    if (advance(state, enemy)) survivors.push(enemy);
-  }
-  state.enemies = survivors;
+  for (const enemy of state.enemies) advance(state, enemy);
 }
 
 /**
  * Move the enemy one tick's worth of distance, carrying leftover movement
- * across tile centres so speed stays constant. Returns false once it is spent.
+ * across tile centres so speed stays constant.
  */
-function advance(state: GameState, enemy: Enemy): boolean {
+function advance(state: GameState, enemy: Enemy): void {
   enemy.attackCooldown = Math.max(0, enemy.attackCooldown - 1);
-  let budget = STEP;
+  let budget = enemy.speed / TICK_RATE;
   while (budget > EPSILON) {
-    if (enemy.x === enemy.tx && enemy.y === enemy.ty) {
-      const keep = keepAt(state, enemy.x, enemy.y);
-      if (keep) {
-        keep.hp = Math.max(0, keep.hp - ENEMY.keepDamage);
-        addCue(state, "keepHit");
-        return false;
-      }
-      if (!chooseNextTile(state, enemy)) return true; // waiting or attacking
+    if (enemy.x === enemy.tx && enemy.y === enemy.ty && !chooseNextTile(state, enemy)) {
+      return; // waiting or attacking
     }
     budget -= moveTowardsTarget(enemy, budget);
   }
-  return true;
 }
 
-/** Sets the next tile to walk to. If a structure blocks the way, attacks it instead and returns false. */
+/**
+ * Sets the next tile to walk to. If the keep or a blocking structure is next, the enemy
+ * stays where it is and attacks it instead, and this returns false.
+ */
 function chooseNextTile(state: GameState, enemy: Enemy): boolean {
   const previous = { x: enemy.px, y: enemy.py };
   const pathStep = nextStep(state, enemy.x, enemy.y, previous);
+  // No step means it is already on the keep; attack the keep from there.
+  const keep = pathStep ? keepAt(state, pathStep.x, pathStep.y) : keepAt(state, enemy.x, enemy.y);
+  if (keep) {
+    attackKeep(state, enemy, keep);
+    return false;
+  }
   if (!pathStep) return false;
   if (blocksAt(state, pathStep.x, pathStep.y)) {
     attack(state, enemy, attackTargetAt(state, pathStep.x, pathStep.y)!);
@@ -108,15 +148,24 @@ function wanderStep(
     const x = enemy.x + d.x;
     const y = enemy.y + d.y;
     if (x === previous.x && y === previous.y) continue;
-    if (inBounds(state, x, y) && !blocksAt(state, x, y)) options.push({ x, y });
+    if (inBounds(state, x, y) && !blocksAt(state, x, y) && !keepAt(state, x, y)) {
+      options.push({ x, y });
+    }
   }
   return options.length > 0 ? options[randomInt(state, 0, options.length - 1)] : null;
 }
 
+function attackKeep(state: GameState, enemy: Enemy, keep: Keep) {
+  if (enemy.attackCooldown > 0) return;
+  keep.hp = Math.max(0, keep.hp - enemy.damage);
+  enemy.attackCooldown = enemy.attackInterval;
+  addCue(state, "keepHit");
+}
+
 function attack(state: GameState, enemy: Enemy, target: Structure) {
   if (enemy.attackCooldown > 0) return;
-  damageStructure(state, target, ENEMY.structureDps);
-  enemy.attackCooldown = TICK_RATE;
+  damageStructure(state, target, enemy.damage);
+  enemy.attackCooldown = enemy.attackInterval;
 }
 
 /** Moves up to `budget` tiles towards the target and returns the distance moved. */

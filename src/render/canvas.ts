@@ -12,10 +12,18 @@ import {
 } from "../sim/grid";
 import { nextStep } from "../sim/pathfinding";
 import { facingAngle } from "../sim/aiming";
-import { EFFECT_TICKS, STRUCTURES, type StructureStats, type TowerStats } from "../sim/config";
+import { ENEMY_KINDS, STRUCTURES, type StructureStats, type TowerStats } from "../sim/config";
 import { canTarget } from "../sim/towers";
 import { hitTile } from "../sim/traps";
-import type { Facing, GameState, PlayerId, Point, Structure, StructureKind } from "../sim/types";
+import type {
+  Enemy,
+  Facing,
+  GameState,
+  PlayerId,
+  Point,
+  Structure,
+  StructureKind,
+} from "../sim/types";
 import type { PendingBuild } from "../net/session";
 import { isBuildTool, type UiState } from "../ui/state";
 import { visibleTiles, type VisibleTiles } from "../ui/camera";
@@ -34,11 +42,13 @@ import {
   NOTCH_LENGTH_PX,
   KEEP_HP_FONT,
   BATTLEMENT_PX,
+  ENEMY_COLOURS,
   GLYPH_FONT,
   STRUCTURE_COLOURS,
   TERRAIN_STYLES,
   TILE_SIZE,
   OWNER_MARK_PX,
+  enemyFont,
   glyphFor,
   playerColour,
 } from "./palette";
@@ -66,6 +76,15 @@ export function blockHeight(state: GameState, x: number, y: number): number {
   if (base) return STRUCTURES[base.kind].blocksMovement ? 6 : 0;
   const terrain = terrainAt(state, x, y);
   return terrain === "tree" ? 7 : terrain === "rock" ? 4 : 0;
+}
+
+/**
+ * The row an enemy is drawn with. Blocks in front hide it, except the keep: an enemy standing
+ * against the back of the keep (attacking it) is drawn in front, not sunk under the keep's top.
+ */
+export function enemyDrawRow(state: GameState, enemy: Enemy): number {
+  const row = Math.round(enemy.y);
+  return isKeepTile(state, Math.round(enemy.x), row + 1) ? row + 1 : row;
 }
 
 /**
@@ -158,7 +177,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     // Enemies go in with their row, so blocks in front of them (further down) hide them.
     const enemiesByRow = new Map<number, GameState["enemies"]>();
     for (const enemy of state.enemies) {
-      const row = Math.round(enemy.y);
+      const row = enemyDrawRow(state, enemy);
       enemiesByRow.set(row, [...(enemiesByRow.get(row) ?? []), enemy]);
     }
     for (let y = y0; y <= y1 + 1; y++) {
@@ -545,7 +564,10 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   function drawEnemies(state: GameState, enemies: GameState["enemies"]) {
     for (const enemy of enemies) {
       if (!canSeeEnemiesAt(state, enemy.x, enemy.y, viewer)) continue;
-      drawGlyph(enemy.x, enemy.y, "g", COLOURS.enemy);
+      const kind = ENEMY_KINDS[enemy.kind];
+      ctx!.font = enemyFont(kind.variants[enemy.variant].size);
+      ctx!.fillStyle = ENEMY_COLOURS[enemy.kind];
+      ctx!.fillText(kind.glyph, (enemy.x + 0.5) * TILE_SIZE, (enemy.y + 0.5) * TILE_SIZE + 1);
       if (enemy.hp < enemy.maxHp) drawHpBar(enemy.x, enemy.y, enemy.hp / enemy.maxHp);
     }
   }

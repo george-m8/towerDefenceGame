@@ -20,12 +20,29 @@ Then open http://localhost:5173, click (or press any key) past the title screen,
 
 ## How to play
 
-Enemies (`g`) spawn from the red strip on the left edge and walk to your keep (`K`). Each one that reaches the keep deals 5 damage; at 0 HP the keep falls and the game ends. Waves never stop, and each one is bigger and tougher than the last.
+Enemies spawn from the red strip on the left edge and walk to your keep (`K`, 300 HP). An enemy that reaches the keep stays there and keeps hitting it until it's killed; at 0 HP the keep falls and the game ends. Waves never stop, and each one is bigger and tougher than the last.
 
 - Kill enemies with towers and traps to earn gold.
 - Build houses for steady income.
 - Enemies always take an open route if one exists, however long. They only break through your walls when the keep is completely sealed off, and then they attack the weakest point on their route.
 - Enemies mostly stick to that route, but at each tile there is a small chance (10% by default, `ENEMY.wanderChance` in `src/sim/config.ts`) that one drifts sideways onto an open tile instead. They never step backwards, double back onto the tile they just left, or wander into structures.
+
+### Enemies
+
+Waves 1 and 2 are all goblins. Later waves mix in other kinds from the wave shown: each wave has a threat budget (5 + 3 x wave, where a goblin costs 1) spent on whichever kinds have arrived. HP grows 15% per wave and bounties by 1 every 5 waves, for every kind. Each enemy hits structures in its way, and the keep, with its own damage and speed of attack.
+
+| Glyph | Enemy | HP | Speed (tiles/s) | Hit | Bounty | From wave |
+|---|---|---|---|---|---|---|
+| `g` | Goblin | 20 | 1.5 | 5 every 1s | 2 | 1 |
+| `z` | Zerg | 6 | 1.8 | 2 every 0.6s | 1 | 3 |
+| `w` | Wolf rider | 14 | 3.0 | 4 every 0.8s | 3 | 4 |
+| `b` | Barbarian | 30 | 1.8 | 4 every 0.6s | 3 | 5 |
+| `d` | Dwarf | 45 | 1.0 | 8 every 1.2s | 4 | 6 |
+| `B` | Barbarian chief | 90 | 1.2 | 8 every 0.5s | 10 | 7 |
+| `D` | Dwarf thane | 120 | 0.9 | 14 every 1.2s | 12 | 9 |
+| `G` | Golem | 250 | 0.6 | 40 every 3s | 20 | 10 |
+
+Most kinds come in **variants**, shown by glyph size: a small `g` is a goblin runt (weaker, faster), a large one a brute (tougher, hits harder). Hover an enemy to see which it is, e.g. `Goblin brute, HP 18 / 28`. All the numbers live in `ENEMY_KINDS` in `src/sim/config.ts`.
 
 ### Structures
 
@@ -133,7 +150,7 @@ Towers always shoot the enemy closest to the keep. Traps fire on a fixed timer f
 | Minimap (top of the panel) | Click or drag to move the view there; the white box is what you're looking at |
 | `-` / `+` / `Fit` buttons | Zoom out, zoom in, or show the whole map |
 
-Dev server only: `E` spawns one enemy and `M` spawns 200 (stress test).
+Dev server only: `E` spawns one enemy of each kind in turn (goblin, zerg, wolf rider, ...) and `M` spawns 200 goblins (stress test).
 
 ## Sound and music
 

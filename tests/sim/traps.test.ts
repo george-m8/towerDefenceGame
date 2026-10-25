@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ENEMY, STRUCTURES, TICK_RATE } from "../../src/sim/config";
+import { ENEMY_KINDS, STRUCTURES, TICK_RATE } from "../../src/sim/config";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand, tick } from "../../src/sim/game";
 import { placeStructure, topAt } from "../../src/sim/grid";
@@ -19,7 +19,7 @@ describe("floor spikes", () => {
   it("fire on a fixed cycle from when they are built", () => {
     const state = createGameWithoutWaves();
     placeStructure(state, "floorSpikes", 10, 10);
-    const enemy = spawnEnemy(state, 10, 10, TOUGH);
+    const enemy = spawnEnemy(state, 10, 10, { hp: TOUGH });
     runTraps(state, floorInterval - 1);
     expect(enemy.hp).toBe(TOUGH);
     runTraps(state, 1);
@@ -32,9 +32,9 @@ describe("floor spikes", () => {
   it("hit every enemy on their own tile and none beside it", () => {
     const state = createGameWithoutWaves();
     placeStructure(state, "floorSpikes", 10, 10);
-    const a = spawnEnemy(state, 10, 10, TOUGH);
-    const b = spawnEnemy(state, 10, 10, TOUGH);
-    const beside = spawnEnemy(state, 11, 10, TOUGH);
+    const a = spawnEnemy(state, 10, 10, { hp: TOUGH });
+    const b = spawnEnemy(state, 10, 10, { hp: TOUGH });
+    const beside = spawnEnemy(state, 11, 10, { hp: TOUGH });
     runTraps(state, floorInterval);
     expect(a.hp).toBe(TOUGH - FLOOR.damage);
     expect(b.hp).toBe(TOUGH - FLOOR.damage);
@@ -52,12 +52,11 @@ describe("floor spikes", () => {
     const state = createGameWithoutWaves();
     const y = state.keeps[0].y + 1;
     for (let x = 5; x < 15; x++) placeStructure(state, "floorSpikes", x, y);
-    spawnEnemy(state, 0, y, TOUGH);
+    spawnEnemy(state, 0, y, { hp: TOUGH });
     // Long enough to walk to the keep, whatever the map size.
-    const ticks = Math.ceil((2 * state.keeps[0].x * TICK_RATE) / ENEMY.speed);
+    const ticks = Math.ceil((2 * state.keeps[0].x * TICK_RATE) / ENEMY_KINDS.goblin.speed);
     for (let i = 0; i < ticks; i++) tick(state);
-    expect(state.enemies).toHaveLength(0);
-    expect(state.keeps[0].hp).toBe(state.keeps[0].maxHp - ENEMY.keepDamage);
+    expect(state.keeps[0].hp).toBeLessThan(state.keeps[0].maxHp); // reached the keep
     for (let x = 5; x < 15; x++) expect(topAt(state, x, y)?.kind).toBe("floorSpikes");
   });
 });
@@ -78,7 +77,7 @@ describe("wall spikes", () => {
       });
       const neighbours = Object.entries(offsets).map(([dir, [dx, dy]]) => ({
         dir,
-        enemy: spawnEnemy(state, 10 + dx, 10 + dy, TOUGH),
+        enemy: spawnEnemy(state, 10 + dx, 10 + dy, { hp: TOUGH }),
       }));
       runTraps(state, wallInterval - 1);
       for (const { enemy } of neighbours) expect(enemy.hp).toBe(TOUGH);
@@ -107,8 +106,8 @@ describe("trap kill credit", () => {
   it("every enemy killed by spikes is credited to the trap's owner", () => {
     const state = createGameWithoutWaves();
     placeStructure(state, "floorSpikes", 10, 10, "N", 2);
-    const a = spawnEnemy(state, 10, 10, FLOOR.damage);
-    const b = spawnEnemy(state, 10, 10, FLOOR.damage);
+    const a = spawnEnemy(state, 10, 10, { hp: FLOOR.damage });
+    const b = spawnEnemy(state, 10, 10, { hp: FLOOR.damage });
     runTraps(state, floorInterval);
     expect(a.killedBy).toBe(2);
     expect(b.killedBy).toBe(2);

@@ -17,7 +17,7 @@ export const TICK_RATE = 20; // simulation ticks per second
 export const FAST_FORWARD_SPEED = 2; // game-speed multiplier while fast-forwarding
 
 export const KEEP_SIZE = 3;
-export const KEEP_HP = 99;
+export const KEEP_HP = 300;
 
 // Spawn zone: a strip on the left edge of the map, centred vertically.
 export const SPAWN_ZONE = { x: 0, width: 2, height: 12 };
@@ -220,14 +220,169 @@ export const STRUCTURES = {
 export const EFFECT_TICKS = 4;
 
 export const ENEMY = {
-  baseHp: 20,
-  speed: 1.5, // tiles per second
-  keepDamage: 5,
-  structureDps: 5,
-  baseBounty: 2,
   /** Chance (0-1) at each tile that an enemy steps to a random open neighbour instead of following the path. */
   wanderChance: 0.1,
 };
+
+/** A version of a kind, rolled at spawn. Multipliers apply to the kind's stats. */
+export interface EnemyVariant {
+  name: string;
+  /** How often it's rolled, relative to the kind's other variants. */
+  weight: number;
+  hp: number;
+  speed: number;
+  damage: number;
+  /** Glyph size. Variants never change colour. */
+  size: "small" | "normal" | "large";
+}
+
+/** Stats at wave 1, before the variant. The first variant is the standard one (all multipliers 1). */
+export interface EnemyKind {
+  glyph: string;
+  name: string;
+  hp: number;
+  speed: number; // tiles per second
+  /** Per hit, against a structure in the way or the keep. */
+  damage: number;
+  attackInterval: number; // seconds between hits
+  bounty: number;
+  /** What one costs out of a wave's threat budget (a goblin is 1). */
+  threat: number;
+  /** The first wave it can appear in. */
+  firstWave: number;
+  /** How likely it is to be drawn for a wave, relative to other kinds (stopgap mix). */
+  mixWeight: number;
+  variants: EnemyVariant[];
+}
+
+export const ENEMY_KINDS = {
+  goblin: {
+    glyph: "g",
+    name: "Goblin",
+    hp: 20,
+    speed: 1.5,
+    damage: 5,
+    attackInterval: 1,
+    bounty: 2,
+    threat: 1,
+    firstWave: 1,
+    mixWeight: 10,
+    variants: [
+      { name: "grunt", weight: 6, hp: 1, speed: 1, damage: 1, size: "normal" },
+      { name: "runt", weight: 3, hp: 0.7, speed: 1.15, damage: 0.8, size: "small" },
+      { name: "brute", weight: 1, hp: 1.4, speed: 0.9, damage: 1.3, size: "large" },
+    ],
+  },
+  zerg: {
+    glyph: "z",
+    name: "Zerg",
+    hp: 6,
+    speed: 1.8,
+    damage: 2,
+    attackInterval: 0.6,
+    bounty: 1,
+    threat: 0.4,
+    firstWave: 3,
+    mixWeight: 6,
+    variants: [{ name: "drone", weight: 1, hp: 1, speed: 1, damage: 1, size: "normal" }],
+  },
+  wolfRider: {
+    glyph: "w",
+    name: "Wolf rider",
+    hp: 14,
+    speed: 3,
+    damage: 4,
+    attackInterval: 0.8,
+    bounty: 3,
+    threat: 2,
+    firstWave: 4,
+    mixWeight: 4,
+    variants: [
+      { name: "raider", weight: 3, hp: 1, speed: 1, damage: 1, size: "normal" },
+      { name: "scout", weight: 2, hp: 0.8, speed: 1.1, damage: 0.9, size: "small" },
+    ],
+  },
+  barbarian: {
+    glyph: "b",
+    name: "Barbarian",
+    hp: 30,
+    speed: 1.8,
+    damage: 4,
+    attackInterval: 0.6,
+    bounty: 3,
+    threat: 2,
+    firstWave: 5,
+    mixWeight: 5,
+    variants: [
+      { name: "raider", weight: 3, hp: 1, speed: 1, damage: 1, size: "normal" },
+      { name: "berserker", weight: 1, hp: 0.8, speed: 1.1, damage: 1.4, size: "small" },
+    ],
+  },
+  dwarf: {
+    glyph: "d",
+    name: "Dwarf",
+    hp: 45,
+    speed: 1,
+    damage: 8,
+    attackInterval: 1.2,
+    bounty: 4,
+    threat: 3,
+    firstWave: 6,
+    mixWeight: 4,
+    variants: [
+      { name: "warrior", weight: 3, hp: 1, speed: 1, damage: 1, size: "normal" },
+      { name: "miner", weight: 2, hp: 1, speed: 1, damage: 0.9, size: "small" },
+      { name: "ironclad", weight: 1, hp: 1.4, speed: 0.85, damage: 1, size: "large" },
+    ],
+  },
+  barbarianChief: {
+    glyph: "B",
+    name: "Barbarian chief",
+    hp: 90,
+    speed: 1.2,
+    damage: 8,
+    attackInterval: 0.5,
+    bounty: 10,
+    threat: 6,
+    firstWave: 7,
+    mixWeight: 1.5,
+    variants: [{ name: "warlord", weight: 1, hp: 1, speed: 1, damage: 1, size: "normal" }],
+  },
+  dwarfThane: {
+    glyph: "D",
+    name: "Dwarf thane",
+    hp: 120,
+    speed: 0.9,
+    damage: 14,
+    attackInterval: 1.2,
+    bounty: 12,
+    threat: 8,
+    firstWave: 9,
+    mixWeight: 1,
+    variants: [{ name: "thane", weight: 1, hp: 1, speed: 1, damage: 1, size: "normal" }],
+  },
+  golem: {
+    glyph: "G",
+    name: "Golem",
+    hp: 250,
+    speed: 0.6,
+    damage: 40,
+    attackInterval: 3,
+    bounty: 20,
+    threat: 15,
+    firstWave: 10,
+    mixWeight: 0.5,
+    variants: [
+      { name: "stone", weight: 3, hp: 1, speed: 1, damage: 1, size: "normal" },
+      { name: "iron", weight: 1, hp: 1.3, speed: 0.9, damage: 1.2, size: "large" },
+    ],
+  },
+} satisfies Record<string, EnemyKind>;
+
+export type EnemyKindId = keyof typeof ENEMY_KINDS;
+
+/** Roster order; an enemy's index here is its id on the wire. */
+export const ENEMY_KIND_ORDER = Object.keys(ENEMY_KINDS) as EnemyKindId[];
 
 export const WAVES = {
   countdownSeconds: 20, // before wave 1, and after each wave finishes spawning

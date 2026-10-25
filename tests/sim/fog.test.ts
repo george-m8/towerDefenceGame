@@ -185,6 +185,11 @@ describe("building and selling", () => {
       maxHp: 20,
       bounty: 0,
       killedBy: null,
+      kind: "goblin",
+      variant: 0,
+      speed: 1.5,
+      damage: 5,
+      attackInterval: 20,
       attackCooldown: 0,
     });
     state.wave.countdown = Infinity;

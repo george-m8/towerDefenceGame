@@ -1,3 +1,4 @@
+import { ENEMY_KIND_ORDER } from "../sim/config";
 import type { Command, GameState, Point } from "../sim/types";
 import { screenToTile, zoomAt, zoomBy } from "./camera";
 import { pickTile } from "../render/canvas";
@@ -25,6 +26,7 @@ export function bindInput(
   getState: () => GameState | null = () => null,
 ) {
   let painting = false;
+  let debugKind = 0;
   let lastPainted: Point | null = null;
 
   /** The tile under the mouse, through the camera's scroll and zoom. */
@@ -88,7 +90,9 @@ export function bindInput(
     } else if (e.code === "KeyD") {
       ui.showFlow = !ui.showFlow;
     } else if (e.code === "KeyE" && import.meta.env.DEV) {
-      dispatch({ type: "debugSpawn", count: 1 });
+      // One of each kind in turn, so every kind is easy to look at.
+      dispatch({ type: "debugSpawn", count: 1, kind: ENEMY_KIND_ORDER[debugKind] });
+      debugKind = (debugKind + 1) % ENEMY_KIND_ORDER.length;
     } else if (e.code === "KeyM" && import.meta.env.DEV) {
       dispatch({ type: "debugSpawn", count: STRESS_TEST_ENEMIES });
     } else if (e.code === "Escape") {

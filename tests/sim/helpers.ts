@@ -1,6 +1,14 @@
 import { createGame } from "../../src/sim/game";
-import { placeStructure } from "../../src/sim/grid";
-import type { GameState, PlayerId, Point, StructureKind, Terrain } from "../../src/sim/types";
+import { keepAt, placeStructure } from "../../src/sim/grid";
+import { nextStep } from "../../src/sim/pathfinding";
+import type {
+  Enemy,
+  GameState,
+  PlayerId,
+  Point,
+  StructureKind,
+  Terrain,
+} from "../../src/sim/types";
 
 /** Place structures directly, bypassing gold and placement rules. */
 export function buildAt(state: GameState, points: Point[], kind: StructureKind = "wall") {
@@ -41,4 +49,10 @@ export function column(state: GameState, x: number, except: number[] = []): Poin
 /** A player's gold (player 1, the single-player default, unless given). */
 export function goldOf(state: GameState, id: PlayerId = 1): number {
   return state.players[id].gold;
+}
+
+/** True when the enemy has reached the keep: its next path step is a keep tile, so it stays and attacks. */
+export function standsAtKeep(state: GameState, enemy: Enemy): boolean {
+  const step = nextStep(state, enemy.x, enemy.y);
+  return step !== null && keepAt(state, step.x, step.y) !== undefined;
 }

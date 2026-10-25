@@ -1,7 +1,7 @@
 # Implementation Plan: Post-MVP Phases
 
 Capability map: [`CAPABILITIES.md`](../CAPABILITIES.md)
-Current module spec: none (`audio` is done)
+Current module spec: [`SPEC-enemy-kinds.md`](../SPEC-enemy-kinds.md) (Armies)
 Task list (current module only): `tasks/todo.md`, written when the next module's spec is approved
 Finished modules: [`tasks/tile-layers/`](tile-layers/todo.md), [`tasks/tower-aiming/`](tower-aiming/todo.md), [`tasks/audio/`](audio/todo.md), [`tasks/map-gen/`](map-gen/todo.md), [`tasks/players/`](players/todo.md), [`tasks/game-server/`](game-server/todo.md) (awaiting the cross-machine probe and review), [`tasks/net-client/`](net-client/todo.md)
 Previous plan (MVP, complete except a Firefox/Safari smoke test): [`tasks/mvp/`](mvp/plan.md)
@@ -26,7 +26,13 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | | `lobby` | **Spec approved; tasks in [`tasks/lobby/`](lobby/todo.md)** |
 | 1. Basics (continued) | `tower-aiming` | Done |
 | | `line-of-sight` | Spec drafted |
-| | `units` | Spec drafted |
+| 1d. Armies (see below) | `enemy-kinds` | **Built; browser and online check at Checkpoint B pending (tasks in [`tasks/todo.md`](todo.md))** |
+| | `bestiary` | Outline |
+| | `enemy-pathing` | Outline |
+| | `enemy-targeting` | Outline |
+| | `wave-director` | Outline |
+| | `units` | Outline (replaces the earlier `units` row) |
+| | `field-units` | Outline |
 | 1c. Presentation | `audio` | Done |
 | | `music-packs` | Done (tasks in [`tasks/music-packs/`](music-packs/todo.md)) |
 | | `music-director` | Outline only (see below); intro hand-over now part of `music-packs` |
@@ -509,6 +515,146 @@ T2 Pack scan + Vite plugin + gitignore
 
 ---
 
+## Armies: enemy roster, enemy AI, waves, journal, player units
+
+Capability map: "Armies" in [`CAPABILITIES.md`](../CAPABILITIES.md). Seven modules, built in order. Each slice below becomes a proper task (acceptance criteria, verification, files) in `tasks/todo.md` once that module's spec is approved. The sizes are estimates.
+
+### Overview
+
+Today: one enemy (`g`, 20 HP, speed 1.5, 5 damage per second to structures), one keep-bound flow field, a fixed spawn strip on the left edge, and enemies that vanish after one hit on the keep. After Armies there are 13+ enemy kinds with variants, five kinds of AI, enemies that choose between the keep, houses and towers, waves made up of groups that enter from different edge points, a monster journal, and player units that guard, explore and attack.
+
+### Architecture decisions
+
+- **Stats are resolved at spawn.** `Enemy` gets `kind` and `variant`. HP, speed, attack, attack interval and keep damage are copied onto the enemy when it spawns (kind row x variant multipliers x wave scaling), so per-tick code never looks anything up. The global `STEP` in `enemies.ts` becomes per-enemy speed.
+- **Refactor first, behaviour second** (as in `tile-layers` and `players`). The first slice of `enemy-kinds` makes today's enemy "goblin, grunt variant" with identical numbers, so the existing suite passes untouched before anything new arrives.
+- **Fields are keyed by (profile, goal), never by enemy.** `state.flow` becomes `state.flows: Map<"follower:keep" | "breacher:house" | ..., FlowField>`. Each is created lazily the first time an enemy needs it and rebuilt when `gridVersion` changes. That's at most 3 profiles x 3 goals = 9 fields. `getFlowField(state)` keeps working as `follower:keep` until callers move over.
+- **Behaviours are a table.** `BEHAVIOURS: Record<BehaviourId, (state, enemy) => void>`, with follower as the default, so a new kind is a config row plus at most one function, as SPEC.md already promises.
+- **All randomness goes through the state RNG** (variant rolls, wave composition, spawn points, wandering), so online games and tests stay deterministic.
+- **Small numbers on the wire.** Snapshots carry `kind` and `variant` as small integers and the client looks up glyph, colour and name. Bump the protocol version.
+- **The journal lives in the client only.** Unlocks come from enemies the viewer can see (`canSeeEnemiesAt`), saved per device with every storage call wrapped in try/catch. The simulation knows nothing about it.
+- **Edge reachability uses a terrain-only field** (computed from the keep, ignoring structures, cached by `gridVersion`). It's used to check spawn points and replaces `spawnTiles` as the source that `enclosures` and `fog-of-war` measure from.
+- **Units are a separate array with a shared combat helper.** `units[]` sits beside `enemies[]`. One `dealDamage(target, amount, by)` applies armour and records kill credit for both. A tile occupancy index, rebuilt each tick, answers "who is on or near this tile" so enemies and units find blockers and targets without O(n²) scans.
+- **Field units find their own paths** with A* over explored, walkable tiles. They replan only when their target or `gridVersion` changes, with a per-tick replan budget.
+
+### Dependency graph
+
+```
+enemy-kinds ──┬─ bestiary
+              ├─ enemy-pathing ── enemy-targeting
+              │        └──────────────┐
+              ├─ wave-director ◄──────┘ (marine spawns, group templates use leaders)
+              └─ units (also tile-layers, fog-of-war)
+                   └─ field-units
+```
+
+`bestiary` and `units` only need `enemy-kinds`, so they could be built alongside the pathing work if useful. The approved order is still followed by default.
+
+### `enemy-kinds`
+
+| # | Slice | Size |
+|---|---|---|
+| 1 | Kind and variant table in config; `Enemy.kind`/`variant`; stats copied at spawn; today's enemy becomes goblin (grunt) with identical numbers. Existing suite passes untouched. | M |
+| 2 | Per-enemy speed, attack damage and attack interval against structures; roster rows for `G`, `b`/`B`, `d`/`D`, `z`, `w`, spawnable from test helpers | M |
+| 3 | Enemies stand and attack the keep with their own stats instead of vanishing; keep-hit cue throttled | M |
+| 4 | Variants: a seeded roll at spawn, stat multipliers and a colour shade | S |
+| 5 | Drawing, hover info and network: glyph, colour and name per kind and variant; snapshot and protocol carry kind and variant | M |
+| 6 | Stopgap mix: until `wave-director`, each wave draws from the kinds unlocked by that wave number, so the roster can be played straight away | S |
+| 7 | Docs: README enemy table, SPEC.md "Since `enemy-kinds`" | XS |
+
+**Checkpoint A (after 3):** all tests pass; in the browser a goblin-only game plays as before, except enemies now stay at the keep and hit it. **Review the keep balance with you here.**
+**Checkpoint B (after 6):** mixed waves play locally and online; each kind is recognisable on the map.
+
+### `bestiary`
+
+| # | Slice | Size |
+|---|---|---|
+| 1 | Pure unlock tracker (enemies the viewer can see -> newly unlocked kinds, first wave seen) with device storage | S |
+| 2 | Journal panel: unlocked entries (glyph, name, variants, stats, behaviour line), locked entries shown as `?` | M |
+| 3 | "New in the journal" notice and sound on unlock | S |
+
+### `enemy-pathing`
+
+| # | Slice | Size |
+|---|---|---|
+| 1 | Fields keyed by profile, follower only (refactor, behaviour unchanged) | S |
+| 2 | Breacher profile (wall cost = HP / the enemy's damage per second) and breacher behaviour | M |
+| 3 | Marine profile (river and sea walkable, sea costs more) and `m`/`M` | M |
+| 4 | Behaviour table and bombers `x`/`X`: short sight, sprint, explode with splash to structures and units | M |
+| 5 | Leader and follower groups (`b` with `B`, `d` with `D`); followers fall back to normal pathing when the leader dies | M |
+| 6 | Shaman `s`: heals nearby enemies on a cooldown | S |
+| 7 | Battering ram `R`: attacks structures only, never units, very high HP | S |
+| 8 | Diggers `n`: walk to a wall in sight, dig under it and damage it from below (no tunnel) | S |
+
+**Checkpoint C (after 3):** breachers break through a long maze and followers don't; marines take a river route; field rebuild time measured on an XL map. **Checkpoint D (after 8):** each behaviour seen in the browser; online games stay in sync.
+
+### `enemy-targeting`
+
+| # | Slice | Size |
+|---|---|---|
+| 1 | Goal fields for houses and towers per profile (lazy, cached) | M |
+| 2 | Scoring (liking x value / reach cost) with low and high intelligence: low always goes for the keep; high chooses at spawn and again on grid change or target loss | M |
+| 3 | Medium intelligence: heads for the keep, turns aside to a house or tower it sees if it's cheap to reach | M |
+| 4 | Liking and intelligence values per kind in config; hover info shows the current target | S |
+
+**Checkpoint E:** low-intelligence kinds never leave the keep route (test); a raid on houses is seen in play; the balance is reviewed with you.
+
+### `wave-director`
+
+| # | Slice | Size |
+|---|---|---|
+| 1 | Pure wave composition: a growing threat budget spent on group templates, with kinds unlocked by wave; deterministic from the seed | M |
+| 2 | Group spawning: each group spawns from one point, staggered; replaces the stopgap mix | S |
+| 3 | Edge spawn points: candidate edge tiles (walkable, nothing built, terrain route to the keep); different groups use different points | M |
+| 4 | Remove the fixed spawn zone: `enclosures` and `fog-of-war` measure from the edge; spawn-strip build rules removed | M |
+| 5 | Edge warning marker (also shown in fog) and a horn cue when a group is about to enter | S |
+| 6 | Marine groups can enter from sea edges | S |
+
+**Checkpoint F (after 4):** enclosure discounts and fog behave sensibly with edge spawns (test with 500 seeds: every chosen spawn point can reach the keep over terrain).
+
+### `units`
+
+| # | Slice | Size |
+|---|---|---|
+| 1 | Unit entity (owner, faction, HP, armour, attack, range, speed, sight), shared `dealDamage`, tile occupancy index; enemies stop and fight a unit on their next tile | M |
+| 2 | Guard tower: spawns swordsmen up to a limit, respawn timer, guard spot set by its facing | M |
+| 3 | Units give fog sight; drawing, hover info, snapshot and protocol | M |
+| 4 | Archer (guards and shoots, moves a little) and paladin (stays put, blocks, high armour) | S |
+| 5 | Costs `{ gold, food }` in config; gold charged, food recorded until `resources` | S |
+| 6 | Stress test: 200 enemies + 60 units at 20 Hz on an L map, within the tick budget | S |
+
+**Checkpoint G (after 4):** a guard tower's units hold a choke point in play, locally and online.
+
+### `field-units`
+
+| # | Slice | Size |
+|---|---|---|
+| 1 | A* over explored, walkable land with a replan budget | M |
+| 2 | Barracks and scouts: walk to the nearest fog frontier and reveal it | M |
+| 3 | Soldier, knight, ranger (part 1): patrol the fog edge and fight enemies they meet (Endless) | M |
+| 4 | Part 2: go to a known enemy keep, else to its walls; circle them to see inside, else break through (PvP) | M |
+| 5 | Horsemen: explored land only, available once an enemy keep, wall or tower is known | S |
+
+**Checkpoint H:** scouts reveal the map; in PvP, soldiers reach and attack the rival keep.
+
+### Risks and mitigations
+
+| Risk | Impact | Mitigation |
+|---|---|---|
+| Enemies standing at the keep makes games end far sooner | High | Slice 3 is its own checkpoint with your review; keep damage per kind and keep HP are config; tune before moving on |
+| Up to 9 fields rebuilt on every grid change slow down XL maps | Med | Lazy fields (only goals in use); measure at Checkpoint C; fall back to rebuilding only on demand per field |
+| Edge spawns change what counts as an enclosure | Med | `wave-director` slice 4 is isolated; existing enclosure tests rewritten to state the edge rule; 500-seed reachability test |
+| Followers jitter around a moving leader | Low | Followers aim for a spot near the leader on the leader's field, not the leader itself; tune radius in config |
+| Many units and enemies make per-tick searches O(n²) | Med | Occupancy index in `units` slice 1; stress test in slice 6 |
+| Offensive units have little to do in Endless | Low | Endless behaviour is explore and hunt; full behaviour is tested in PvP and arrives with `mode-barbarians` |
+| Online drift from new randomness | Med | All rolls through the state RNG; a determinism test runs the same seed twice and compares state |
+
+### Open questions
+
+1. Keep the stopgap mix (`enemy-kinds` slice 6) so new kinds are playable early, or wait for `wave-director`? Proposed: keep it; it's small and is deleted in `wave-director` slice 2.
+2. The other module-level questions are listed in the map and settled in each spec.
+
+---
+
 ## Later modules: provisional outlines
 
 These are rough vertical slices, not tasks. Each becomes a proper task list after its spec is approved.
@@ -554,10 +700,7 @@ These are rough vertical slices, not tasks. Each becomes a proper task list afte
 3. Overlay shows which tiles in range are actually visible
 
 ### `units`
-1. Unit entity with faction, HP and attack. Enemies stop and fight units that block them.
-2. Spawner tower: spawn direction, unit limit, respawn timer
-3. Behaviours one at a time: hold position (block), charge enemies in sight, guard and shoot
-4. Unit stat variety (health, attack, range) in config
+Moved to the Armies plan above (now split into `units` and `field-units`).
 
 ### `game-setup`
 1. Setup screen: pick a mode and the economy toggle, passed into `createGame` as a rules config

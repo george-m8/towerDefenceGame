@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CUE_TICKS, ENEMY, STRUCTURES, TICK_RATE } from "../../src/sim/config";
+import { CUE_TICKS, ENEMY_KINDS, STRUCTURES, TICK_RATE } from "../../src/sim/config";
 import { addCue } from "../../src/sim/cues";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand, createGame, tick } from "../../src/sim/game";
@@ -34,7 +34,7 @@ describe("cues from the game", () => {
     spawnEnemy(state, state.keeps[0].x - 1, state.keeps[0].y);
     // Check on the tick the keep is hit: the cue only lives for CUE_TICKS.
     for (let i = 0; i < 40 && state.keeps[0].hp === state.keeps[0].maxHp; i++) tick(state);
-    expect(state.keeps[0].hp).toBe(state.keeps[0].maxHp - ENEMY.keepDamage);
+    expect(state.keeps[0].hp).toBe(state.keeps[0].maxHp - ENEMY_KINDS.goblin.damage);
     expect(kinds(state)).toContain("keepHit");
   });
 
@@ -49,8 +49,8 @@ describe("cues from the game", () => {
     const state = createGameWithoutWaves();
     placeStructure(state, "archer", 10, 10, "E", 1);
     placeStructure(state, "cannon", 10, 14, "E", 1);
-    spawnEnemy(state, 12, 10, 1_000);
-    spawnEnemy(state, 12, 14, 1_000);
+    spawnEnemy(state, 12, 10, { hp: 1_000 });
+    spawnEnemy(state, 12, 14, { hp: 1_000 });
     tick(state);
     expect(kinds(state)).toEqual(expect.arrayContaining(["enemyHit", "splash"]));
   });
@@ -58,7 +58,7 @@ describe("cues from the game", () => {
   it("a spike trap catching an enemy adds enemyHit", () => {
     const state = createGameWithoutWaves();
     placeStructure(state, "floorSpikes", 10, 10, "N", 1);
-    spawnEnemy(state, 10, 10, 1_000);
+    spawnEnemy(state, 10, 10, { hp: 1_000 });
     // Run just the traps, so the enemy stays on the spikes until they fire.
     const interval = STRUCTURES.floorSpikes.trap.fireIntervalSeconds * TICK_RATE;
     for (let i = 0; i < interval; i++) updateTraps(state);
@@ -73,7 +73,7 @@ describe("cues from the game", () => {
 
   it("the keep falling adds gameOver, once", () => {
     const state = createGameWithoutWaves();
-    state.keeps[0].hp = ENEMY.keepDamage;
+    state.keeps[0].hp = ENEMY_KINDS.goblin.damage;
     spawnEnemy(state, state.keeps[0].x - 1, state.keeps[0].y);
     run(state, 40);
     expect(state.gameOver).toBe(true);
