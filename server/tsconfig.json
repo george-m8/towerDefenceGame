@@ -10,6 +10,8 @@
     "../src/net",
     "../tests/server",
     "../tests/net",
+    "../tools",
+    "../tests/tools",
     "../vite.config.ts"
   ],
   "exclude": []

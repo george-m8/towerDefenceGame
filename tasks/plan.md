@@ -28,7 +28,8 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | | `line-of-sight` | Spec drafted |
 | | `units` | Spec drafted |
 | 1c. Presentation | `audio` | Done |
-| | `music-director` | Outline only (see below); spec when you want it |
+| | `music-packs` | Done (tasks in [`tasks/music-packs/`](music-packs/todo.md)) |
+| | `music-director` | Outline only (see below); intro hand-over now part of `music-packs` |
 | 2. Setup and modes | `game-setup` | Spec needed |
 | | `mode-ramparts` | Spec needed |
 | 3. Economy | `resources` | Spec needed |
@@ -469,6 +470,42 @@ T1 Synth voice + pure maths
 | Music timing drifts or stutters | Med | Schedule against the audio clock with a lookahead window; tested in the pure sequencer |
 | Too many Web Audio nodes in long sessions | Low | Each voice disconnects itself when it ends; check node counts in a stress wave |
 | Browsers block audio | Low | Start only on a gesture; every engine call is a no-op until unlocked; never throws into the game |
+
+---
+
+## Module: `music-packs`
+
+Spec: [`SPEC-music-packs.md`](../SPEC-music-packs.md). A music pack is a folder of MIDI files per category (intro, menu, in-play, game-over) that replaces the built-in songs for any category it has files in. The intro plays once and hands over to menu music; games get in-play music and a game-over song.
+
+**Architecture decisions**
+- A Vite plugin (`tools/musicPacks.ts`) scans the pack folders at dev start and build time and exposes `virtual:music-packs`, because a browser can't list a folder.
+- Which songs play where is pure (`src/audio/playlist.ts`); the player only plays songs and reports when a play-once song ends.
+- Pack contents are git-ignored (copyrighted arrangements stay local).
+
+**Dependency graph**
+```
+T1 MIDI reader keeps good tracks        (independent)
+T2 Pack scan + Vite plugin + gitignore
+ └─ T3 Playlist + chosen pack setting
+     └─ T4 Player: places, play-once, shuffle, switch
+         └─ T5 Wiring in main + Music dropdown
+             └─ T6 Docs
+```
+
+**Task list** (details in [`tasks/music-packs/todo.md`](music-packs/todo.md))
+- [x] Task 1: MIDI reader keeps the good tracks of a file with a broken track
+- [x] Task 2: Pack scan and Vite plugin (`virtual:music-packs`), pack contents git-ignored
+- [x] Task 3: Playlist (pack songs or defaults, random pick without repeats) and the chosen pack setting
+- [x] Task 4: Music player: new places, play-once with an ended callback, shuffle chaining, switch after a fade
+- [x] Task 5: Wiring: intro to menu hand-over, in-play, game-over, restart, unlock on direct links; Music dropdown
+- [x] Task 6: Docs (README, SPEC-audio, CAPABILITIES)
+
+**Checkpoint (after Task 5):** all tests pass; in the browser the intro hands over to menu music, a game switches to in-play, game over plays its song.
+
+| Risk | Impact | Mitigation |
+|---|---|---|
+| Busy pack songs (12 channels) get loud or muddy | Low | The limiter catches peaks; channel mapping can be tuned later |
+| A song starts during the previous one's fade | Low | Switching starts the next song after the fade ends |
 
 ---
 

@@ -3,7 +3,9 @@
 import { midiToHz } from "./envelopes";
 import type { AudioEngine } from "./engine";
 import { parseMidi, type MidiNote, type MidiSong } from "./midi";
-import { INSTRUMENTS, SONGS, instrumentFor, type MusicPlace, type SongEntry } from "./songs";
+import type { MusicPlace } from "./places";
+import { SHUFFLED_PLACES, pickSong } from "./playlist";
+import { INSTRUMENTS, SONGS, instrumentFor, type SongEntry } from "./songs";
 
 export interface ScheduledNote {
   /** Audio-clock time the note starts. */
@@ -43,20 +45,28 @@ export function notesInWindow(
 }
 
 interface PlayerDeps {
-  songs: readonly SongEntry[];
+  /** The songs that can play in a place right now (the music pack's, or the built-in ones). */
+  songsFor: (place: MusicPlace) => readonly SongEntry[];
+  random: () => number;
   fetchBytes: (url: string) => Promise<ArrayBuffer>;
   setInterval: (fn: () => void, ms: number) => unknown;
   clearInterval: (id: unknown) => void;
 }
 
 const defaultDeps: PlayerDeps = {
-  songs: SONGS,
-  fetchBytes: (url) => fetch(url).then((response) => response.arrayBuffer()),
+  songsFor: (place) => SONGS.filter((song) => song.plays.includes(place)),
+  random: Math.random,
+  fetchBytes: (url) =>
+    fetch(url).then((response) => {
+      if (!response.ok) throw new Error(`${url}: ${response.status}`);
+      return response.arrayBuffer();
+    }),
   setInterval: (fn, ms) => window.setInterval(fn, ms),
   clearInterval: (id) => window.clearInterval(id as number),
 };
 
 interface Playing {
+  place: MusicPlace;
   entry: SongEntry;
   song: MidiSong;
   /** Channels in order of first appearance, for the default instrument mapping. */
@@ -65,15 +75,41 @@ interface Playing {
   scheduledUntil: number;
 }
 
+/**
+ * Plays music for a place (intro, menu, in-play, game-over). A song that doesn't loop plays
+ * once: in a shuffled place (menu, in-play) another song follows it; elsewhere `onEnded` is
+ * called so the game can decide what comes next.
+ */
 export function createMusicPlayer(engine: AudioEngine, overrides: Partial<PlayerDeps> = {}) {
   const deps = { ...defaultDeps, ...overrides };
   const loaded = new Map<string, MidiSong>();
+  /** Songs whose file wouldn't load or parse; skipped from then on. */
+  const broken = new Set<string>();
+  /** The place we want music for (also while audio is still locked, or a song is loading). */
+  let place: MusicPlace | null = null;
   let playing: Playing | null = null;
+  let lastId: string | null = null;
   let timer: unknown = null;
+  /** Bumped by every start and stop, so a slow load that's been replaced never starts. */
+  let generation = 0;
+  /** Audio time a fade-out is over; nothing new starts before it. */
+  let quietFrom = 0;
 
-  const stopTimer = () => {
+  const stop = () => {
+    generation++;
     if (timer !== null) deps.clearInterval(timer);
     timer = null;
+    if (playing) {
+      playing = null;
+      player.onSongChange?.(null);
+    }
+  };
+
+  /** Fades out what's sounding; the next song waits until the fade is over. */
+  const fade = (seconds: number) => {
+    if (!playing) return;
+    engine.fadeOutMusic(seconds);
+    quietFrom = engine.now() + seconds;
   };
 
   const load = async (entry: SongEntry): Promise<MidiSong> => {
@@ -87,9 +123,42 @@ export function createMusicPlayer(engine: AudioEngine, overrides: Partial<Player
     return song;
   };
 
+  /** Picks a song for `next` and starts it shortly (after any fade-out). */
+  const begin = async (next: MusicPlace): Promise<void> => {
+    stop();
+    place = next;
+    const mine = generation;
+    const songs = deps.songsFor(next).filter((song) => !broken.has(song.id));
+    const entry = pickSong(songs, lastId, deps.random);
+    if (!entry) {
+      if (!SHUFFLED_PLACES.includes(next)) ended(next);
+      return;
+    }
+    let song: MidiSong;
+    try {
+      song = await load(entry);
+    } catch {
+      broken.add(entry.id); // a missing or broken file: try another song
+      if (generation === mine) await begin(next);
+      return;
+    }
+    if (generation !== mine) return;
+    lastId = entry.id;
+    const start = Math.max(engine.now(), quietFrom) + START_DELAY;
+    const channels = [...new Set(song.notes.map((n) => n.channel))];
+    playing = { place: next, entry, song, channels, start, scheduledUntil: start };
+    timer = deps.setInterval(tick, TICK_MS);
+    player.onSongChange?.(entry);
+  };
+
+  const ended = (finished: MusicPlace) => {
+    place = null;
+    player.onEnded?.(finished);
+  };
+
   const tick = () => {
     if (!playing) return;
-    const { entry, song, channels, start } = playing;
+    const { place: current, entry, song, channels, start } = playing;
     const to = engine.now() + LOOKAHEAD;
     for (const { at, note } of notesInWindow(song, start, playing.scheduledUntil, to, entry.loop)) {
       const instrument = instrumentFor(entry, channels, note.channel, note.midi);
@@ -105,37 +174,69 @@ export function createMusicPlayer(engine: AudioEngine, overrides: Partial<Player
       );
     }
     playing.scheduledUntil = to;
-    if (!entry.loop && to >= start + song.duration) {
-      stopTimer();
-      playing = null;
+    if (!entry.loop && engine.now() >= start + song.duration) {
+      if (SHUFFLED_PLACES.includes(current)) void begin(current);
+      else {
+        stop();
+        ended(current);
+      }
     }
   };
 
-  return {
-    /** Starts the song for `place` (if audio is unlocked and it isn't already playing). */
-    async play(place: MusicPlace) {
-      if (!engine.unlocked) return;
-      const entry = deps.songs.find((s) => s.plays.includes(place));
-      if (!entry || playing?.entry === entry) return;
-      let song: MidiSong;
-      try {
-        song = await load(entry);
-      } catch {
-        return; // a missing or broken song file just means no music
-      }
-      stopTimer();
-      const start = engine.now() + START_DELAY;
-      const channels = [...new Set(song.notes.map((n) => n.channel))];
-      playing = { entry, song, channels, start, scheduledUntil: start };
-      timer = deps.setInterval(tick, TICK_MS);
+  const player = {
+    /** Called when a play-once place (intro, game-over) has finished. */
+    onEnded: null as ((place: MusicPlace) => void) | null,
+    /** Called with each song as it starts, and null when music stops. */
+    onSongChange: null as ((song: SongEntry | null) => void) | null,
+
+    /** The song playing now, if any. */
+    get nowPlaying(): SongEntry | null {
+      return playing?.entry ?? null;
+    },
+
+    /** Starts music for `next`, unless it's already playing (or waiting to). */
+    async play(next: MusicPlace) {
+      if (place === next) return;
+      place = next;
+      if (engine.unlocked) await begin(next);
+    },
+
+    /** Fades out whatever is playing, then starts `next` once the fade is over. */
+    async switchTo(next: MusicPlace, fadeSeconds: number) {
+      player.fadeOut(fadeSeconds);
+      place = next;
+      if (engine.unlocked) await begin(next);
+    },
+
+    /**
+     * Moves on from the current song: another song in a shuffled place, otherwise the place
+     * ends (so skipping the intro hands over to menu music).
+     */
+    async skip(fadeSeconds: number) {
+      if (!playing) return;
+      const current = playing.place;
+      fade(fadeSeconds);
+      stop();
+      if (SHUFFLED_PLACES.includes(current)) await begin(current);
+      else ended(current);
+    },
+
+    /** Starts the current place again from the top, with a fresh pick (after a pack change). */
+    async restart(fadeSeconds: number) {
+      if (place) await player.switchTo(place, fadeSeconds);
+    },
+
+    /** Starts the wanted place if it was asked for before audio was unlocked. */
+    async resume() {
+      if (place && !playing && engine.unlocked) await begin(place);
     },
 
     /** Stops scheduling and fades out whatever is still sounding. */
     fadeOut(seconds: number) {
-      if (!playing) return;
-      stopTimer();
-      playing = null;
-      engine.fadeOutMusic(seconds);
+      fade(seconds);
+      stop();
+      place = null;
     },
   };
+  return player;
 }

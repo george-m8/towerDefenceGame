@@ -18,6 +18,10 @@ build/
 # Tests
 coverage/
 
+# Music packs stay on your machine: their songs are usually someone else's copyright
+public/music/music-packs/*
+!public/music/music-packs/.gitkeep
+
 # MacOS and System files
 .DS_Store
 Thumbs.db

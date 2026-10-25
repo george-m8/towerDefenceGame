@@ -4,7 +4,7 @@ import { centerOn, panBy, setViewport, tilePixels, zoomBy } from "./ui/camera";
 import { ZOOM_STEP } from "./ui/input";
 import { createMinimap } from "./ui/minimap";
 import { fogFromUrl, readJoinIntent, serverUrl, tokenKey, type PageIntent } from "./net/join";
-import { createNetworkSession, type NetworkDeps } from "./net/networkSession";
+import { createNetworkSession, type NetworkDeps, type NetworkSession } from "./net/networkSession";
 import { createLocalSession, type Session } from "./net/session";
 import { createPanel } from "./ui/panel";
 import { bindInput } from "./ui/input";
@@ -20,6 +20,10 @@ import { createSoundControls } from "./ui/soundControls";
 import { createCuePlayer, soundForResult } from "./audio/cues";
 import { showSoundTest } from "./ui/soundTest";
 import { createMusicPlayer } from "./audio/sequencer";
+import type { MusicPlace } from "./audio/places";
+import { activePack, songsFor } from "./audio/playlist";
+import { SONGS } from "./audio/songs";
+import musicPacks from "virtual:music-packs";
 import { liveVoiceCount } from "./audio/synth";
 import { showNotice } from "./ui/notice";
 import type { Command, GameState } from "./sim/types";
@@ -31,6 +35,8 @@ const storage = tabStorage();
 /** Read once at load: the address bar loses the flag when a room code replaces it. */
 const fog = fogFromUrl(location.search);
 let session: Session | null = null;
+/** The online session, for its waiting room (null offline). */
+let network: NetworkSession | null = null;
 /** Online-only parts of the page, updated every frame. */
 const onlineViews: { update(state: GameState | null): void }[] = [];
 
@@ -83,30 +89,64 @@ bindInput(canvas, ui, dispatch, () => session?.state ?? null);
 // Sound: silent until the first click or key press (browsers require a gesture).
 const audio = createWebAudioEngine();
 const audioStorage = deviceStorage();
-const audioSettings = loadAudioSettings(audioStorage);
+let audioSettings = loadAudioSettings(audioStorage);
 audio.setVolumes(audioSettings);
-unlockOnFirstGesture(audio);
 const cues = createCuePlayer(audio);
-const music = createMusicPlayer(audio);
+const pack = () => activePack(musicPacks, audioSettings.pack);
+const music = createMusicPlayer(audio, {
+  songsFor: (place) => songsFor(place, pack(), musicPacks, SONGS),
+});
+// Direct room links skip the intro, so a game's music can be asked for before audio unlocks.
+unlockOnFirstGesture(audio, window, () => void music.resume());
 const MUSIC_FADE_SECONDS = 1;
+const SKIP_FADE_SECONDS = 0.4;
+/** What the music is following: the menus (intro, start screen, waiting room) or a game. */
+let musicScene: "menus" | MusicPlace = "menus";
+music.onEnded = (place) => {
+  // The intro hands over to menu music if nobody has started a game yet.
+  if (place === "intro" && musicScene === "menus") void music.play("menu");
+};
 if (import.meta.env.DEV) {
   // Lets you check from the console that sounds are playing (and cleaning up).
   (window as unknown as { __liveVoices: () => number }).__liveVoices = liveVoiceCount;
   // Lets a test script reach into the game (e.g. place enemies for a visual check).
   (window as unknown as { __state: () => GameState | null }).__state = () => session?.state ?? null;
 }
-createSoundControls(element("#sound"), audioSettings, (settings) => {
-  audio.setVolumes(settings);
-  saveAudioSettings(audioStorage, settings);
-});
+const soundControls = createSoundControls(
+  element("#sound"),
+  audioSettings,
+  { names: Object.keys(musicPacks).sort((a, b) => a.localeCompare(b)), shownPack: pack() },
+  (settings) => {
+    const packChanged = settings.pack !== audioSettings.pack;
+    audioSettings = settings;
+    audio.setVolumes(settings);
+    saveAudioSettings(audioStorage, settings);
+    if (packChanged) void music.restart(MUSIC_FADE_SECONDS);
+  },
+  () => void music.skip(SKIP_FADE_SECONDS),
+);
+music.onSongChange = (song) => soundControls.showSong(song?.title ?? null);
+
+/** Switches the music when a game starts, the keep falls, or a game restarts. */
+function followMusic() {
+  const state = session?.state;
+  const next =
+    !state || (network && !network.lobby?.started)
+      ? "menus"
+      : state.gameOver
+        ? "game-over"
+        : "in-play";
+  if (next === musicScene) return;
+  musicScene = next;
+  if (next !== "menus") void music.switchTo(next, MUSIC_FADE_SECONDS);
+}
 
 /** Starts playing: offline, or in a room on the game server. */
 function startSession(intent: Exclude<PageIntent, { mode: "menu" }>) {
-  music.fadeOut(MUSIC_FADE_SECONDS); // music is for the title and menus (for now)
   if (intent.mode === "offline") {
     session = createLocalSession(Date.now() >>> 0, undefined, { fog });
   } else {
-    const network = createNetworkSession(
+    network = createNetworkSession(
       serverUrl(location),
       intent,
       {
@@ -144,9 +184,8 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has("soundtest")
   // Direct room links and rejoins skip the intro; everyone else sees it before the menu.
   // Dismissing the intro is the first gesture, so audio is unlocked by then.
   showIntro(element("#intro"), () => {
-    void music.play("title");
+    void music.play("intro");
     showStartScreen(element("#start"), { room: intent.room, onChoose: startSession });
-    void music.play("menu"); // the same song carries on unless the manifest says otherwise
   });
 }
 
@@ -177,6 +216,7 @@ function frame(now: number) {
       cues.update(state.cues);
     }
   }
+  followMusic();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

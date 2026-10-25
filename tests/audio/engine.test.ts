@@ -118,6 +118,16 @@ describe("unlockOnFirstGesture", () => {
     target.dispatchEvent(new Event("pointerdown"));
     expect(engine.unlock).toHaveBeenCalledTimes(1);
   });
+
+  it("then tells the game, once (to start music asked for while locked)", () => {
+    const target = new EventTarget();
+    const engine = { unlock: vi.fn() } as unknown as Parameters<typeof unlockOnFirstGesture>[0];
+    const unlocked = vi.fn();
+    unlockOnFirstGesture(engine, target as unknown as Window, unlocked);
+    target.dispatchEvent(new Event("pointerdown"));
+    target.dispatchEvent(new Event("keydown"));
+    expect(unlocked).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("fadeOutMusic", () => {

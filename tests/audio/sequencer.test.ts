@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { AudioEngine } from "../../src/audio/engine";
 import type { MidiSong } from "../../src/audio/midi";
 import { createMusicPlayer, notesInWindow } from "../../src/audio/sequencer";
+import type { MusicPlace } from "../../src/audio/places";
 import { SONGS, instrumentFor, type SongEntry } from "../../src/audio/songs";
 
 const song: MidiSong = {
@@ -59,8 +60,8 @@ describe("instrumentFor", () => {
 });
 
 describe("the song manifest", () => {
-  it("has a title song, and every song records its source and licence", () => {
-    expect(SONGS.some((s) => s.plays.includes("title"))).toBe(true);
+  it("has an intro song, and every song records its source and licence", () => {
+    expect(SONGS.some((s) => s.plays.includes("intro"))).toBe(true);
     for (const s of SONGS) {
       expect(s.source.length).toBeGreaterThan(0);
       expect(s.licence.length).toBeGreaterThan(0);
@@ -76,112 +77,265 @@ describe("the song manifest", () => {
   });
 });
 
+// --- The player ---------------------------------------------------------------------------
+
+type FakeEngine = AudioEngine & {
+  notes: { hz: number; at: number; bus: string }[];
+  fades: number[];
+  advance(seconds: number): void;
+  unlocked: boolean;
+};
+
+function fakeEngine(): FakeEngine {
+  let clock = 5;
+  const engine = {
+    notes: [] as FakeEngine["notes"],
+    fades: [] as number[],
+    unlocked: true,
+    unlock: () => {},
+    now: () => clock,
+    setVolumes: () => {},
+    playNote: (_voice: unknown, hz: number, _duration: number, bus: string, at = clock) =>
+      void engine.notes.push({ hz, at, bus }),
+    fadeOutMusic: (seconds: number) => void engine.fades.push(seconds),
+    advance: (seconds: number) => void (clock += seconds),
+  };
+  return engine as FakeEngine;
+}
+
+/** A song of one note (MIDI `midi`, at 0.5 s), `length` seconds long. */
+function oneNote(id: string, midi: number, plays: MusicPlace[], loop = false, length = 2) {
+  const notes: MidiSong = {
+    duration: length,
+    notes: [{ time: 0.5, duration: 0.25, midi, velocity: 100, channel: 0 }],
+  };
+  return { id, title: id, plays, loop, source: "test", licence: "test", notes: () => notes };
+}
+
+const intro = oneNote("intro", 60, ["intro"]);
+const menuA = oneNote("menu-a", 62, ["menu"]);
+const menuB = oneNote("menu-b", 64, ["menu"]);
+const looping = oneNote("looping", 65, ["game-over"], true);
+const hzOf = (midi: number) => 440 * 2 ** ((midi - 69) / 12);
+
+function setup(songs: SongEntry[] = [intro, menuA, menuB, looping], extra = {}) {
+  const engine = fakeEngine();
+  let tick: (() => void) | null = null;
+  const timers = {
+    setInterval: vi.fn((fn: () => void) => ((tick = fn), 1)),
+    clearInterval: vi.fn(() => (tick = null)),
+  };
+  const player = createMusicPlayer(engine, {
+    ...timers,
+    fetchBytes: vi.fn(),
+    songsFor: (place) => songs.filter((s) => s.plays.includes(place)),
+    random: () => 0,
+    ...extra,
+  });
+  const ended: MusicPlace[] = [];
+  player.onEnded = (place) => ended.push(place);
+  /** Moves the clock on in timer-sized steps, running the timer each time. */
+  const run = (seconds: number) => {
+    for (let t = 0; t < seconds; t += 0.05) {
+      engine.advance(0.05);
+      tick?.();
+    }
+  };
+  /** Which songs' notes were scheduled, by MIDI number, in order. */
+  const played = () => engine.notes.map((n) => Math.round(12 * Math.log2(n.hz / 440) + 69));
+  return { engine, player, timers, ended, run, played };
+}
+
 describe("music player", () => {
-  function fakeEngine(): AudioEngine & { notes: unknown[][]; fades: number[] } {
-    let clock = 5;
-    const notes: unknown[][] = [];
-    const fades: number[] = [];
-    return {
-      notes,
-      fades,
-      unlocked: true,
-      unlock: () => {},
-      now: () => clock,
-      setVolumes: () => {},
-      playNote: (...args) => void notes.push(args),
-      fadeOutMusic: (seconds) => void fades.push(seconds),
-      // test helper
-      ...{ advance: (s: number) => (clock += s) },
-    } as AudioEngine & { notes: unknown[][]; fades: number[] };
-  }
-
-  function setup() {
-    const engine = fakeEngine();
-    let tick: (() => void) | null = null;
-    const timers = {
-      setInterval: vi.fn((fn: () => void) => ((tick = fn), 1)),
-      clearInterval: vi.fn(() => (tick = null)),
-    };
-    // The built-in theme, whatever songs are listed first in the real manifest.
-    const builtIn = SONGS.find((s) => s.notes)!;
-    const player = createMusicPlayer(engine, { ...timers, fetchBytes: vi.fn(), songs: [builtIn] });
-    return { engine, player, timers, runTick: () => tick?.() };
-  }
-
-  it("schedules the title song's first notes on the music bus", async () => {
-    const { engine, player, runTick } = setup();
-    await player.play("title");
-    runTick();
-    expect(engine.notes.length).toBeGreaterThan(0);
-    expect(engine.notes.every((args) => args[3] === "music")).toBe(true);
-    expect(engine.notes.every((args) => (args[4] as number) >= 5)).toBe(true);
+  it("schedules a place's song on the music bus, ahead of the clock", async () => {
+    const { engine, player, run, played } = setup();
+    await player.play("intro");
+    run(1);
+    expect(played()).toEqual([60]);
+    expect(engine.notes[0].bus).toBe("music");
+    expect(engine.notes[0].at).toBeCloseTo(5 + 0.1 + 0.5); // start delay + note time
+    expect(engine.notes[0].hz).toBeCloseTo(hzOf(60));
   });
 
   it("playing the same place again doesn't restart it", async () => {
     const { player, timers } = setup();
-    await player.play("title");
-    await player.play("title");
+    await player.play("intro");
+    await player.play("intro");
     expect(timers.setInterval).toHaveBeenCalledTimes(1);
   });
 
-  it("fading out stops scheduling and fades the music bus", async () => {
-    const { engine, player, timers, runTick } = setup();
-    await player.play("title");
+  it("a play-once place reports that it ended, after its last moment", async () => {
+    const { player, run, ended } = setup();
+    await player.play("intro");
+    run(1.9);
+    expect(ended).toEqual([]);
+    run(0.4);
+    expect(ended).toEqual(["intro"]);
+  });
+
+  it("a shuffled place moves on to another song instead of ending", async () => {
+    const { player, run, ended, played } = setup();
+    await player.play("menu");
+    run(2.3);
+    await Promise.resolve(); // the next song loads
+    run(1);
+    expect(played()).toEqual([62, 64]); // menu-a, then menu-b (never the same twice running)
+    expect(ended).toEqual([]);
+  });
+
+  it("a looping song never ends", async () => {
+    const { player, run, ended, played } = setup();
+    await player.play("game-over");
+    run(6.2);
+    expect(played()).toEqual([65, 65, 65]);
+    expect(ended).toEqual([]);
+  });
+
+  it("fading out stops scheduling and fades the bus, without reporting an end", async () => {
+    const { engine, player, timers, run, ended } = setup();
+    await player.play("intro");
     player.fadeOut(1);
     expect(engine.fades).toEqual([1]);
     expect(timers.clearInterval).toHaveBeenCalled();
-    const before = engine.notes.length;
-    runTick();
-    expect(engine.notes.length).toBe(before);
+    run(3);
+    expect(engine.notes).toEqual([]);
+    expect(ended).toEqual([]);
   });
 
-  it("does nothing until audio is unlocked", async () => {
-    const { engine, player, timers } = setup();
-    (engine as { unlocked: boolean }).unlocked = false;
-    await player.play("title");
+  it("switching fades out, then starts the new place once the fade is over", async () => {
+    const { engine, player, run, played } = setup();
+    await player.play("intro");
+    await player.switchTo("menu", 1);
+    run(2);
+    expect(engine.fades).toEqual([1]);
+    expect(played()).toEqual([62]);
+    expect(engine.notes[0].at).toBeGreaterThanOrEqual(5 + 1 + 0.5);
+  });
+
+  it("restarting plays the current place again from the top (a new pack)", async () => {
+    const { engine, player, run, played } = setup();
+    await player.play("intro");
+    await player.restart(1);
+    run(2);
+    expect(engine.fades).toEqual([1]);
+    expect(played()).toEqual([60]);
+  });
+
+  it("a slow load that's been replaced never starts", async () => {
+    let finishLoad = () => {};
+    const slow: SongEntry = { ...intro, notes: undefined, file: "slow.mid" };
+    const fetchBytes = vi.fn(
+      () => new Promise<ArrayBuffer>((done) => (finishLoad = () => done(ONE_NOTE_FILE.buffer))),
+    );
+    const { player, run, played } = setup([slow, menuA], { fetchBytes });
+    const loading = player.play("intro");
+    await player.switchTo("menu", 1);
+    finishLoad();
+    await loading;
+    run(3);
+    expect(played()).toEqual([62]);
+  });
+
+  it("waits for audio to unlock, then resume() starts the wanted place", async () => {
+    const { engine, player, timers, run, played } = setup();
+    engine.unlocked = false;
+    await player.play("menu");
+    await player.switchTo("intro", 1);
     expect(timers.setInterval).not.toHaveBeenCalled();
+    engine.unlocked = true;
+    await player.resume();
+    run(1);
+    expect(played()).toEqual([60]);
+  });
+
+  it("a play-once place with nothing to play ends straight away", async () => {
+    const { player, ended, timers } = setup([menuA]);
+    await player.play("intro");
+    expect(ended).toEqual(["intro"]);
+    expect(timers.setInterval).not.toHaveBeenCalled();
+  });
+
+  it("skips a song file that won't load and plays another", async () => {
+    const broken: SongEntry = { ...menuA, notes: undefined, file: "broken.mid" };
+    const fetchBytes = vi.fn(async () => {
+      throw new Error("404");
+    });
+    const { player, run, played } = setup([broken, menuB], { fetchBytes });
+    await player.play("menu");
+    run(1);
+    expect(played()).toEqual([64]);
   });
 });
 
+describe("now playing and skip", () => {
+  it("reports each song as it starts, and nothing once music stops", async () => {
+    const { player } = setup();
+    const titles: (string | null)[] = [];
+    player.onSongChange = (song) => titles.push(song?.title ?? null);
+    await player.play("intro");
+    expect(player.nowPlaying?.title).toBe("intro");
+    player.fadeOut(1);
+    expect(player.nowPlaying).toBeNull();
+    expect(titles).toEqual(["intro", null]);
+  });
+
+  it("a song that plays out to the end clears now playing", async () => {
+    const { player, run } = setup();
+    await player.play("intro");
+    run(2.5);
+    expect(player.nowPlaying).toBeNull();
+  });
+
+  it("skipping in a shuffled place fades out and starts a different song after the fade", async () => {
+    const { engine, player, run, played } = setup();
+    await player.play("menu");
+    await player.skip(0.5);
+    run(2);
+    expect(engine.fades).toEqual([0.5]);
+    expect(player.nowPlaying?.title).toBe("menu-b");
+    expect(played()).toEqual([64]);
+    expect(engine.notes[0].at).toBeGreaterThanOrEqual(5 + 0.5 + 0.5);
+  });
+
+  it("skipping a play-once place ends it, and what follows waits for the fade", async () => {
+    const { engine, player, run, ended, played } = setup();
+    player.onEnded = (place) => {
+      ended.push(place);
+      void player.play("menu"); // as the game does: the intro hands over to menu music
+    };
+    await player.play("intro");
+    await player.skip(0.5);
+    await Promise.resolve();
+    run(2);
+    expect(ended).toEqual(["intro"]);
+    expect(played()).toEqual([62]);
+    expect(engine.notes[0].at).toBeGreaterThanOrEqual(5 + 0.5 + 0.5);
+  });
+
+  it("skipping with nothing playing does nothing", async () => {
+    const { engine, player, ended } = setup();
+    await player.skip(0.5);
+    expect(engine.fades).toEqual([]);
+    expect(ended).toEqual([]);
+  });
+});
+
+/** One C4 quarter note at 120 bpm, format 0. */
+const ONE_NOTE_FILE = new Uint8Array([
+  ...[0x4d, 0x54, 0x68, 0x64, 0, 0, 0, 6, 0, 0, 0, 1, 0x01, 0xe0],
+  ...[0x4d, 0x54, 0x72, 0x6b, 0, 0, 0, 12],
+  ...[0, 0x90, 60, 100, 0x83, 0x60, 0x80, 60, 0, 0, 0xff, 0x2f, 0],
+]);
+
 describe("music player with a MIDI file", () => {
   it("fetches the file from public/music once, parses it and plays its notes", async () => {
-    // One C4 quarter note at 120 bpm, format 0.
-    const bytes = new Uint8Array([
-      ...[0x4d, 0x54, 0x68, 0x64, 0, 0, 0, 6, 0, 0, 0, 1, 0x01, 0xe0],
-      ...[0x4d, 0x54, 0x72, 0x6b, 0, 0, 0, 12],
-      ...[0, 0x90, 60, 100, 0x83, 0x60, 0x80, 60, 0, 0, 0xff, 0x2f, 0],
-    ]);
-    const fetchBytes = vi.fn(async () => bytes.buffer);
-    const notes: unknown[][] = [];
-    const engine = {
-      unlocked: true,
-      unlock: () => {},
-      now: () => 0,
-      setVolumes: () => {},
-      fadeOutMusic: () => {},
-      playNote: (...args: unknown[]) => void notes.push(args),
-    } as unknown as AudioEngine;
-    let tick = () => {};
-    const song: SongEntry = {
-      id: "file-song",
-      title: "File song",
-      plays: ["title"],
-      loop: false,
-      source: "test",
-      licence: "test",
-      file: "file-song.mid",
-    };
-    const player = createMusicPlayer(engine, {
-      songs: [song],
-      fetchBytes,
-      setInterval: (fn: () => void) => ((tick = fn), 1),
-      clearInterval: () => {},
-    });
-    await player.play("title");
-    tick();
-    expect(fetchBytes).toHaveBeenCalledWith("/music/file-song.mid");
-    expect(notes).toHaveLength(1);
-    expect(notes[0][1]).toBeCloseTo(261.63, 1); // C4, played on the lead
-    expect(notes[0][3]).toBe("music");
+    const fetchBytes = vi.fn(async () => ONE_NOTE_FILE.buffer);
+    const song: SongEntry = { ...intro, notes: undefined, file: "music-packs/p/intro/a%20b.mid" };
+    const { engine, player, run } = setup([song], { fetchBytes });
+    await player.play("intro");
+    run(0.5);
+    expect(fetchBytes).toHaveBeenCalledWith("/music/music-packs/p/intro/a%20b.mid");
+    expect(engine.notes).toHaveLength(1);
+    expect(engine.notes[0].hz).toBeCloseTo(261.63, 1); // C4, played on the lead
   });
 });

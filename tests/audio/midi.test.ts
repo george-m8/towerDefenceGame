@@ -140,6 +140,48 @@ describe("parseMidi", () => {
     expect(near(song.notes[0].duration)).toBe(1);
   });
 
+  it("keeps the good tracks, and a broken track's notes up to the bad byte", () => {
+    // Some writers put a bad status byte in a track: 0xF0 where a program change belongs,
+    // which reads as a sysex and swallows the start of the next events.
+    const sysexIntoEvents = [
+      [0, 0x91, 64, 100],
+      [480, 0x81, 64, 0],
+      [0, 0xf0, 2], // a "sysex" of 2 bytes that don't end in 0xF7
+      [0, 0x91, 65, 100],
+      [96000, 0x81, 65, 0],
+    ];
+    const sysexPastTheEnd = [
+      [0, 0x93, 64, 100],
+      [480, 0x83, 64, 0],
+      [0, 0xf0, 0x50], // runs past the end of the file
+    ];
+    // Misread without any error (a writer's bad byte that still parses), ending far away.
+    const junk = [[0x7f7f7f, 0xb0, 7, 100]];
+    const song = parseMidi(
+      midi(
+        header(1, 5),
+        track([
+          [0, 0x90, 60, 100],
+          [480, 0x80, 60, 0],
+        ]),
+        track(sysexIntoEvents),
+        track(sysexPastTheEnd),
+        track(junk),
+        track([
+          [0, 0x92, 67, 100],
+          [480, 0x82, 67, 0],
+        ]),
+      ),
+    );
+    expect(song.notes.map((n) => [n.channel, n.midi])).toEqual([
+      [0, 60],
+      [1, 64],
+      [2, 67],
+      [3, 64],
+    ]);
+    expect(near(song.duration)).toBe(0.5); // no junk timings from the misread bytes
+  });
+
   it("rejects files that aren't MIDI, or are cut short, with a clear error", () => {
     expect(() => parseMidi(new Uint8Array(ascii("RIFF0000WAVE")))).toThrow(MidiError);
     expect(() => parseMidi(new Uint8Array(ascii("RIFF0000WAVE")))).toThrow(/not a MIDI file/i);

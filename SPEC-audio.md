@@ -62,7 +62,7 @@ The simulation stays pure and never touches audio. It records cues as data, alon
 
 ## Out of scope
 
-- In-game music (title and menus only for now). Planned as `music-director`: an intro that plays to the end, then menu or gameplay music, with optional peaceful/fight switching; outline in [`tasks/plan.md`](tasks/plan.md).
+- In-game music (title and menus only for now). Now added by [`SPEC-music-packs.md`](SPEC-music-packs.md) (intro, menu, in-play and game-over, with music packs); peaceful/fight switching is still planned as `music-director`: an intro that plays to the end, then menu or gameplay music, with optional peaceful/fight switching; outline in [`tasks/plan.md`](tasks/plan.md).
 - A music editor or tracker inside the game (you bring MIDI files)
 - Positional (left/right) audio from where an event happened
 - Live MIDI keyboard input

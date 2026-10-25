@@ -1,6 +1,7 @@
 // A small Standard MIDI File reader: bytes in, timed notes out (in seconds). Handles format 0
 // and 1, running status, tempo changes and note-on with velocity 0 as note-off. Everything
-// else (meta, sysex, controllers) is read past and ignored. Pure: no Web Audio here.
+// else (meta, sysex, controllers) is read past and ignored. A track with a bad byte is cut
+// short there instead of failing the whole file. Pure: no Web Audio here.
 
 export interface MidiNote {
   /** Start time in seconds. */
@@ -17,7 +18,7 @@ export interface MidiNote {
 
 export interface MidiSong {
   notes: MidiNote[];
-  /** Length of the song in seconds (to the last event of any track). */
+  /** Length of the song in seconds (to the end of the last track with notes). */
   duration: number;
 }
 
@@ -53,7 +54,10 @@ export function parseMidi(bytes: Uint8Array): MidiSong {
   const notes: RawNote[] = [];
   let lastTick = 0;
   for (let t = 0; t < trackCount; t++) {
-    lastTick = Math.max(lastTick, readTrack(reader, tempos, notes));
+    const before = notes.length;
+    const end = readTrack(reader, tempos, notes);
+    // Only tracks with notes set the length: a misread track can end at a junk time.
+    if (notes.length > before) lastTick = Math.max(lastTick, end);
   }
 
   const toSeconds = secondsAt(tempos, division);
@@ -90,54 +94,64 @@ function readTrack(reader: Reader, tempos: TempoChange[], notes: RawNote[]): num
     if (note) note.endTick = tick;
   };
 
-  while (reader.position < end) {
-    tick += reader.vlq();
-    let byte = reader.u8();
-    if (byte < 0x80) {
-      // Running status: reuse the last status byte; this byte is the first data byte.
-      if (!status) throw new MidiError("Corrupt MIDI file: data without a status byte");
-      reader.position--;
-      byte = status;
-    }
-
-    if (byte === 0xff) {
-      const type = reader.u8();
-      const length = reader.vlq();
-      if (type === 0x51 && length === 3) {
-        tempos.push({
-          tick,
-          microsPerQuarter: (reader.u8() << 16) | (reader.u8() << 8) | reader.u8(),
-        });
-      } else {
-        reader.skip(length);
+  try {
+    while (reader.position < end) {
+      tick += reader.vlq();
+      let byte = reader.u8();
+      if (byte < 0x80) {
+        // Running status: reuse the last status byte; this byte is the first data byte.
+        if (!status) throw new MidiError("Corrupt MIDI file: data without a status byte");
+        reader.position--;
+        byte = status;
       }
-      if (type === 0x2f) break; // end of track
-      continue;
-    }
-    if (byte === 0xf0 || byte === 0xf7) {
-      reader.skip(reader.vlq()); // sysex
-      continue;
-    }
 
-    status = byte;
-    const kind = byte & 0xf0;
-    const channel = byte & 0x0f;
-    if (kind === 0x80 || kind === 0x90) {
-      const midi = reader.u8();
-      const velocity = reader.u8();
-      if (kind === 0x90 && velocity > 0) {
-        const note: RawNote = { startTick: tick, endTick: -1, midi, velocity, channel };
-        const key = channel * 128 + midi;
-        sounding.set(key, [...(sounding.get(key) ?? []), note]);
-        notes.push(note);
-      } else {
-        noteOff(channel, midi);
+      if (byte === 0xff) {
+        const type = reader.u8();
+        const length = reader.vlq();
+        if (type === 0x51 && length === 3) {
+          tempos.push({
+            tick,
+            microsPerQuarter: (reader.u8() << 16) | (reader.u8() << 8) | reader.u8(),
+          });
+        } else {
+          reader.skip(length);
+        }
+        if (type === 0x2f) break; // end of track
+        continue;
       }
-    } else if (kind === 0xc0 || kind === 0xd0) {
-      reader.skip(1); // program change, channel pressure
-    } else {
-      reader.skip(2); // poly pressure, controller, pitch bend
+      if (byte === 0xf0 || byte === 0xf7) {
+        reader.skip(reader.vlq()); // sysex
+        // A real sysex message ends with 0xF7; anything else is a bad byte we've misread.
+        if (byte === 0xf0 && reader.previous() !== 0xf7) {
+          throw new MidiError("Corrupt MIDI file: unterminated sysex");
+        }
+        continue;
+      }
+
+      status = byte;
+      const kind = byte & 0xf0;
+      const channel = byte & 0x0f;
+      if (kind === 0x80 || kind === 0x90) {
+        const midi = reader.u8();
+        const velocity = reader.u8();
+        if (kind === 0x90 && velocity > 0) {
+          const note: RawNote = { startTick: tick, endTick: -1, midi, velocity, channel };
+          const key = channel * 128 + midi;
+          sounding.set(key, [...(sounding.get(key) ?? []), note]);
+          notes.push(note);
+        } else {
+          noteOff(channel, midi);
+        }
+      } else if (kind === 0xc0 || kind === 0xd0) {
+        reader.skip(1); // program change, channel pressure
+      } else {
+        reader.skip(2); // poly pressure, controller, pitch bend
+      }
     }
+  } catch (error) {
+    if (!(error instanceof MidiError)) throw error;
+    // A bad byte mid-track (some writers produce them): keep this track's notes so far and
+    // carry on with the next track, rather than losing the whole song.
   }
   reader.position = end;
   // Notes never released end with their track.
@@ -199,6 +213,11 @@ class Reader {
       if (!(byte & 0x80)) return value;
     }
     throw new MidiError("Corrupt MIDI file: number too long");
+  }
+
+  /** The byte just read (or skipped). */
+  previous(): number {
+    return this.bytes[this.position - 1];
   }
 
   skip(count: number): void {
