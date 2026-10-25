@@ -163,6 +163,8 @@ Everything you hear is played by the game's own small chiptune synth (pulse wave
 
 - **Sound effects** come from what happens in the game: hits, cannon and catapult blasts, enemies reaching the keep, treasure claimed, a wave starting, the keep falling, and your own builds, sales and refused actions. Busy waves are capped so they stay a rhythm, not a wall of noise. Online, everyone hears the game's events.
 - **Music** follows where you are. The **intro** music starts when you dismiss the title screen and plays once, to the end, carrying on into the start screen. If it finishes while you're still in the menus (or an online waiting room), **menu** music takes over. Starting a game switches to **in-play** music, one song after another, and the keep falling plays the **game-over** song. Restarting goes back to in-play music.
+- **Medieval instruments:** songs play on chiptune takes on medieval instruments, chosen from the instrument each part of the MIDI file asks for: pianos on harpsichord, guitars on lute, synth leads and flutes on recorder, reeds on shawm, brass on sackbut, strings on viol, organs and pads on a portative organ, and drums on a drum, tabor and tambourine.
+- **Even volume:** each song is turned up or down when it starts so they all play at about the same loudness.
 - **Built-in songs:** Concertino in D (John Baston) for the intro and a short original theme in the menu. There's no built-in in-play or game-over music yet; a [music pack](#music-packs) can add it.
 - **Sound: on/off**, the **Music** and **Effects** sliders and (when you have music packs) the **Songs** choice sit at the bottom of the side panel, and they're remembered on this device.
 - **Now playing** under the Sound button shows the song's title (hover for the whole name). **Skip** moves on to another song in the menu or in a game, ends the intro (menu music takes over), and stops the game-over song.
@@ -187,6 +189,7 @@ public/music/music-packs/
 - **Choosing a pack:** the **Songs** dropdown in the Sound panel lists your packs and **Built-in**. It starts on the first pack (alphabetically).
 - The dev server notices new or removed files and reloads the page. For a build, the packs present when you run `npm run build` are included.
 - Pack songs use the default instrument mapping (see step 3 below).
+- **Files from Online Sequencer** (onlinesequencer.net) play too, although that site writes channel numbers in a way other players misread. Notes it saves at zero volume (people draw pictures with them) stay silent.
 - **Pack files stay out of git** (`.gitignore`), because songs in packs are usually someone else's copyright. Keep packs for your own use, and don't deploy a build that includes songs you aren't allowed to share.
 
 ### Adding a song
@@ -208,7 +211,7 @@ To add a song to the built-in music instead (it's committed, so it must be one y
    },
    ```
 
-3. **Instruments:** MIDI channel 10 plays drums (kick 35-36, snare 37-40, hi-hat 42-46). The other channels play lead, harmony, bass and arp in the order they first appear. To change that, add `channels: { 0: "lead", 1: "bass" }` (MIDI channels counted from 0). Instrument sounds are in `INSTRUMENTS` in the same file.
+3. **Instruments:** MIDI channel 10 plays drums (kicks and toms on the drum, snares on the tabor, hi-hats and cymbals on the tambourine). Other channels play the medieval instrument for their General MIDI program (`PROGRAMS` in the same file). A song with no program changes at all gives its channels recorder, lute, bass and harpsichord in the order they first appear. To choose for yourself, add `channels: { 0: "recorder", 1: "bass" }` (MIDI channels counted from 0). Instrument sounds are in `INSTRUMENTS`.
 4. **Check the rights.** MIDI arrangements of existing songs usually have their own copyright, so only add songs you're allowed to use, and record where each came from.
 
 ## Commands

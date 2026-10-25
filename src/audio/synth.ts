@@ -1,5 +1,5 @@
 // A small chiptune voice on the Web Audio API: pulse (with PWM), triangle, saw, sine and
-// noise, an ADSR amplitude envelope and a semitone pitch envelope. One voice per note; each
+// noise, an ADSR amplitude envelope, a semitone pitch envelope and vibrato. One voice per note; each
 // cleans itself up when it ends. The timing maths lives in envelopes.ts.
 import {
   MAX_DUTY,
@@ -25,6 +25,8 @@ export interface VoiceSettings {
   pitchEnvelope?: { semitones: number; time: number };
   /** Optional low-pass filter cutoff in Hz (softens noise into thumps). */
   lowpass?: number;
+  /** Wobble the pitch with an LFO: `rate` in Hz, `depth` in semitones either way. */
+  vibrato?: { rate: number; depth: number };
 }
 
 /** Longest pulse delay ever needed: the widest duty at the lowest audible pitch. */
@@ -82,6 +84,18 @@ export function playVoice(
     input = filter;
   }
 
+  /** Adds vibrato to an oscillator's detune (in cents), if the voice has it. */
+  const wobble = (osc: OscillatorNode) => {
+    if (!voice.vibrato) return;
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = voice.vibrato.rate;
+    const depth = ctx.createGain();
+    depth.gain.value = voice.vibrato.depth * 100;
+    lfo.connect(depth).connect(osc.detune);
+    nodes.push(depth);
+    sources.push(lfo);
+  };
+
   const startHz = voice.pitchEnvelope ? shiftSemitones(hz, voice.pitchEnvelope.semitones) : hz;
   const slideEnd = start + (voice.pitchEnvelope?.time ?? 0);
   /** Sets `param` to `from` at the start and slides it exponentially to `to`. */
@@ -112,6 +126,7 @@ export function playVoice(
     saw.connect(delay).connect(inverted).connect(input);
     nodes.push(direct, delay, inverted);
     sources.push(saw);
+    wobble(saw);
 
     if (voice.pwm) {
       // Sweep the delay (and so the duty) around its centre, keeping the pulse in range.
@@ -130,6 +145,7 @@ export function playVoice(
     slide(osc.frequency, startHz, hz);
     osc.connect(input);
     sources.push(osc);
+    wobble(osc);
   }
 
   const stopAt = points[points.length - 1].time + STOP_PADDING;
