@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { newCuePlayerState, selectCues, soundForResult } from "../../src/audio/cues";
+import {
+  createCuePlayer,
+  newCuePlayerState,
+  selectCues,
+  soundForResult,
+} from "../../src/audio/cues";
 import { noteToHz } from "../../src/audio/envelopes";
 import { SOUNDS } from "../../src/audio/sounds";
 
@@ -66,5 +71,56 @@ describe("the sound table", () => {
       expect(sound.maxPerWindow).toBeGreaterThan(0);
       expect(sound.windowSeconds).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("createCuePlayer", () => {
+  function fakeEngine(unlocked = true) {
+    const notes: { hz: number; bus: string; at?: number }[] = [];
+    const engine = {
+      unlocked,
+      unlock: () => {},
+      now: () => 2,
+      setVolumes: () => {},
+      fadeOutMusic: () => {},
+      playNote: (_voice: unknown, hz: number, _d: number, bus: string, at?: number) =>
+        void notes.push({ hz, bus, at }),
+    };
+    return { engine: engine as unknown as Parameters<typeof createCuePlayer>[0], notes };
+  }
+
+  it("plays new cues from the game on the effects bus, each note at its offset", () => {
+    const { engine, notes } = fakeEngine();
+    const player = createCuePlayer(engine);
+    player.update([{ id: 1, kind: "waveStart" }]);
+    expect(notes).toHaveLength(SOUNDS.waveStart.notes.length);
+    expect(notes.every((n) => n.bus === "sfx")).toBe(true);
+    expect(notes.map((n) => n.at)).toEqual(SOUNDS.waveStart.notes.map((n) => 2 + (n.at ?? 0)));
+    player.update([{ id: 1, kind: "waveStart" }]); // same cue again
+    expect(notes).toHaveLength(SOUNDS.waveStart.notes.length);
+  });
+
+  it("UI sounds don't use up cue ids, so the game's next cue still plays", () => {
+    const { engine, notes } = fakeEngine();
+    const player = createCuePlayer(engine);
+    player.update([{ id: 1, kind: "treasure" }]);
+    player.play("build");
+    player.update([
+      { id: 1, kind: "treasure" },
+      { id: 2, kind: "keepHit" },
+    ]);
+    expect(notes.map((n) => n.hz)).toEqual([
+      SOUNDS.treasure.notes[0].hz,
+      SOUNDS.build.notes[0].hz,
+      SOUNDS.keepHit.notes[0].hz,
+    ]);
+  });
+
+  it("stays silent while audio is locked", () => {
+    const { engine, notes } = fakeEngine(false);
+    const player = createCuePlayer(engine);
+    player.update([{ id: 1, kind: "keepHit" }]);
+    player.play("denied");
+    expect(notes).toEqual([]);
   });
 });

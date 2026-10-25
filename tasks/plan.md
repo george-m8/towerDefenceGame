@@ -27,7 +27,7 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | 1. Basics (continued) | `tower-aiming` | Done |
 | | `line-of-sight` | Spec drafted |
 | | `units` | Spec drafted |
-| 1c. Presentation | `audio` | **Spec approved, tasks ready** |
+| 1c. Presentation | `audio` | **Built, awaiting your listening review** |
 | 2. Setup and modes | `game-setup` | Spec needed |
 | | `mode-ramparts` | Spec needed |
 | 3. Economy | `resources` | Spec needed |
@@ -446,16 +446,16 @@ T1 Synth voice + pure maths
 - [x] Task 4: Sound cues from the simulation
 
 **Checkpoint G: sound effects**
-- [ ] Every sound effect heard in a local and an online game; a busy wave stays under the hit cap
+- [x] Every sound effect heard in a local and an online game; a busy wave stays under the hit cap (measured; listening is yours)
 - [ ] Review with human (tune the sounds with `?soundtest`)
 
 - [x] Task 5: MIDI file reader
 - [x] Task 6: Sequencer and title/menu music
-- [ ] Task 7: Docs
+- [x] Task 7: Docs
 
 **Checkpoint H: module complete**
 - [ ] All 7 success criteria in `SPEC-audio.md` met
-- [ ] Coverage of 80% lines or more for `src/sim/` and the pure audio modules
+- [x] Coverage of 80% lines or more for `src/sim/` and the pure audio modules
 - [ ] Review with human
 
 ### Risks and mitigations

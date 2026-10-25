@@ -98,6 +98,36 @@ Towers always shoot the enemy closest to the keep. Traps fire on a fixed timer f
 
 Dev server only: `E` spawns one enemy and `M` spawns 200 (stress test).
 
+## Sound and music
+
+Everything you hear is played by the game's own small chiptune synth (pulse waves with PWM, triangle, sawtooth, sine and noise, with volume and pitch envelopes) on the browser's Web Audio API. There's no audio library.
+
+- **Sound effects** come from what happens in the game: hits, cannon and catapult blasts, enemies reaching the keep, treasure claimed, a wave starting, the keep falling, and your own builds, sales and refused actions. Busy waves are capped so they stay a rhythm, not a wall of noise. Online, everyone hears the game's events.
+- **Music** plays on the title screen and the start screen, and fades out when a game starts. Until you add your own songs, a short original placeholder theme plays.
+- **Sound: on/off** and the **Music** and **Effects** sliders sit at the bottom of the side panel, and they're remembered on this device.
+- Browsers only allow sound after a click or key press, so the game is silent until the first one (dismissing the title screen counts).
+- **Tuning sounds:** every effect is defined in `src/audio/sounds.ts`. With the dev server running, open http://localhost:5173/?soundtest to play each one.
+
+### Adding a song
+
+1. Put the MIDI file in `public/music/`, e.g. `public/music/castle-theme.mid` (format 0 or 1).
+2. Add an entry to `SONGS` in `src/audio/songs.ts`, above the placeholder (the first song listed for a place wins):
+
+   ```ts
+   {
+     id: "castle-theme",
+     title: "Castle Theme",
+     plays: ["title", "menu"],
+     loop: true,
+     source: "Where it came from (URL or author)",
+     licence: "The licence you have it under, e.g. CC BY 4.0",
+     file: "castle-theme.mid",
+   },
+   ```
+
+3. **Instruments:** MIDI channel 10 plays drums (kick 35-36, snare 37-40, hi-hat 42-46). The other channels play lead, harmony, bass and arp in the order they first appear. To change that, add `channels: { 0: "lead", 1: "bass" }` (MIDI channels counted from 0). Instrument sounds are in `INSTRUMENTS` in the same file.
+4. **Check the rights.** MIDI arrangements of existing songs usually have their own copyright, so only add songs you're allowed to use, and record where each came from.
+
 ## Commands
 
 | Command | What it does |
@@ -199,6 +229,8 @@ src/sim/              Pure, deterministic game simulation (no DOM, seeded RNG)
 src/net/              Message types and state snapshots, shared by browser and server
 src/render/           Canvas drawing (reads state, never changes it)
 src/ui/               Side panel, input, hover info, game-over dialog
+src/audio/            Synth, sound effects, MIDI reader, music sequencer and song list
+public/music/         MIDI files for the songs listed in src/audio/songs.ts
 src/styles.css        System 6/7 style window chrome
 server/               Multiplayer game server (Node): rooms, connections, static files, probe
 tests/sim/            Unit tests for the simulation

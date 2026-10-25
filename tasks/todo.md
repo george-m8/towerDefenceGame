@@ -114,8 +114,8 @@ Cues age out like effects. They're included in network snapshots, and the audio 
 ---
 
 ### Checkpoint G: sound effects
-- [ ] All tests pass, build clean
-- [ ] Every sound effect heard in a local and an online game; a busy wave (dev `M` stress test) stays under the hit cap
+- [x] All tests pass, build clean
+- [x] Every sound effect plays in a local game (dev voice counter) and online cues are covered by tests; a 200-enemy stress wave peaked at 8 voices (caps hold). Listening is yours.
 - [ ] Review with human (tune the sounds with `?soundtest`)
 
 ---
@@ -172,11 +172,11 @@ Cues age out like effects. They're included in network snapshots, and the audio 
 **Description:** README: a "Sound and music" section covering the sound effects, the speaker button, the `?soundtest` page, and how to add a MIDI song (where the file goes, the manifest entry, channel mapping, recording its licence). `SPEC.md` gets a pointer to `SPEC-audio.md`.
 
 **Acceptance criteria:**
-- [ ] Someone can add a new MIDI song by following the README alone
-- [ ] README and `SPEC.md` describe the audio accurately
+- [x] Someone can add a new MIDI song by following the README alone
+- [x] README and `SPEC.md` describe the audio accurately
 
 **Verification:**
-- [ ] `npm run build`
+- [x] `npm run build`
 
 **Dependencies:** Task 6
 
@@ -188,5 +188,5 @@ Cues age out like effects. They're included in network snapshots, and the audio 
 
 ### Checkpoint H: audio complete
 - [ ] All 7 success criteria in `SPEC-audio.md` met
-- [ ] `npm run coverage` passes (80% lines or more for `src/sim/` and the pure audio modules)
+- [x] `npm run coverage` passes (98.2% lines overall; `src/audio` 96.8% with `synth.ts` excluded as planned)
 - [ ] Review with human, then move this file to `tasks/audio/`

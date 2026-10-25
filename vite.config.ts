@@ -12,8 +12,9 @@ export default defineConfig({
     include: ["tests/**/*.test.ts"],
     coverage: {
       provider: "v8",
-      include: ["src/sim/**/*.ts", "src/net/**/*.ts", "server/**/*.ts"],
-      exclude: ["server/main.ts", "server/probe.ts"],
+      include: ["src/sim/**/*.ts", "src/net/**/*.ts", "src/audio/**/*.ts", "server/**/*.ts"],
+      // Entry points, and raw Web Audio wiring (synth.ts: checked by ear on ?soundtest).
+      exclude: ["server/main.ts", "server/probe.ts", "src/audio/synth.ts"],
       reporter: ["text", "html"],
       thresholds: { lines: 80 },
     },

@@ -43,12 +43,14 @@ export function notesInWindow(
 }
 
 interface PlayerDeps {
+  songs: readonly SongEntry[];
   fetchBytes: (url: string) => Promise<ArrayBuffer>;
   setInterval: (fn: () => void, ms: number) => unknown;
   clearInterval: (id: unknown) => void;
 }
 
 const defaultDeps: PlayerDeps = {
+  songs: SONGS,
   fetchBytes: (url) => fetch(url).then((response) => response.arrayBuffer()),
   setInterval: (fn, ms) => window.setInterval(fn, ms),
   clearInterval: (id) => window.clearInterval(id as number),
@@ -63,7 +65,8 @@ interface Playing {
   scheduledUntil: number;
 }
 
-export function createMusicPlayer(engine: AudioEngine, deps: PlayerDeps = defaultDeps) {
+export function createMusicPlayer(engine: AudioEngine, overrides: Partial<PlayerDeps> = {}) {
+  const deps = { ...defaultDeps, ...overrides };
   const loaded = new Map<string, MidiSong>();
   let playing: Playing | null = null;
   let timer: unknown = null;
@@ -112,7 +115,7 @@ export function createMusicPlayer(engine: AudioEngine, deps: PlayerDeps = defaul
     /** Starts the song for `place` (if audio is unlocked and it isn't already playing). */
     async play(place: MusicPlace) {
       if (!engine.unlocked) return;
-      const entry = SONGS.find((s) => s.plays.includes(place));
+      const entry = deps.songs.find((s) => s.plays.includes(place));
       if (!entry || playing?.entry === entry) return;
       let song: MidiSong;
       try {

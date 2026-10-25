@@ -140,3 +140,46 @@ describe("music player", () => {
     expect(timers.setInterval).not.toHaveBeenCalled();
   });
 });
+
+describe("music player with a MIDI file", () => {
+  it("fetches the file from public/music once, parses it and plays its notes", async () => {
+    // One C4 quarter note at 120 bpm, format 0.
+    const bytes = new Uint8Array([
+      ...[0x4d, 0x54, 0x68, 0x64, 0, 0, 0, 6, 0, 0, 0, 1, 0x01, 0xe0],
+      ...[0x4d, 0x54, 0x72, 0x6b, 0, 0, 0, 12],
+      ...[0, 0x90, 60, 100, 0x83, 0x60, 0x80, 60, 0, 0, 0xff, 0x2f, 0],
+    ]);
+    const fetchBytes = vi.fn(async () => bytes.buffer);
+    const notes: unknown[][] = [];
+    const engine = {
+      unlocked: true,
+      unlock: () => {},
+      now: () => 0,
+      setVolumes: () => {},
+      fadeOutMusic: () => {},
+      playNote: (...args: unknown[]) => void notes.push(args),
+    } as unknown as AudioEngine;
+    let tick = () => {};
+    const song: SongEntry = {
+      id: "file-song",
+      title: "File song",
+      plays: ["title"],
+      loop: false,
+      source: "test",
+      licence: "test",
+      file: "file-song.mid",
+    };
+    const player = createMusicPlayer(engine, {
+      songs: [song],
+      fetchBytes,
+      setInterval: (fn: () => void) => ((tick = fn), 1),
+      clearInterval: () => {},
+    });
+    await player.play("title");
+    tick();
+    expect(fetchBytes).toHaveBeenCalledWith("/music/file-song.mid");
+    expect(notes).toHaveLength(1);
+    expect(notes[0][1]).toBeCloseTo(261.63, 1); // C4, played on the lead
+    expect(notes[0][3]).toBe("music");
+  });
+});
