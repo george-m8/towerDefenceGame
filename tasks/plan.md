@@ -1,9 +1,9 @@
 # Implementation Plan: Post-MVP Phases
 
 Capability map: [`CAPABILITIES.md`](../CAPABILITIES.md)
-Current module spec: [`SPEC-audio.md`](../SPEC-audio.md)
-Task list (current module only): [`tasks/todo.md`](todo.md)
-Finished modules: [`tasks/tile-layers/`](tile-layers/todo.md), [`tasks/tower-aiming/`](tower-aiming/todo.md), [`tasks/map-gen/`](map-gen/todo.md), [`tasks/players/`](players/todo.md), [`tasks/game-server/`](game-server/todo.md) (awaiting the cross-machine probe and review), [`tasks/net-client/`](net-client/todo.md)
+Current module spec: none (`audio` is done)
+Task list (current module only): `tasks/todo.md`, written when the next module's spec is approved
+Finished modules: [`tasks/tile-layers/`](tile-layers/todo.md), [`tasks/tower-aiming/`](tower-aiming/todo.md), [`tasks/audio/`](audio/todo.md), [`tasks/map-gen/`](map-gen/todo.md), [`tasks/players/`](players/todo.md), [`tasks/game-server/`](game-server/todo.md) (awaiting the cross-machine probe and review), [`tasks/net-client/`](net-client/todo.md)
 Previous plan (MVP, complete except a Firefox/Safari smoke test): [`tasks/mvp/`](mvp/plan.md)
 
 ## How this plan works
@@ -27,7 +27,8 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | 1. Basics (continued) | `tower-aiming` | Done |
 | | `line-of-sight` | Spec drafted |
 | | `units` | Spec drafted |
-| 1c. Presentation | `audio` | **Built, awaiting your listening review** |
+| 1c. Presentation | `audio` | Done |
+| | `music-director` | Outline only (see below); spec when you want it |
 | 2. Setup and modes | `game-setup` | Spec needed |
 | | `mode-ramparts` | Spec needed |
 | 3. Economy | `resources` | Spec needed |
@@ -411,7 +412,7 @@ A start screen (name, Play solo, Create room, Join by code) and a waiting room w
 
 ---
 
-## Module 8: `audio` (current)
+## Module 8: `audio` (done)
 
 Spec: [`SPEC-audio.md`](../SPEC-audio.md)
 
@@ -447,16 +448,16 @@ T1 Synth voice + pure maths
 
 **Checkpoint G: sound effects**
 - [x] Every sound effect heard in a local and an online game; a busy wave stays under the hit cap (measured; listening is yours)
-- [ ] Review with human (tune the sounds with `?soundtest`)
+- [x] Review with human (tune the sounds with `?soundtest`)
 
 - [x] Task 5: MIDI file reader
 - [x] Task 6: Sequencer and title/menu music
 - [x] Task 7: Docs
 
 **Checkpoint H: module complete**
-- [ ] All 7 success criteria in `SPEC-audio.md` met
+- [x] All 7 success criteria in `SPEC-audio.md` met
 - [x] Coverage of 80% lines or more for `src/sim/` and the pure audio modules
-- [ ] Review with human
+- [x] Review with human
 
 ### Risks and mitigations
 
@@ -474,6 +475,39 @@ T1 Synth voice + pure maths
 ## Later modules: provisional outlines
 
 These are rough vertical slices, not tasks. Each becomes a proper task list after its spec is approved.
+
+### `music-director` (outline only; builds on `audio`)
+
+**Goal:** music follows what the player is doing: an intro piece, menu music, and gameplay music that is either one standard track or switches between **peaceful** and **fight**.
+
+**Behaviour (proposed):**
+- **Places:** `intro`, `menu`, `gameplay`, `peaceful` and `fight` join the song manifest's `plays` list.
+- **Intro plays once, to the end.** It starts at the first gesture and isn't cut off by moving to the start screen or starting a game. When it finishes, the director picks what fits *now*: `menu` on the start screen or waiting room, gameplay music once a game is running.
+- **Gameplay music has two modes:**
+  - **Standard:** one `gameplay` track loops all game.
+  - **Peaceful/fight:** `peaceful` while building between waves, `fight` while a wave is on. There's a minimum time in each state (e.g. 8 s) so the music doesn't flip with every enemy.
+- **Fallbacks:** a missing `fight` or `peaceful` track falls back to `gameplay`; with no gameplay songs at all, it's silent. Missing tracks never cause errors.
+- **Transitions** between songs crossfade, or wait for the end of the current phrase (to decide in the spec).
+- **Game over** can play a short sting, then return to menu music.
+- **Online:** each client decides from its own view of the game. No new server data is needed.
+
+**Slices:**
+
+| # | Slice | Size |
+|---|---|---|
+| 1 | Pure music director: given the screen (intro, menu, game), whether the intro is still playing, and fight/peaceful, which place should be playing; with fallbacks, tested | S |
+| 2 | Player and engine support: play once and report when finished; crossfade between two songs (two music sub-buses) | M |
+| 3 | Intro to the end, then hand over to menu or gameplay | S |
+| 4 | Pure combat detector from game state (wave spawning or enemies on the map, with the minimum-time rule), then peaceful/fight switching in game | M |
+| 5 | A "Battle music" setting in the Sound panel (standard or peaceful/fight), and README docs for the new places | S |
+
+**Open questions for its spec:**
+1. Can a click skip the intro straight to the menu music?
+2. What counts as "fight": any enemy on the map, enemies near the keep, or only while a wave is spawning?
+3. Crossfade (smooth, but two songs can clash) or wait for the current phrase or loop to end (more musical, but slower)?
+4. Is peaceful/fight a player setting, or decided by which songs the manifest lists?
+5. Stings for game over, wave cleared, or the keep in danger?
+
 
 ### `line-of-sight`
 1. Grid line-of-sight check between tower and target
