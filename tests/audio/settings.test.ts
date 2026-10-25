@@ -23,10 +23,11 @@ const blocked = {
 };
 
 describe("audio settings", () => {
-  it("round-trips mute and volumes through storage", () => {
+  it("round-trips mute, volumes and the music pack through storage", () => {
     const storage = memoryStorage();
-    saveAudioSettings(storage, { muted: true, music: 0.25, sfx: 0.5 });
-    expect(loadAudioSettings(storage)).toEqual({ muted: true, music: 0.25, sfx: 0.5 });
+    const settings = { muted: true, music: 0.25, sfx: 0.5, pack: "music-pack-1" };
+    saveAudioSettings(storage, settings);
+    expect(loadAudioSettings(storage)).toEqual(settings);
   });
 
   it("uses defaults when nothing is saved, or the saved value is junk", () => {
@@ -38,11 +39,12 @@ describe("audio settings", () => {
 
   it("clamps out-of-range volumes and ignores wrong types", () => {
     const storage = memoryStorage();
-    storage.setItem("keep-audio", JSON.stringify({ muted: "yes", music: 7, sfx: -1 }));
+    storage.setItem("keep-audio", JSON.stringify({ muted: "yes", music: 7, sfx: -1, pack: 3 }));
     expect(loadAudioSettings(storage)).toEqual({
       muted: DEFAULT_AUDIO_SETTINGS.muted,
       music: 1,
       sfx: 0,
+      pack: null,
     });
   });
 

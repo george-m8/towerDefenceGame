@@ -108,9 +108,9 @@ describe("music player", () => {
     return { engine, player, timers, runTick: () => tick?.() };
   }
 
-  it("schedules the intro song's first notes on the music bus", async () => {
+  it("schedules the menu song's first notes on the music bus", async () => {
     const { engine, player, runTick } = setup();
-    await player.play("intro");
+    await player.play("menu");
     runTick();
     expect(engine.notes.length).toBeGreaterThan(0);
     expect(engine.notes.every((args) => args[3] === "music")).toBe(true);
@@ -119,14 +119,14 @@ describe("music player", () => {
 
   it("playing the same place again doesn't restart it", async () => {
     const { player, timers } = setup();
-    await player.play("intro");
-    await player.play("intro");
+    await player.play("menu");
+    await player.play("menu");
     expect(timers.setInterval).toHaveBeenCalledTimes(1);
   });
 
   it("fading out stops scheduling and fades the music bus", async () => {
     const { engine, player, timers, runTick } = setup();
-    await player.play("intro");
+    await player.play("menu");
     player.fadeOut(1);
     expect(engine.fades).toEqual([1]);
     expect(timers.clearInterval).toHaveBeenCalled();
@@ -138,7 +138,7 @@ describe("music player", () => {
   it("does nothing until audio is unlocked", async () => {
     const { engine, player, timers } = setup();
     (engine as { unlocked: boolean }).unlocked = false;
-    await player.play("intro");
+    await player.play("menu");
     expect(timers.setInterval).not.toHaveBeenCalled();
   });
 });

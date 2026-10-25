@@ -79,7 +79,7 @@ export const INSTRUMENTS: Record<Instrument, InstrumentDef> = {
 export interface SongEntry {
   id: string;
   title: string;
-  /** Where this song plays. The first song listed for a place is used. */
+  /** Where this song plays. A music pack's songs replace these for any place it has songs for. */
   plays: MusicPlace[];
   loop: boolean;
   /** Where it came from, and the licence you have it under. Required. */
@@ -220,8 +220,8 @@ export const SONGS: SongEntry[] = [
   {
     id: "concertino-in-d-john-baston",
     title: "Concertino in D by John Baston",
-    plays: ["intro", "menu"],
-    loop: true,
+    plays: ["intro"],
+    loop: false,
     source: "https://www.midiworld.com/",
     licence: "PD",
     file: "baston.mid",
@@ -230,7 +230,7 @@ export const SONGS: SongEntry[] = [
   {
     id: "placeholder-theme",
     title: "Keep Theme (placeholder)",
-    plays: ["intro", "menu"],
+    plays: ["menu"],
     loop: true,
     source: "Written for this game",
     licence: "Same as this project",

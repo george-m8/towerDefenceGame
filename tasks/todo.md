@@ -15,10 +15,10 @@ Spec: [`SPEC-music-packs.md`](../SPEC-music-packs.md). Plan: [`tasks/plan.md`](p
 - Files: `tools/musicPacks.ts`, `vite.config.ts`, `src/vite-env.d.ts`, `.gitignore`, `tests/tools/musicPacks.test.ts`
 
 ## Task 3: Playlist and chosen pack
-- [ ] Songs for a place: the active pack's songs if it has any there, otherwise the built-in songs for that place
-- [ ] Random pick never repeats the last song when there are several
-- [ ] Active pack: the saved choice if it exists, else the first pack; "Built-in" means none
-- [ ] The chosen pack is saved with the sound settings
+- [x] Songs for a place: the active pack's songs if it has any there, otherwise the built-in songs for that place
+- [x] Random pick never repeats the last song when there are several
+- [x] Active pack: the saved choice if it exists, else the first pack; "Built-in" means none
+- [x] The chosen pack is saved with the sound settings
 - Files: `src/audio/playlist.ts`, `src/audio/songs.ts`, `src/audio/settings.ts`, tests
 
 ## Task 4: Music player

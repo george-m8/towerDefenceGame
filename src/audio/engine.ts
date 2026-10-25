@@ -1,6 +1,6 @@
 // The game's single door to sound. Silent until unlock() is called from a user gesture
 // (browsers block audio before that), and it never lets an audio error reach the game.
-import type { AudioSettings } from "./settings";
+import type { Volumes } from "./settings";
 import { playVoice as webAudioVoice, type VoiceSettings } from "./synth";
 
 export type Bus = "sfx" | "music";
@@ -13,7 +13,7 @@ export interface AudioEngine {
   playNote(voice: VoiceSettings, hz: number, duration: number, bus: Bus, when?: number): void;
   /** The audio clock in seconds (0 before unlock). */
   now(): number;
-  setVolumes(settings: AudioSettings): void;
+  setVolumes(volumes: Volumes): void;
   /** Fades the music bus to silence over `seconds`, then restores its volume for next time. */
   fadeOutMusic(seconds: number): void;
 }
@@ -34,7 +34,7 @@ const FADE_RESTORE_GAP = 0.05;
 export function createWebAudioEngine(deps: EngineDeps = defaultDeps): AudioEngine {
   let ctx: AudioContext | null = null;
   let buses: { master: GainNode; sfx: GainNode; music: GainNode } | null = null;
-  let volumes: AudioSettings | null = null;
+  let volumes: Volumes | null = null;
 
   const applyVolumes = () => {
     if (!buses || !volumes) return;
