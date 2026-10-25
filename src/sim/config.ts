@@ -234,6 +234,12 @@ export interface EnemyKind {
   damage: number;
   attackInterval: number; // seconds between hits
   bounty: number;
+  /** What one costs out of a wave's threat budget (a goblin is 1). */
+  threat: number;
+  /** The first wave it can appear in. */
+  firstWave: number;
+  /** How likely it is to be drawn for a wave, relative to other kinds (stopgap mix). */
+  mixWeight: number;
   variants: EnemyVariant[];
 }
 
@@ -246,6 +252,9 @@ export const ENEMY_KINDS = {
     damage: 5,
     attackInterval: 1,
     bounty: 2,
+    threat: 1,
+    firstWave: 1,
+    mixWeight: 10,
     variants: [
       { name: "grunt", weight: 6, hp: 1, speed: 1, damage: 1, size: "normal" },
       { name: "runt", weight: 3, hp: 0.7, speed: 1.15, damage: 0.8, size: "small" },
@@ -260,6 +269,9 @@ export const ENEMY_KINDS = {
     damage: 2,
     attackInterval: 0.6,
     bounty: 1,
+    threat: 0.4,
+    firstWave: 3,
+    mixWeight: 6,
     variants: [{ name: "drone", weight: 1, hp: 1, speed: 1, damage: 1, size: "normal" }],
   },
   wolfRider: {
@@ -270,6 +282,9 @@ export const ENEMY_KINDS = {
     damage: 4,
     attackInterval: 0.8,
     bounty: 3,
+    threat: 2,
+    firstWave: 4,
+    mixWeight: 4,
     variants: [
       { name: "raider", weight: 3, hp: 1, speed: 1, damage: 1, size: "normal" },
       { name: "scout", weight: 2, hp: 0.8, speed: 1.1, damage: 0.9, size: "small" },
@@ -283,6 +298,9 @@ export const ENEMY_KINDS = {
     damage: 4,
     attackInterval: 0.6,
     bounty: 3,
+    threat: 2,
+    firstWave: 5,
+    mixWeight: 5,
     variants: [
       { name: "raider", weight: 3, hp: 1, speed: 1, damage: 1, size: "normal" },
       { name: "berserker", weight: 1, hp: 0.8, speed: 1.1, damage: 1.4, size: "small" },
@@ -296,6 +314,9 @@ export const ENEMY_KINDS = {
     damage: 8,
     attackInterval: 1.2,
     bounty: 4,
+    threat: 3,
+    firstWave: 6,
+    mixWeight: 4,
     variants: [
       { name: "warrior", weight: 3, hp: 1, speed: 1, damage: 1, size: "normal" },
       { name: "miner", weight: 2, hp: 1, speed: 1, damage: 0.9, size: "small" },
@@ -310,6 +331,9 @@ export const ENEMY_KINDS = {
     damage: 8,
     attackInterval: 0.5,
     bounty: 10,
+    threat: 6,
+    firstWave: 7,
+    mixWeight: 1.5,
     variants: [{ name: "warlord", weight: 1, hp: 1, speed: 1, damage: 1, size: "normal" }],
   },
   dwarfThane: {
@@ -320,6 +344,9 @@ export const ENEMY_KINDS = {
     damage: 14,
     attackInterval: 1.2,
     bounty: 12,
+    threat: 8,
+    firstWave: 9,
+    mixWeight: 1,
     variants: [{ name: "thane", weight: 1, hp: 1, speed: 1, damage: 1, size: "normal" }],
   },
   golem: {
@@ -330,6 +357,9 @@ export const ENEMY_KINDS = {
     damage: 40,
     attackInterval: 3,
     bounty: 20,
+    threat: 15,
+    firstWave: 10,
+    mixWeight: 0.5,
     variants: [
       { name: "stone", weight: 3, hp: 1, speed: 1, damage: 1, size: "normal" },
       { name: "iron", weight: 1, hp: 1.3, speed: 0.9, damage: 1.2, size: "large" },

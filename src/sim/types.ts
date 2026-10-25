@@ -97,8 +97,8 @@ export interface FlowField {
 export interface WaveState {
   /** Waves started so far (0 before the first wave). */
   number: number;
-  /** Enemies of the current wave still to spawn. */
-  toSpawn: number;
+  /** Threat budget of the current wave still to spend; 0 once it has finished spawning. */
+  threatLeft: number;
   /** Ticks until the next spawn while spawning. */
   spawnTimer: number;
   /** Ticks until the next wave, once spawning has finished. */
@@ -172,7 +172,7 @@ export type Command =
   | { type: "toggleFastForward" }
   | { type: "build"; kind: StructureKind; x: number; y: number; facing?: Facing }
   /** Dev only: spawn enemies at random spawn tiles. */
-  | { type: "debugSpawn"; count: number }
+  | { type: "debugSpawn"; count: number; kind?: EnemyKindId }
   | { type: "sendWave" }
   | { type: "sell"; x: number; y: number };
 

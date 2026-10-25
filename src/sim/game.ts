@@ -168,7 +168,11 @@ export function applyCommand(
     case "debugSpawn":
       for (let i = 0; i < command.count; i++) {
         const p = state.spawnTiles[randomInt(state, 0, state.spawnTiles.length - 1)];
-        spawnEnemy(state, p.x, p.y);
+        spawnEnemy(state, p.x, p.y, {
+          kind: command.kind,
+          wave: Math.max(1, state.wave.number),
+          variant: "random",
+        });
       }
       return { ok: true };
   }

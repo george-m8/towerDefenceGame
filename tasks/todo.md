@@ -64,9 +64,9 @@ Files: `src/net/protocol.ts`, `src/net/snapshot.ts`, `src/net/view.ts`, `src/ren
 
 Each wave's threat budget is today's count (5 + 3 x wave); enemies are drawn by `mixWeight` from kinds whose `firstWave` has arrived and whose threat fits the remaining budget; the wave ends when nothing fits. `debugSpawn` gains an optional `kind`; `E` cycles through the roster.
 
-- [ ] Waves 1 and 2 are exactly 8 and 11 goblins
-- [ ] No kind appears before its first wave; total threat never exceeds the budget
-- [ ] The same seed gives the same wave
+- [x] Waves 1 and 2 are exactly 8 and 11 goblins
+- [x] No kind appears before its first wave; total threat never exceeds the budget
+- [x] The same seed gives the same wave
 
 Files: `src/sim/waves.ts`, `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/game.ts`, `src/ui/input.ts`, `tests/sim/waves.test.ts`. Size: M. Depends on: 2.
 
