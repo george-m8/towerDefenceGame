@@ -496,7 +496,7 @@ T2 Pack scan + Vite plugin + gitignore
 - [x] Task 1: MIDI reader keeps the good tracks of a file with a broken track
 - [x] Task 2: Pack scan and Vite plugin (`virtual:music-packs`), pack contents git-ignored
 - [x] Task 3: Playlist (pack songs or defaults, random pick without repeats) and the chosen pack setting
-- [ ] Task 4: Music player: new places, play-once with an ended callback, shuffle chaining, switch after a fade
+- [x] Task 4: Music player: new places, play-once with an ended callback, shuffle chaining, switch after a fade
 - [ ] Task 5: Wiring: intro to menu hand-over, in-play, game-over, restart, unlock on direct links; Music dropdown
 - [ ] Task 6: Docs (README, SPEC-audio, CAPABILITIES)
 

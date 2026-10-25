@@ -3,6 +3,9 @@
 import type { MusicPlace, PackFiles } from "./places";
 import type { SongEntry } from "./songs";
 
+/** Places where another song follows when one ends; elsewhere a song plays once. */
+export const SHUFFLED_PLACES: readonly MusicPlace[] = ["menu", "in-play"];
+
 /** The choice that means "no pack, built-in songs only". */
 export const BUILT_IN = "built-in";
 

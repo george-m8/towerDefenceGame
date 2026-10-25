@@ -22,10 +22,10 @@ Spec: [`SPEC-music-packs.md`](../SPEC-music-packs.md). Plan: [`tasks/plan.md`](p
 - Files: `src/audio/playlist.ts`, `src/audio/songs.ts`, `src/audio/settings.ts`, tests
 
 ## Task 4: Music player
-- [ ] Places are intro, menu, in-play, game-over
-- [ ] A play-once song reports `ended` after its last note; menu and in-play move on to another song instead
-- [ ] `switchTo` fades out and starts the next place after the fade; a stale load never starts
-- [ ] `resume()` starts the wanted place once audio unlocks
+- [x] Places are intro, menu, in-play, game-over
+- [x] A play-once song reports `ended` after its last note; menu and in-play move on to another song instead
+- [x] `switchTo` fades out and starts the next place after the fade; a stale load never starts
+- [x] `resume()` starts the wanted place once audio unlocks
 - Files: `src/audio/sequencer.ts`, `tests/audio/sequencer.test.ts`
 
 ## Task 5: Wiring and Music dropdown
