@@ -92,12 +92,24 @@ export function createMusicPlayer(engine: AudioEngine, overrides: Partial<Player
   let timer: unknown = null;
   /** Bumped by every start and stop, so a slow load that's been replaced never starts. */
   let generation = 0;
+  /** Audio time a fade-out is over; nothing new starts before it. */
+  let quietFrom = 0;
 
   const stop = () => {
     generation++;
     if (timer !== null) deps.clearInterval(timer);
     timer = null;
-    playing = null;
+    if (playing) {
+      playing = null;
+      player.onSongChange?.(null);
+    }
+  };
+
+  /** Fades out what's sounding; the next song waits until the fade is over. */
+  const fade = (seconds: number) => {
+    if (!playing) return;
+    engine.fadeOutMusic(seconds);
+    quietFrom = engine.now() + seconds;
   };
 
   const load = async (entry: SongEntry): Promise<MidiSong> => {
@@ -111,8 +123,8 @@ export function createMusicPlayer(engine: AudioEngine, overrides: Partial<Player
     return song;
   };
 
-  /** Picks a song for `next` and starts it `delay` seconds from now. */
-  const begin = async (next: MusicPlace, delay: number): Promise<void> => {
+  /** Picks a song for `next` and starts it shortly (after any fade-out). */
+  const begin = async (next: MusicPlace): Promise<void> => {
     stop();
     place = next;
     const mine = generation;
@@ -127,15 +139,16 @@ export function createMusicPlayer(engine: AudioEngine, overrides: Partial<Player
       song = await load(entry);
     } catch {
       broken.add(entry.id); // a missing or broken file: try another song
-      if (generation === mine) await begin(next, delay);
+      if (generation === mine) await begin(next);
       return;
     }
     if (generation !== mine) return;
     lastId = entry.id;
-    const start = engine.now() + delay;
+    const start = Math.max(engine.now(), quietFrom) + START_DELAY;
     const channels = [...new Set(song.notes.map((n) => n.channel))];
     playing = { place: next, entry, song, channels, start, scheduledUntil: start };
     timer = deps.setInterval(tick, TICK_MS);
+    player.onSongChange?.(entry);
   };
 
   const ended = (finished: MusicPlace) => {
@@ -162,7 +175,7 @@ export function createMusicPlayer(engine: AudioEngine, overrides: Partial<Player
     }
     playing.scheduledUntil = to;
     if (!entry.loop && engine.now() >= start + song.duration) {
-      if (SHUFFLED_PLACES.includes(current)) void begin(current, START_DELAY);
+      if (SHUFFLED_PLACES.includes(current)) void begin(current);
       else {
         stop();
         ended(current);
@@ -173,20 +186,39 @@ export function createMusicPlayer(engine: AudioEngine, overrides: Partial<Player
   const player = {
     /** Called when a play-once place (intro, game-over) has finished. */
     onEnded: null as ((place: MusicPlace) => void) | null,
+    /** Called with each song as it starts, and null when music stops. */
+    onSongChange: null as ((song: SongEntry | null) => void) | null,
+
+    /** The song playing now, if any. */
+    get nowPlaying(): SongEntry | null {
+      return playing?.entry ?? null;
+    },
 
     /** Starts music for `next`, unless it's already playing (or waiting to). */
     async play(next: MusicPlace) {
       if (place === next) return;
       place = next;
-      if (engine.unlocked) await begin(next, START_DELAY);
+      if (engine.unlocked) await begin(next);
     },
 
     /** Fades out whatever is playing, then starts `next` once the fade is over. */
     async switchTo(next: MusicPlace, fadeSeconds: number) {
-      const fading = playing !== null;
       player.fadeOut(fadeSeconds);
       place = next;
-      if (engine.unlocked) await begin(next, fading ? fadeSeconds + START_DELAY : START_DELAY);
+      if (engine.unlocked) await begin(next);
+    },
+
+    /**
+     * Moves on from the current song: another song in a shuffled place, otherwise the place
+     * ends (so skipping the intro hands over to menu music).
+     */
+    async skip(fadeSeconds: number) {
+      if (!playing) return;
+      const current = playing.place;
+      fade(fadeSeconds);
+      stop();
+      if (SHUFFLED_PLACES.includes(current)) await begin(current);
+      else ended(current);
     },
 
     /** Starts the current place again from the top, with a fresh pick (after a pack change). */
@@ -196,12 +228,12 @@ export function createMusicPlayer(engine: AudioEngine, overrides: Partial<Player
 
     /** Starts the wanted place if it was asked for before audio was unlocked. */
     async resume() {
-      if (place && !playing && engine.unlocked) await begin(place, START_DELAY);
+      if (place && !playing && engine.unlocked) await begin(place);
     },
 
     /** Stops scheduling and fades out whatever is still sounding. */
     fadeOut(seconds: number) {
-      if (playing) engine.fadeOutMusic(seconds);
+      fade(seconds);
       stop();
       place = null;
     },

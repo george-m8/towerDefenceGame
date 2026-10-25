@@ -99,6 +99,7 @@ const music = createMusicPlayer(audio, {
 // Direct room links skip the intro, so a game's music can be asked for before audio unlocks.
 unlockOnFirstGesture(audio, window, () => void music.resume());
 const MUSIC_FADE_SECONDS = 1;
+const SKIP_FADE_SECONDS = 0.4;
 /** What the music is following: the menus (intro, start screen, waiting room) or a game. */
 let musicScene: "menus" | MusicPlace = "menus";
 music.onEnded = (place) => {
@@ -111,7 +112,7 @@ if (import.meta.env.DEV) {
   // Lets a test script reach into the game (e.g. place enemies for a visual check).
   (window as unknown as { __state: () => GameState | null }).__state = () => session?.state ?? null;
 }
-createSoundControls(
+const soundControls = createSoundControls(
   element("#sound"),
   audioSettings,
   { names: Object.keys(musicPacks).sort((a, b) => a.localeCompare(b)), shownPack: pack() },
@@ -122,7 +123,9 @@ createSoundControls(
     saveAudioSettings(audioStorage, settings);
     if (packChanged) void music.restart(MUSIC_FADE_SECONDS);
   },
+  () => void music.skip(SKIP_FADE_SECONDS),
 );
+music.onSongChange = (song) => soundControls.showSong(song?.title ?? null);
 
 /** Switches the music when a game starts, the keep falls, or a game restarts. */
 function followMusic() {

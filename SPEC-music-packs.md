@@ -23,11 +23,19 @@ public/music/music-packs/
     ...
 ```
 
-- **Each pack is a folder** inside `music-packs/`, named as you like. The Sound panel gets a **Music** dropdown listing each pack plus "Built-in" (defaults only). It starts on the first pack (alphabetically), is remembered per device with the other sound settings, and is hidden when there are no packs. Changing it restarts the current music from the new pack.
+- **Each pack is a folder** inside `music-packs/`, named as you like. The Sound panel gets a **Songs** dropdown listing each pack plus "Built-in" (defaults only). It starts on the first pack (alphabetically), is remembered per device with the other sound settings, and is hidden when there are no packs. Changing it restarts the current music from the new pack.
 
 - **A folder with `.mid` files in it replaces the defaults for that category.** An empty (or missing) folder uses the defaults from `src/audio/songs.ts`.
 - **Several songs in a folder:** one is picked at random. In `menu` and `in-play`, when a song ends the next is picked at random, never the same one twice in a row (a folder with one song repeats it).
 - **Pack songs have no manifest entry.** They use the default channel mapping (channel 10 is drums, other channels take lead, harmony, bass and arp in order of appearance). The title is the file name.
+
+## Now playing and Skip
+
+Under the Sound on/off button: **Now playing: <title>** (a pack song's title is its file name) and a **Skip** button, both hidden while nothing plays.
+
+- **Skip in the menu or in-play** fades out (short fade) and starts a different random song from the same place (the same song again if it's the only one).
+- **Skip on the intro** ends it, which hands over to menu music just as the intro finishing does. **Skip on game-over** stops it.
+- Skip works while muted too (the title still changes).
 
 ## Defaults (when a folder is empty)
 
@@ -78,6 +86,7 @@ Vitest, written first:
 - **Playlist:** a category with pack files uses only those; an empty category uses the defaults; random pick is injectable and never repeats the last song when there's more than one.
 - **Sequencer:** a play-once song calls `ended` after its last note; a looping song never does; `fadeOut` doesn't call `ended`.
 - **Hand-over:** the intro ending in the menu starts menu music; the intro ending after a game started does nothing; starting a game during the intro switches to in-play music.
+- **Now playing and Skip:** the player reports each song as it starts and nothing when it stops; skipping a shuffled place starts a different song after the fade; skipping a play-once place reports it ended.
 - **Plugin:** the folder scan groups `.mid` files by category and ignores other files (tested on a temp folder).
 - **MIDI reader:** a fixture with a broken track keeps the good tracks and the notes before the bad byte.
 - **Manual (in the browser):** intro plays to the end then menu music; starting a game mid-intro switches to in-play; in-play moves to another song at the end; game-over plays; empty folders fall back to the defaults.
@@ -95,13 +104,15 @@ Vitest, written first:
 3. In-play music moves from song to song with no immediate repeats; game-over music plays when the keep falls.
 4. All 16 files in the current pack load.
 5. `git status` never shows pack MIDI files.
-6. `npm run typecheck`, `npm test` and `npm run coverage` pass.
+6. The Sound panel shows the song playing, and Skip moves on (or ends the intro into menu music).
+7. `npm run typecheck`, `npm test` and `npm run coverage` pass.
 
 ## Resolved decisions
 
 1. **Several packs**, each in its own folder (`music-packs/music-pack-1/...`), chosen in the Sound panel.
 2. **Game over** stops in-play music and plays a game-over song once.
 3. **Menu music shuffles** like in-play.
+4. **Now playing and Skip** sit under the mute button (added 2026-10-25).
 
 ## Open questions
 

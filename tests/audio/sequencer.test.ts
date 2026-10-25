@@ -267,6 +267,59 @@ describe("music player", () => {
   });
 });
 
+describe("now playing and skip", () => {
+  it("reports each song as it starts, and nothing once music stops", async () => {
+    const { player } = setup();
+    const titles: (string | null)[] = [];
+    player.onSongChange = (song) => titles.push(song?.title ?? null);
+    await player.play("intro");
+    expect(player.nowPlaying?.title).toBe("intro");
+    player.fadeOut(1);
+    expect(player.nowPlaying).toBeNull();
+    expect(titles).toEqual(["intro", null]);
+  });
+
+  it("a song that plays out to the end clears now playing", async () => {
+    const { player, run } = setup();
+    await player.play("intro");
+    run(2.5);
+    expect(player.nowPlaying).toBeNull();
+  });
+
+  it("skipping in a shuffled place fades out and starts a different song after the fade", async () => {
+    const { engine, player, run, played } = setup();
+    await player.play("menu");
+    await player.skip(0.5);
+    run(2);
+    expect(engine.fades).toEqual([0.5]);
+    expect(player.nowPlaying?.title).toBe("menu-b");
+    expect(played()).toEqual([64]);
+    expect(engine.notes[0].at).toBeGreaterThanOrEqual(5 + 0.5 + 0.5);
+  });
+
+  it("skipping a play-once place ends it, and what follows waits for the fade", async () => {
+    const { engine, player, run, ended, played } = setup();
+    player.onEnded = (place) => {
+      ended.push(place);
+      void player.play("menu"); // as the game does: the intro hands over to menu music
+    };
+    await player.play("intro");
+    await player.skip(0.5);
+    await Promise.resolve();
+    run(2);
+    expect(ended).toEqual(["intro"]);
+    expect(played()).toEqual([62]);
+    expect(engine.notes[0].at).toBeGreaterThanOrEqual(5 + 0.5 + 0.5);
+  });
+
+  it("skipping with nothing playing does nothing", async () => {
+    const { engine, player, ended } = setup();
+    await player.skip(0.5);
+    expect(engine.fades).toEqual([]);
+    expect(ended).toEqual([]);
+  });
+});
+
 /** One C4 quarter note at 120 bpm, format 0. */
 const ONE_NOTE_FILE = new Uint8Array([
   ...[0x4d, 0x54, 0x68, 0x64, 0, 0, 0, 6, 0, 0, 0, 1, 0x01, 0xe0],

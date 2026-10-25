@@ -143,6 +143,7 @@ Everything you hear is played by the game's own small chiptune synth (pulse wave
 - **Music** follows where you are. The **intro** music starts when you dismiss the title screen and plays once, to the end, carrying on into the start screen. If it finishes while you're still in the menus (or an online waiting room), **menu** music takes over. Starting a game switches to **in-play** music, one song after another, and the keep falling plays the **game-over** song. Restarting goes back to in-play music.
 - **Built-in songs:** Concertino in D (John Baston) for the intro and a short original theme in the menu. There's no built-in in-play or game-over music yet; a [music pack](#music-packs) can add it.
 - **Sound: on/off**, the **Music** and **Effects** sliders and (when you have music packs) the **Songs** choice sit at the bottom of the side panel, and they're remembered on this device.
+- **Now playing** under the Sound button shows the song's title (hover for the whole name). **Skip** moves on to another song in the menu or in a game, ends the intro (menu music takes over), and stops the game-over song.
 - Browsers only allow sound after a click or key press, so the game is silent until the first one (dismissing the title screen counts).
 - **Tuning sounds:** every effect is defined in `src/audio/sounds.ts`. With the dev server running, open http://localhost:5173/?soundtest to play each one.
 

@@ -437,6 +437,27 @@ a.button {
   accent-color: var(--ink);
 }
 
+.now-playing {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 2px 8px;
+  margin-bottom: 6px;
+}
+.now-playing[hidden] {
+  display: none;
+}
+.now-playing .song {
+  grid-column: 1 / -1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.now-playing .button {
+  min-width: 0;
+  padding: 0 10px;
+}
+
 .slider select {
   width: 100%;
   min-width: 0;
