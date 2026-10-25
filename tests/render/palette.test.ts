@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { facingArrow, glyphFor } from "../../src/render/palette";
+import {
+  ENEMY_COLOURS,
+  enemyFont,
+  facingArrow,
+  glyphFor,
+  TILE_SIZE,
+} from "../../src/render/palette";
+import { ENEMY_KINDS } from "../../src/sim/config";
 
 describe("glyphFor", () => {
   it("draws directional traps as an arrow for their facing", () => {
@@ -25,5 +32,18 @@ describe("facingArrow", () => {
     const arrows = (["N", "E", "S", "W"] as const).map(facingArrow);
     expect(new Set(arrows).size).toBe(4);
     for (const arrow of arrows) expect(arrow).toMatch(/^[←-↓]$/);
+  });
+});
+
+describe("enemy styles", () => {
+  it("gives every kind a colour", () => {
+    for (const kind of Object.keys(ENEMY_KINDS)) expect(ENEMY_COLOURS).toHaveProperty(kind);
+  });
+
+  it("sizes the glyph by variant, keeping the large size inside the tile", () => {
+    const px = (font: string) => Number(/(\d+)px/.exec(font)![1]);
+    expect(px(enemyFont("small"))).toBeLessThan(px(enemyFont("normal")));
+    expect(px(enemyFont("large"))).toBeGreaterThan(px(enemyFont("normal")));
+    expect(px(enemyFont("large"))).toBeLessThanOrEqual(TILE_SIZE);
   });
 });

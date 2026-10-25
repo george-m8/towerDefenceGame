@@ -1,5 +1,6 @@
 // Turns what the server sends into a GameState the UI can draw, so offline and online
 // share the renderer, panel and hover info. Pure: no DOM, no sockets.
+import { ENEMY_KIND_ORDER } from "../sim/config";
 import type { Enemy, GameState, Structure } from "../sim/types";
 import type { ClientEnemy, ClientState, ClientStructure, StateUpdate } from "./protocol";
 
@@ -78,8 +79,7 @@ function toEnemy(e: ClientEnemy): Enemy {
     px: Math.round(e.x),
     py: Math.round(e.y),
     bounty: 0,
-    kind: "goblin",
-    variant: 0,
+    kind: ENEMY_KIND_ORDER[e.kind],
     speed: 0,
     damage: 0,
     attackInterval: 0,

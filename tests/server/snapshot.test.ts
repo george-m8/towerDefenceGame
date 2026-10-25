@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ENEMY_KIND_ORDER } from "../../src/sim/config";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand, createGame, tick } from "../../src/sim/game";
 import { placeStructure } from "../../src/sim/grid";
@@ -15,10 +16,28 @@ describe("toClientState", () => {
     const client = toClientState(state);
     expect(client).not.toHaveProperty("flow");
     expect(client).not.toHaveProperty("rngState");
-    expect(Object.keys(client.enemies[0]).sort()).toEqual(["hp", "id", "maxHp", "x", "y"]);
+    expect(Object.keys(client.enemies[0]).sort()).toEqual([
+      "hp",
+      "id",
+      "kind",
+      "maxHp",
+      "variant",
+      "x",
+      "y",
+    ]);
     for (const s of Object.values(client.structures)) expect(s).not.toHaveProperty("cooldown");
     expect(client.terrain).toEqual(state.terrain);
     expect(client.players).toEqual(state.players);
+  });
+
+  it("sends kind and variant as small numbers", () => {
+    const state = createGame(3, { blankMap: true, fog: false });
+    spawnEnemy(state, 0, 12, { kind: "dwarf", variant: 2 });
+    expect(toClientState(state).enemies[0]).toMatchObject({
+      kind: ENEMY_KIND_ORDER.indexOf("dwarf"),
+      variant: 2,
+    });
+    expect(toUpdate(state, state.gridVersion).enemies[0]).toMatchObject({ variant: 2 });
   });
 
   it("rounds enemy positions to 2 decimals", () => {

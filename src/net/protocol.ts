@@ -40,8 +40,13 @@ export interface LobbyInfo {
   mode: GameMode;
 }
 
-/** The enemy fields a client draws with. Positions are rounded to 2 decimals. */
-export type ClientEnemy = Pick<Enemy, "id" | "x" | "y" | "hp" | "maxHp">;
+/**
+ * The enemy fields a client draws with. Positions are rounded to 2 decimals. `kind` is an
+ * index into ENEMY_KIND_ORDER; the client looks up names, glyphs and colours.
+ */
+export type ClientEnemy = Pick<Enemy, "id" | "x" | "y" | "hp" | "maxHp" | "variant"> & {
+  kind: number;
+};
 /** Structures without their firing cooldown, which only the server needs. */
 export type ClientStructure = Omit<Structure, "cooldown">;
 

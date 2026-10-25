@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { spawnEnemy } from "../../src/sim/enemies";
 import { createGame } from "../../src/sim/game";
 import type { Enemy } from "../../src/sim/types";
 import { describeTile, priceLine } from "../../src/ui/tileInfo";
@@ -46,10 +47,19 @@ describe("fog hover info", () => {
     state.enemies.push({ ...enemyAt(seen.x, seen.y) });
     const lines = describeTile(state, seen);
     expect(lines).toContain("Out of sight: enemies here aren't shown");
-    expect(lines.join("\n")).not.toContain("Enemy");
+    expect(lines.join("\n")).not.toContain("Goblin");
     const near = { x: keep.x + keep.size + 1, y: keep.y };
     state.enemies.push({ ...enemyAt(near.x, near.y) });
-    expect(describeTile(state, near).join("\n")).toContain("Enemy HP");
+    expect(describeTile(state, near).join("\n")).toContain("Goblin grunt, HP 20 / 20");
+  });
+
+  it("names an enemy's kind and variant, or just the kind when it has one variant", () => {
+    const state = createGame(1, { blankMap: true, fog: false });
+    const brute = spawnEnemy(state, 5, 5, { kind: "goblin", variant: 2 });
+    brute.hp = 17.2;
+    spawnEnemy(state, 6, 5, { kind: "zerg" });
+    expect(describeTile(state, { x: 5, y: 5 })).toContain(`Goblin brute, HP 18 / ${brute.maxHp}`);
+    expect(describeTile(state, { x: 6, y: 5 })).toContain("Zerg, HP 6 / 6");
   });
 
   it("the price line says why you can't build on unexplored land", () => {

@@ -12,10 +12,18 @@ import {
 } from "../sim/grid";
 import { nextStep } from "../sim/pathfinding";
 import { facingAngle } from "../sim/aiming";
-import { STRUCTURES, type StructureStats, type TowerStats } from "../sim/config";
+import { ENEMY_KINDS, STRUCTURES, type StructureStats, type TowerStats } from "../sim/config";
 import { canTarget } from "../sim/towers";
 import { hitTile } from "../sim/traps";
-import type { Enemy, Facing, GameState, PlayerId, Point, Structure, StructureKind } from "../sim/types";
+import type {
+  Enemy,
+  Facing,
+  GameState,
+  PlayerId,
+  Point,
+  Structure,
+  StructureKind,
+} from "../sim/types";
 import type { PendingBuild } from "../net/session";
 import { isBuildTool, type UiState } from "../ui/state";
 import { visibleTiles, type VisibleTiles } from "../ui/camera";
@@ -32,11 +40,13 @@ import {
   NOTCH_LENGTH_PX,
   KEEP_HP_FONT,
   BATTLEMENT_PX,
+  ENEMY_COLOURS,
   GLYPH_FONT,
   STRUCTURE_COLOURS,
   TERRAIN_STYLES,
   TILE_SIZE,
   OWNER_MARK_PX,
+  enemyFont,
   glyphFor,
   playerColour,
 } from "./palette";
@@ -519,7 +529,10 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   function drawEnemies(state: GameState, enemies: GameState["enemies"]) {
     for (const enemy of enemies) {
       if (!canSeeEnemiesAt(state, enemy.x, enemy.y, viewer)) continue;
-      drawGlyph(enemy.x, enemy.y, "g", COLOURS.enemy);
+      const kind = ENEMY_KINDS[enemy.kind];
+      ctx!.font = enemyFont(kind.variants[enemy.variant].size);
+      ctx!.fillStyle = ENEMY_COLOURS[enemy.kind];
+      ctx!.fillText(kind.glyph, (enemy.x + 0.5) * TILE_SIZE, (enemy.y + 0.5) * TILE_SIZE + 1);
       if (enemy.hp < enemy.maxHp) drawHpBar(enemy.x, enemy.y, enemy.hp / enemy.maxHp);
     }
   }

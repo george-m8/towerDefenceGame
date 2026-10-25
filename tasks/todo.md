@@ -54,8 +54,8 @@ Files: `src/sim/config.ts`, `src/sim/enemies.ts`, `tests/sim/enemies.test.ts`. S
 
 Glyph and colour per kind, glyph size per variant (small 75%, normal, large 125%, staying inside the tile) in palette and canvas; hover line `<Kind> <variant>, HP x / y` (kind name only for single-variant kinds); `ClientEnemy` gains `kind` and `variant` indices through snapshot, update and view (interpolation keeps them).
 
-- [ ] Kind and variant survive snapshot and update round trips; the 200-enemy update size test still passes
-- [ ] Hover info tests for a multi-variant and a single-variant kind
+- [x] Kind and variant survive snapshot and update round trips; the 200-enemy update size test still passes
+- [x] Hover info tests for a multi-variant and a single-variant kind
 - [ ] Browser: each kind recognisable; runts and brutes visibly smaller and larger
 
 Files: `src/net/protocol.ts`, `src/net/snapshot.ts`, `src/net/view.ts`, `src/render/palette.ts`, `src/render/canvas.ts`, `src/ui/tileInfo.ts` (+ tests). Size: M (6 files, but each change is small). Depends on: 4.

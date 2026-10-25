@@ -1,4 +1,5 @@
 // Turns the server's GameState into what clients receive. Shared and pure.
+import { ENEMY_KIND_ORDER } from "../sim/config";
 import type { GameState, Structure } from "../sim/types";
 import type { ClientEnemy, ClientState, ClientStructure, StateUpdate } from "./protocol";
 
@@ -41,7 +42,15 @@ export function toUpdate(state: GameState, lastGridVersion: number): StateUpdate
 }
 
 function toClientEnemy(enemy: GameState["enemies"][number]): ClientEnemy {
-  return { id: enemy.id, x: round2(enemy.x), y: round2(enemy.y), hp: enemy.hp, maxHp: enemy.maxHp };
+  return {
+    id: enemy.id,
+    x: round2(enemy.x),
+    y: round2(enemy.y),
+    hp: enemy.hp,
+    maxHp: enemy.maxHp,
+    kind: ENEMY_KIND_ORDER.indexOf(enemy.kind),
+    variant: enemy.variant,
+  };
 }
 
 function toClientStructures(

@@ -39,10 +39,18 @@ describe("fromClientState", () => {
 
   it("fills enemy and structure fields the server leaves out", () => {
     const server = createGame(4, { blankMap: true, fog: false });
-    spawnEnemy(server, 0, 12);
+    spawnEnemy(server, 0, 12, { kind: "wolfRider", variant: 1 });
     applyCommand(server, 1, { type: "build", kind: "archer", x: 10, y: 10 });
     const view = fromClientState(overTheWire(toClientState(server)));
-    expect(view.enemies[0]).toMatchObject({ x: 0, y: 12, tx: 0, ty: 12, killedBy: null });
+    expect(view.enemies[0]).toMatchObject({
+      x: 0,
+      y: 12,
+      tx: 0,
+      ty: 12,
+      killedBy: null,
+      kind: "wolfRider",
+      variant: 1,
+    });
     expect(Object.values(view.structures)[0].cooldown).toBe(0);
     expect(view.flow).toBeNull();
   });
@@ -69,11 +77,19 @@ describe("applyUpdate", () => {
 });
 
 describe("interpolateEnemies", () => {
-  const e = (id: number, x: number, y: number): ClientEnemy => ({ id, x, y, hp: 10, maxHp: 10 });
+  const e = (id: number, x: number, y: number): ClientEnemy => ({
+    id,
+    x,
+    y,
+    hp: 10,
+    maxHp: 10,
+    kind: 7,
+    variant: 1,
+  });
 
   it("moves enemies between their two positions", () => {
     const [mid] = interpolateEnemies([e(1, 0, 0)], [e(1, 2, 4)], 0.5);
-    expect(mid).toMatchObject({ id: 1, x: 1, y: 2 });
+    expect(mid).toMatchObject({ id: 1, x: 1, y: 2, kind: "golem", variant: 1 });
   });
 
   it("clamps t to the two updates", () => {
