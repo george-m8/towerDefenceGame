@@ -5,6 +5,8 @@ import {
   FAST_FORWARD_SPEED,
   GRID_HEIGHT,
   GRID_WIDTH,
+  MAP_SIZES,
+  type MapSize,
   KEEP_HP,
   KEEP_SIZE,
   STARTING_GOLD,
@@ -106,5 +108,25 @@ describe("ownership", () => {
       ok: true,
     });
     expect(Object.values(blank.structures).map((s) => s.owner)).toEqual([1]);
+  });
+});
+
+describe("map sizes", () => {
+  it("every size makes a map of that size, M by default, in both modes", () => {
+    expect(createGame(1, { blankMap: true }).width).toBe(MAP_SIZES.M.width);
+    for (const size of Object.keys(MAP_SIZES) as MapSize[]) {
+      for (const mode of ["endless", "pvp"] as const) {
+        const state = createGame(1, { size, mode, players: ["A", "B"] });
+        expect([state.width, state.height]).toEqual([
+          MAP_SIZES[size].width,
+          MAP_SIZES[size].height,
+        ]);
+        expect(state.terrain).toHaveLength(state.width * state.height);
+        for (const keep of state.keeps) {
+          expect(keep.x + keep.size).toBeLessThanOrEqual(state.width);
+          expect(keep.y + keep.size).toBeLessThanOrEqual(state.height);
+        }
+      }
+    }
   });
 });

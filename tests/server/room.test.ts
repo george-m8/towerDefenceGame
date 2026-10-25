@@ -319,3 +319,15 @@ describe("the end of a game", () => {
     expect(updates.at(-1)!.update.keeps[0].hp).toBe(0);
   });
 });
+
+describe("map size", () => {
+  it("is set when the room is created and kept on restart", () => {
+    const sent: Record<number, ServerMessage[]> = {};
+    const room = createRoom("SIZE", 7, (id, m) => (sent[id] ??= []).push(m), "endless", "XS");
+    expect(room.state.width).toBe(66);
+    join(room, "Ann");
+    room.state.gameOver = true;
+    restartRoom(room, 9);
+    expect([room.state.width, room.state.height]).toEqual([66, 44]);
+  });
+});

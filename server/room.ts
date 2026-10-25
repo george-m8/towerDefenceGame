@@ -1,7 +1,7 @@
 // One room: a game, its players' tokens, its clock and its outgoing messages.
 // Sending is injected and time is passed in, so tests drive a room by hand.
 import { randomBytes } from "node:crypto";
-import { STARTING_GOLD, TICK_RATE } from "../src/sim/config";
+import { DEFAULT_MAP_SIZE, STARTING_GOLD, TICK_RATE, type MapSize } from "../src/sim/config";
 import { applyCommand, assignKeeps, createGame, tick } from "../src/sim/game";
 import { addPlayer, setConnected, updateVotes } from "../src/sim/players";
 import type { Command, CommandResult, GameMode, GameState, PlayerId } from "../src/sim/types";
@@ -29,6 +29,8 @@ export interface Room {
   started: boolean;
   /** Fog of war, as the host started the game with; restarts keep it. */
   fog: boolean;
+  /** The map size the room was created with; restarts keep it. */
+  size: MapSize;
 }
 
 export type JoinResult =
@@ -40,8 +42,9 @@ export function createRoom(
   seed: number,
   send: SendFn,
   mode: GameMode = "endless",
+  size: MapSize = DEFAULT_MAP_SIZE,
 ): Room {
-  const state = createGame(seed, { players: [], mode });
+  const state = createGame(seed, { players: [], mode, size });
   return {
     code,
     state,
@@ -53,6 +56,7 @@ export function createRoom(
     emptyMs: 0,
     started: false,
     fog: true,
+    size,
   };
 }
 
@@ -179,7 +183,7 @@ export function advanceRoom(room: Room, elapsedMs: number): void {
 export function restartRoom(room: Room, seed: number): CommandResult {
   const old = room.state;
   if (!old.gameOver) return { ok: false, reason: "The game isn't over" };
-  const state = createGame(seed, { players: [], fog: room.fog, mode: old.mode });
+  const state = createGame(seed, { players: [], fog: room.fog, mode: old.mode, size: room.size });
   for (const player of Object.values(old.players)) {
     state.players[player.id] = {
       ...player,

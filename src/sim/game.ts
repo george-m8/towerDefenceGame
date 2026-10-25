@@ -1,4 +1,4 @@
-import { ENEMY, GRID_HEIGHT, GRID_WIDTH, KEEP_HP, PVP } from "./config";
+import { DEFAULT_MAP_SIZE, ENEMY, KEEP_HP, MAP_SIZES, PVP, type MapSize } from "./config";
 import { priceAt } from "./enclosures";
 import { spawnEnemy, updateEnemies } from "./enemies";
 import { EMPTY, KEEP_TILE, canBuild, placeStructure } from "./grid";
@@ -23,11 +23,12 @@ export interface GameOptions {
   fog?: boolean;
   /** Endless (default) or PvP. */
   mode?: GameMode;
+  /** How big the map is (default M). */
+  size?: MapSize;
 }
 
 export function createGame(seed: number, options: GameOptions = {}): GameState {
-  const width = GRID_WIDTH;
-  const height = GRID_HEIGHT;
+  const { width, height } = MAP_SIZES[options.size ?? DEFAULT_MAP_SIZE];
   const mode = options.mode ?? "endless";
   const layout = layoutFor(width, height, mode);
   const { spawnTiles } = layout;

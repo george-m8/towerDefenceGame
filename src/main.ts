@@ -145,7 +145,7 @@ function followMusic() {
 /** Starts playing: offline, or in a room on the game server. */
 function startSession(intent: Exclude<PageIntent, { mode: "menu" }>) {
   if (intent.mode === "offline") {
-    session = createLocalSession(Date.now() >>> 0, undefined, { fog });
+    session = createLocalSession(Date.now() >>> 0, undefined, { fog, size: intent.size });
   } else {
     network = createNetworkSession(
       serverUrl(location),

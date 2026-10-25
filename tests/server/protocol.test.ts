@@ -16,6 +16,8 @@ describe("parseClientMessage", () => {
     parses({ type: "create", name: "Ann" });
     parses({ type: "create", name: "Ann", mode: "pvp" });
     parses({ type: "create", name: "Ann", mode: "endless" });
+    parses({ type: "create", name: "Ann", size: "XS" });
+    parses({ type: "create", name: "Ann", mode: "pvp", size: "XL" });
     parses({ type: "join", room: "ABCD", name: "Bo" });
     parses({ type: "rejoin", room: "WXYZ", token: "a".repeat(32) });
     parses({ type: "restart" });
@@ -47,6 +49,8 @@ describe("parseClientMessage", () => {
 
   it("rejects malformed input without throwing", () => {
     rejects("not json");
+    rejects({ type: "create", name: "Ann", size: "XXL" });
+    rejects({ type: "create", name: "Ann", mode: "chess" });
     rejects("null");
     rejects([]);
     rejects({});

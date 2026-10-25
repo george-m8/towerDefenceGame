@@ -1,5 +1,5 @@
 // The messages between browser and game server. Shared by both, so no Node or DOM APIs here.
-import { STRUCTURES, type StructureStats } from "../sim/config";
+import { MAP_SIZES, STRUCTURES, type MapSize, type StructureStats } from "../sim/config";
 import type {
   Command,
   CommandResult,
@@ -24,7 +24,7 @@ const MAX_COORDINATE = 4096;
 export type OnlineCommand = Exclude<Command, { type: "debugSpawn" }>;
 
 export type ClientMessage =
-  | { type: "create"; name: string; mode?: GameMode }
+  | { type: "create"; name: string; mode?: GameMode; size?: MapSize }
   | { type: "join"; room: string; name: string }
   | { type: "rejoin"; room: string; token: string }
   | { type: "command"; seq: number; command: OnlineCommand }
@@ -102,9 +102,16 @@ export function parseClientMessage(raw: string): ParseResult {
     case "create": {
       const name = parseName(data.name);
       if (name === null) return fail("Bad name");
-      if (data.mode === undefined) return ok({ type: "create", name });
-      if (data.mode !== "endless" && data.mode !== "pvp") return fail("Bad mode");
-      return ok({ type: "create", name, mode: data.mode });
+      const message: ClientMessage = { type: "create", name };
+      if (data.mode !== undefined) {
+        if (data.mode !== "endless" && data.mode !== "pvp") return fail("Bad mode");
+        message.mode = data.mode;
+      }
+      if (data.size !== undefined) {
+        if (!isMapSize(data.size)) return fail("Bad map size");
+        message.size = data.size;
+      }
+      return ok(message);
     }
     case "join": {
       const name = parseName(data.name);
@@ -186,6 +193,10 @@ function isBuildableKind(value: unknown): value is StructureKind {
   if (typeof value !== "string" || !Object.hasOwn(STRUCTURES, value)) return false;
   const stats: StructureStats = STRUCTURES[value as StructureKind];
   return stats.buildable !== false;
+}
+
+function isMapSize(value: unknown): value is MapSize {
+  return typeof value === "string" && Object.hasOwn(MAP_SIZES, value);
 }
 
 function isFacing(value: unknown): value is Facing {

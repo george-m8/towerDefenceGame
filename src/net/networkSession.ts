@@ -1,4 +1,5 @@
 // A Session backed by the game server: sends commands, draws what the server sends.
+import type { MapSize } from "../sim/config";
 import type { Command, CommandResult, GameMode, GameState, PlayerId } from "../sim/types";
 import { tokenKey } from "./join";
 import type { ClientEnemy, ClientMessage, LobbyInfo, ServerMessage } from "./protocol";
@@ -6,7 +7,8 @@ import type { PendingBuild, Session } from "./session";
 import { applyUpdate, fromClientState, interpolateEnemies, interpolationFraction } from "./view";
 
 export type JoinIntent =
-  { mode: "create"; name: string; game?: GameMode } | { mode: "join"; room: string; name: string };
+  | { mode: "create"; name: string; game?: GameMode; size?: MapSize }
+  | { mode: "join"; room: string; name: string };
 
 /** The parts of the browser WebSocket API we use (the `ws` package matches it in tests). */
 export interface WebSocketLike {
@@ -142,12 +144,13 @@ export function createNetworkSession(
       // Joining by link, or back after a drop whose token no longer works.
       send({ type: "join", room, name: intent.name });
     } else {
-      const game = intent.mode === "create" ? intent.game : undefined;
-      send(
-        game
-          ? { type: "create", name: intent.name, mode: game }
-          : { type: "create", name: intent.name },
-      );
+      const create = intent.mode === "create" ? intent : null;
+      send({
+        type: "create",
+        name: intent.name,
+        ...(create?.game ? { mode: create.game } : {}),
+        ...(create?.size ? { size: create.size } : {}),
+      });
     }
   }
 

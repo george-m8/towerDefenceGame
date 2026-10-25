@@ -1,5 +1,5 @@
 // What main.ts plays through: the local simulation, or a game on the server (networkSession.ts).
-import { TICK_RATE } from "../sim/config";
+import { TICK_RATE, type MapSize } from "../sim/config";
 import { applyCommand, createGame, tick } from "../sim/game";
 import type {
   Command,
@@ -45,8 +45,8 @@ const LOCAL_PLAYER = 1;
 export function createLocalSession(
   seed: number,
   newSeed: () => number = () => Date.now() >>> 0,
-  /** `fog: false` is the ?fog=off dev switch. */
-  options: { fog?: boolean } = {},
+  /** `fog: false` is the ?fog=off dev switch; `size` is the map size picked at the start. */
+  options: { fog?: boolean; size?: MapSize } = {},
 ): Session {
   let state = createGame(seed, options);
   let lastTime: number | null = null;

@@ -319,6 +319,28 @@ a.button {
   letter-spacing: 0.2em;
   text-transform: uppercase;
 }
+.map-sizes {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.map-sizes span {
+  margin-right: auto;
+}
+.size-choice {
+  min-width: 36px;
+  padding: 2px 6px;
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.size-choice[aria-checked="true"] {
+  color: var(--paper);
+  background: var(--ink);
+}
 .modes {
   display: grid;
   gap: 8px;
