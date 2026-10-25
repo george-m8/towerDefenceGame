@@ -6,6 +6,13 @@ describe("readJoinIntent", () => {
     expect(readJoinIntent("")).toEqual({ mode: "menu" });
     expect(readJoinIntent("?name=Ann")).toEqual({ mode: "menu" });
     expect(readJoinIntent("?create")).toEqual({ mode: "menu" });
+    expect(readJoinIntent("?solo&size=xl")).toEqual({ mode: "offline", size: "XL" });
+    expect(readJoinIntent("?solo&size=huge")).toEqual({ mode: "offline" });
+    expect(readJoinIntent("?create&name=Ann&size=S")).toEqual({
+      mode: "create",
+      name: "Ann",
+      size: "S",
+    });
     expect(readJoinIntent("?create&name=Ann&game=pvp")).toEqual({
       mode: "create",
       name: "Ann",

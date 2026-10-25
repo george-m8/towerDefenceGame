@@ -4,6 +4,7 @@ import { ROOM_CODE_LENGTH } from "../net/protocol";
 import { cleanName } from "../net/join";
 import type { PageIntent } from "../net/join";
 import type { GameMode } from "../sim/types";
+import { DEFAULT_MAP_SIZE, MAP_SIZES, type MapSize } from "../sim/config";
 
 /** The game modes, as the mode screen offers them. */
 export const GAME_MODES: { mode: GameMode; name: string; description: string; online: boolean }[] =
@@ -108,12 +109,12 @@ export function showStartScreen(
     showModeScreen(root, {
       online,
       onBack: () => showStartScreen(root, { ...options, room: room() }),
-      onChoose: (game) => {
-        if (!online) return choose({ mode: "offline" });
+      onChoose: (game, size) => {
+        if (!online) return choose({ mode: "offline", size });
         choose(
           game === "endless"
-            ? { mode: "create", name: chosen }
-            : { mode: "create", name: chosen, game },
+            ? { mode: "create", name: chosen, size }
+            : { mode: "create", name: chosen, game, size },
         );
       },
     });
@@ -131,14 +132,31 @@ export function showStartScreen(
   (options.room && name() ? join : nameInput).focus();
 }
 
-/** Picks a game mode, each with a short description. Online-only modes are greyed out solo. */
+/**
+ * Picks a map size and a game mode, each mode with a short description. Online-only modes are
+ * greyed out solo.
+ */
 function showModeScreen(
   root: HTMLElement,
-  options: { online: boolean; onBack: () => void; onChoose: (mode: GameMode) => void },
+  options: {
+    online: boolean;
+    onBack: () => void;
+    onChoose: (mode: GameMode, size: MapSize) => void;
+  },
 ) {
+  let size: MapSize = DEFAULT_MAP_SIZE;
   root.innerHTML = `
     <div class="window dialog-window start-window">
       <p class="dialog-title">Game mode</p>
+      <div class="map-sizes" role="radiogroup" aria-label="Map size">
+        <span>Map size</span>
+        ${(Object.keys(MAP_SIZES) as MapSize[])
+          .map(
+            (s) => `<button class="size-choice" role="radio" data-size="${s}"
+              title="${MAP_SIZES[s].width} x ${MAP_SIZES[s].height} tiles">${s}</button>`,
+          )
+          .join("")}
+      </div>
       <div class="modes">
         ${GAME_MODES.map(
           (m) => `
@@ -152,8 +170,19 @@ function showModeScreen(
       <button class="button" data-action="back">Back</button>
     </div>
   `;
+  const sizeButtons = [...root.querySelectorAll<HTMLButtonElement>("[data-size]")];
+  const showSize = () => {
+    for (const b of sizeButtons) b.setAttribute("aria-checked", String(b.dataset.size === size));
+  };
+  for (const b of sizeButtons) {
+    b.addEventListener("click", () => {
+      size = b.dataset.size as MapSize;
+      showSize();
+    });
+  }
+  showSize();
   for (const card of root.querySelectorAll<HTMLButtonElement>("[data-mode]")) {
-    card.addEventListener("click", () => options.onChoose(card.dataset.mode as GameMode));
+    card.addEventListener("click", () => options.onChoose(card.dataset.mode as GameMode, size));
   }
   root.querySelector('[data-action="back"]')!.addEventListener("click", options.onBack);
   root.querySelector<HTMLButtonElement>("[data-mode]:not([disabled])")?.focus();

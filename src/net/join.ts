@@ -1,24 +1,31 @@
 // How a page joins a game: from the URL, or the start screen when the URL doesn't say.
+import { MAP_SIZES, type MapSize } from "../sim/config";
 import { MAX_NAME_LENGTH } from "./protocol";
 import type { JoinIntent } from "./networkSession";
 
-export type PageIntent = { mode: "menu"; room?: string } | { mode: "offline" } | JoinIntent;
+export type PageIntent =
+  { mode: "menu"; room?: string } | { mode: "offline"; size?: MapSize } | JoinIntent;
 
 /**
  * `?create&name=Ann` creates a room (`&game=pvp` for PvP) and `?room=ABCD&name=Bo` joins one;
- * `?solo` plays offline.
+ * `?solo` plays offline. `&size=L` picks the map size when playing solo or creating a room.
  * Anything else, or a missing name, opens the start screen (with the room code filled in).
  */
 export function readJoinIntent(search: string): PageIntent {
   const params = new URLSearchParams(search);
-  if (params.has("solo")) return { mode: "offline" };
+  const sizeParam = params.get("size")?.toUpperCase();
+  const size = sizeParam && Object.hasOwn(MAP_SIZES, sizeParam) ? (sizeParam as MapSize) : null;
+  if (params.has("solo")) return size ? { mode: "offline", size } : { mode: "offline" };
   const room = params.get("room")?.toUpperCase();
   const name = cleanName(params.get("name"));
   if (room && name) return { mode: "join", room, name };
   if (params.has("create") && name) {
-    return params.get("game") === "pvp"
-      ? { mode: "create", name, game: "pvp" }
-      : { mode: "create", name };
+    return {
+      mode: "create",
+      name,
+      ...(params.get("game") === "pvp" ? { game: "pvp" as const } : {}),
+      ...(size ? { size } : {}),
+    };
   }
   return room ? { mode: "menu", room } : { mode: "menu" };
 }

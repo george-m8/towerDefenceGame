@@ -105,7 +105,7 @@ createSoundControls(element("#sound"), audioSettings, (settings) => {
 function startSession(intent: Exclude<PageIntent, { mode: "menu" }>) {
   music.fadeOut(MUSIC_FADE_SECONDS); // music is for the title and menus (for now)
   if (intent.mode === "offline") {
-    session = createLocalSession(Date.now() >>> 0, undefined, { fog });
+    session = createLocalSession(Date.now() >>> 0, undefined, { fog, size: intent.size });
   } else {
     const network = createNetworkSession(
       serverUrl(location),

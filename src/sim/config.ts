@@ -1,7 +1,18 @@
 // All tunable game numbers live here.
 
-export const GRID_WIDTH = 153;
-export const GRID_HEIGHT = 102;
+/** Map sizes players pick from when starting a game, in tiles. M is the default. */
+export const MAP_SIZES = {
+  XS: { width: 66, height: 44 },
+  S: { width: 108, height: 72 },
+  M: { width: 153, height: 102 },
+  L: { width: 216, height: 144 },
+  XL: { width: 270, height: 180 },
+};
+export type MapSize = keyof typeof MAP_SIZES;
+export const DEFAULT_MAP_SIZE: MapSize = "M";
+
+export const GRID_WIDTH = MAP_SIZES[DEFAULT_MAP_SIZE].width;
+export const GRID_HEIGHT = MAP_SIZES[DEFAULT_MAP_SIZE].height;
 export const TICK_RATE = 20; // simulation ticks per second
 export const FAST_FORWARD_SPEED = 2; // game-speed multiplier while fast-forwarding
 
