@@ -224,7 +224,7 @@ export interface EnemyVariant {
   size: "small" | "normal" | "large";
 }
 
-/** Stats at wave 1, before the variant. */
+/** Stats at wave 1, before the variant. The first variant is the standard one (all multipliers 1). */
 export interface EnemyKind {
   glyph: string;
   name: string;
@@ -246,7 +246,11 @@ export const ENEMY_KINDS = {
     damage: 5,
     attackInterval: 1,
     bounty: 2,
-    variants: [{ name: "grunt", weight: 1, hp: 1, speed: 1, damage: 1, size: "normal" }],
+    variants: [
+      { name: "grunt", weight: 6, hp: 1, speed: 1, damage: 1, size: "normal" },
+      { name: "runt", weight: 3, hp: 0.7, speed: 1.15, damage: 0.8, size: "small" },
+      { name: "brute", weight: 1, hp: 1.4, speed: 0.9, damage: 1.3, size: "large" },
+    ],
   },
   zerg: {
     glyph: "z",
@@ -266,7 +270,10 @@ export const ENEMY_KINDS = {
     damage: 4,
     attackInterval: 0.8,
     bounty: 3,
-    variants: [{ name: "raider", weight: 1, hp: 1, speed: 1, damage: 1, size: "normal" }],
+    variants: [
+      { name: "raider", weight: 3, hp: 1, speed: 1, damage: 1, size: "normal" },
+      { name: "scout", weight: 2, hp: 0.8, speed: 1.1, damage: 0.9, size: "small" },
+    ],
   },
   barbarian: {
     glyph: "b",
@@ -276,7 +283,10 @@ export const ENEMY_KINDS = {
     damage: 4,
     attackInterval: 0.6,
     bounty: 3,
-    variants: [{ name: "raider", weight: 1, hp: 1, speed: 1, damage: 1, size: "normal" }],
+    variants: [
+      { name: "raider", weight: 3, hp: 1, speed: 1, damage: 1, size: "normal" },
+      { name: "berserker", weight: 1, hp: 0.8, speed: 1.1, damage: 1.4, size: "small" },
+    ],
   },
   dwarf: {
     glyph: "d",
@@ -286,7 +296,11 @@ export const ENEMY_KINDS = {
     damage: 8,
     attackInterval: 1.2,
     bounty: 4,
-    variants: [{ name: "warrior", weight: 1, hp: 1, speed: 1, damage: 1, size: "normal" }],
+    variants: [
+      { name: "warrior", weight: 3, hp: 1, speed: 1, damage: 1, size: "normal" },
+      { name: "miner", weight: 2, hp: 1, speed: 1, damage: 0.9, size: "small" },
+      { name: "ironclad", weight: 1, hp: 1.4, speed: 0.85, damage: 1, size: "large" },
+    ],
   },
   barbarianChief: {
     glyph: "B",
@@ -316,7 +330,10 @@ export const ENEMY_KINDS = {
     damage: 40,
     attackInterval: 3,
     bounty: 20,
-    variants: [{ name: "stone", weight: 1, hp: 1, speed: 1, damage: 1, size: "normal" }],
+    variants: [
+      { name: "stone", weight: 3, hp: 1, speed: 1, damage: 1, size: "normal" },
+      { name: "iron", weight: 1, hp: 1.3, speed: 0.9, damage: 1.2, size: "large" },
+    ],
   },
 } satisfies Record<string, EnemyKind>;
 

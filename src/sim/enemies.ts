@@ -1,4 +1,4 @@
-import { ENEMY_KINDS, TICK_RATE, WAVES, type EnemyKindId } from "./config";
+import { ENEMY_KINDS, TICK_RATE, WAVES, type EnemyKind, type EnemyKindId } from "./config";
 import { addCue } from "./cues";
 import { attackTargetAt, blocksAt, damageStructure, inBounds, keepAt } from "./grid";
 import { DIRECTIONS, nextStep } from "./pathfinding";
@@ -11,6 +11,8 @@ export interface SpawnOptions {
   kind?: EnemyKindId;
   /** The wave it belongs to, for HP and bounty scaling. Defaults to 1. */
   wave?: number;
+  /** A variant index, or "random" to roll one by weight. Defaults to the standard variant (0). */
+  variant?: number | "random";
   /** Override the resolved HP and bounty (tests). */
   hp?: number;
   bounty?: number;
@@ -36,7 +38,7 @@ export function spawnEnemy(
   const kindId = options.kind ?? "goblin";
   const wave = options.wave ?? 1;
   const kind = ENEMY_KINDS[kindId];
-  const variant = 0;
+  const variant = options.variant === "random" ? rollVariant(state, kind) : (options.variant ?? 0);
   const v = kind.variants[variant];
   const hp = options.hp ?? Math.round(kind.hp * v.hp * waveHpScale(wave));
   const enemy: Enemy = {
@@ -60,6 +62,17 @@ export function spawnEnemy(
   };
   state.enemies.push(enemy);
   return enemy;
+}
+
+/** Rolls a variant by weight, using the state RNG so online games stay in sync. */
+function rollVariant(state: GameState, kind: EnemyKind): number {
+  const total = kind.variants.reduce((sum, v) => sum + v.weight, 0);
+  let roll = nextRandom(state) * total;
+  for (let i = 0; i < kind.variants.length; i++) {
+    roll -= kind.variants[i].weight;
+    if (roll < 0) return i;
+  }
+  return kind.variants.length - 1;
 }
 
 /** Deals damage and records who struck the killing blow. */

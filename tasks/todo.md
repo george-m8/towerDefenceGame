@@ -44,9 +44,9 @@ Files: `src/sim/enemies.ts`, `src/sim/config.ts`, `tests/sim/enemies.test.ts`, `
 
 Variant tables from the spec (name, weight, HP/speed/damage multipliers, size); `rollVariant` with the state RNG at spawn.
 
-- [ ] The same seed gives the same variants
-- [ ] Over 10,000 rolls each variant's share is within 2% of its weight
-- [ ] Variant multipliers apply on top of kind and wave scaling
+- [x] The same seed gives the same variants
+- [x] Over 10,000 rolls each variant's share is within 2% of its weight
+- [x] Variant multipliers apply on top of kind and wave scaling
 
 Files: `src/sim/config.ts`, `src/sim/enemies.ts`, `tests/sim/enemies.test.ts`. Size: S. Depends on: 2.
 

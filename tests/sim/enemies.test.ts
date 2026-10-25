@@ -357,3 +357,67 @@ describe("attacking the keep", () => {
     expect(state.keeps[0].maxHp).toBe(300);
   });
 });
+
+describe("variants", () => {
+  function variantIndex(kind: EnemyKindId, name: string) {
+    return ENEMY_KINDS[kind].variants.findIndex((v) => v.name === name);
+  }
+
+  it("has the spec's variants, standard first", () => {
+    const names = (kind: EnemyKindId) => ENEMY_KINDS[kind].variants.map((v) => v.name);
+    expect(names("goblin")).toEqual(["grunt", "runt", "brute"]);
+    expect(names("zerg")).toEqual(["drone"]);
+    expect(names("wolfRider")).toEqual(["raider", "scout"]);
+    expect(names("barbarian")).toEqual(["raider", "berserker"]);
+    expect(names("dwarf")).toEqual(["warrior", "miner", "ironclad"]);
+    expect(names("barbarianChief")).toEqual(["warlord"]);
+    expect(names("dwarfThane")).toEqual(["thane"]);
+    expect(names("golem")).toEqual(["stone", "iron"]);
+    for (const kind of Object.keys(ENEMY_KINDS) as EnemyKindId[]) {
+      expect(ENEMY_KINDS[kind].variants[0]).toMatchObject({
+        hp: 1,
+        speed: 1,
+        damage: 1,
+        size: "normal",
+      });
+    }
+  });
+
+  it("applies the variant's multipliers on top of kind and wave", () => {
+    const state = createGameWithoutWaves();
+    const brute = spawnEnemy(state, 5, 5, {
+      kind: "goblin",
+      variant: variantIndex("goblin", "brute"),
+      wave: 3,
+    });
+    expect(brute.maxHp).toBe(Math.round(20 * 1.4 * 1.3));
+    expect(brute.speed).toBeCloseTo(1.5 * 0.9);
+    expect(brute.damage).toBeCloseTo(5 * 1.3);
+  });
+
+  it("rolls the same variants for the same seed", () => {
+    const roll = () => {
+      const state = createGameWithoutWaves(7);
+      return Array.from(
+        { length: 50 },
+        () => spawnEnemy(state, 5, 5, { variant: "random" }).variant,
+      );
+    };
+    expect(roll()).toEqual(roll());
+    expect(new Set(roll()).size).toBe(3);
+  });
+
+  it("rolls each variant in proportion to its weight", () => {
+    const state = createGameWithoutWaves();
+    const counts = [0, 0, 0];
+    const rolls = 10_000;
+    for (let i = 0; i < rolls; i++)
+      counts[spawnEnemy(state, 5, 5, { variant: "random" }).variant]++;
+    state.enemies = [];
+    const variants = ENEMY_KINDS.goblin.variants;
+    const total = variants.reduce((sum, v) => sum + v.weight, 0);
+    variants.forEach((v, i) =>
+      expect(Math.abs(counts[i] / rolls - v.weight / total)).toBeLessThan(0.02),
+    );
+  });
+});

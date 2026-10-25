@@ -127,8 +127,9 @@ export interface Enemy {
 
 // src/sim/enemies.ts
 export function spawnEnemy(state: GameState, x: number, y: number,
-  options?: { kind?: EnemyKindId; wave?: number; hp?: number; bounty?: number }): Enemy;
-// rolls the variant; defaults: goblin, wave 1; hp and bounty overrides are for tests
+  options?: { kind?: EnemyKindId; wave?: number; variant?: number | "random"; hp?: number; bounty?: number }): Enemy;
+// defaults: goblin, wave 1, the standard variant (index 0, all multipliers 1); waves and the dev key
+// pass variant: "random" to roll by weight; hp and bounty overrides are for tests
 
 // src/net/protocol.ts
 export type ClientEnemy = Pick<Enemy, "id" | "x" | "y" | "hp" | "maxHp"> & { kind: number; variant: number };
