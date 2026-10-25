@@ -70,9 +70,9 @@ describe("over sockets", () => {
     const result = await b.next("result");
     expect(result).toEqual({ type: "result", seq: 7, result: { ok: true } });
     const update = await a.next("update", (m) =>
-      Object.values(m.update.structures).some((s) => s.kind === "wall" && s.owner === 2),
+      (m.update.structures ?? []).some((s) => s.kind === "wall" && s.owner === 2),
     );
-    expect(update.update.base).toBeDefined();
+    expect(update.update.tiles?.base).toBeDefined();
   });
 
   it("updates keep coming as the rooms advance", async () => {

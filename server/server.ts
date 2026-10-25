@@ -1,7 +1,7 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { WebSocketServer, type WebSocket } from "ws";
-import { MAX_MESSAGE_BYTES, WS_PATH } from "./config";
+import { COMPRESS_FROM_BYTES, MAX_MESSAGE_BYTES, WS_PATH } from "./config";
 import { serveStatic } from "./static";
 
 export interface GameServer {
@@ -27,8 +27,15 @@ export async function startServer(
     if (files) void files(req, res);
     else res.writeHead(404).end();
   });
-  // Larger messages close the connection (code 1009) before they reach our code.
-  const wss = new WebSocketServer({ server: http, path: WS_PATH, maxPayload: MAX_MESSAGE_BYTES });
+  // Larger messages close the connection (code 1009) before they reach our code. Messages
+  // to the browser are compressed (permessage-deflate, which browsers support): the JSON of
+  // a welcome or a busy update shrinks many times over.
+  const wss = new WebSocketServer({
+    server: http,
+    path: WS_PATH,
+    maxPayload: MAX_MESSAGE_BYTES,
+    perMessageDeflate: { threshold: COMPRESS_FROM_BYTES },
+  });
   wss.on("connection", onConnection);
   await new Promise<void>((resolve) => http.listen(port, host, resolve));
   return {
