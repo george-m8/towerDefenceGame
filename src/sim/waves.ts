@@ -1,6 +1,6 @@
-import { ENEMY, TICK_RATE, WAVES } from "./config";
+import { ENEMY_KINDS, TICK_RATE, WAVES } from "./config";
 import { addCue } from "./cues";
-import { spawnEnemy } from "./enemies";
+import { spawnEnemy, waveBountyBonus, waveHpScale } from "./enemies";
 import { randomInt } from "./rng";
 import { addGold } from "./players";
 import type { CommandResult, GameState, PlayerId, WaveState } from "./types";
@@ -13,11 +13,11 @@ export function waveEnemyCount(wave: number): number {
 }
 
 export function waveEnemyHp(wave: number): number {
-  return Math.round(ENEMY.baseHp * (1 + WAVES.hpGrowthPerWave * (wave - 1)));
+  return Math.round(ENEMY_KINDS.goblin.hp * waveHpScale(wave));
 }
 
 export function waveBounty(wave: number): number {
-  return ENEMY.baseBounty + Math.floor((wave - 1) / WAVES.bountyStepWaves);
+  return ENEMY_KINDS.goblin.bounty + waveBountyBonus(wave);
 }
 
 export function createWaveState(): WaveState {
@@ -35,7 +35,7 @@ export function updateWaves(state: GameState): void {
   wave.spawnTimer--;
   if (wave.spawnTimer > 0) return;
   const p = state.spawnTiles[randomInt(state, 0, state.spawnTiles.length - 1)];
-  spawnEnemy(state, p.x, p.y, waveEnemyHp(wave.number), waveBounty(wave.number));
+  spawnEnemy(state, p.x, p.y, { wave: wave.number });
   wave.toSpawn--;
   wave.spawnTimer = SPAWN_INTERVAL_TICKS;
   if (wave.toSpawn === 0) wave.countdown = COUNTDOWN_TICKS;

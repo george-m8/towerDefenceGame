@@ -78,6 +78,11 @@ function toEnemy(e: ClientEnemy): Enemy {
     px: Math.round(e.x),
     py: Math.round(e.y),
     bounty: 0,
+    kind: "goblin",
+    variant: 0,
+    speed: 0,
+    damage: 0,
+    attackInterval: 0,
     killedBy: null,
     attackCooldown: 0,
   };

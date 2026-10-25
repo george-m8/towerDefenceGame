@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ENEMY, STRUCTURES, TICK_RATE } from "../../src/sim/config";
+import { ENEMY, ENEMY_KINDS, STRUCTURES, TICK_RATE } from "../../src/sim/config";
 import { damageEnemy, spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand, tick } from "../../src/sim/game";
 import { topAt } from "../../src/sim/grid";
@@ -7,7 +7,7 @@ import { nextStep } from "../../src/sim/pathfinding";
 import type { GameState } from "../../src/sim/types";
 import { buildAt, createGameWithoutWaves, ring } from "./helpers";
 
-const ticksPerTile = TICK_RATE / ENEMY.speed;
+const ticksPerTile = TICK_RATE / ENEMY_KINDS.goblin.speed;
 
 function run(state: GameState, ticks: number, each?: () => void) {
   for (let i = 0; i < ticks; i++) {
@@ -29,7 +29,7 @@ describe("enemy movement", () => {
 
     run(state, Math.ceil(2 * ticksPerTile));
     expect(state.enemies).toHaveLength(0);
-    expect(state.keeps[0].hp).toBe(state.keeps[0].maxHp - ENEMY.keepDamage);
+    expect(state.keeps[0].hp).toBe(state.keeps[0].maxHp - ENEMY_KINDS.goblin.damage);
   });
 
   it("reroutes around a wall placed in its path and never walks through it", () => {
@@ -46,12 +46,12 @@ describe("enemy movement", () => {
       }
     });
     expect(state.enemies).toHaveLength(0);
-    expect(state.keeps[0].hp).toBe(state.keeps[0].maxHp - ENEMY.keepDamage);
+    expect(state.keeps[0].hp).toBe(state.keeps[0].maxHp - ENEMY_KINDS.goblin.damage);
   });
 
   it("ends the game when keep HP reaches 0, and stops ticking", () => {
     const state = createGameWithoutWaves();
-    state.keeps[0].hp = ENEMY.keepDamage;
+    state.keeps[0].hp = ENEMY_KINDS.goblin.damage;
     spawnEnemy(state, state.keeps[0].x - 1, state.keeps[0].y);
     run(state, Math.ceil(2 * ticksPerTile));
     expect(state.keeps[0].hp).toBe(0);
@@ -138,12 +138,12 @@ describe("wandering", () => {
     // Wandering adds detours: allow three times the straight walk, whatever the map size.
     run(state, Math.ceil(3 * state.keeps[0].x * ticksPerTile));
     expect(state.enemies).toHaveLength(0);
-    expect(state.keeps[0].hp).toBe(state.keeps[0].maxHp - 10 * ENEMY.keepDamage);
+    expect(state.keeps[0].hp).toBe(state.keeps[0].maxHp - 10 * ENEMY_KINDS.goblin.damage);
   });
 });
 
 describe("breaking through", () => {
-  const hitsToBreakWall = Math.ceil(STRUCTURES.wall.maxHp / ENEMY.structureDps);
+  const hitsToBreakWall = Math.ceil(STRUCTURES.wall.maxHp / ENEMY_KINDS.goblin.damage);
 
   it("attacks only the structure on the cheapest route when the keep is enclosed", () => {
     const state = createGameWithoutWaves();
@@ -156,7 +156,7 @@ describe("breaking through", () => {
 
     // Walk 1 tile (the first hit lands on the arrival tick), then all but the last hit.
     run(state, Math.ceil(ticksPerTile) + (hitsToBreakWall - 1) * TICK_RATE - 1);
-    expect(topAt(state, target.x, target.y)?.hp).toBe(ENEMY.structureDps);
+    expect(topAt(state, target.x, target.y)?.hp).toBe(ENEMY_KINDS.goblin.damage);
     const damaged = walls.filter((p) => {
       const s = topAt(state, p.x, p.y);
       return s && s.hp < s.maxHp;
@@ -169,7 +169,7 @@ describe("breaking through", () => {
     // The enemy continues through the gap to the keep.
     run(state, Math.ceil(3 * ticksPerTile));
     expect(state.enemies).toHaveLength(0);
-    expect(state.keeps[0].hp).toBe(state.keeps[0].maxHp - ENEMY.keepDamage);
+    expect(state.keeps[0].hp).toBe(state.keeps[0].maxHp - ENEMY_KINDS.goblin.damage);
   });
 
   it("never damages structures when an open route exists", () => {
@@ -184,7 +184,7 @@ describe("breaking through", () => {
     spawnEnemy(state, 0, keep.y + 1);
     // Long enough to walk round to the gap on the far side, whatever the map size.
     run(state, Math.ceil(3 * keep.x * ticksPerTile));
-    expect(state.keeps[0].hp).toBe(state.keeps[0].maxHp - ENEMY.keepDamage);
+    expect(state.keeps[0].hp).toBe(state.keeps[0].maxHp - ENEMY_KINDS.goblin.damage);
     for (const p of walls) {
       const s = topAt(state, p.x, p.y)!;
       expect(s.hp).toBe(s.maxHp);
@@ -195,7 +195,7 @@ describe("breaking through", () => {
 describe("damageEnemy", () => {
   it("records who struck the killing blow, not who hit first", () => {
     const state = createGameWithoutWaves();
-    const enemy = spawnEnemy(state, 5, 5, 10);
+    const enemy = spawnEnemy(state, 5, 5, { hp: 10 });
     damageEnemy(enemy, 6, 1);
     expect(enemy.killedBy).toBeNull();
     damageEnemy(enemy, 4, 2);
@@ -205,10 +205,51 @@ describe("damageEnemy", () => {
 
   it("ignores hits on an enemy that is already dead", () => {
     const state = createGameWithoutWaves();
-    const enemy = spawnEnemy(state, 5, 5, 10);
+    const enemy = spawnEnemy(state, 5, 5, { hp: 10 });
     damageEnemy(enemy, 15, 1);
     damageEnemy(enemy, 15, 2);
     expect(enemy.hp).toBe(-5);
     expect(enemy.killedBy).toBe(1);
+  });
+});
+
+describe("enemy kinds", () => {
+  it("spawns a goblin grunt with today's numbers by default", () => {
+    const state = createGameWithoutWaves();
+    const enemy = spawnEnemy(state, 5, 5);
+    expect(enemy.kind).toBe("goblin");
+    expect(ENEMY_KINDS.goblin.variants[enemy.variant].name).toBe("grunt");
+    expect(enemy).toMatchObject({ hp: 20, maxHp: 20, speed: 1.5, damage: 5, bounty: 2 });
+    expect(enemy.attackInterval).toBe(TICK_RATE);
+  });
+
+  it("scales HP and bounty with the wave it spawns in", () => {
+    const state = createGameWithoutWaves();
+    const enemy = spawnEnemy(state, 5, 5, { wave: 6 });
+    expect(enemy.maxHp).toBe(Math.round(20 * (1 + 0.15 * 5)));
+    expect(enemy.bounty).toBe(3);
+  });
+
+  it("keeps the stats it spawned with when config changes later", () => {
+    const state = createGameWithoutWaves();
+    const enemy = spawnEnemy(state, 5, 5);
+    const original = ENEMY_KINDS.goblin.speed;
+    ENEMY_KINDS.goblin.speed = 10;
+    try {
+      expect(enemy.speed).toBe(original);
+    } finally {
+      ENEMY_KINDS.goblin.speed = original;
+    }
+  });
+
+  it("moves at its own speed", () => {
+    const state = createGameWithoutWaves();
+    const y = state.keeps[0].y + 1;
+    const slow = spawnEnemy(state, 0, y);
+    const fast = spawnEnemy(state, 0, y);
+    fast.speed = slow.speed * 2;
+    run(state, 2 * TICK_RATE); // 3 tiles at 1.5 tiles per second
+    expect(slow.x).toBeCloseTo(3);
+    expect(fast.x).toBeCloseTo(6);
   });
 });

@@ -8,9 +8,9 @@ Standard verification for every task: `npm run typecheck && npm test && npm run 
 
 `EnemyKind`, `EnemyVariant`, `ENEMY_KINDS` (goblin only for now) and `ENEMY_KIND_ORDER` in config; `Enemy` gains `kind`, `variant`, `speed`, `damage`, `attackInterval`; `spawnEnemy(state, x, y, kind?, wave?)` resolves stats at spawn; per-enemy speed replaces the global `STEP`; `waveEnemyHp`/`waveBounty` read the goblin row. Tests that read `ENEMY.speed`, `ENEMY.keepDamage` and so on move to the goblin row (mechanical swap). No behaviour change: the goblin's only variant for now is the grunt.
 
-- [ ] An enemy spawned with no kind is a goblin grunt with exactly today's numbers
-- [ ] Changing config after spawning doesn't change an existing enemy
-- [ ] The existing suite passes with only the mechanical swap
+- [x] An enemy spawned with no kind is a goblin grunt with exactly today's numbers
+- [x] Changing config after spawning doesn't change an existing enemy
+- [x] The existing suite passes with only the mechanical swap
 
 Files: `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/enemies.ts`, `src/sim/waves.ts`, `tests/sim/*` (swap). Size: M. Depends on: none.
 

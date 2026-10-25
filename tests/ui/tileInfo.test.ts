@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createGame } from "../../src/sim/game";
+import type { Enemy } from "../../src/sim/types";
 import { describeTile, priceLine } from "../../src/ui/tileInfo";
 import { buildAt, ring } from "../sim/helpers";
 
@@ -57,7 +58,7 @@ describe("fog hover info", () => {
   });
 });
 
-function enemyAt(x: number, y: number) {
+function enemyAt(x: number, y: number): Enemy {
   return {
     id: 1,
     x,
@@ -70,6 +71,11 @@ function enemyAt(x: number, y: number) {
     maxHp: 20,
     bounty: 1,
     killedBy: null,
+    kind: "goblin",
+    variant: 0,
+    speed: 1.5,
+    damage: 5,
+    attackInterval: 20,
     attackCooldown: 0,
   };
 }

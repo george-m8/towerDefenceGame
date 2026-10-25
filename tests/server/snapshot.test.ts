@@ -70,7 +70,8 @@ describe("toUpdate", () => {
         built++;
       }
     }
-    for (let i = 0; i < 200; i++) spawnEnemy(state, i % 2, ((i * 7) % 12) + 10, 100, 2);
+    for (let i = 0; i < 200; i++)
+      spawnEnemy(state, i % 2, ((i * 7) % 12) + 10, { hp: 100, bounty: 2 });
     for (let i = 0; i < 7; i++) tick(state); // enemies mid-move, at fractional positions
     expect(Object.keys(state.structures).length).toBeGreaterThanOrEqual(150);
     expect(state.enemies.length).toBe(200);

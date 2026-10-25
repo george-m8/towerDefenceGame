@@ -79,7 +79,7 @@ describe("separate gold", () => {
   it("bounties go to the player whose tower struck the killing blow", () => {
     const state = twoPlayers();
     placeStructure(state, "archer", 10, 10, "E", B);
-    spawnEnemy(state, 11, 10, 1, 7);
+    spawnEnemy(state, 11, 10, { hp: 1, bounty: 7 });
     tick(state);
     expect(goldOf(state, B)).toBe(STARTING_GOLD + 7);
     expect(goldOf(state, A)).toBe(STARTING_GOLD);

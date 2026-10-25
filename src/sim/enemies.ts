@@ -1,20 +1,44 @@
-import { ENEMY, TICK_RATE } from "./config";
+import { ENEMY_KINDS, TICK_RATE, WAVES, type EnemyKindId } from "./config";
 import { addCue } from "./cues";
 import { attackTargetAt, blocksAt, damageStructure, inBounds, keepAt } from "./grid";
 import { DIRECTIONS, nextStep } from "./pathfinding";
 import { nextRandom, randomInt } from "./rng";
 import type { Enemy, GameState, PlayerId, Point, Structure } from "./types";
 
-const STEP = ENEMY.speed / TICK_RATE;
 const EPSILON = 1e-9;
 
+export interface SpawnOptions {
+  kind?: EnemyKindId;
+  /** The wave it belongs to, for HP and bounty scaling. Defaults to 1. */
+  wave?: number;
+  /** Override the resolved HP and bounty (tests). */
+  hp?: number;
+  bounty?: number;
+}
+
+/** HP multiplier for a wave: +15% per wave after the first. */
+export function waveHpScale(wave: number): number {
+  return 1 + WAVES.hpGrowthPerWave * (wave - 1);
+}
+
+/** Bounty added for a wave: +1 every few waves. */
+export function waveBountyBonus(wave: number): number {
+  return Math.floor((wave - 1) / WAVES.bountyStepWaves);
+}
+
+/** Spawns an enemy with its stats resolved now (kind x variant x wave). */
 export function spawnEnemy(
   state: GameState,
   x: number,
   y: number,
-  hp = ENEMY.baseHp,
-  bounty = ENEMY.baseBounty,
+  options: SpawnOptions = {},
 ): Enemy {
+  const kindId = options.kind ?? "goblin";
+  const wave = options.wave ?? 1;
+  const kind = ENEMY_KINDS[kindId];
+  const variant = 0;
+  const v = kind.variants[variant];
+  const hp = options.hp ?? Math.round(kind.hp * v.hp * waveHpScale(wave));
   const enemy: Enemy = {
     id: state.nextId++,
     x,
@@ -25,7 +49,12 @@ export function spawnEnemy(
     py: y,
     hp,
     maxHp: hp,
-    bounty,
+    bounty: options.bounty ?? kind.bounty + waveBountyBonus(wave),
+    kind: kindId,
+    variant,
+    speed: kind.speed * v.speed,
+    damage: kind.damage * v.damage,
+    attackInterval: Math.round(kind.attackInterval * TICK_RATE),
     killedBy: null,
     attackCooldown: 0,
   };
@@ -54,12 +83,12 @@ export function updateEnemies(state: GameState): void {
  */
 function advance(state: GameState, enemy: Enemy): boolean {
   enemy.attackCooldown = Math.max(0, enemy.attackCooldown - 1);
-  let budget = STEP;
+  let budget = enemy.speed / TICK_RATE;
   while (budget > EPSILON) {
     if (enemy.x === enemy.tx && enemy.y === enemy.ty) {
       const keep = keepAt(state, enemy.x, enemy.y);
       if (keep) {
-        keep.hp = Math.max(0, keep.hp - ENEMY.keepDamage);
+        keep.hp = Math.max(0, keep.hp - enemy.damage);
         addCue(state, "keepHit");
         return false;
       }
@@ -115,8 +144,8 @@ function wanderStep(
 
 function attack(state: GameState, enemy: Enemy, target: Structure) {
   if (enemy.attackCooldown > 0) return;
-  damageStructure(state, target, ENEMY.structureDps);
-  enemy.attackCooldown = TICK_RATE;
+  damageStructure(state, target, enemy.damage);
+  enemy.attackCooldown = enemy.attackInterval;
 }
 
 /** Moves up to `budget` tiles towards the target and returns the distance moved. */

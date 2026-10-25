@@ -1,4 +1,4 @@
-import type { STRUCTURES, TERRAIN } from "./config";
+import type { EnemyKindId, STRUCTURES, TERRAIN } from "./config";
 
 export interface Point {
   x: number;
@@ -56,6 +56,13 @@ export interface Enemy {
   hp: number;
   maxHp: number;
   bounty: number;
+  kind: EnemyKindId;
+  /** Index into the kind's variants. */
+  variant: number;
+  /** Stats resolved at spawn (kind x variant x wave), never looked up again. */
+  speed: number; // tiles per second
+  damage: number; // per hit
+  attackInterval: number; // ticks between hits
   /** The player whose structure struck the killing blow, once hp <= 0. */
   killedBy: PlayerId | null;
   /** Ticks until it can hit a blocking structure again. */

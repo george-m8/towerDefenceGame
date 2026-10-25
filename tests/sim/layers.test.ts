@@ -176,7 +176,7 @@ describe("combat across layers", () => {
   it("a wall shields the tower on it, and the tower falls with the wall", () => {
     const { state, y, target } = sealedKeep();
     const archer = placeStructure(state, "archer", target.x, target.y);
-    spawnEnemy(state, target.x - 2, y, TOUGH);
+    spawnEnemy(state, target.x - 2, y, { hp: TOUGH });
     const gold = goldOf(state);
 
     run(state, 100);
@@ -204,7 +204,7 @@ describe("combat across layers", () => {
       ),
     );
     const cannon = placeStructure(state, "cannon", gap.x, gap.y);
-    spawnEnemy(state, gap.x - 2, y, TOUGH);
+    spawnEnemy(state, gap.x - 2, y, { hp: TOUGH });
     run(state, 100);
     expect(cannon.hp).toBeLessThan(cannon.maxHp);
   });
@@ -213,7 +213,7 @@ describe("combat across layers", () => {
     const state = createGameWithoutWaves();
     const y = state.keeps[0].y + 1;
     const towers = [8, 9, 11, 12].map((x) => placeStructure(state, "archer", 15, y - 10 + x));
-    spawnEnemy(state, 0, y, TOUGH);
+    spawnEnemy(state, 0, y, { hp: TOUGH });
     run(state, 1000);
     for (const t of towers) expect(t.hp).toBe(t.maxHp);
   });

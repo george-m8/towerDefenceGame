@@ -208,14 +208,52 @@ export const STRUCTURES = {
 export const EFFECT_TICKS = 4;
 
 export const ENEMY = {
-  baseHp: 20,
-  speed: 1.5, // tiles per second
-  keepDamage: 5,
-  structureDps: 5,
-  baseBounty: 2,
   /** Chance (0-1) at each tile that an enemy steps to a random open neighbour instead of following the path. */
   wanderChance: 0.1,
 };
+
+/** A version of a kind, rolled at spawn. Multipliers apply to the kind's stats. */
+export interface EnemyVariant {
+  name: string;
+  /** How often it's rolled, relative to the kind's other variants. */
+  weight: number;
+  hp: number;
+  speed: number;
+  damage: number;
+  /** Glyph size. Variants never change colour. */
+  size: "small" | "normal" | "large";
+}
+
+/** Stats at wave 1, before the variant. */
+export interface EnemyKind {
+  glyph: string;
+  name: string;
+  hp: number;
+  speed: number; // tiles per second
+  /** Per hit, against a structure in the way or the keep. */
+  damage: number;
+  attackInterval: number; // seconds between hits
+  bounty: number;
+  variants: EnemyVariant[];
+}
+
+export const ENEMY_KINDS = {
+  goblin: {
+    glyph: "g",
+    name: "Goblin",
+    hp: 20,
+    speed: 1.5,
+    damage: 5,
+    attackInterval: 1,
+    bounty: 2,
+    variants: [{ name: "grunt", weight: 1, hp: 1, speed: 1, damage: 1, size: "normal" }],
+  },
+} satisfies Record<string, EnemyKind>;
+
+export type EnemyKindId = keyof typeof ENEMY_KINDS;
+
+/** Roster order; an enemy's index here is its id on the wire. */
+export const ENEMY_KIND_ORDER = Object.keys(ENEMY_KINDS) as EnemyKindId[];
 
 export const WAVES = {
   countdownSeconds: 20, // before wave 1, and after each wave finishes spawning
