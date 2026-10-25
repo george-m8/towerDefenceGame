@@ -19,14 +19,7 @@ import type { PendingBuild } from "../net/session";
 import { isBuildTool, type UiState } from "../ui/state";
 import { visibleTiles, type VisibleTiles } from "../ui/camera";
 import { KEEP, NONE, getEnclosures } from "../sim/enclosures";
-import {
-  IN_SIGHT,
-  SEEN,
-  UNEXPLORED,
-  canSeeEnemiesAt,
-  forEachSightTile,
-  getSight,
-} from "../sim/fog";
+import { SEEN, canSeeEnemiesAt, forEachSightTile, getSight } from "../sim/fog";
 import {
   AIM_LINE_TILES,
   ARROWS,
@@ -45,6 +38,7 @@ import {
   glyphFor,
   playerColour,
 } from "./palette";
+import { fogImage } from "./fog";
 
 /** Compass degrees (0 = north, clockwise) to canvas radians (0 = east, clockwise). */
 function toCanvasAngle(compassDegrees: number): number {
@@ -66,6 +60,8 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   if (!ctx) throw new Error("Canvas 2D context not available");
   /** The tiles on screen this frame. */
   let view: VisibleTiles = { x0: 0, y0: 0, x1: -1, y1: -1 };
+  /** The fog image and the sight it was made from. */
+  let fog: { tier: Uint8Array; image: HTMLCanvasElement } | null = null;
 
   function drawTile(x: number, y: number, bg: string, glyph?: string, fg?: string) {
     ctx!.fillStyle = bg;
@@ -153,19 +149,18 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   }
 
   /**
-   * Fog of war, over everything drawn so far: seen land gets a dark wash, unexplored land is
-   * covered. Enemies and effects out of sight are left out before this, not covered by it.
+   * Fog of war, over everything drawn so far: a white mist, thin over seen land and solid over
+   * unexplored land, with see-through steps along its edge. Enemies and effects out of sight
+   * are left out before this, not covered by it. The fog image is only rebuilt when sight
+   * changes.
    */
   function drawFog(state: GameState) {
+    if (!state.fog) return;
     const tier = getSight(state);
-    for (let y = view.y0; y <= view.y1; y++) {
-      for (let x = view.x0; x <= view.x1; x++) {
-        const t = tier[y * state.width + x];
-        if (t === IN_SIGHT) continue;
-        ctx!.fillStyle = t === UNEXPLORED ? COLOURS.fogUnexplored : COLOURS.fogSeen;
-        ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-      }
-    }
+    if (fog?.tier !== tier) fog = { tier, image: fogImage(tier, state.width, state.height) };
+    ctx!.imageSmoothingEnabled = false; // hard tile edges
+    ctx!.drawImage(fog.image, 0, 0, state.width * TILE_SIZE, state.height * TILE_SIZE);
+    ctx!.imageSmoothingEnabled = true;
   }
 
   function drawFeatures(state: GameState) {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { applyCommand, createGame } from "../../src/sim/game";
-import { COLOURS, STRUCTURE_COLOURS, TERRAIN_STYLES } from "../../src/render/palette";
+import { COLOURS, FOG, STRUCTURE_COLOURS, TERRAIN_STYLES } from "../../src/render/palette";
 import { fogged, minimapColour } from "../../src/ui/minimap";
 import { IN_SIGHT, SEEN, UNEXPLORED } from "../../src/sim/fog";
 import { paintTerrain } from "../sim/helpers";
@@ -29,9 +29,13 @@ describe("minimapColour", () => {
 });
 
 describe("fogged", () => {
-  it("darkens unexplored land fully, dims seen land, and leaves land in sight alone", () => {
-    expect(fogged("#808080", UNEXPLORED)).toBe(COLOURS.fogUnexplored);
-    expect(fogged("#808080", SEEN)).toBe("#404040");
+  it("mists unexplored land heavily, seen land lightly, and leaves land in sight alone", () => {
+    const mist = (opacity: number) => {
+      const c = Math.round(0x80 * (1 - opacity) + 0xff * opacity).toString(16); // FOG.colour is white
+      return `#${c}${c}${c}`;
+    };
+    expect(fogged("#808080", UNEXPLORED)).toBe(mist(FOG.unexplored));
+    expect(fogged("#808080", SEEN)).toBe(mist(FOG.seen));
     expect(fogged("#808080", IN_SIGHT)).toBe("#808080");
   });
 });

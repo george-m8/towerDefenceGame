@@ -49,16 +49,30 @@ export const COLOURS = {
   spikesUp: "#c8c8c8",
   spikesUpGlyph: "#ffffff",
   trapTarget: "rgba(255, 200, 200, 0.35)",
-  /** Fog of war: a dark wash over land that's seen but out of sight, and unexplored land. */
-  fogSeen: "rgba(0, 0, 0, 0.5)",
-  fogUnexplored: "#0b0906",
   /** A watchtower's sight while placing or hovering it: in sight, then seen. */
   sightInner: "rgba(160, 220, 255, 0.14)",
   sightOuter: "rgba(160, 220, 255, 0.06)",
 };
 
-/** How much of a seen tile's colour is kept on the minimap (the rest goes dark). */
-export const MINIMAP_SEEN_BRIGHTNESS = 0.5;
+/**
+ * Fog of war: a white mist, thin over land that's seen but out of sight, and solid over
+ * unexplored land, except near explored land, where it thins in bands. Opacities are 0 (clear)
+ * to 1 (solid). Like the ground, the fog is a checker of two colours.
+ */
+export const FOG = {
+  colour: "#ffffff",
+  colourAlt: "#ededed",
+  seen: 0.3,
+  /**
+   * See-through bands on unexplored land, from the edge of explored land outwards: each is
+   * `tiles` wide (counting diagonals) at `opacity`. Past the last band the fog is `unexplored`.
+   */
+  edgeBands: [
+    { tiles: 1, opacity: 0.50 },
+    { tiles: 1, opacity: 0.80 },
+  ],
+  unexplored: 1,
+};
 
 export const GLYPHS: Record<StructureKind, string> = {
   wall: "#",

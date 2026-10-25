@@ -2,15 +2,15 @@
 
 Status: APPROVED (2026-10-25)
 Builds on `tile-layers`, `map-gen`, `players`, `net-client` and `enclosures`. Not on the capability map yet: one self-contained capability.
-Last updated: 2026-10-25
+Last updated: 2026-10-25 (v1.1 - white fog, with see-through steps at its edge)
 
 ## Objective
 
-Make the map something you push out into. You start seeing only the ground around your keep. Everything you build lets you see further. Close to your buildings you see everything, including enemies. Further out you see the land but not what's moving on it. Beyond that the map is black until you've seen it.
+Make the map something you push out into. You start seeing only the ground around your keep. Everything you build lets you see further. Close to your buildings you see everything, including enemies. Further out you see the land but not what's moving on it. Beyond that the map is covered in white fog until you've seen it, though you can just make out the land at its edge.
 
 ### User stories
 
-1. As a player, at the start I see the land around my keep. The rest of the map is black, apart from the enemy spawn strip.
+1. As a player, at the start I see the land around my keep. The rest of the map is covered in white fog, apart from the enemy spawn strip.
 2. As a player, building something lets me see the area around it, so I can explore by building outward. Different buildings see different distances: the keep furthest, then towers (along their firing arc), with walls seeing least.
 3. As a player, I can build a watchtower that sees all round as far as a cannon fires, to scout without building a weapon.
 4. As a player, I can only build on land I've seen.
@@ -27,8 +27,8 @@ Every tile is in one of three tiers:
 | Tier | When | What you see | Build? |
 |---|---|---|---|
 | **In sight** | Within the inner sight radius of the keep or any structure you built | Everything: terrain, structures, chests, enemies, shots | Yes |
-| **Seen** | Within the outer sight radius of anything, or seen at some point before | Terrain, structures and chests, in a darker shade. No enemies or shots. | Yes |
-| **Unexplored** | Never seen | Nothing (black) | No |
+| **Seen** | Within the outer sight radius of anything, or seen at some point before | Terrain, structures and chests, under a thin white mist. No enemies or shots. | Yes |
+| **Unexplored** | Never seen | Nothing (solid white), except the 2 tiles next to explored land, which are see-through. No enemies or shots. | No |
 
 - "In sight" is live: it's worked out from what's standing now. If a structure is sold or destroyed, the area around it drops from in sight to seen.
 - "Seen" is remembered: once a tile has been seen it stays seen for the rest of the game. A tile never goes back to unexplored.
@@ -65,7 +65,7 @@ Each kind of building has its own sight region: an inner radius (in sight) and a
 
 **Building and selling**
 - You can build on a tile that's in sight or seen. Unexplored tiles can't be built on ("Can't build on unexplored land").
-- Selling and tree clearing follow the same rule, so you can't clear trees or salvage ruins in the dark. (Everything you built is on seen land anyway.)
+- Selling and tree clearing follow the same rule, so you can't clear trees or salvage ruins in unexplored land. (Everything you built is on seen land anyway.)
 - Everything else about building is unchanged: price, enclosure discounts, layers, gold.
 
 **Enemies**
@@ -79,10 +79,13 @@ Each kind of building has its own sight region: an inner radius (in sight) and a
 
 **Showing it**
 - In sight: drawn as now.
-- Seen: everything drawn as now, then a translucent dark wash over it, so terrain, structures and enclosure shading all show in a darker shade.
-- Unexplored: solid near-black, with no glyphs.
-- Tile edges are hard (no soft gradient), to fit the grid look.
-- The minimap uses the same three tiers and only shows enemy dots that are in sight.
+- The fog is a white mist drawn over everything else (`FOG` in `src/render/palette.ts`).
+- Seen: a thin mist (30% opacity), so terrain, structures and enclosure shading all show, a little washed out.
+- Unexplored: solid white, except along its edge, so you can just see beyond what you've explored. Unexplored tiles next to explored land (counting diagonals) are 50% opaque, the ring after that 80%, and everything further out 100%.
+- Every tile has one flat opacity. Tile edges are hard (no smoothing), to fit the grid look.
+- Like the ground, the fog is a checker of two colours: white and a very light grey.
+- The band widths and opacities, the seen opacity and the fog colours are all in `FOG` (`src/render/palette.ts`), to tune in play.
+- The minimap uses the same three tiers, mixed with white (seen 30%, unexplored solid), and only shows enemy dots that are in sight.
 - Hover info on an unexplored tile says "Unexplored". On a seen tile it shows terrain and structures as usual, plus "Out of sight: enemies here aren't shown".
 - The build preview on an unexplored tile shows as not allowed, with the reason in the info line.
 
@@ -140,7 +143,7 @@ Vitest, on blank maps with fog on:
 
 ## Success criteria
 
-1. A new game shows the area around the keep, a darker ring of seen land, the spawn strip, and black everywhere else.
+1. A new game shows the area around the keep, a lightly misted ring of seen land, the spawn strip, and white fog everywhere else, with see-through steps at its edge.
 2. Building reveals the land around it. The keep sees furthest, then towers (archers along their arc), with walls seeing least. A watchtower sees all round as far as a cannon.
 3. Building on unexplored land is refused, and the preview and hover info say why.
 4. Enemies are only drawn (main map, minimap, hover) on in-sight tiles.
@@ -151,7 +154,7 @@ Vitest, on blank maps with fog on:
 ## Resolved decisions
 
 1. Sight comes from the keep and everything players build, with a region per kind: the keep's is the largest, towers' next (in the shape of their firing arc), walls' the smallest. Ruins see nothing.
-2. Beyond sight the map is black until seen. Seen land is remembered for the rest of the game.
+2. Beyond sight the map is white fog until seen, with see-through steps at its edge. Seen land is remembered for the rest of the game.
 3. Sight is shared in co-op.
 4. The spawn strip starts seen: visible, but enemies there aren't shown.
 5. You can build on seen land as well as land in sight.
