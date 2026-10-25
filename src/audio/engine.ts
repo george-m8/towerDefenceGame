@@ -107,10 +107,15 @@ export function createWebAudioEngine(deps: EngineDeps = defaultDeps): AudioEngin
 }
 
 /** Unlocks audio on the first click, tap or key press anywhere on the page. */
-export function unlockOnFirstGesture(engine: AudioEngine, target: Window = window): void {
+export function unlockOnFirstGesture(
+  engine: AudioEngine,
+  target: Window = window,
+  onUnlock: () => void = () => {},
+): void {
   const options = { capture: true };
   const unlock = () => {
     engine.unlock();
+    onUnlock();
     target.removeEventListener("pointerdown", unlock, options);
     target.removeEventListener("keydown", unlock, options);
   };

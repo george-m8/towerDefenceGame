@@ -29,9 +29,9 @@ Spec: [`SPEC-music-packs.md`](../SPEC-music-packs.md). Plan: [`tasks/plan.md`](p
 - Files: `src/audio/sequencer.ts`, `tests/audio/sequencer.test.ts`
 
 ## Task 5: Wiring and Music dropdown
-- [ ] Intro dismiss plays intro; intro ending in the menus plays menu music
-- [ ] Starting a game plays in-play; game over plays game-over; restart plays in-play
-- [ ] A Music dropdown (packs + Built-in) appears when packs exist and restarts the current music
+- [x] Intro dismiss plays intro; intro ending in the menus plays menu music
+- [x] Starting a game plays in-play; game over plays game-over; restart plays in-play
+- [x] A Music dropdown (packs + Built-in) appears when packs exist and restarts the current music
 - Files: `src/main.ts`, `src/ui/soundControls.ts`, `src/audio/engine.ts`
 
 ## Task 6: Docs

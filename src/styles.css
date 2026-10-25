@@ -437,6 +437,19 @@ a.button {
   accent-color: var(--ink);
 }
 
+.slider select {
+  width: 100%;
+  min-width: 0;
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--ink);
+}
+
+.slider[hidden] {
+  display: none;
+}
+
 /* Dev sound test page */
 .sound-test {
   padding: 16px 24px;
