@@ -22,6 +22,8 @@ export const BEHAVIOURS: Record<BehaviourId, Behaviour> = {
   follower: () => false,
   bomber: bomb,
   healer: heal,
+  siege: () => false, // a breacher that will ignore units (see unit-core)
+  digger: dig,
 };
 
 function abilityOf(enemy: Enemy): EnemyAbility {
@@ -81,6 +83,45 @@ function heal(state: GameState, enemy: Enemy): boolean {
   }
   if (healed) enemy.abilityCooldown = interval * TICK_RATE;
   return false;
+}
+
+/**
+ * Diggers walk their field until a player-built wall or wall spikes is within sight, walk to a
+ * tile next to it, and dig under it each attack interval until it falls. Then they walk on.
+ */
+function dig(state: GameState, enemy: Enemy): boolean {
+  const ability = abilityOf(enemy);
+  let target = enemy.targetId === null ? undefined : state.structures[enemy.targetId];
+  if (!target) {
+    if (enemy.targetId !== null) giveUp(enemy); // it fell: walk on
+    if (!atTileCentre(enemy)) return false;
+    target = findTarget(state, enemy, ability, isDigTarget);
+    if (!target) return false;
+    enemy.targetId = target.id;
+  }
+  if (enemy.mode === "digging") {
+    if (enemy.attackCooldown === 0) {
+      damageStructure(state, target, enemy.damage);
+      enemy.attackCooldown = enemy.attackInterval;
+    }
+    return true;
+  }
+  const wall = target;
+  walk(enemy, enemy.speed, () => {
+    if (isNextTo(enemy, wall)) {
+      enemy.mode = "digging";
+      return false;
+    }
+    const step = firstStepTowards(state, enemy, wall, ability.search ?? 0);
+    if (!step) return giveUp(enemy);
+    stepTo(enemy, step.x, step.y);
+    return true;
+  });
+  return true;
+}
+
+function isDigTarget(structure: Structure): boolean {
+  return structure.owner !== null && (structure.kind === "wall" || structure.kind === "wallSpikes");
 }
 
 /** Walls, towers, houses and wall spikes a player built. Never ruins, bridges or floor spikes. */

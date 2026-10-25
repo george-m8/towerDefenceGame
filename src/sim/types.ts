@@ -70,8 +70,8 @@ export interface Enemy {
   /** Ticks until its behaviour's ability (a heal, a dig) is ready again. */
   abilityCooldown: number;
   /** What it's doing beyond walking its field. */
-  mode: "walking" | "sprinting";
-  /** The structure a bomber is heading for. */
+  mode: "walking" | "sprinting" | "digging";
+  /** The structure a bomber or digger is heading for or digging under. */
   targetId: number | null;
   /** Band members: the leader they follow, until it dies. */
   leaderId: number | null;

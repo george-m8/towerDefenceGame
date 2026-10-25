@@ -222,3 +222,119 @@ describe("shaman", () => {
     expect(heals).toEqual([expect.objectContaining({ x: hurt.x, y: hurt.y })]);
   });
 });
+
+/** A wall across the whole map `dx` tiles left of the keep, open only at the top row. */
+function barrier(state: GameState, dx: number, hp: number): Structure[] {
+  const x = state.keeps[0].x - dx;
+  const walls: Structure[] = [];
+  for (let y = 1; y < state.height; y++) walls.push(placeStructure(state, "wall", x, y));
+  for (const wall of walls) wall.hp = wall.maxHp = hp;
+  return walls;
+}
+
+describe("battering ram", () => {
+  it("is the spec's ram", () => {
+    expect(ENEMY_KINDS.batteringRam).toMatchObject({
+      glyph: "R",
+      hp: 400,
+      speed: 0.5,
+      damage: 60,
+      attackInterval: 2.5,
+      bounty: 30,
+      threat: 18,
+      firstWave: 12,
+      profile: "breacher",
+      behaviour: "siege",
+    });
+  });
+
+  it("breaks through a maze wall, hitting for 60 every 2.5 s", () => {
+    const state = createGameWithoutWaves();
+    const walls = barrier(state, 5, 300);
+    const p = lane(state, 6);
+    const wall = walls.find((w) => w.y === p.y)!;
+    spawnEnemy(state, p.x, p.y, { kind: "batteringRam" });
+
+    tick(state);
+    expect(wall.hp).toBe(300 - 60);
+    run(state, 2.5 * TICK_RATE - 1);
+    expect(wall.hp).toBe(300 - 60);
+    tick(state);
+    expect(wall.hp).toBe(300 - 120);
+  });
+});
+
+describe("digger", () => {
+  it("is the spec's digger", () => {
+    expect(ENEMY_KINDS.digger).toMatchObject({
+      glyph: "n",
+      hp: 20,
+      speed: 1.2,
+      damage: 6,
+      attackInterval: 1,
+      bounty: 4,
+      threat: 3,
+      firstWave: 9,
+      behaviour: "digger",
+    });
+  });
+
+  it("digs under the nearest wall within 4 tiles, brings it down with its tower, then walks on", () => {
+    const state = createGameWithoutWaves();
+    const p = lane(state, 30);
+    const wall = owned(state, "wall", p.x + 1, p.y + 3);
+    const tower = owned(state, "archer", wall.x, wall.y);
+    const further = owned(state, "wall", p.x - 2, p.y - 3);
+    const digger = spawnEnemy(state, p.x, p.y, { kind: "digger" });
+    digger.hp = digger.maxHp = 10_000; // the archer on the wall shoots back
+
+    let dug = false;
+    for (let i = 0; i < 600 && state.structures[wall.id]; i++) {
+      tick(state);
+      if (digger.mode === "digging") {
+        dug = true;
+        expect(digger.targetId).toBe(wall.id);
+        expect(Math.abs(digger.x - wall.x) + Math.abs(digger.y - wall.y)).toBe(1);
+      }
+    }
+
+    expect(dug).toBe(true);
+    expect(state.structures[wall.id]).toBeUndefined();
+    expect(state.structures[tower.id]).toBeUndefined();
+    expect(state.structures[further.id]).toBeDefined();
+    const at = digger.x;
+    run(state, 40);
+    expect(digger.mode).toBe("walking");
+    expect(digger.x).toBeGreaterThan(at);
+  });
+
+  it("ignores ruins, and walls further than 4 tiles", () => {
+    const state = createGameWithoutWaves();
+    const p = lane(state, 30);
+    placeStructure(state, "ruin", p.x, p.y + 2);
+    owned(state, "wall", p.x, p.y - 5);
+    const digger = spawnEnemy(state, p.x, p.y, { kind: "digger" });
+
+    tick(state);
+
+    expect(digger.targetId).toBeNull();
+  });
+
+  it("can still be hit by towers and traps while it digs", () => {
+    const state = createGameWithoutWaves();
+    const p = lane(state, 30);
+    const wall = sturdy(owned(state, "wall", p.x, p.y + 2));
+    const digger = spawnEnemy(state, p.x, p.y, { kind: "digger" });
+    digger.hp = digger.maxHp = 10_000;
+    for (let i = 0; i < 100 && digger.mode !== "digging"; i++) tick(state);
+    expect(digger.mode).toBe("digging");
+
+    owned(state, "floorSpikes", digger.x, digger.y);
+    owned(state, "cannon", digger.x + 2, digger.y);
+    run(state, 3 * TICK_RATE);
+
+    expect(digger.hp).toBeLessThan(digger.maxHp);
+    expect(digger.mode).toBe("digging");
+    expect(wall.hp).toBeLessThan(1000);
+  });
+});

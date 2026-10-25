@@ -490,11 +490,11 @@ describe("breachers", () => {
     expect(damagedBy("goblin")).toBe(0);
   });
 
-  it("dwarves, thanes and golems breach; the rest follow", () => {
+  it("dwarves, thanes, golems and rams breach; the rest follow", () => {
     const breachers = (Object.keys(ENEMY_KINDS) as EnemyKindId[]).filter(
       (k) => ENEMY_KINDS[k].profile === "breacher",
     );
-    expect(breachers.sort()).toEqual(["dwarf", "dwarfThane", "golem"]);
+    expect(breachers.sort()).toEqual(["batteringRam", "dwarf", "dwarfThane", "golem"]);
   });
 });
 

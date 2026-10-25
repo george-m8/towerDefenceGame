@@ -239,7 +239,7 @@ export const BREACH = { referenceDps: 8, referenceSpeed: 1 };
 export const MARINE_COSTS = { river: 2, sea: 4 };
 
 /** What an enemy does on top of following its profile's field (see sim/behaviours.ts). */
-export type BehaviourId = "follower" | "bomber" | "healer";
+export type BehaviourId = "follower" | "bomber" | "healer" | "siege" | "digger";
 
 /** Numbers for behaviours that need them. Distances in tiles, intervals in seconds. */
 export interface EnemyAbility {
@@ -540,6 +540,39 @@ export const ENEMY_KINDS = {
     firstWave: 11,
     mixWeight: 1,
     variants: [{ name: "demolisher", weight: 1, hp: 1, speed: 1, damage: 1, size: "normal" }],
+  },
+  digger: {
+    glyph: "n",
+    name: "Digger",
+    description: "Digs under a nearby wall until it falls, then walks on.",
+    profile: "follower",
+    behaviour: "digger",
+    ability: { sight: 4, search: 8 },
+    hp: 20,
+    speed: 1.2,
+    damage: 6,
+    attackInterval: 1,
+    bounty: 4,
+    threat: 3,
+    firstWave: 9,
+    mixWeight: 2,
+    variants: [{ name: "tunneller", weight: 1, hp: 1, speed: 1, damage: 1, size: "normal" }],
+  },
+  batteringRam: {
+    glyph: "R",
+    name: "Battering ram",
+    description: "Huge and slow. Smashes straight through walls.",
+    profile: "breacher",
+    behaviour: "siege",
+    hp: 400,
+    speed: 0.5,
+    damage: 60,
+    attackInterval: 2.5,
+    bounty: 30,
+    threat: 18,
+    firstWave: 12,
+    mixWeight: 0.5,
+    variants: [{ name: "ram", weight: 1, hp: 1, speed: 1, damage: 1, size: "normal" }],
   },
 } satisfies Record<string, EnemyKind>;
 

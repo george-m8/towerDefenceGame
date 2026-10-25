@@ -90,11 +90,13 @@ Built: a heal pulse fires as soon as someone in range is hurt, then waits its 2 
 
 Rows for `R` (breacher, siege behaviour: no extra code yet) and `n`. Digger behaviour: spot a player-built wall or wall spikes within 4 tiles; walk to a tile next to it (search of up to 8 tiles); dig in (`mode: "digging"`), hitting that wall each interval until it falls (with its tower); then walk on. Diggers stay attackable while digging.
 
-- [ ] A ram breaks through a maze wall; its hits are 60 every 2.5 s
-- [ ] A digger digs under the nearest wall within 4 tiles, brings it (and its tower) down, then walks on
-- [ ] Towers and traps still hit a digging digger
+- [x] A ram breaks through a maze wall; its hits are 60 every 2.5 s
+- [x] A digger digs under the nearest wall within 4 tiles, brings it (and its tower) down, then walks on
+- [x] Towers and traps still hit a digging digger
 
 Files: `src/sim/config.ts`, `src/sim/behaviours.ts`, `tests/sim/behaviours.test.ts`, `tests/sim/enemies.test.ts`. Size: M. Depends on: 5.
+
+Built: a digger heads for its wall in `walking` mode with `targetId` set, and switches to `digging` once next to it. Once the wall falls it may notice another within 4 tiles and dig again.
 
 ## Task 9: Hover words and the network
 

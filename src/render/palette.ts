@@ -40,6 +40,8 @@ export const ENEMY_COLOURS: Record<EnemyKindId, string> = {
   shaman: "#7bd389",
   dwarfBomber: "#ff7a1a",
   dwarfDemolisher: "#ff7a1a",
+  digger: "#b08968",
+  batteringRam: "#a0522d",
 };
 
 /** Glyph size per variant size, relative to the normal glyph. Large still fits in a tile. */
