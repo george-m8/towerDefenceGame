@@ -80,17 +80,33 @@ function findEnclosures(state: GameState): Enclosures {
   }
   flood(queue, reachable, open, width, height);
 
-  // Open tiles nobody can reach form enclosed areas; an area touching the keep is the keep's.
+  // Inside: walkable ground enemies can't reach and that doesn't border ground they can reach.
+  // That includes structures standing inside a ring (a tower in a corner), but not the ring's
+  // own walls, which border the outside.
+  const inside = new Array<boolean>(size);
+  for (let i = 0; i < size; i++) {
+    const x = i % width;
+    const y = Math.floor(i / width);
+    inside[i] =
+      isWalkable(state, x, y) &&
+      !isKeepTile(state, x, y) &&
+      !reachable[i] &&
+      !neighbours(i, width, height, NEIGHBOURS_4).some((n) => reachable[n]);
+  }
+
+  // Connected inside tiles form areas; an area touching the keep is the keep's. An area needs
+  // some open ground, so a solid block of walls out in the open isn't an "enclosure".
   const area = new Array<EnclosureKind>(size).fill(NONE);
   const seen = new Array<boolean>(size).fill(false);
   for (let start = 0; start < size; start++) {
-    if (!open[start] || reachable[start] || seen[start]) continue;
+    if (!inside[start] || seen[start]) continue;
     seen[start] = true;
     const members = [start];
-    flood(members, seen, open, width, height, true);
+    flood(members, seen, inside, width, height, true);
+    if (!members.some((i) => open[i])) continue;
     // Ruins and terrain alone can box in a pocket on a fresh map; it only counts once
     // something the players built is part of the wall.
-    if (!hasBuiltBoundary(state, members, open)) continue;
+    if (!hasBuiltBoundary(state, members, inside)) continue;
     const kind = members.some((i) => touchesKeep(state, i)) ? KEEP : OUTER;
     for (const i of members) area[i] = kind;
   }
@@ -99,15 +115,15 @@ function findEnclosures(state: GameState): Enclosures {
   const keepReached = keepTiles(state).some((i) =>
     neighbours(i, width, height, NEIGHBOURS_4).some((n) => reachable[n]),
   );
-  if (!keepReached && hasBuiltBoundary(state, keepTiles(state), open)) {
+  if (!keepReached && hasBuiltBoundary(state, keepTiles(state), inside)) {
     for (const i of keepTiles(state)) area[i] = KEEP;
   }
 
-  // Boundary: anything not open, next to an enclosed area (diagonals too, for ring corners),
-  // takes the best discount it touches.
+  // Boundary: anything else next to an enclosed area (diagonals too, for ring corners) takes
+  // the best discount it touches.
   const kind = [...area];
   for (let i = 0; i < size; i++) {
-    if (open[i] || area[i] !== NONE) continue;
+    if (area[i] !== NONE || (open[i] && !inside[i])) continue;
     let best: EnclosureKind = NONE;
     for (const n of neighbours(i, width, height, NEIGHBOURS_8))
       best = Math.max(best, area[n]) as EnclosureKind;
@@ -164,12 +180,12 @@ function neighbours(
   return result;
 }
 
-/** Whether any structure bordering these tiles was built by a player (anything but a ruin). */
-function hasBuiltBoundary(state: GameState, tiles: number[], open: boolean[]): boolean {
+/** Whether any structure on the wall around these tiles was built by a player (not a ruin). */
+function hasBuiltBoundary(state: GameState, tiles: number[], inside: boolean[]): boolean {
   const { width, height } = state;
   return tiles.some((i) =>
     neighbours(i, width, height, NEIGHBOURS_8).some((n) => {
-      if (open[n]) return false;
+      if (inside[n]) return false;
       const x = n % width;
       const y = Math.floor(n / width);
       const structure = mountAt(state, x, y) ?? baseAt(state, x, y);

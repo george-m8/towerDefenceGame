@@ -30,12 +30,12 @@ Standard verification for every task: `npm run typecheck && npm test && npm run 
 **Description:** Shade enclosed tiles and their walls (keep: warm gold; outer: cooler tint) on the map and minimap. Hover info names the enclosure and discount; the info box shows the price for the selected tool on the hovered tile. README and SPEC notes.
 
 **Acceptance criteria:**
-- [ ] Closing a ring shades it; the keep enclosure looks different from outer ones
-- [ ] Hover info and the info box show the discounted price
+- [x] Closing a ring shades it; the keep enclosure looks different from outer ones (checked in a rendered image; browser check pending)
+- [x] Hover info and the info box show the discounted price
 
 **Verification:** tests for the hover text; manual in the browser
 
 ## Checkpoint
 - [ ] All 6 success criteria in `SPEC-enclosures.md` met
-- [ ] `npm run coverage` passes
+- [x] `npm run coverage` passes (98.6% lines; `enclosures.ts` 100%)
 - [ ] Manual: build rings in the browser (keep, outer, against the coast)

@@ -4,6 +4,7 @@ import type { GameState } from "../sim/types";
 import { baseAt, isKeepTile, isSpawnTile, mountAt, terrainAt } from "../sim/grid";
 import { COLOURS, STRUCTURE_COLOURS, TERRAIN_STYLES } from "../render/palette";
 import { centerOn, tilePixels } from "./camera";
+import { KEEP, NONE, getEnclosures } from "../sim/enclosures";
 import type { UiState } from "./state";
 
 /** The largest the minimap may be, in CSS pixels (it fits the panel). */
@@ -50,12 +51,13 @@ export function createMinimap(canvas: HTMLCanvasElement, ui: UiState) {
   canvas.addEventListener("pointercancel", () => (dragging = false));
 
   function rebuildImage(s: GameState) {
+    const { kind } = getEnclosures(s);
     terrainImage = ctx.createImageData(s.width * scale, s.height * scale);
     const data = terrainImage.data;
     const rgbCache = new Map<string, [number, number, number]>();
     for (let y = 0; y < s.height; y++) {
       for (let x = 0; x < s.width; x++) {
-        const hex = minimapColour(s, x, y);
+        const hex = tinted(minimapColour(s, x, y), kind[y * s.width + x]);
         let rgb = rgbCache.get(hex);
         if (!rgb) rgbCache.set(hex, (rgb = hexToRgb(hex)));
         for (let py = 0; py < scale; py++) {
@@ -113,6 +115,18 @@ export function createMinimap(canvas: HTMLCanvasElement, ui: UiState) {
     },
   };
 }
+
+/** Blends an enclosure's tint into a minimap colour, so claimed areas show there too. */
+function tinted(hex: string, kind: number): string {
+  if (kind === NONE) return hex;
+  const tint = hexToRgb(kind === KEEP ? COLOURS.enclosureKeepTint : COLOURS.enclosureOuterTint);
+  const base = hexToRgb(hex);
+  const mix = base.map((c, i) => Math.round(c * (1 - MINIMAP_TINT) + tint[i] * MINIMAP_TINT));
+  return `#${mix.map((c) => c.toString(16).padStart(2, "0")).join("")}`;
+}
+
+/** How strongly an enclosure tints the minimap. */
+const MINIMAP_TINT = 0.4;
 
 function hexToRgb(hex: string): [number, number, number] {
   const n = parseInt(hex.slice(1), 16);

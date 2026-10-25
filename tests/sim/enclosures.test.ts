@@ -65,6 +65,20 @@ describe("finding enclosures", () => {
     expect(discounts(state, r)).toEqual([0.5]);
   });
 
+  it("a tower inside a ring's corner doesn't stop the corner wall being part of it", () => {
+    const state = createGameWithoutWaves();
+    buildAt(state, ring(10, 5, 14, 9));
+    placeStructure(state, "archer", 11, 6, "N"); // just inside the top-left corner
+    expect(discountAt(state, 10, 5)).toBe(0.25); // the corner wall
+    expect(discountAt(state, 11, 6)).toBe(0.25); // the tower's tile
+  });
+
+  it("a solid block of walls in the open isn't an enclosure", () => {
+    const state = createGameWithoutWaves();
+    buildAt(state, rect(20, 20, 22, 22));
+    expect(discounts(state, rect(20, 20, 22, 22))).toEqual([0]);
+  });
+
   it("the map edge closes an enclosure", () => {
     const state = createGameWithoutWaves();
     buildAt(state, [...rect(10, 0, 10, 3), ...rect(14, 0, 14, 3), ...rect(10, 4, 14, 4)]);
