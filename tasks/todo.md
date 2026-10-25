@@ -102,11 +102,13 @@ Built: a digger heads for its wall in `walking` mode with `targetId` set, and sw
 
 `ClientEnemy` gains `mode` (only when not walking) and `banded` (only while its leader lives). Hover info adds `sprinting`, `digging`, `with its chief` / `with its thane`.
 
-- [ ] `mode` and `banded` survive snapshot and update round trips, and are left out when not needed
-- [ ] Hover lines for a sprinting bomber, a digging digger and a banded barbarian
-- [ ] The 200-enemy update size test still passes
+- [x] `mode` and `banded` survive snapshot and update round trips, and are left out when not needed
+- [x] Hover lines for a sprinting bomber, a digging digger and a banded barbarian
+- [x] The 200-enemy update size test still passes
 
 Files: `src/net/protocol.ts`, `src/net/snapshot.ts`, `src/net/view.ts`, `src/ui/tileInfo.ts`, tests. Size: S. Depends on: 6, 7, 8.
+
+Built: instead of a `banded: true` flag, `ClientEnemy` carries `leaderId` (only while the leader lives). Same information, and the client's `Enemy` then means what the server's does, so the hover code is shared. The "chief" / "thane" word is the last word of the leader kind's name.
 
 ## Checkpoint D (after Tasks 5-9)
 

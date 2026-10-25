@@ -104,9 +104,9 @@ function toEnemy(e: ClientEnemy): Enemy {
     killedBy: null,
     attackCooldown: 0,
     abilityCooldown: 0,
-    mode: "walking",
+    mode: e.mode ?? "walking",
     targetId: null,
-    leaderId: null,
+    leaderId: e.leaderId ?? null,
   };
 }
 

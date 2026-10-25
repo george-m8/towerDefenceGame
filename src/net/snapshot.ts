@@ -1,6 +1,7 @@
 // Turns the server's GameState into what clients receive. Shared and pure.
 import { ENEMY_KIND_ORDER } from "../sim/config";
-import type { GameState, Structure } from "../sim/types";
+import { livingLeader } from "../sim/enemies";
+import type { Enemy, GameState, Structure } from "../sim/types";
 import type {
   ClientEnemy,
   ClientState,
@@ -14,7 +15,7 @@ export function toClientState(state: GameState): ClientState {
   const { flows: _flows, rngState: _rng, enemies, structures, ...rest } = state;
   return {
     ...rest,
-    enemies: enemies.map(toClientEnemy),
+    enemies: enemies.map((e) => toClientEnemy(state, e)),
     structures: toClientStructures(structures),
   };
 }
@@ -60,7 +61,7 @@ export function toUpdate(state: GameState, sent: SentState): StateUpdate {
   const update: StateUpdate = {
     tick: state.tick,
     gridVersion: state.gridVersion,
-    enemies: state.enemies.map((e) => toUpdateEnemy(e, sent.enemies.has(e.id))),
+    enemies: state.enemies.map((e) => toUpdateEnemy(state, e, sent.enemies.has(e.id))),
     effects: state.effects,
     cues: state.cues,
     players: state.players,
@@ -128,8 +129,8 @@ function sameStructure(a: ClientStructure, b: ClientStructure): boolean {
   return keys.length === Object.keys(a).length && keys.every((k) => a[k] === b[k]);
 }
 
-function toClientEnemy(enemy: GameState["enemies"][number]): ClientEnemy {
-  return {
+function toClientEnemy(state: GameState, enemy: Enemy): ClientEnemy {
+  const client: ClientEnemy = {
     id: enemy.id,
     x: round2(enemy.x),
     y: round2(enemy.y),
@@ -138,12 +139,15 @@ function toClientEnemy(enemy: GameState["enemies"][number]): ClientEnemy {
     kind: ENEMY_KIND_ORDER.indexOf(enemy.kind),
     variant: enemy.variant,
   };
+  if (enemy.mode !== "walking") client.mode = enemy.mode;
+  if (livingLeader(state, enemy)) client.leaderId = enemy.leaderId!;
+  return client;
 }
 
 /** An enemy as an update carries it: kind and variant only if the clients don't have them. */
-function toUpdateEnemy(enemy: GameState["enemies"][number], known: boolean): UpdateEnemy {
-  if (!known) return toClientEnemy(enemy);
-  const { kind: _kind, variant: _variant, ...rest } = toClientEnemy(enemy);
+function toUpdateEnemy(state: GameState, enemy: Enemy, known: boolean): UpdateEnemy {
+  if (!known) return toClientEnemy(state, enemy);
+  const { kind: _kind, variant: _variant, ...rest } = toClientEnemy(state, enemy);
   return rest;
 }
 

@@ -6,6 +6,7 @@ import { placeStructure, topAt } from "../../src/sim/grid";
 import { getFlowField } from "../../src/sim/pathfinding";
 import type { GameState } from "../../src/sim/types";
 import { sentStateOf, toClientState, toUpdate } from "../../src/net/snapshot";
+import { applyUpdate, fromClientState } from "../../src/net/view";
 
 describe("toClientState", () => {
   it("leaves out the flow field, rng state and server-only enemy and structure fields", () => {
@@ -49,6 +50,33 @@ describe("toClientState", () => {
     expect(known).not.toHaveProperty("variant");
     expect(fresh).toMatchObject({ kind: ENEMY_KIND_ORDER.indexOf("dwarf"), variant: 2 });
     expect(toUpdate(state, sent).enemies[1]).not.toHaveProperty("kind");
+  });
+
+  it("sends mode only when not walking, and leaderId only while the leader lives", () => {
+    const state = createGame(3, { blankMap: true, fog: false });
+    const chief = spawnEnemy(state, 5, 12, { kind: "barbarianChief" });
+    const member = spawnEnemy(state, 5, 12, { kind: "barbarian", leader: chief });
+    const bomber = spawnEnemy(state, 5, 14, { kind: "dwarfBomber" });
+    bomber.mode = "sprinting";
+    const sent = sentStateOf(state);
+    const byId = <T extends { id: number }>(list: T[]) => new Map(list.map((e) => [e.id, e]));
+
+    for (const enemies of [toClientState(state).enemies, toUpdate(state, sent).enemies]) {
+      const sentNow = byId<{ id: number }>(enemies);
+      expect(sentNow.get(member.id)).toMatchObject({ leaderId: chief.id });
+      expect(sentNow.get(chief.id)).not.toHaveProperty("leaderId");
+      expect(sentNow.get(chief.id)).not.toHaveProperty("mode");
+      expect(sentNow.get(bomber.id)).toMatchObject({ mode: "sprinting" });
+    }
+
+    const view = fromClientState(toClientState(state));
+    applyUpdate(view, toUpdate(state, sent));
+    expect(byId(view.enemies).get(member.id)).toMatchObject({ leaderId: chief.id });
+    expect(byId(view.enemies).get(bomber.id)).toMatchObject({ mode: "sprinting" });
+    expect(byId(view.enemies).get(chief.id)).toMatchObject({ mode: "walking", leaderId: null });
+
+    chief.hp = 0;
+    expect(byId(toClientState(state).enemies).get(member.id)).not.toHaveProperty("leaderId");
   });
 
   it("rounds enemy positions to 2 decimals", () => {

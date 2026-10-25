@@ -108,13 +108,18 @@ function advance(state: GameState, enemy: Enemy): void {
   walk(enemy, speedOf(state, enemy), () => chooseNextTile(state, enemy));
 }
 
-/** The leader a band member follows, or null (forgotten for good) once the leader has died. */
-function leaderOf(state: GameState, enemy: Enemy): Enemy | null {
+/** A band member's leader while it lives, else null. */
+export function livingLeader(state: GameState, enemy: Enemy): Enemy | null {
   if (enemy.leaderId === null) return null;
   const leader = state.enemies.find((e) => e.id === enemy.leaderId);
-  if (leader && leader.hp > 0) return leader;
-  enemy.leaderId = null;
-  return null;
+  return leader && leader.hp > 0 ? leader : null;
+}
+
+/** The leader a band member follows, or null (forgotten for good) once the leader has died. */
+function leaderOf(state: GameState, enemy: Enemy): Enemy | null {
+  const leader = livingLeader(state, enemy);
+  if (!leader) enemy.leaderId = null;
+  return leader;
 }
 
 /** How many tiles of `profile`'s field `enemy` is behind `leader` (negative when ahead). */
