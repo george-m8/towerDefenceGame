@@ -1,4 +1,4 @@
-import type { STRUCTURES, TERRAIN } from "./config";
+import type { ProjectileKind, STRUCTURES, TERRAIN } from "./config";
 
 export interface Point {
   x: number;
@@ -64,7 +64,20 @@ export interface Enemy {
 
 /** Short-lived visual events recorded by the simulation for the renderer. */
 export type Effect =
-  | { kind: "shot"; fromX: number; fromY: number; toX: number; toY: number; ttl: number }
+  | {
+      kind: "shot";
+      fromX: number;
+      fromY: number;
+      toX: number;
+      toY: number;
+      ttl: number;
+      /**
+       * Drawn as this projectile flying along an arc for `flight` ticks (ttl counts down from
+       * it). Only how it looks: the damage is done when the tower fires.
+       */
+      projectile: ProjectileKind;
+      flight: number;
+    }
   | { kind: "splash"; x: number; y: number; radius: number; ttl: number }
   | { kind: "spikes"; x: number; y: number; ttl: number };
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { angleTo } from "../../src/sim/aiming";
-import { AIM_TOLERANCE_DEGREES, STRUCTURES, TICK_RATE } from "../../src/sim/config";
+import { AIM_TOLERANCE_DEGREES, EFFECT_TICKS, STRUCTURES, TICK_RATE } from "../../src/sim/config";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand } from "../../src/sim/game";
 import { placeStructure, topAt } from "../../src/sim/grid";
@@ -81,6 +81,34 @@ describe("cannon and catapult", () => {
     expect(state.effects).toContainEqual(
       expect.objectContaining({ kind: "splash", x: 12, y: 10, radius: cannon.splashRadius }),
     );
+  });
+
+  it("each tower's shot flies for its own time, and splash shows when it lands", () => {
+    const state = createGameWithoutWaves();
+    placeStructure(state, "catapult", 10, 10, "E");
+    placeStructure(state, "cannon", 10, 30, "E");
+    placeStructure(state, "archer", 10, 50, "E");
+    spawnEnemy(state, 15, 10, TOUGH);
+    spawnEnemy(state, 12, 30, TOUGH);
+    spawnEnemy(state, 12, 50, TOUGH);
+    updateTowers(state);
+    const shots = state.effects.filter((e) => e.kind === "shot");
+    for (const [y, kind] of [
+      [10, "catapult"],
+      [30, "cannon"],
+      [50, "archer"],
+    ] as const) {
+      const tower = STRUCTURES[kind].tower;
+      expect(shots.find((e) => e.fromY === y)).toMatchObject({
+        projectile: tower.projectile,
+        flight: tower.flightTicks,
+        ttl: tower.flightTicks,
+      });
+    }
+    const splashes = state.effects.filter((e) => e.kind === "splash");
+    const flight = (kind: "catapult" | "cannon") => STRUCTURES[kind].tower.flightTicks;
+    expect(splashes.find((e) => e.y === 10)?.ttl).toBe(flight("catapult") + EFFECT_TICKS);
+    expect(splashes.find((e) => e.y === 30)?.ttl).toBe(flight("cannon") + EFFECT_TICKS);
   });
 
   it("the catapult never targets enemies inside its minimum range", () => {

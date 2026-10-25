@@ -62,7 +62,8 @@ function fire(
       x: impact.x,
       y: impact.y,
       radius: tower.splashRadius,
-      ttl: EFFECT_TICKS,
+      // The blast shows when the shot lands (the renderer draws a splash's last EFFECT_TICKS).
+      ttl: tower.flightTicks + EFFECT_TICKS,
     });
     addCue(state, "splash");
   } else {
@@ -75,7 +76,9 @@ function fire(
     fromY: structure.y,
     toX: impact.x,
     toY: impact.y,
-    ttl: EFFECT_TICKS,
+    ttl: tower.flightTicks,
+    projectile: tower.projectile,
+    flight: tower.flightTicks,
   });
   structure.cooldown = tower.fireIntervalSeconds * TICK_RATE;
 }
@@ -200,7 +203,8 @@ function updateSiegeTower(
       x: impact.x,
       y: impact.y,
       radius: tower.splashRadius,
-      ttl: EFFECT_TICKS,
+      // The blast shows when the shot lands (the renderer draws a splash's last EFFECT_TICKS).
+      ttl: tower.flightTicks + EFFECT_TICKS,
     });
     addCue(state, "splash");
   } else {
@@ -212,7 +216,9 @@ function updateSiegeTower(
     fromY: structure.y,
     toX: impact.x,
     toY: impact.y,
-    ttl: EFFECT_TICKS,
+    ttl: tower.flightTicks,
+    projectile: tower.projectile,
+    flight: tower.flightTicks,
   });
   structure.cooldown = tower.fireIntervalSeconds * TICK_RATE;
 }

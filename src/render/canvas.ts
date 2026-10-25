@@ -12,7 +12,7 @@ import {
 } from "../sim/grid";
 import { nextStep } from "../sim/pathfinding";
 import { facingAngle } from "../sim/aiming";
-import { STRUCTURES, type StructureStats, type TowerStats } from "../sim/config";
+import { EFFECT_TICKS, STRUCTURES, type StructureStats, type TowerStats } from "../sim/config";
 import { canTarget } from "../sim/towers";
 import { hitTile } from "../sim/traps";
 import type { Facing, GameState, PlayerId, Point, Structure, StructureKind } from "../sim/types";
@@ -29,6 +29,8 @@ import {
   type ArrowStyle,
   COLOURS,
   NOTCH_DEPTH_PX,
+  ARC_SEGMENTS,
+  PROJECTILES,
   NOTCH_LENGTH_PX,
   KEEP_HP_FONT,
   BATTLEMENT_PX,
@@ -474,14 +476,47 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       if (effect.kind === "shot") {
         ctx!.strokeStyle = COLOURS.shot;
         ctx!.lineWidth = 2;
+        const fromX = (effect.fromX + 0.5) * TILE_SIZE;
+        const fromY = (effect.fromY + 0.5) * TILE_SIZE;
+        const toX = (effect.toX + 0.5) * TILE_SIZE;
+        const toY = (effect.toY + 0.5) * TILE_SIZE;
+        // Every shot rises up the screen and drops onto its target, along a curve through a
+        // point above the middle (higher the further it flies, and highest for a catapult).
+        // Its projectile is part way along, with the arc it has flown trailing behind.
+        const look = PROJECTILES[effect.projectile];
+        const lift = Math.hypot(toX - fromX, toY - fromY) * look.arc;
+        const cx = (fromX + toX) / 2;
+        const cy = (fromY + toY) / 2 - lift;
+        const at = (t: number) => ({
+          x: (1 - t) ** 2 * fromX + 2 * (1 - t) * t * cx + t ** 2 * toX,
+          y: (1 - t) ** 2 * fromY + 2 * (1 - t) * t * cy + t ** 2 * toY,
+        });
+        const flown = (effect.flight - effect.ttl + 1) / effect.flight;
         ctx!.beginPath();
-        ctx!.moveTo((effect.fromX + 0.5) * TILE_SIZE, (effect.fromY + 0.5) * TILE_SIZE);
-        ctx!.lineTo((effect.toX + 0.5) * TILE_SIZE, (effect.toY + 0.5) * TILE_SIZE);
+        ctx!.moveTo(fromX, fromY);
+        for (let i = 1; i <= ARC_SEGMENTS; i++) {
+          const p = at((flown * i) / ARC_SEGMENTS);
+          ctx!.lineTo(p.x, p.y);
+        }
         ctx!.stroke();
+        const head = at(flown);
+        ctx!.save();
+        ctx!.translate(head.x, head.y);
+        if (look.turns) {
+          // Point along the curve: its direction is the derivative of the curve at `flown`.
+          const dx = (1 - flown) * (cx - fromX) + flown * (toX - cx);
+          const dy = (1 - flown) * (cy - fromY) + flown * (toY - cy);
+          ctx!.rotate(Math.atan2(dy, dx));
+        }
+        ctx!.font = GLYPH_FONT;
+        ctx!.fillStyle = COLOURS.projectile;
+        ctx!.fillText(look.glyph, 0, 1);
+        ctx!.restore();
         ctx!.lineWidth = 1;
       } else if (effect.kind === "spikes") {
         drawTile(effect.x, effect.y, COLOURS.spikesUp, "^", COLOURS.spikesUpGlyph);
       } else {
+        if (effect.ttl > EFFECT_TICKS) continue; // the shot is still in the air
         const size = (effect.radius * 2 + 1) * TILE_SIZE;
         ctx!.fillStyle = COLOURS.splash;
         ctx!.fillRect(
