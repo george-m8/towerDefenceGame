@@ -39,8 +39,8 @@ describe("building walls", () => {
     const result = applyCommand(state, 1, {
       type: "build",
       kind: "wall",
-      x: state.keep.x,
-      y: state.keep.y,
+      x: state.keeps[0].x,
+      y: state.keeps[0].y,
     });
     expect(result).toEqual({ ok: false, reason: "Can't build on the keep" });
   });

@@ -35,7 +35,7 @@ describe("finding enclosures", () => {
 
   it("a ring around the keep: 50%", () => {
     const state = createGameWithoutWaves();
-    const { keep } = state;
+    const keep = state.keeps[0];
     const r = ring(keep.x - 2, keep.y - 2, keep.x + keep.size + 1, keep.y + keep.size + 1);
     buildAt(state, r);
     expect(discountAt(state, keep.x - 1, keep.y - 1)).toBe(0.5); // the gap inside the ring
@@ -44,7 +44,7 @@ describe("finding enclosures", () => {
 
   it("a pocket walled off against the keep's side: 50%, though the keep is still open", () => {
     const state = createGameWithoutWaves();
-    const { keep } = state;
+    const keep = state.keeps[0];
     const top = keep.y - 4;
     buildAt(state, [
       ...rect(keep.x - 1, top, keep.x + keep.size, top), // lid
@@ -59,7 +59,7 @@ describe("finding enclosures", () => {
 
   it("a ring hugging the keep: the keep is enclosed, so its walls are 50%", () => {
     const state = createGameWithoutWaves();
-    const { keep } = state;
+    const keep = state.keeps[0];
     const r = ring(keep.x - 1, keep.y - 1, keep.x + keep.size, keep.y + keep.size);
     buildAt(state, r);
     expect(discounts(state, r)).toEqual([0.5]);
@@ -137,7 +137,7 @@ describe("finding enclosures", () => {
 describe("prices", () => {
   it("round to the nearest gold", () => {
     const state = createGameWithoutWaves();
-    const { keep } = state;
+    const keep = state.keeps[0];
     buildAt(state, ring(keep.x - 2, keep.y - 2, keep.x + keep.size + 1, keep.y + keep.size + 1));
     buildAt(state, ring(10, 5, 14, 9));
     expect(priceAt(state, "wall", keep.x - 1, keep.y - 1)).toBe(3); // 5 * 0.5 = 2.5
@@ -147,7 +147,7 @@ describe("prices", () => {
 
   it("never drop below 1", () => {
     const state = createGameWithoutWaves();
-    const { keep } = state;
+    const keep = state.keeps[0];
     buildAt(state, ring(keep.x - 2, keep.y - 2, keep.x + keep.size + 1, keep.y + keep.size + 1));
     for (const kind of Object.keys(STRUCTURES) as (keyof typeof STRUCTURES)[]) {
       expect(priceAt(state, kind, keep.x - 1, keep.y - 1)).toBeGreaterThanOrEqual(1);

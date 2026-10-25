@@ -319,6 +319,35 @@ a.button {
   letter-spacing: 0.2em;
   text-transform: uppercase;
 }
+.modes {
+  display: grid;
+  gap: 8px;
+  max-width: 360px;
+}
+.mode-card {
+  display: grid;
+  gap: 4px;
+  padding: 8px 12px;
+  font: inherit;
+  text-align: left;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.mode-card:hover:not([disabled]),
+.mode-card:focus-visible {
+  outline: 2px solid var(--ink);
+}
+.mode-card[disabled] {
+  opacity: 0.5;
+  cursor: default;
+}
+.mode-card:active:not([disabled]) {
+  color: var(--paper);
+  background: var(--ink);
+}
 .waiting-players {
   margin: 10px auto;
   width: max-content;

@@ -52,15 +52,16 @@ export function createMinimap(canvas: HTMLCanvasElement, ui: UiState) {
   canvas.addEventListener("pointercancel", () => (dragging = false));
 
   function rebuildImage(s: GameState) {
-    const { kind } = getEnclosures(s);
-    const sight = getSight(s);
+    const { kind, owner } = getEnclosures(s);
+    const sight = getSight(s, ui.playerId);
     terrainImage = ctx.createImageData(s.width * scale, s.height * scale);
     const data = terrainImage.data;
     const rgbCache = new Map<string, [number, number, number]>();
     for (let y = 0; y < s.height; y++) {
       for (let x = 0; x < s.width; x++) {
         const i = y * s.width + x;
-        const hex = fogged(tinted(minimapColour(s, x, y), kind[i]), sight[i]);
+        const rival = owner[i] !== 0 && owner[i] !== ui.playerId;
+        const hex = fogged(tinted(minimapColour(s, x, y), kind[i], rival), sight[i]);
         let rgb = rgbCache.get(hex);
         if (!rgb) rgbCache.set(hex, (rgb = hexToRgb(hex)));
         for (let py = 0; py < scale; py++) {
@@ -89,7 +90,7 @@ export function createMinimap(canvas: HTMLCanvasElement, ui: UiState) {
         canvas.width = width;
         canvas.height = height;
       }
-      const key = `${current.seed}:${current.gridVersion}:${current.fog}:${current.width}x${current.height}:${scale}`;
+      const key = `${current.seed}:${current.gridVersion}:${current.fog}:${ui.playerId}:${current.width}x${current.height}:${scale}`;
       if (key !== imageKey) {
         rebuildImage(current);
         imageKey = key;
@@ -99,11 +100,12 @@ export function createMinimap(canvas: HTMLCanvasElement, ui: UiState) {
       // Chests, then enemies, as bright dots.
       ctx.fillStyle = COLOURS.chest;
       for (const f of current.features) {
-        if (isExplored(current, f.x, f.y)) ctx.fillRect(f.x * scale, f.y * scale, scale, scale);
+        if (isExplored(current, f.x, f.y, ui.playerId))
+          ctx.fillRect(f.x * scale, f.y * scale, scale, scale);
       }
       ctx.fillStyle = COLOURS.enemy;
       for (const e of current.enemies) {
-        if (canSeeEnemiesAt(current, e.x, e.y))
+        if (canSeeEnemiesAt(current, e.x, e.y, ui.playerId))
           ctx.fillRect(Math.round(e.x) * scale, Math.round(e.y) * scale, scale, scale);
       }
 
@@ -123,9 +125,15 @@ export function createMinimap(canvas: HTMLCanvasElement, ui: UiState) {
 }
 
 /** Blends an enclosure's tint into a minimap colour, so claimed areas show there too. */
-function tinted(hex: string, kind: number): string {
+function tinted(hex: string, kind: number, rival = false): string {
   if (kind === NONE) return hex;
-  const tint = hexToRgb(kind === KEEP ? COLOURS.enclosureKeepTint : COLOURS.enclosureOuterTint);
+  const tint = hexToRgb(
+    rival
+      ? COLOURS.enclosureRivalTint
+      : kind === KEEP
+        ? COLOURS.enclosureKeepTint
+        : COLOURS.enclosureOuterTint,
+  );
   const base = hexToRgb(hex);
   const mix = base.map((c, i) => Math.round(c * (1 - MINIMAP_TINT) + tint[i] * MINIMAP_TINT));
   return `#${mix.map((c) => c.toString(16).padStart(2, "0")).join("")}`;

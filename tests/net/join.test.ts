@@ -6,6 +6,11 @@ describe("readJoinIntent", () => {
     expect(readJoinIntent("")).toEqual({ mode: "menu" });
     expect(readJoinIntent("?name=Ann")).toEqual({ mode: "menu" });
     expect(readJoinIntent("?create")).toEqual({ mode: "menu" });
+    expect(readJoinIntent("?create&name=Ann&game=pvp")).toEqual({
+      mode: "create",
+      name: "Ann",
+      game: "pvp",
+    });
     expect(readJoinIntent("?create&name=  ")).toEqual({ mode: "menu" });
   });
 

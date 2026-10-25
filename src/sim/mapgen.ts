@@ -1,6 +1,6 @@
-import { KEEP_SIZE, MAP_GEN, SPAWN_ZONE, TERRAIN } from "./config";
+import { KEEP_SIZE, MAP_GEN, PVP, SPAWN_ZONE, TERRAIN } from "./config";
 import { nextRandom, randomInt } from "./rng";
-import type { Point, Terrain } from "./types";
+import type { GameMode, Point, Terrain } from "./types";
 
 type Rng = { rngState: number };
 type MapGenConfig = typeof MAP_GEN;
@@ -9,7 +9,9 @@ type MapGenConfig = typeof MAP_GEN;
 export interface MapLayout {
   width: number;
   height: number;
-  keep: { x: number; y: number; size: number };
+  /** One keep in Endless; two in PvP (left, then right). */
+  keeps: { x: number; y: number; size: number }[];
+  /** The enemy spawn strip (none in PvP). */
   spawnTiles: Point[];
 }
 
@@ -36,18 +38,24 @@ export interface MapGenResult {
   fallback: boolean;
 }
 
-export function layoutFor(width: number, height: number): MapLayout {
-  const keep = {
-    x: Math.floor(width / 2) - Math.floor(KEEP_SIZE / 2),
-    y: Math.floor(height / 2) - Math.floor(KEEP_SIZE / 2),
-    size: KEEP_SIZE,
-  };
+export function layoutFor(width: number, height: number, mode: GameMode = "endless"): MapLayout {
+  const y = Math.floor(height / 2) - Math.floor(KEEP_SIZE / 2);
+  if (mode === "pvp") {
+    const inset = Math.round(width * PVP.keepInset);
+    const keeps = [inset, width - 1 - inset - (KEEP_SIZE - 1)].map((x) => ({
+      x,
+      y,
+      size: KEEP_SIZE,
+    }));
+    return { width, height, keeps, spawnTiles: [] };
+  }
+  const keep = { x: Math.floor(width / 2) - Math.floor(KEEP_SIZE / 2), y, size: KEEP_SIZE };
   const spawnY = Math.floor(height / 2) - Math.floor(SPAWN_ZONE.height / 2);
   const spawnTiles: Point[] = [];
   for (let y = spawnY; y < spawnY + SPAWN_ZONE.height; y++) {
     for (let x = SPAWN_ZONE.x; x < SPAWN_ZONE.x + SPAWN_ZONE.width; x++) spawnTiles.push({ x, y });
   }
-  return { width, height, keep, spawnTiles };
+  return { width, height, keeps: [keep], spawnTiles };
 }
 
 /**
@@ -117,21 +125,25 @@ type Setter = (x: number, y: number, t: Terrain) => void;
  * Returns whether it runs vertically (top to bottom) or horizontally.
  */
 function carveRiver(layout: MapLayout, rng: Rng, config: MapGenConfig, set: Setter): boolean {
-  const { width, height, keep } = layout;
+  const { width, height } = layout;
   const r = config.keepClearRadius;
   const vertical = nextRandom(rng) < 0.5;
   // Bands across the river's direction that it must stay out of.
-  const keepBand: [number, number] = vertical
-    ? [keep.x - r, keep.x + keep.size - 1 + r]
-    : [keep.y - r, keep.y + keep.size - 1 + r];
-  const spawnBand: [number, number] = vertical
-    ? [0, Math.max(...layout.spawnTiles.map((p) => p.x)) + config.spawnClearColumns]
-    : [
-        Math.min(...layout.spawnTiles.map((p) => p.y)),
-        Math.max(...layout.spawnTiles.map((p) => p.y)),
-      ];
+  const bands: [number, number][] = layout.keeps.map((keep) =>
+    vertical ? [keep.x - r, keep.x + keep.size - 1 + r] : [keep.y - r, keep.y + keep.size - 1 + r],
+  );
+  if (layout.spawnTiles.length > 0) {
+    bands.push(
+      vertical
+        ? [0, Math.max(...layout.spawnTiles.map((p) => p.x)) + config.spawnClearColumns]
+        : [
+            Math.min(...layout.spawnTiles.map((p) => p.y)),
+            Math.max(...layout.spawnTiles.map((p) => p.y)),
+          ],
+    );
+  }
   const span = vertical ? width : height;
-  const segments = freeSegments(span, [keepBand, spawnBand]);
+  const segments = freeSegments(span, bands);
   if (segments.length === 0) return vertical;
   const [lo, hi] = segments[randomInt(rng, 0, segments.length - 1)];
 
@@ -166,7 +178,12 @@ function freeSegments(span: number, blocked: [number, number][]): [number, numbe
 /** A sea band of varying depth along the top, bottom or right edge (never the spawn's edge). */
 function carveCoast(layout: MapLayout, rng: Rng, config: MapGenConfig, set: Setter) {
   const { width, height } = layout;
-  const edge = (["top", "bottom", "right"] as const)[randomInt(rng, 0, 2)];
+  // In PvP the keeps sit near the left and right edges, so the coast takes the top or bottom.
+  const edges =
+    layout.spawnTiles.length > 0
+      ? (["top", "bottom", "right"] as const)
+      : (["top", "bottom"] as const);
+  const edge = edges[randomInt(rng, 0, edges.length - 1)];
   const [minDepth, maxDepth] = config.coastDepth;
   const length = edge === "right" ? height : width;
   let depth = randomInt(rng, minDepth, maxDepth);
@@ -228,14 +245,16 @@ const START_TRIES = 20;
 
 /** Tiles that must stay open ground: around the keep and in front of the spawn. */
 function clearZoneMask(layout: MapLayout, config: MapGenConfig): boolean[] {
-  const { width, height, keep } = layout;
+  const { width, height } = layout;
   const mask = new Array<boolean>(width * height).fill(false);
   const reserve = (x: number, y: number) => {
     if (x >= 0 && y >= 0 && x < width && y < height) mask[y * width + x] = true;
   };
   const r = config.keepClearRadius;
-  for (let y = keep.y - r; y < keep.y + keep.size + r; y++) {
-    for (let x = keep.x - r; x < keep.x + keep.size + r; x++) reserve(x, y);
+  for (const keep of layout.keeps) {
+    for (let y = keep.y - r; y < keep.y + keep.size + r; y++) {
+      for (let x = keep.x - r; x < keep.x + keep.size + r; x++) reserve(x, y);
+    }
   }
   for (const p of layout.spawnTiles) {
     for (let dx = 0; dx <= config.spawnClearColumns; dx++) reserve(p.x + dx, p.y);
@@ -339,7 +358,7 @@ function placeRuins(
   return ruins;
 }
 
-/** Treasure chests on open ground; the further from the keep, the more gold. */
+/** Treasure chests on open ground; the further from the (nearest) keep, the more gold. */
 function placeChests(
   layout: MapLayout,
   rng: Rng,
@@ -347,12 +366,23 @@ function placeChests(
   terrain: Terrain[],
   ruins: RuinSpot[],
 ): ChestSpot[] {
-  const { width, height, keep } = layout;
+  const { width, height } = layout;
   const reserved = clearZoneMask(layout, config);
   const taken = new Set(ruins.map((r) => r.y * width + r.x));
-  const centre = { x: keep.x + Math.floor(keep.size / 2), y: keep.y + Math.floor(keep.size / 2) };
-  const farthest =
-    Math.max(centre.x, width - 1 - centre.x) + Math.max(centre.y, height - 1 - centre.y);
+  const centres = layout.keeps.map((keep) => ({
+    x: keep.x + Math.floor(keep.size / 2),
+    y: keep.y + Math.floor(keep.size / 2),
+  }));
+  const fromKeeps = (x: number, y: number) =>
+    Math.min(...centres.map((c) => Math.abs(x - c.x) + Math.abs(y - c.y)));
+  const farthest = Math.max(
+    fromKeeps(0, 0),
+    fromKeeps(width - 1, 0),
+    fromKeeps(0, height - 1),
+    fromKeeps(width - 1, height - 1),
+    fromKeeps(Math.floor(width / 2), 0),
+    fromKeeps(Math.floor(width / 2), height - 1),
+  );
   const [minGold, maxGold] = config.chestGold;
   const area = (width * height) / 1000;
   const [lo, hi] = config.chestsPer1000;
@@ -364,8 +394,10 @@ function placeChests(
       if (terrain[i] !== "ground" || reserved[i] || taken.has(i)) continue;
       const x = i % width;
       const y = (i - x) / width;
-      const distance = Math.abs(x - centre.x) + Math.abs(y - centre.y);
-      const gold = Math.round(minGold + ((maxGold - minGold) * distance) / farthest);
+      const distance = fromKeeps(x, y);
+      const gold = Math.round(
+        minGold + ((maxGold - minGold) * Math.min(distance, farthest)) / farthest,
+      );
       taken.add(i);
       chests.push({ x, y, gold });
       break;
@@ -402,7 +434,10 @@ function ruinShape(rng: Rng): Point[] {
   return outline;
 }
 
-/** Playable: a real river with its fords, and every walkable tile (spawn included) can reach the keep. */
+/**
+ * Playable: a real river with its fords, and every walkable tile (spawn included) can reach
+ * the first keep, so every keep can reach the others too.
+ */
 function isValid(layout: MapLayout, terrain: Terrain[], config: MapGenConfig): boolean {
   // A real river (not one swallowed by the coast or clear zones) with its fords intact.
   const river = terrain.filter((t) => t === "river").length;
@@ -413,7 +448,8 @@ function isValid(layout: MapLayout, terrain: Terrain[], config: MapGenConfig): b
 }
 
 function walkableFromKeep(layout: MapLayout, terrain: Terrain[]): Set<number> {
-  const { width, height, keep } = layout;
+  const { width, height } = layout;
+  const keep = layout.keeps[0];
   const queue: number[] = [];
   for (let y = keep.y; y < keep.y + keep.size; y++) {
     for (let x = keep.x; x < keep.x + keep.size; x++) queue.push(y * width + x);

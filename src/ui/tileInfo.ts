@@ -5,11 +5,28 @@ import {
   type StructureStats,
 } from "../sim/config";
 import { playerName } from "../sim/players";
-import { KEEP, OUTER, discountAt, enclosureAt, priceAt } from "../sim/enclosures";
+import {
+  KEEP,
+  NONE,
+  OUTER,
+  discountAt,
+  enclosureAt,
+  enclosureOwnerAt,
+  priceAt,
+} from "../sim/enclosures";
 import { refundFor } from "../sim/economy";
 import { IN_SIGHT, UNEXPLORED, isExplored, tierAt } from "../sim/fog";
-import { baseAt, inBounds, isKeepTile, isSpawnTile, mountAt, terrainAt, topAt } from "../sim/grid";
-import type { GameState, Point, Structure, StructureKind, Terrain } from "../sim/types";
+import {
+  baseAt,
+  inBounds,
+  isKeepTile,
+  isSpawnTile,
+  keepAt,
+  mountAt,
+  terrainAt,
+  topAt,
+} from "../sim/grid";
+import type { GameState, PlayerId, Point, Structure, StructureKind, Terrain } from "../sim/types";
 
 const FACING_NAMES = { N: "north", E: "east", S: "south", W: "west" };
 
@@ -23,15 +40,17 @@ const TERRAIN_DESCRIPTIONS: Record<Terrain, string> = {
 };
 
 /** Human-readable lines describing what is on a tile, for the hover info box. */
-export function describeTile(state: GameState, p: Point): string[] {
+export function describeTile(state: GameState, p: Point, viewer?: PlayerId): string[] {
   if (!inBounds(state, p.x, p.y)) return [];
-  const tier = tierAt(state, p.x, p.y);
+  const tier = tierAt(state, p.x, p.y, viewer);
   if (tier === UNEXPLORED) return ["Unexplored"];
   const lines: string[] = [];
   const top = topAt(state, p.x, p.y);
 
   if (isKeepTile(state, p.x, p.y)) {
-    lines.push("Keep", `HP ${state.keep.hp} / ${state.keep.maxHp}`);
+    const keep = keepAt(state, p.x, p.y)!;
+    const whose = keep.owner !== null ? `${playerName(state, keep.owner)}'s keep` : "Keep";
+    lines.push(whose, `HP ${keep.hp} / ${keep.maxHp}`);
   } else if (top) {
     const mount = mountAt(state, p.x, p.y);
     const base = baseAt(state, p.x, p.y);
@@ -63,15 +82,19 @@ export function describeTile(state: GameState, p: Point): string[] {
     lines.push(`Enemy HP ${Math.ceil(enemy.hp)} / ${enemy.maxHp}`);
   }
   if (enemies.length > 3) lines.push(`...and ${enemies.length - 3} more`);
-  const enclosure = enclosureLine(state, p);
+  const enclosure = enclosureLine(state, p, viewer);
   if (enclosure) lines.push(enclosure);
   if (tier !== IN_SIGHT) lines.push("Out of sight: enemies here aren't shown");
   return lines;
 }
 
 /** Which enclosure a tile is in (or walls), and its discount. */
-function enclosureLine(state: GameState, p: Point): string | null {
+function enclosureLine(state: GameState, p: Point, viewer?: PlayerId): string | null {
   const kind = enclosureAt(state, p.x, p.y);
+  const owner = enclosureOwnerAt(state, p.x, p.y);
+  if (kind !== NONE && owner !== 0 && owner !== viewer) {
+    return `Inside ${playerName(state, owner)}'s walls: you can't build here`;
+  }
   if (kind === KEEP)
     return `Inside the keep's walls: builds ${percent(ENCLOSURE_DISCOUNT.keep)} off`;
   if (kind === OUTER) return `Enclosed: builds ${percent(ENCLOSURE_DISCOUNT.outer)} off`;
@@ -79,12 +102,17 @@ function enclosureLine(state: GameState, p: Point): string | null {
 }
 
 /** What the selected build tool costs on this tile, e.g. "Wall here: 3g (50% off)". */
-export function priceLine(state: GameState, kind: StructureKind, p: Point): string {
+export function priceLine(
+  state: GameState,
+  kind: StructureKind,
+  p: Point,
+  viewer?: PlayerId,
+): string {
   const name = (STRUCTURES[kind] as StructureStats).name;
-  if (!isExplored(state, p.x, p.y)) return `${name}: can't build on unexplored land`;
-  const price = priceAt(state, kind, p.x, p.y);
+  if (!isExplored(state, p.x, p.y, viewer)) return `${name}: can't build on unexplored land`;
+  const price = priceAt(state, kind, p.x, p.y, viewer);
   // Label with the enclosure's discount (rounding can make the gold saving look different).
-  const discount = discountAt(state, p.x, p.y);
+  const discount = discountAt(state, p.x, p.y, viewer);
   return discount > 0
     ? `${name} here: ${price}g (${percent(discount)} off)`
     : `${name} here: ${price}g`;

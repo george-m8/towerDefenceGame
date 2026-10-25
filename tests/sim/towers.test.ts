@@ -23,7 +23,7 @@ describe("archer targeting", () => {
 
   it("targets the in-range enemy closest to the keep by path distance", () => {
     const state = createGameWithoutWaves();
-    const { keep } = state;
+    const keep = state.keeps[0];
     const y = keep.y + 1;
     // North of both enemies and facing south, so both are inside its arc.
     placeStructure(state, "archer", keep.x - 6, y - 4, "S");
@@ -121,7 +121,7 @@ describe("facing and arcs", () => {
 
   it("an archer only fires inside its arc, even at a less urgent target", () => {
     const state = createGameWithoutWaves();
-    const { keep } = state;
+    const keep = state.keeps[0];
     const y = keep.y + 1;
     const towerX = keep.x + keep.size + 6; // east of the keep
     placeStructure(state, "archer", towerX, y, "E");

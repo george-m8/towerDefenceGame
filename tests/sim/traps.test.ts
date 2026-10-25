@@ -44,20 +44,20 @@ describe("floor spikes", () => {
   it("do not change enemy routing", () => {
     const state = createGameWithoutWaves();
     const before = [...getFlowField(state).dist];
-    placeStructure(state, "floorSpikes", 10, state.keep.y + 1);
+    placeStructure(state, "floorSpikes", 10, state.keeps[0].y + 1);
     expect(getFlowField(state).dist).toEqual(before);
   });
 
   it("are walked over and never attacked", () => {
     const state = createGameWithoutWaves();
-    const y = state.keep.y + 1;
+    const y = state.keeps[0].y + 1;
     for (let x = 5; x < 15; x++) placeStructure(state, "floorSpikes", x, y);
     spawnEnemy(state, 0, y, TOUGH);
     // Long enough to walk to the keep, whatever the map size.
-    const ticks = Math.ceil((2 * state.keep.x * TICK_RATE) / ENEMY.speed);
+    const ticks = Math.ceil((2 * state.keeps[0].x * TICK_RATE) / ENEMY.speed);
     for (let i = 0; i < ticks; i++) tick(state);
     expect(state.enemies).toHaveLength(0);
-    expect(state.keep.hp).toBe(state.keep.maxHp - ENEMY.keepDamage);
+    expect(state.keeps[0].hp).toBe(state.keeps[0].maxHp - ENEMY.keepDamage);
     for (let x = 5; x < 15; x++) expect(topAt(state, x, y)?.kind).toBe("floorSpikes");
   });
 });
@@ -97,7 +97,7 @@ describe("wall spikes", () => {
 
   it("blocks movement like a wall", () => {
     const state = createGameWithoutWaves();
-    const y = state.keep.y + 1;
+    const y = state.keeps[0].y + 1;
     placeStructure(state, "wallSpikes", 10, y, "E");
     expect(nextStep(state, 9, y)).not.toEqual({ x: 10, y });
   });

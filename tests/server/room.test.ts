@@ -31,7 +31,7 @@ function testRoom({ waiting = false } = {}) {
 
 /** Open ground beside the keep: in sight, so it can be built on through the fog. */
 function nearKeep(room: Room) {
-  return { x: room.state.keep.x - 2, y: room.state.keep.y };
+  return { x: room.state.keeps[0].x - 2, y: room.state.keeps[0].y };
 }
 
 function join(room: Room, name: string) {
@@ -239,7 +239,7 @@ describe("waiting room", () => {
     expect(room.started).toBe(false);
     expect(startRoom(room, ann.playerId)).toEqual({ ok: true });
     expect(room.started).toBe(true);
-    expect(ofType(2, "update").at(-1)?.lobby).toEqual({ started: true, host: 1 });
+    expect(ofType(2, "update").at(-1)?.lobby).toEqual({ started: true, host: 1, mode: "endless" });
     advanceRoom(room, TICK_MS);
     expect(room.state.tick).toBe(1);
     expect(startRoom(room, ann.playerId)).toEqual({ ok: true }); // a second start does nothing
@@ -249,8 +249,12 @@ describe("waiting room", () => {
     const { room, ofType } = testRoom({ waiting: true });
     join(room, "Ann");
     join(room, "Bo");
-    expect(ofType(2, "welcome").at(-1)?.lobby).toEqual({ started: false, host: 1 });
-    expect(ofType(1, "update").at(-1)?.lobby).toEqual({ started: false, host: 1 });
+    expect(ofType(2, "welcome").at(-1)?.lobby).toEqual({
+      started: false,
+      host: 1,
+      mode: "endless",
+    });
+    expect(ofType(1, "update").at(-1)?.lobby).toEqual({ started: false, host: 1, mode: "endless" });
   });
 
   it("restart starts the new game straight away", () => {
@@ -270,5 +274,48 @@ describe("waiting room", () => {
     room.state.gameOver = true;
     restartRoom(room, 5);
     expect(room.state.fog).toBe(false);
+  });
+});
+
+describe("PvP rooms", () => {
+  function pvpRoom() {
+    const sent: Record<number, ServerMessage[]> = {};
+    const room = createRoom("PVPS", 7, (id, message) => (sent[id] ??= []).push(message), "pvp");
+    return { room, sent };
+  }
+
+  it("take two players, start only with both, and hand them a keep each", () => {
+    const { room } = pvpRoom();
+    const ann = join(room, "Ann");
+    expect(startRoom(room, ann.playerId)).toEqual({ ok: false, reason: "PvP needs two players" });
+    join(room, "Bo");
+    expect(joinRoom(room, "Cy")).toEqual({ ok: false, reason: "Room is full" });
+    expect(startRoom(room, ann.playerId)).toEqual({ ok: true });
+    expect(room.state.keeps.map((k) => k.owner)).toEqual([1, 2]);
+  });
+
+  it("restart into a new PvP game with the same players and keeps", () => {
+    const { room } = pvpRoom();
+    const ann = join(room, "Ann");
+    join(room, "Bo");
+    startRoom(room, ann.playerId);
+    room.state.gameOver = true;
+    restartRoom(room, 9);
+    expect(room.state.mode).toBe("pvp");
+    expect(room.state.keeps.map((k) => k.owner)).toEqual([1, 2]);
+  });
+});
+
+describe("the end of a game", () => {
+  it("is sent to everyone on the tick it happens, even between regular updates", () => {
+    const { room, ofType } = testRoom();
+    const ann = join(room, "Ann");
+    room.state.keeps[0].hp = 0; // the next tick ends the game
+    const before = ofType(ann.playerId, "update").length;
+    advanceRoom(room, TICK_MS); // one tick: not enough for a regular update
+    const updates = ofType(ann.playerId, "update");
+    expect(updates.length).toBe(before + 1);
+    expect(updates.at(-1)!.update.gameOver).toBe(true);
+    expect(updates.at(-1)!.update.keeps[0].hp).toBe(0);
   });
 });

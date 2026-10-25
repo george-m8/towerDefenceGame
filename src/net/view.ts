@@ -24,7 +24,8 @@ export function applyUpdate(view: GameState, update: StateUpdate): void {
   view.structures = toStructures(update.structures);
   view.players = update.players;
   view.wave = update.wave;
-  view.keep = update.keep;
+  view.keeps = update.keeps;
+  view.winner = update.winner;
   view.paused = update.paused;
   view.speed = update.speed;
   view.gameOver = update.gameOver;

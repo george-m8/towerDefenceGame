@@ -2,12 +2,12 @@
 // Sending is injected and time is passed in, so tests drive a room by hand.
 import { randomBytes } from "node:crypto";
 import { STARTING_GOLD, TICK_RATE } from "../src/sim/config";
-import { applyCommand, createGame, tick } from "../src/sim/game";
+import { applyCommand, assignKeeps, createGame, tick } from "../src/sim/game";
 import { addPlayer, setConnected, updateVotes } from "../src/sim/players";
-import type { Command, CommandResult, GameState, PlayerId } from "../src/sim/types";
+import type { Command, CommandResult, GameMode, GameState, PlayerId } from "../src/sim/types";
 import { uniqueName, type LobbyInfo, type ServerMessage } from "../src/net/protocol";
 import { toClientState, toUpdate } from "../src/net/snapshot";
-import { MAX_PLAYERS, MAX_TICKS_PER_ADVANCE, UPDATE_EVERY_TICKS } from "./config";
+import { MAX_PLAYERS, MAX_TICKS_PER_ADVANCE, PVP_PLAYERS, UPDATE_EVERY_TICKS } from "./config";
 
 const TICK_MS = 1000 / TICK_RATE;
 
@@ -35,8 +35,13 @@ export type JoinResult =
   { ok: true; playerId: PlayerId; token: string } | { ok: false; reason: string };
 export type RejoinResult = { ok: true; playerId: PlayerId } | { ok: false; reason: string };
 
-export function createRoom(code: string, seed: number, send: SendFn): Room {
-  const state = createGame(seed, { players: [] });
+export function createRoom(
+  code: string,
+  seed: number,
+  send: SendFn,
+  mode: GameMode = "endless",
+): Room {
+  const state = createGame(seed, { players: [], mode });
   return {
     code,
     state,
@@ -64,6 +69,13 @@ export function hostOf(room: Room): PlayerId | null {
 export function startRoom(room: Room, playerId: PlayerId, fog = true): CommandResult {
   if (room.started) return { ok: true };
   if (playerId !== hostOf(room)) return { ok: false, reason: "Only the host can start" };
+  if (room.state.mode === "pvp") {
+    const players = Object.values(room.state.players);
+    if (players.length !== PVP_PLAYERS || players.some((p) => !p.connected)) {
+      return { ok: false, reason: "PvP needs two players" };
+    }
+    assignKeeps(room.state);
+  }
   room.started = true;
   room.fog = fog;
   room.state.fog = fog;
@@ -82,7 +94,8 @@ export function joinRoom(
   attach?: (playerId: PlayerId) => void,
 ): JoinResult {
   const players = Object.values(room.state.players);
-  if (players.length >= MAX_PLAYERS) return { ok: false, reason: "Room is full" };
+  const max = room.state.mode === "pvp" ? PVP_PLAYERS : MAX_PLAYERS;
+  if (players.length >= max) return { ok: false, reason: "Room is full" };
   const playerId = addPlayer(
     room.state,
     uniqueName(
@@ -151,6 +164,11 @@ export function advanceRoom(room: Room, elapsedMs: number): void {
     tick(state);
     room.accumulatorMs -= TICK_MS;
     ticks++;
+    // Later calls stop at the top once the game is over, so the ending must go out now.
+    if (state.gameOver) {
+      broadcastUpdate(room);
+      break;
+    }
     if (++room.ticksSinceUpdate >= UPDATE_EVERY_TICKS) broadcastUpdate(room);
   }
   // Drop time we couldn't catch up on, so a stall never turns into a burst.
@@ -161,7 +179,7 @@ export function advanceRoom(room: Room, elapsedMs: number): void {
 export function restartRoom(room: Room, seed: number): CommandResult {
   const old = room.state;
   if (!old.gameOver) return { ok: false, reason: "The game isn't over" };
-  const state = createGame(seed, { players: [], fog: room.fog });
+  const state = createGame(seed, { players: [], fog: room.fog, mode: old.mode });
   for (const player of Object.values(old.players)) {
     state.players[player.id] = {
       ...player,
@@ -170,6 +188,7 @@ export function restartRoom(room: Room, seed: number): CommandResult {
     };
   }
   state.nextPlayerId = old.nextPlayerId;
+  if (state.mode === "pvp") assignKeeps(state);
   updateVotes(state);
   room.state = state;
   room.accumulatorMs = 0;
@@ -193,7 +212,7 @@ function welcome(room: Room, playerId: PlayerId) {
 }
 
 function lobbyInfo(room: Room): LobbyInfo {
-  return { started: room.started, host: hostOf(room) };
+  return { started: room.started, host: hostOf(room), mode: room.state.mode };
 }
 
 /** Sends everyone connected the latest update. */

@@ -5,6 +5,7 @@ import type {
   CommandResult,
   Enemy,
   Facing,
+  GameMode,
   GameState,
   PlayerId,
   Structure,
@@ -23,7 +24,7 @@ const MAX_COORDINATE = 4096;
 export type OnlineCommand = Exclude<Command, { type: "debugSpawn" }>;
 
 export type ClientMessage =
-  | { type: "create"; name: string }
+  | { type: "create"; name: string; mode?: GameMode }
   | { type: "join"; room: string; name: string }
   | { type: "rejoin"; room: string; token: string }
   | { type: "command"; seq: number; command: OnlineCommand }
@@ -36,6 +37,7 @@ export interface LobbyInfo {
   started: boolean;
   /** The connected player with the lowest id; null while nobody is connected. */
   host: PlayerId | null;
+  mode: GameMode;
 }
 
 /** The enemy fields a client draws with. Positions are rounded to 2 decimals. */
@@ -62,7 +64,8 @@ type DynamicFields =
   | "structures"
   | "players"
   | "wave"
-  | "keep"
+  | "keeps"
+  | "winner"
   | "paused"
   | "speed"
   | "gameOver"
@@ -98,7 +101,10 @@ export function parseClientMessage(raw: string): ParseResult {
   switch (data.type) {
     case "create": {
       const name = parseName(data.name);
-      return name === null ? fail("Bad name") : ok({ type: "create", name });
+      if (name === null) return fail("Bad name");
+      if (data.mode === undefined) return ok({ type: "create", name });
+      if (data.mode !== "endless" && data.mode !== "pvp") return fail("Bad mode");
+      return ok({ type: "create", name, mode: data.mode });
     }
     case "join": {
       const name = parseName(data.name);

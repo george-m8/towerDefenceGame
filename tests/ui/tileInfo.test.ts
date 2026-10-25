@@ -5,7 +5,7 @@ import { buildAt, ring } from "../sim/helpers";
 
 function walledGame() {
   const state = createGame(1, { blankMap: true, fog: false });
-  const { keep } = state;
+  const keep = state.keeps[0];
   buildAt(state, ring(keep.x - 2, keep.y - 2, keep.x + keep.size + 1, keep.y + keep.size + 1));
   buildAt(state, ring(10, 5, 14, 9));
   return state;
@@ -14,7 +14,7 @@ function walledGame() {
 describe("enclosure hover info", () => {
   it("names the enclosure and its discount, inside and on the walls", () => {
     const state = walledGame();
-    const { keep } = state;
+    const keep = state.keeps[0];
     expect(describeTile(state, { x: keep.x - 1, y: keep.y - 1 })).toContain(
       "Inside the keep's walls: builds 50% off",
     );
@@ -27,7 +27,7 @@ describe("enclosure hover info", () => {
 describe("priceLine", () => {
   it("shows the discounted price, or the full price outside", () => {
     const state = walledGame();
-    const { keep } = state;
+    const keep = state.keeps[0];
     expect(priceLine(state, "wall", { x: keep.x - 1, y: keep.y - 1 })).toBe(
       "Wall here: 3g (50% off)",
     );
@@ -39,7 +39,7 @@ describe("priceLine", () => {
 describe("fog hover info", () => {
   it("says Unexplored, and hides enemies on land out of sight", () => {
     const state = createGame(1, { blankMap: true });
-    const { keep } = state;
+    const keep = state.keeps[0];
     expect(describeTile(state, { x: 0, y: 0 })).toEqual(["Unexplored"]);
     const seen = { x: keep.x + keep.size + 15, y: keep.y };
     state.enemies.push({ ...enemyAt(seen.x, seen.y) });

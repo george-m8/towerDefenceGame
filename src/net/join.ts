@@ -5,7 +5,8 @@ import type { JoinIntent } from "./networkSession";
 export type PageIntent = { mode: "menu"; room?: string } | { mode: "offline" } | JoinIntent;
 
 /**
- * `?create&name=Ann` creates a room and `?room=ABCD&name=Bo` joins one; `?solo` plays offline.
+ * `?create&name=Ann` creates a room (`&game=pvp` for PvP) and `?room=ABCD&name=Bo` joins one;
+ * `?solo` plays offline.
  * Anything else, or a missing name, opens the start screen (with the room code filled in).
  */
 export function readJoinIntent(search: string): PageIntent {
@@ -14,7 +15,11 @@ export function readJoinIntent(search: string): PageIntent {
   const room = params.get("room")?.toUpperCase();
   const name = cleanName(params.get("name"));
   if (room && name) return { mode: "join", room, name };
-  if (params.has("create") && name) return { mode: "create", name };
+  if (params.has("create") && name) {
+    return params.get("game") === "pvp"
+      ? { mode: "create", name, game: "pvp" }
+      : { mode: "create", name };
+  }
   return room ? { mode: "menu", room } : { mode: "menu" };
 }
 

@@ -28,7 +28,7 @@ describe("fromClientState", () => {
     for (const p of [
       { x: 30, y: 3 },
       { x: 10, y: 10 },
-      { x: server.keep.x, y: server.keep.y },
+      { x: server.keeps[0].x, y: server.keeps[0].y },
     ]) {
       expect(canBuild(view, 1, "archer", p.x, p.y)).toEqual(
         canBuild(server, 1, "archer", p.x, p.y),

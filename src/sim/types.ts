@@ -98,12 +98,17 @@ export interface WaveState {
   countdown: number;
 }
 
+/** Endless: hold one shared keep against waves. PvP: two players, a keep each, no waves. */
+export type GameMode = "endless" | "pvp";
+
 export interface Keep {
   x: number; // top-left tile
   y: number;
   size: number;
   hp: number;
   maxHp: number;
+  /** Whose keep it is in PvP; null for the shared keep in Endless (or before PvP starts). */
+  owner: PlayerId | null;
 }
 
 export interface GameState {
@@ -129,7 +134,11 @@ export interface GameState {
   cues: SoundCue[];
   nextCueId: number;
   spawnTiles: Point[];
-  keep: Keep;
+  mode: GameMode;
+  /** One shared keep in Endless; one per player in PvP. */
+  keeps: Keep[];
+  /** PvP: who won, once the game is over. */
+  winner: PlayerId | null;
   wave: WaveState;
   players: Record<PlayerId, Player>;
   nextPlayerId: PlayerId;
@@ -144,7 +153,10 @@ export interface GameState {
   rngState: number;
   /** False turns fog of war off: every tile is in sight. */
   fog: boolean;
-  /** Per tile: 1 once anyone has seen it (it stays seen), else 0. See sim/fog.ts. */
+  /**
+   * Per tile, one bit per team that has seen it (it stays seen). Endless has one team (bit 0,
+   * value 1); in PvP each player is their own team. See sim/fog.ts.
+   */
   explored: number[];
 }
 

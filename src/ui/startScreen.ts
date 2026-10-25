@@ -1,7 +1,28 @@
-// The start page: your name, then play solo, create a room, or join one by code.
+// The start page: your name, then play solo, create a room, or join one by code. Playing solo
+// or creating a room goes on to the game mode screen.
 import { ROOM_CODE_LENGTH } from "../net/protocol";
 import { cleanName } from "../net/join";
 import type { PageIntent } from "../net/join";
+import type { GameMode } from "../sim/types";
+
+/** The game modes, as the mode screen offers them. */
+export const GAME_MODES: { mode: GameMode; name: string; description: string; online: boolean }[] =
+  [
+    {
+      mode: "endless",
+      name: "Endless",
+      description:
+        "Hold your keep against endless waves of enemies, each bigger than the last. Solo, or co-op with friends.",
+      online: false,
+    },
+    {
+      mode: "pvp",
+      name: "PvP",
+      description:
+        "Two players, a keep each. Build towers to tear down your rival's walls and keep. You only see your own land, and can't build inside their walls. Last keep standing wins.",
+      online: true,
+    },
+  ];
 
 const NAME_KEY = "keep-defence-name";
 
@@ -80,8 +101,25 @@ export function showStartScreen(
     root.hidden = true;
     options.onChoose(intent);
   };
-  solo.addEventListener("click", () => choose({ mode: "offline" }));
-  create.addEventListener("click", () => choose({ mode: "create", name: name()! }));
+  // Solo and Create room go on to the mode screen; PvP needs a room.
+  const chooseMode = (online: boolean) => {
+    const chosen = name();
+    if (!chosen) return;
+    showModeScreen(root, {
+      online,
+      onBack: () => showStartScreen(root, { ...options, room: room() }),
+      onChoose: (game) => {
+        if (!online) return choose({ mode: "offline" });
+        choose(
+          game === "endless"
+            ? { mode: "create", name: chosen }
+            : { mode: "create", name: chosen, game },
+        );
+      },
+    });
+  };
+  solo.addEventListener("click", () => chooseMode(false));
+  create.addEventListener("click", () => chooseMode(true));
   form.addEventListener("submit", (e) => {
     e.preventDefault();
     if (!join.disabled) choose({ mode: "join", room: room(), name: name()! });
@@ -91,4 +129,32 @@ export function showStartScreen(
   root.hidden = false;
   // Invite links arrive with a code: the name is all that's left to fill in.
   (options.room && name() ? join : nameInput).focus();
+}
+
+/** Picks a game mode, each with a short description. Online-only modes are greyed out solo. */
+function showModeScreen(
+  root: HTMLElement,
+  options: { online: boolean; onBack: () => void; onChoose: (mode: GameMode) => void },
+) {
+  root.innerHTML = `
+    <div class="window dialog-window start-window">
+      <p class="dialog-title">Game mode</p>
+      <div class="modes">
+        ${GAME_MODES.map(
+          (m) => `
+          <button class="mode-card" data-mode="${m.mode}" ${m.online && !options.online ? "disabled" : ""}>
+            <strong>${m.name}</strong>
+            <span>${m.description}</span>
+            ${m.online && !options.online ? "<em>Needs two players: create a room.</em>" : ""}
+          </button>`,
+        ).join("")}
+      </div>
+      <button class="button" data-action="back">Back</button>
+    </div>
+  `;
+  for (const card of root.querySelectorAll<HTMLButtonElement>("[data-mode]")) {
+    card.addEventListener("click", () => options.onChoose(card.dataset.mode as GameMode));
+  }
+  root.querySelector('[data-action="back"]')!.addEventListener("click", options.onBack);
+  root.querySelector<HTMLButtonElement>("[data-mode]:not([disabled])")?.focus();
 }

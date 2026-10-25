@@ -1,9 +1,13 @@
 // Enclosures: areas enemies can't walk to from the spawn. Building inside one (or on its walls)
 // is cheaper: 50% off in the keep's enclosure, 25% off in any other. Worked out from the grid
 // alone, so the server and every client agree.
+//
+// PvP has no spawn: the biggest open area is no-man's land, and every pocket walled off from
+// it belongs to the player who built its walls (land touching your keep is always yours).
+// Only the owner gets the discount, and the rival can't build inside.
 import { ENCLOSURE_DISCOUNT, STRUCTURES } from "./config";
-import { baseAt, blocksAt, inBounds, isKeepTile, isWalkable, mountAt } from "./grid";
-import type { GameState, StructureKind } from "./types";
+import { baseAt, blocksAt, inBounds, isKeepTile, isWalkable, keepAt, mountAt } from "./grid";
+import type { GameState, PlayerId, StructureKind } from "./types";
 
 /** What kind of enclosure a tile belongs to (inside it, or on its boundary). */
 export const NONE = 0;
@@ -18,6 +22,8 @@ export interface Enclosures {
   kind: EnclosureKind[];
   /** Per tile: the build discount, 0 to 1. */
   discount: number[];
+  /** Per tile: whose enclosure it is in PvP, or 0 if it's shared (Endless) or no one's. */
+  owner: number[];
 }
 
 const NEIGHBOURS_4 = [
@@ -39,9 +45,29 @@ export function getEnclosures(state: GameState): Enclosures {
   return enclosures;
 }
 
-export function discountAt(state: GameState, x: number, y: number): number {
+/** The discount `player` gets here: none inside someone else's enclosure. */
+export function discountAt(state: GameState, x: number, y: number, player?: PlayerId): number {
   if (!inBounds(state, x, y)) return 0;
-  return getEnclosures(state).discount[y * state.width + x];
+  const { discount, owner } = getEnclosures(state);
+  const i = y * state.width + x;
+  return owner[i] === 0 || owner[i] === player ? discount[i] : 0;
+}
+
+/** Whose enclosure (x, y) is in, or 0 if no one's. */
+export function enclosureOwnerAt(state: GameState, x: number, y: number): number {
+  if (!inBounds(state, x, y)) return 0;
+  return getEnclosures(state).owner[y * state.width + x];
+}
+
+/** PvP: the rival whose enclosure (x, y) is in, where `player` can't build; null if none. */
+export function rivalOwnerAt(
+  state: GameState,
+  x: number,
+  y: number,
+  player: PlayerId,
+): PlayerId | null {
+  const owner = enclosureOwnerAt(state, x, y);
+  return owner !== 0 && owner !== player ? owner : null;
 }
 
 export function enclosureAt(state: GameState, x: number, y: number): EnclosureKind {
@@ -49,10 +75,16 @@ export function enclosureAt(state: GameState, x: number, y: number): EnclosureKi
   return getEnclosures(state).kind[y * state.width + x];
 }
 
-/** What building `kind` at (x, y) costs: rounded to the nearest gold, never below 1. */
-export function priceAt(state: GameState, kind: StructureKind, x: number, y: number): number {
+/** What building `kind` at (x, y) costs `player`: rounded to the nearest gold, never below 1. */
+export function priceAt(
+  state: GameState,
+  kind: StructureKind,
+  x: number,
+  y: number,
+  player?: PlayerId,
+): number {
   const cost = STRUCTURES[kind].cost;
-  const discount = discountAt(state, x, y);
+  const discount = discountAt(state, x, y, player);
   return discount > 0 ? Math.max(1, Math.round(cost * (1 - discount))) : cost;
 }
 
@@ -68,17 +100,10 @@ function findEnclosures(state: GameState): Enclosures {
     }
   }
 
-  // Everywhere enemies can walk to from the spawn.
-  const reachable = new Array<boolean>(size).fill(false);
-  const queue: number[] = [];
-  for (const p of state.spawnTiles) {
-    const i = p.y * width + p.x;
-    if (open[i] && !reachable[i]) {
-      reachable[i] = true;
-      queue.push(i);
-    }
-  }
-  flood(queue, reachable, open, width, height);
+  const reachable =
+    state.mode === "pvp"
+      ? largestArea(open, width, height)
+      : reachableFromSpawn(state, open, width, height);
 
   // Inside: walkable ground enemies can't reach and that doesn't border ground they can reach.
   // That includes structures standing inside a ring (a tower in a corner), but not the ring's
@@ -97,6 +122,7 @@ function findEnclosures(state: GameState): Enclosures {
   // Connected inside tiles form areas; an area touching the keep is the keep's. An area needs
   // some open ground, so a solid block of walls out in the open isn't an "enclosure".
   const area = new Array<EnclosureKind>(size).fill(NONE);
+  const areaOwner = new Array<number>(size).fill(0);
   const seen = new Array<boolean>(size).fill(false);
   for (let start = 0; start < size; start++) {
     if (!inside[start] || seen[start]) continue;
@@ -106,39 +132,100 @@ function findEnclosures(state: GameState): Enclosures {
     if (!members.some((i) => open[i])) continue;
     // Ruins and terrain alone can box in a pocket on a fresh map; it only counts once
     // something the players built is part of the wall.
-    if (!hasBuiltBoundary(state, members, inside)) continue;
-    const kind = members.some((i) => touchesKeep(state, i)) ? KEEP : OUTER;
-    for (const i of members) area[i] = kind;
+    const builders = boundaryBuilders(state, members, inside);
+    if (builders.size === 0) continue;
+    const keep = members.map((i) => touchedKeep(state, i)).find((k) => k !== undefined);
+    let owner = 0;
+    if (state.mode === "pvp") {
+      // Land by your keep is yours; anywhere else, the one player who walled it in.
+      owner = keep?.owner ?? (builders.size === 1 ? [...builders][0] : 0);
+      if (owner === 0) continue;
+    }
+    const kind = keep ? KEEP : OUTER;
+    for (const i of members) {
+      area[i] = kind;
+      areaOwner[i] = owner;
+    }
   }
 
-  // A keep enemies can't reach is enclosed itself, so a ring hugging it is the keep's boundary.
-  const keepReached = keepTiles(state).some((i) =>
-    neighbours(i, width, height, NEIGHBOURS_4).some((n) => reachable[n]),
-  );
-  if (!keepReached && hasBuiltBoundary(state, keepTiles(state), inside)) {
-    for (const i of keepTiles(state)) area[i] = KEEP;
+  // A keep enemies (or the rival) can't reach is enclosed itself, so a ring hugging it is the
+  // keep's boundary.
+  for (const keep of state.keeps) {
+    const tiles = keepTiles(keep, width);
+    const reached = tiles.some((i) =>
+      neighbours(i, width, height, NEIGHBOURS_4).some((n) => reachable[n]),
+    );
+    if (reached || boundaryBuilders(state, tiles, inside).size === 0) continue;
+    for (const i of tiles) {
+      area[i] = KEEP;
+      areaOwner[i] = keep.owner ?? 0;
+    }
   }
 
   // Boundary: anything else next to an enclosed area (diagonals too, for ring corners) takes
-  // the best discount it touches.
+  // the best discount it touches, and that area's owner.
   const kind = [...area];
+  const owner = [...areaOwner];
   for (let i = 0; i < size; i++) {
     if (area[i] !== NONE || (open[i] && !inside[i])) continue;
-    let best: EnclosureKind = NONE;
-    for (const n of neighbours(i, width, height, NEIGHBOURS_8))
-      best = Math.max(best, area[n]) as EnclosureKind;
-    kind[i] = best;
+    for (const n of neighbours(i, width, height, NEIGHBOURS_8)) {
+      if (area[n] <= kind[i]) continue;
+      kind[i] = area[n];
+      owner[i] = areaOwner[n];
+    }
   }
-  // The keep's own tiles aren't buildable; no discount to report there.
-  for (const i of keepTiles(state)) kind[i] = NONE;
+  // The keeps' own tiles aren't buildable; no discount to report there.
+  for (const keep of state.keeps) {
+    for (const i of keepTiles(keep, width)) {
+      kind[i] = NONE;
+      owner[i] = 0;
+    }
+  }
 
   return {
     version: state.gridVersion,
+    owner,
     kind,
     discount: kind.map((k) =>
       k === KEEP ? ENCLOSURE_DISCOUNT.keep : k === OUTER ? ENCLOSURE_DISCOUNT.outer : 0,
     ),
   };
+}
+
+/** Endless: everywhere enemies can walk to from the spawn. */
+function reachableFromSpawn(
+  state: GameState,
+  open: boolean[],
+  width: number,
+  height: number,
+): boolean[] {
+  const reachable = new Array<boolean>(open.length).fill(false);
+  const queue: number[] = [];
+  for (const p of state.spawnTiles) {
+    const i = p.y * width + p.x;
+    if (open[i] && !reachable[i]) {
+      reachable[i] = true;
+      queue.push(i);
+    }
+  }
+  flood(queue, reachable, open, width, height);
+  return reachable;
+}
+
+/** PvP: no-man's land, the biggest connected stretch of open ground. */
+function largestArea(open: boolean[], width: number, height: number): boolean[] {
+  const seen = new Array<boolean>(open.length).fill(false);
+  let biggest: number[] = [];
+  for (let start = 0; start < open.length; start++) {
+    if (!open[start] || seen[start]) continue;
+    seen[start] = true;
+    const members = [start];
+    flood(members, seen, open, width, height, true);
+    if (members.length > biggest.length) biggest = members;
+  }
+  const reachable = new Array<boolean>(open.length).fill(false);
+  for (const i of biggest) reachable[i] = true;
+  return reachable;
 }
 
 /**
@@ -180,28 +267,35 @@ function neighbours(
   return result;
 }
 
-/** Whether any structure on the wall around these tiles was built by a player (not a ruin). */
-function hasBuiltBoundary(state: GameState, tiles: number[], inside: boolean[]): boolean {
+/**
+ * Who built the structures on the wall around these tiles (ruins don't count). Structures
+ * with no owner (placed directly, in tests) count as player 0.
+ */
+function boundaryBuilders(state: GameState, tiles: number[], inside: boolean[]): Set<number> {
   const { width, height } = state;
-  return tiles.some((i) =>
-    neighbours(i, width, height, NEIGHBOURS_8).some((n) => {
-      if (inside[n]) return false;
+  const builders = new Set<number>();
+  for (const i of tiles) {
+    for (const n of neighbours(i, width, height, NEIGHBOURS_8)) {
+      if (inside[n]) continue;
       const x = n % width;
       const y = Math.floor(n / width);
       const structure = mountAt(state, x, y) ?? baseAt(state, x, y);
-      return structure !== undefined && structure.kind !== "ruin";
-    }),
-  );
+      if (structure && structure.kind !== "ruin") builders.add(structure.owner ?? 0);
+    }
+  }
+  return builders;
 }
 
-function touchesKeep(state: GameState, i: number): boolean {
-  return neighbours(i, state.width, state.height, NEIGHBOURS_4).some((n) =>
-    isKeepTile(state, n % state.width, Math.floor(n / state.width)),
-  );
+/** The keep next to tile i, if any. */
+function touchedKeep(state: GameState, i: number) {
+  for (const n of neighbours(i, state.width, state.height, NEIGHBOURS_4)) {
+    const keep = keepAt(state, n % state.width, Math.floor(n / state.width));
+    if (keep) return keep;
+  }
+  return undefined;
 }
 
-function keepTiles(state: GameState): number[] {
-  const { keep, width } = state;
+function keepTiles(keep: { x: number; y: number; size: number }, width: number): number[] {
   const tiles: number[] = [];
   for (let y = keep.y; y < keep.y + keep.size; y++) {
     for (let x = keep.x; x < keep.x + keep.size; x++) tiles.push(y * width + x);

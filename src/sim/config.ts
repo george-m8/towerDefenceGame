@@ -216,6 +216,15 @@ export const WAVES = {
   earlySendGoldPerSecond: 1,
 };
 
+/** PvP: a tougher keep (towers are all that can hurt it), and gold for wrecking the rival's builds. */
+export const PVP = {
+  keepHp: 300,
+  /** Destroying a rival structure pays this fraction of what they paid for it. */
+  destroyBounty: 0.5,
+  /** Keeps sit this fraction of the map's width in from the left and right edges. */
+  keepInset: 0.3,
+};
+
 /** Selling refunds this fraction of cost, scaled by remaining HP. */
 export const SELL_REFUND = 0.5;
 /** Build discounts in enclosed areas: inside the keep's walls, and inside any other walls. */
