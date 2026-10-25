@@ -54,14 +54,12 @@ export type ClientState = Omit<GameState, "flow" | "rngState" | "enemies" | "str
   structures: Record<number, ClientStructure>;
 };
 
-type GridFields = "terrain" | "base" | "mount" | "features" | "explored";
 type DynamicFields =
   | "tick"
   | "gridVersion"
   | "enemies"
   | "effects"
   | "cues"
-  | "structures"
   | "players"
   | "wave"
   | "keeps"
@@ -71,8 +69,29 @@ type DynamicFields =
   | "gameOver"
   | "fog";
 
-/** Sent every few ticks. The grid fields are only present when the grid changed. */
-export type StateUpdate = Pick<ClientState, DynamicFields> & Partial<Pick<ClientState, GridFields>>;
+/** Changed tiles of one grid layer, as [tile index, new value] pairs. */
+export type TileChanges<T> = [number, T][];
+
+/**
+ * Sent every few ticks. Only what changed since the previous update: structures that were
+ * built or changed (and the ids of those removed), and when the grid changed, just the tiles
+ * that did. Every change sets a value, so applying one twice does no harm.
+ */
+export type StateUpdate = Pick<ClientState, DynamicFields> & {
+  /** Structures built or changed (HP, aim) since the last update. */
+  structures?: ClientStructure[];
+  /** Ids of structures sold or destroyed since the last update. */
+  removed?: number[];
+  /** Changed tiles, per layer; only layers with changes are present. */
+  tiles?: {
+    terrain?: TileChanges<GameState["terrain"][number]>;
+    base?: TileChanges<number>;
+    mount?: TileChanges<number>;
+    explored?: TileChanges<number>;
+  };
+  /** The map features (chests), when one was claimed. */
+  features?: ClientState["features"];
+};
 
 export type ServerMessage =
   | {

@@ -105,7 +105,7 @@ describe("commands", () => {
     const wall = Object.values(room.state.structures).find((s) => s.kind === "wall");
     expect(wall?.owner).toBe(2);
     // Everyone gets an update straight away, with the changed grid.
-    expect(ofType(1, "update").at(-1)?.update.base).toBeDefined();
+    expect(ofType(1, "update").at(-1)?.update.tiles?.base).toBeDefined();
   });
 
   it("debugSpawn is rejected online", () => {
