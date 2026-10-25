@@ -55,23 +55,27 @@ export const COLOURS = {
 };
 
 /**
- * Fog of war: a white mist, thin over land that's seen but out of sight, and solid over
- * unexplored land, except near explored land, where it thins in bands. Opacities are 0 (clear)
- * to 1 (solid). Like the ground, the fog is a checker of two colours.
+ * Fog of war: a white mist, thin and low over land that's seen but out of sight, and solid and
+ * high over unexplored land, except near explored land, where it steps down in bands. Like the
+ * raised blocks, each tile's fog top is lifted by its `height` (pixels), with a darker front
+ * face where it's higher than the fog (or clear land) in front of it. Opacities are 0 (clear)
+ * to 1 (solid). Like the ground, the top is a checker of two colours.
  */
 export const FOG = {
   colour: "#ffffff",
   colourAlt: "#ededed",
-  seen: 0.3,
+  face: "#c4c4c4",
+  seen: { opacity: 0.3, height: 2 },
   /**
    * See-through bands on unexplored land, from the edge of explored land outwards: each is
-   * `tiles` wide (counting diagonals) at `opacity`. Past the last band the fog is `unexplored`.
+   * `tiles` wide (counting diagonals). Past the last band the fog is `unexplored`.
    */
   edgeBands: [
-    { tiles: 1, opacity: 0.50 },
-    { tiles: 1, opacity: 0.80 },
+    { tiles: 1, opacity: 0.5, height: 5 },
+    { tiles: 1, opacity: 0.8, height: 9 },
   ],
-  unexplored: 1,
+  /** Higher than the tallest block (the keep, 12), so nothing pokes through. */
+  unexplored: { opacity: 1, height: 14 },
 };
 
 export const GLYPHS: Record<StructureKind, string> = {
