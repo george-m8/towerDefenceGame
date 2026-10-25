@@ -78,7 +78,7 @@ const gameOver = createGameOverDialog(element("#game-over"), () => {
   session?.restart();
   ui.tool = null;
 });
-bindInput(canvas, ui, dispatch);
+bindInput(canvas, ui, dispatch, () => session?.state ?? null);
 
 // Sound: silent until the first click or key press (browsers require a gesture).
 const audio = createWebAudioEngine();
@@ -92,6 +92,8 @@ const MUSIC_FADE_SECONDS = 1;
 if (import.meta.env.DEV) {
   // Lets you check from the console that sounds are playing (and cleaning up).
   (window as unknown as { __liveVoices: () => number }).__liveVoices = liveVoiceCount;
+  // Lets a test script reach into the game (e.g. place enemies for a visual check).
+  (window as unknown as { __state: () => GameState | null }).__state = () => session?.state ?? null;
 }
 createSoundControls(element("#sound"), audioSettings, (settings) => {
   audio.setVolumes(settings);
