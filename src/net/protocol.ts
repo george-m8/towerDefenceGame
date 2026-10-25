@@ -51,10 +51,10 @@ export type ClientEnemy = Pick<Enemy, "id" | "x" | "y" | "hp" | "maxHp" | "varia
 export type ClientStructure = Omit<Structure, "cooldown">;
 
 /**
- * Everything a client needs to draw the game. `flow` is rebuilt lazily, `rngState` stays on
+ * Everything a client needs to draw the game. `flows` are rebuilt lazily, `rngState` stays on
  * the server, and enemies and structures carry only the fields a client uses.
  */
-export type ClientState = Omit<GameState, "flow" | "rngState" | "enemies" | "structures"> & {
+export type ClientState = Omit<GameState, "flows" | "rngState" | "enemies" | "structures"> & {
   enemies: ClientEnemy[];
   structures: Record<number, ClientStructure>;
 };

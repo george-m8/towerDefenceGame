@@ -8,9 +8,9 @@ Standard verification for every task: `npm run typecheck && npm test && npm run 
 
 `MovementProfile` type; `GameState.flow` becomes `flows: Partial<Record<MovementProfile, FlowField>>`; `getFlowField(state, profile = "follower")`, `nextStep(..., profile)`, `distanceAt(..., profile)`; `canCross(state, profile, x, y)` (follower: today's `isWalkable`). Snapshot, protocol and view drop `flows` like `flow`. Only `follower` is used, so nothing changes in play.
 
-- [ ] The existing suite passes untouched (apart from `flow` -> `flows` in any test that reads it)
-- [ ] Fields for different profiles are cached separately and rebuilt when `gridVersion` changes
-- [ ] A field is only built when first asked for
+- [x] The existing suite passes untouched (apart from `flow` -> `flows` in any test that reads it)
+- [x] Fields for different profiles are cached separately and rebuilt when `gridVersion` changes
+- [x] A field is only built when first asked for
 
 Files: `src/sim/types.ts`, `src/sim/pathfinding.ts`, `src/sim/game.ts`, `src/net/snapshot.ts`, `src/net/protocol.ts`, `src/net/view.ts`, `tests/sim/pathfinding.test.ts`. Size: S (mechanical). Depends on: none.
 

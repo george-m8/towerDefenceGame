@@ -1,3 +1,4 @@
+import type { MovementProfile } from "./config";
 import { blocksAt, inBounds, isKeepTile, isWalkable, tileIndex } from "./grid";
 import type { FlowField, GameState, Point } from "./types";
 
@@ -9,12 +10,23 @@ export const DIRECTIONS: readonly Point[] = [
   { x: -1, y: 0 },
 ];
 
-/** The cached flow field, recomputed only when the grid has changed since it was built. */
-export function getFlowField(state: GameState): FlowField {
-  if (!state.flow || state.flow.version !== state.gridVersion) {
-    state.flow = { version: state.gridVersion, dist: computeDistances(state) };
-  }
-  return state.flow;
+/** A profile's cached flow field, built when first needed and again after the grid changes. */
+export function getFlowField(state: GameState, profile: MovementProfile = "follower"): FlowField {
+  const cached = state.flows[profile];
+  if (cached && cached.version === state.gridVersion) return cached;
+  const field = { version: state.gridVersion, dist: computeDistances(state, profile) };
+  state.flows[profile] = field;
+  return field;
+}
+
+/** Whether an enemy with this profile can stand on (x, y), ignoring structures. */
+export function canCross(
+  state: GameState,
+  _profile: MovementProfile,
+  x: number,
+  y: number,
+): boolean {
+  return isWalkable(state, x, y);
 }
 
 /**
@@ -22,8 +34,14 @@ export function getFlowField(state: GameState): FlowField {
  * The returned tile may hold a blocking structure, which means "attack this".
  * On a tie, any other tile is preferred over `avoid` (the tile the enemy just left).
  */
-export function nextStep(state: GameState, x: number, y: number, avoid?: Point): Point | null {
-  const { dist } = getFlowField(state);
+export function nextStep(
+  state: GameState,
+  x: number,
+  y: number,
+  avoid?: Point,
+  profile: MovementProfile = "follower",
+): Point | null {
+  const { dist } = getFlowField(state, profile);
   if (dist[tileIndex(state, x, y)] === 0) return null;
   let best: Point | null = null;
   let bestDist = Infinity;
@@ -43,15 +61,20 @@ export function nextStep(state: GameState, x: number, y: number, avoid?: Point):
   return best;
 }
 
-export function distanceAt(state: GameState, x: number, y: number): number {
-  return getFlowField(state).dist[tileIndex(state, x, y)];
+export function distanceAt(
+  state: GameState,
+  x: number,
+  y: number,
+  profile: MovementProfile = "follower",
+): number {
+  return getFlowField(state, profile).dist[tileIndex(state, x, y)];
 }
 
 /**
  * Dijkstra outwards from the keep. Entering a blocking structure costs more than
  * any open route could, so enemies only break through when there is no other way.
  */
-function computeDistances(state: GameState): number[] {
+function computeDistances(state: GameState, profile: MovementProfile): number[] {
   const blockedCost = state.width * state.height + 1;
   const dist = new Array<number>(state.width * state.height).fill(Infinity);
   const heap = new MinHeap();
@@ -73,7 +96,7 @@ function computeDistances(state: GameState): number[] {
     for (const dir of DIRECTIONS) {
       const nx = x + dir.x;
       const ny = y + dir.y;
-      if (!isWalkable(state, nx, ny)) continue;
+      if (!canCross(state, profile, nx, ny)) continue;
       const cost = blocksAt(state, nx, ny) ? blockedCost : 1;
       const ni = tileIndex(state, nx, ny);
       if (d + cost < dist[ni]) {

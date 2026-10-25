@@ -5,7 +5,7 @@ import type { ClientEnemy, ClientState, ClientStructure, StateUpdate } from "./p
 
 /** The whole game as a client needs it (sent on welcome and restart). */
 export function toClientState(state: GameState): ClientState {
-  const { flow: _flow, rngState: _rng, enemies, structures, ...rest } = state;
+  const { flows: _flows, rngState: _rng, enemies, structures, ...rest } = state;
   return {
     ...rest,
     enemies: enemies.map(toClientEnemy),

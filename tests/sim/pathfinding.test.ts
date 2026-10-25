@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { createGame } from "../../src/sim/game";
 import { isKeepTile, topAt } from "../../src/sim/grid";
-import { getFlowField, nextStep } from "../../src/sim/pathfinding";
+import { canCross, getFlowField, nextStep } from "../../src/sim/pathfinding";
 import type { GameState, Point } from "../../src/sim/types";
-import { buildAt, ring } from "./helpers";
+import { buildAt, createGameWithoutWaves, paintTerrain, ring } from "./helpers";
 
 function pathToKeep(state: GameState, start: Point): Point[] {
   const path: Point[] = [start];
@@ -107,5 +107,33 @@ describe("flow field", () => {
   it("returns null when already on the keep", () => {
     const state = createGame(1, { blankMap: true, fog: false });
     expect(nextStep(state, state.keeps[0].x, state.keeps[0].y)).toBeNull();
+  });
+});
+
+describe("fields per movement profile", () => {
+  it("builds a profile's field only when first asked for, and caches each separately", () => {
+    const state = createGameWithoutWaves();
+    expect(state.flows).toEqual({});
+    const follower = getFlowField(state);
+    expect(Object.keys(state.flows)).toEqual(["follower"]);
+    const breacher = getFlowField(state, "breacher");
+    expect(breacher).not.toBe(follower);
+    expect(getFlowField(state, "breacher")).toBe(breacher);
+    expect(getFlowField(state, "follower")).toBe(follower);
+  });
+
+  it("rebuilds a field after the grid changes", () => {
+    const state = createGameWithoutWaves();
+    const before = getFlowField(state, "marine");
+    buildAt(state, [{ x: 5, y: 5 }]);
+    expect(getFlowField(state, "marine")).not.toBe(before);
+  });
+
+  it("lets followers cross only walkable land", () => {
+    const state = createGameWithoutWaves();
+    paintTerrain(state, [{ x: 3, y: 3 }], "rock");
+    expect(canCross(state, "follower", 3, 3)).toBe(false);
+    expect(canCross(state, "follower", 4, 3)).toBe(true);
+    expect(canCross(state, "follower", -1, 3)).toBe(false);
   });
 });

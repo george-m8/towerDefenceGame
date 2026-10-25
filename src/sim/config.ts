@@ -212,6 +212,9 @@ export const ENEMY = {
   wanderChance: 0.1,
 };
 
+/** Which tiles an enemy can cross and what each costs; one cached flow field per profile. */
+export type MovementProfile = "follower" | "breacher" | "marine";
+
 /** A version of a kind, rolled at spawn. Multipliers apply to the kind's stats. */
 export interface EnemyVariant {
   name: string;

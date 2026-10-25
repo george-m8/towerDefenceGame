@@ -10,7 +10,7 @@ export function fromClientState(client: ClientState): GameState {
     ...client,
     enemies: client.enemies.map(toEnemy),
     structures: toStructures(client.structures),
-    flow: null, // rebuilt lazily by getFlowField when needed
+    flows: {}, // rebuilt lazily by getFlowField when needed
     rngState: 0,
   };
 }

@@ -55,7 +55,7 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     structures: {},
     nextId: 1,
     gridVersion: 0,
-    flow: null,
+    flows: {},
     enemies: [],
     features: map.chests.map((c) => ({ kind: "chest" as const, ...c })),
     effects: [],

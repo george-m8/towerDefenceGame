@@ -52,7 +52,7 @@ describe("fromClientState", () => {
       variant: 1,
     });
     expect(Object.values(view.structures)[0].cooldown).toBe(0);
-    expect(view.flow).toBeNull();
+    expect(view.flows).toEqual({});
   });
 });
 
