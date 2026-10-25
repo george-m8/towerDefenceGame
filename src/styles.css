@@ -835,3 +835,80 @@ a.button {
 .toast[hidden] {
   display: none;
 }
+
+/*
+ * Trial: translucent HUD and map overlays, so they stand out less against the map. Backgrounds
+ * let the map show through and borders and shadows are softer; text stays solid. Hovering a
+ * box (or opening a menu) makes it solid again. Delete this block to go back.
+ */
+:root {
+  --hud-paper: rgba(200, 200, 200, 0.55); /* light grey, so the boxes sit back from the map */
+  --hud-ink: rgba(0, 0, 0, 0.6);
+  --hud-line: rgba(0, 0, 0, 0.38);
+  --hud-shadow: rgba(0, 0, 0, 0.18);
+  /* A faint white halo keeps black text readable over dark ground. */
+  --hud-text-halo: 0 0 3px rgba(235, 235, 235, 0.8);
+}
+.hud-box,
+.overlay-box,
+.minimap-box,
+.map-toggle {
+  text-shadow: var(--hud-text-halo);
+  background: var(--hud-paper);
+  border-color: var(--hud-line);
+  box-shadow: 3px 3px 0 var(--hud-shadow);
+  transition: background-color 0.15s;
+}
+.map-toggle {
+  box-shadow:
+    0 0 0 1px var(--hud-paper),
+    0 0 0 2px var(--hud-line),
+    3px 3px 0 2px var(--hud-shadow);
+}
+.hud-segment .hud-action {
+  background: transparent;
+}
+.hud-segment .hud-action + .hud-action {
+  border-left-color: var(--hud-line);
+}
+.zoom-controls .button {
+  background: var(--hud-paper);
+  border-color: var(--hud-line);
+}
+#minimap {
+  border-color: var(--hud-line);
+}
+/* Pressed and selected states: see-through ink rather than solid black. */
+.hud-action.selected,
+.hud-segment .hud-action.selected,
+.map-toggle[aria-pressed="true"] {
+  background: var(--hud-ink);
+}
+.hud-stat.short {
+  background: rgba(221, 34, 34, 0.75);
+}
+/* White text on the see-through ink and red doesn't want the white halo. */
+.hud-action.selected,
+.map-toggle[aria-pressed="true"],
+.hud-stat.short {
+  text-shadow: none;
+}
+/* Solid again under the pointer, so what you're about to click is clear. */
+.hud-box:hover,
+.overlay-box:hover,
+.minimap-box:hover,
+.map-toggle:hover,
+.zoom-controls .button:hover {
+  background: var(--paper);
+  border-color: var(--ink);
+}
+.hud-segment:hover .hud-action:not(.selected) {
+  background: var(--paper);
+}
+.map-toggle[aria-pressed="true"]:hover,
+.hud-action.selected:hover {
+  background: var(--ink);
+}
+.hud-stat.short:hover {
+  background: #d22;
+}
