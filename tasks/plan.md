@@ -493,7 +493,7 @@ T2 Pack scan + Vite plugin + gitignore
 ```
 
 **Task list** (details in [`tasks/todo.md`](todo.md))
-- [ ] Task 1: MIDI reader keeps the good tracks of a file with a broken track
+- [x] Task 1: MIDI reader keeps the good tracks of a file with a broken track
 - [ ] Task 2: Pack scan and Vite plugin (`virtual:music-packs`), pack contents git-ignored
 - [ ] Task 3: Playlist (pack songs or defaults, random pick without repeats) and the chosen pack setting
 - [ ] Task 4: Music player: new places, play-once with an ended callback, shuffle chaining, switch after a fade

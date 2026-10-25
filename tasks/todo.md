@@ -3,9 +3,9 @@
 Spec: [`SPEC-music-packs.md`](../SPEC-music-packs.md). Plan: [`tasks/plan.md`](plan.md).
 
 ## Task 1: MIDI reader keeps the good tracks
-- [ ] A track with a bad byte is cut short there; its notes so far and the other tracks are kept
-- [ ] A file that is broken before any track (bad header) is still rejected
-- [ ] All 16 files in music-pack-1 parse
+- [x] A track with a bad byte is cut short there; its notes so far and the other tracks are kept
+- [x] A file that is broken before any track (bad header) is still rejected
+- [x] All 16 files in music-pack-1 parse
 - Files: `src/audio/midi.ts`, `tests/audio/midi.test.ts`
 
 ## Task 2: Pack scan and Vite plugin
