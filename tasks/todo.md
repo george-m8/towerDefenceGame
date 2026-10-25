@@ -1,160 +1,192 @@
-# Tasks: tower-aiming
+# Tasks: audio
 
-Spec: [`SPEC-tower-aiming.md`](../SPEC-tower-aiming.md) | Plan: [`plan.md`](plan.md) | Map: [`CAPABILITIES.md`](../CAPABILITIES.md)
+Spec: [`SPEC-audio.md`](../SPEC-audio.md) | Plan: [`plan.md`](plan.md)
 
 Standard verification for every task (in addition to task-specific checks):
 `npm run typecheck && npm test && npm run build`
 
 ---
 
-## Phase E: Aiming rules
+## Phase G: Sound effects
 
-## Task 1: Angle maths module
+## Task 1: Synth voice and pure note maths
 
-**Description:** Add a pure `src/sim/aiming.ts`. Angles are in degrees, measured clockwise from north (up the screen, negative y), from the tower's tile centre to a point:
-- `facingAngle(facing)`: N 0, E 90, S 180, W 270
-- `angleTo(from, to)`: the angle from a tower tile to a point
-- `angleBetween(a, b)`: the smallest absolute difference, 0-180
-- `inArc(aimAngle, arcDegrees, angle)`: inside or exactly on the edge; 360 always true
-- `turnTowards(current, target, maxStep)`: shorter way round, never overshoots, result normalised to [0, 360)
+**Description:** Add `src/audio/envelopes.ts`:
+- `midiToHz`, `noteToHz("G", 3)` and semitone offsets
+- the pitch-envelope start frequency for an offset (+16 / -14 semitones)
+- ADSR timing helpers
+- the delay time that makes a given pulse duty cycle (for PWM), clamped to safe limits
 
-No game changes yet.
+Add `src/audio/synth.ts`: a Web Audio voice with pulse (duty cycle and optional PWM LFO, built from two sawtooths and a modulated delay), triangle, saw, sine and noise (looped noise buffer); an ADSR gain envelope; a pitch envelope sliding onto the note; and self-disconnecting nodes. Voices connect to a given output node.
 
 **Acceptance criteria:**
-- [x] `angleTo` is correct for all four compass directions and the four diagonals
-- [x] `inArc` is true at the centre and exactly on the edge, false just outside, and always true for 360°
-- [x] `turnTowards` takes the shorter way across 0°/360°, stops exactly on the target, and never overshoots
+- [x] `noteToHz` gives A4 = 440 Hz and the right G3/C4 values; +16 / -14 semitone start frequencies are correct
+- [x] Duty-cycle delay times are correct for 12.5%, 25% and 50% pulses, and stay inside safe limits
+- [x] A voice of each waveform can be built and stopped without leaving nodes connected (sound test: 9 live voices after playing everything, 0 two seconds later)
 
 **Verification:**
-- [x] `npm test` (new `tests/sim/aiming.test.ts`)
+- [x] `npm test` (new `tests/audio/envelopes.test.ts`)
 
 **Dependencies:** None
 
-**Files likely touched:** `src/sim/aiming.ts`, `tests/sim/aiming.test.ts`
+**Files likely touched:** `src/audio/envelopes.ts`, `src/audio/synth.ts`, `tests/audio/envelopes.test.ts`
 
-**Estimated scope:** S
+**Estimated scope:** M
 
 ---
 
-## Task 2: Facing on every tower and arc-limited targeting
+## Task 2: Audio engine, gesture unlock and sound settings
 
 **Description:**
-- Add `arcDegrees` and `turnDegreesPerSecond` to `TowerStats`, plus `AIM_TOLERANCE_DEGREES = 5`. Values: archer 90 / 0, cannon 360 / 90, catapult 360 / 30.
-- `placeStructure` sets `facing` on every tower (and still on directional traps), and sets `aim` to the facing angle for turning towers.
-- Fixed towers (turn speed 0) target only enemies inside their arc, via `inArc(angleTo(...))`.
-- `glyphFor` draws arrows only for directional traps, so towers keep their letters.
-- Update existing tests that rely on all-round archers to give the archer a facing towards its enemy (same intent).
+- `src/audio/engine.ts`: an `AudioEngine` interface (`unlock`, `playSound`, `playNote`, `setVolumes`, `now`), a Web Audio implementation with sound-effect and music buses into a master gain and limiter, and a fake engine for tests. The engine is created at load but stays silent (every call a no-op) until `unlock()`. The intro screen's dismiss calls `unlock()`.
+- `src/audio/settings.ts`: mute and two volumes (music, effects), saved per device, falling back to defaults when storage is blocked.
+- A speaker button with the two volume sliders in the side panel.
 
 **Acceptance criteria:**
-- [x] Every placed tower records the facing it was built with. Turning towers start with `aim` on that facing.
-- [x] An archer facing E fires at an enemy to its east and ignores an equally close enemy to its west, even when the western one is closer to the keep
-- [x] Towers still draw as `A`, `C` and `P` (not arrows). All existing tests pass after the facing updates.
+- [x] Nothing can play before `unlock()`, and unlocking twice is harmless. Audio errors never reach the game.
+- [x] Mute and volumes round-trip through storage; blocked storage gives defaults with no error
+- [x] The speaker button mutes and unmutes, and the sliders change the bus volumes
 
 **Verification:**
-- [x] `npm test` (`tests/sim/towers.test.ts`; touched tests in `economy`/`layers` tests listed in the commit message)
-- [x] Glyphs covered by a unit test of `glyphFor`; browser check at Checkpoint E
+- [x] `npm test` (`tests/audio/settings.test.ts`, engine-lock behaviour on the fake)
+- [x] Manual: sound button and sliders in the panel; mute saved and restored across a reload (nothing audible until Task 3)
 
 **Dependencies:** Task 1
 
-**Files likely touched:** `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/grid.ts`, `src/sim/towers.ts`, `src/render/palette.ts` (+ tests)
+**Files likely touched:** `src/audio/engine.ts`, `src/audio/settings.ts`, `src/ui/panel.ts`, `src/main.ts`, `src/styles.css` (+ tests)
 
 **Estimated scope:** M
 
 ---
 
-## Task 3: Turning towers
+## Task 3: Sound-effect table, cue player and UI sounds
 
-**Description:** In `towers.ts`, turning towers (360° arc, turn speed above 0) pick their target as today (in range, closest to the keep), then turn `aim` towards it by at most `turnDegreesPerSecond / TICK_RATE` per tick. They fire only when the target is within `AIM_TOLERANCE_DEGREES` of `aim`. The cooldown keeps counting down while they turn, and the target is re-picked every tick.
+**Description:**
+- `src/audio/sounds.ts`: the table of sound effects with throttle caps: `enemyHit` (noise burst), `keepHit` (G3 pulse with PWM, +16 semitones), `treasure` (C4 pulse with PWM, -14 semitones), `splash`, `build`, `sell`, `denied`, `waveStart`, `gameOver`.
+- `src/audio/cues.ts`: pure; given a list of `{ id, kind }` cues, the last played id and the clock, returns which to play now and the new last id, applying caps.
+- The UI plays `build`, `sell` and `denied` when a command's result comes back.
+- A dev-only `?soundtest` page lists every sound with a play button and shows the live node count.
 
 **Acceptance criteria:**
-- [x] A cannon facing N with an enemy due S doesn't fire until it has turned (about 2 s at 90°/s, within a tick), then fires
-- [x] A catapult in the same setup takes about 3x as long. Its minimum range is still respected.
-- [x] A turning tower already aimed at its target fires immediately, exactly as before (no regression for targets in front)
+- [x] The cue player plays each id once, never replays older ids (even when given the same cues again), and respects each cue's cap
+- [x] Building, selling and a rejected action each make their sound in the game
+- [x] `?soundtest` (dev server only) plays every sound in the table, and the node count returns to its baseline after each sound
 
 **Verification:**
-- [x] `npm test` (`tests/sim/towers.test.ts` turning cases)
-- [x] Manual: watch a cannon swing round onto a wave (aim line swung from N to SE during a wave)
+- [x] `npm test` (`tests/audio/cues.test.ts`)
+- [x] Manual: every sound on `?soundtest` plays without errors and cleans up (actual listening is left to you: Checkpoint G)
 
 **Dependencies:** Task 2
 
-**Files likely touched:** `src/sim/towers.ts`, `tests/sim/towers.test.ts`
-
-**Estimated scope:** S
-
----
-
-### Checkpoint E: aiming works
-- [x] All tests pass, build clean
-- [x] Browser: an archer ignores enemies behind it; a cannon visibly swings onto targets before firing (checked with Task 4)
-- [ ] Review with human (including whether the arc and turn numbers feel right)
-
----
-
-## Phase F: Showing it
-
-## Task 4: Arc overlay, facing notch and aim line
-
-**Description:** The range overlay (while placing a tower, or hovering a placed one) tints only the tiles that are in range, outside the minimum range, and inside the arc for the tower's facing. It uses `aiming.ts` and the same range rules as targeting. Placed towers show a small notch on the tile edge they face. Hovering a turning tower also draws a short line along its current `aim`. The ghost while placing shows the facing notch for the current `R` facing.
-
-**Acceptance criteria:**
-- [x] The placement overlay covers exactly the tiles the tower could fire at for the current facing (range, minimum range and arc)
-- [x] Every placed tower shows which way it faces at a glance
-- [x] Hovering a cannon or catapult shows its current aim line, which moves as it turns
-
-**Verification:**
-- [x] `npm run build`
-- [x] Manual: rotate an archer ghost with `R` and watch the quarter circle swing round; hover a turning cannon during a wave
-
-**Dependencies:** Task 3
-
-**Files likely touched:** `src/render/canvas.ts`, `src/render/palette.ts`
+**Files likely touched:** `src/audio/sounds.ts`, `src/audio/cues.ts`, `src/ui/soundTest.ts`, `src/main.ts` (+ tests)
 
 **Estimated scope:** M
 
 ---
 
-## Task 5: Hover info and docs
+## Task 4: Sound cues from the simulation
 
-**Description:** Tower hover info shows facing and arc (`Archer (on wall), facing east, 90° arc`), and turning towers add `turns 90°/s`. README: a "Facing and arcs" note, `R` rotates towers as well as wall spikes, and arcs and turn speeds in the structures table. `SPEC.md` gets a pointer to `SPEC-tower-aiming.md`.
+**Description:** Add `cues: { id, kind, ttl }[]` and a `nextCueId` counter to the game state. The sim adds a cue when:
+- an enemy takes damage from a tower or trap (`enemyHit`)
+- a splash lands (`splash`)
+- an enemy reaches the keep (`keepHit`)
+- a chest is claimed (`treasure`)
+- a wave starts (`waveStart`)
+- the game ends (`gameOver`)
+
+Cues age out like effects. They're included in network snapshots, and the audio layer feeds them through the cue player every frame, for local and online sessions alike.
 
 **Acceptance criteria:**
-- [x] Hover info shows facing, arc and (for turning towers) turn speed
-- [x] README and `SPEC.md` describe facing, arcs and turning accurately
+- [x] Each event adds exactly one cue with an increasing id; cues expire after a few ticks; same seed and commands give the same cues
+- [x] Cues reach online clients in snapshots (snapshot test), and replaying the same snapshot plays nothing twice
+- [x] In a local game the cues play (dev voice counter: up to 8 voices at once during a 200-enemy stress wave reaching the keep, no errors). Listening is for you at Checkpoint G.
+
+**Verification:**
+- [x] `npm test` (`tests/sim/cues.test.ts`, snapshot test in `tests/net/`)
+- [ ] Manual: listen in a local game and a two-tab online game (left for you at Checkpoint G; online delivery is covered by the snapshot test)
+
+**Dependencies:** Task 3
+
+**Files likely touched:** `src/sim/types.ts`, `src/sim/game.ts`, `src/sim/enemies.ts`, `src/sim/towers.ts`, `src/sim/traps.ts`, `src/sim/economy.ts`, `src/sim/waves.ts`, `src/net/snapshot.ts`, `src/main.ts` (+ tests). This is wider than usual, but each change is a one-line `addCue`.
+
+**Estimated scope:** M
+
+---
+
+### Checkpoint G: sound effects
+- [x] All tests pass, build clean
+- [x] Every sound effect plays in a local game (dev voice counter) and online cues are covered by tests; a 200-enemy stress wave peaked at 8 voices (caps hold). Listening is yours.
+- [ ] Review with human (tune the sounds with `?soundtest`)
+
+---
+
+## Phase H: Music
+
+## Task 5: MIDI file reader
+
+**Description:** `src/audio/midi.ts`, pure: turns MIDI file bytes into `{ notes: { time, duration, midi, velocity, channel }[], length }` in seconds. Handles format 0 and 1, variable-length quantities, running status, tempo changes (including mid-song), note-on with velocity 0 as note-off, and skips meta and sysex events. A corrupt or truncated file gives a clear error instead of throwing something random.
+
+**Acceptance criteria:**
+- [x] Hand-built byte fixtures for format 0 and format 1 produce the expected notes and timings
+- [x] Running status, velocity-0 note-offs and a mid-song tempo change are all handled
+- [x] Corrupt and truncated files are rejected with a clear error
+
+**Verification:**
+- [x] `npm test` (`tests/audio/midi.test.ts`)
+
+**Dependencies:** None
+
+**Files likely touched:** `src/audio/midi.ts`, `tests/audio/midi.test.ts`
+
+**Estimated scope:** S
+
+---
+
+## Task 6: Sequencer and title/menu music
+
+**Description:**
+- `src/audio/sequencer.ts`: pure scheduling, plus a thin timer that every ~50 ms schedules the notes falling in the next ~200 ms through `engine.playNote`. Supports looping, stopping and fading out.
+- `src/audio/songs.ts`: the manifest (file, title, where it plays, loop, source and licence, channel-to-instrument map) and instrument settings. Default mapping: channel 10 to kick/snare/hi-hat by GM note, other channels to lead, harmony, bass and arp.
+- A short original placeholder theme, so music works before your MIDI files arrive.
+- The title theme starts on the intro's dismiss, carries on through the start screen, and fades out when a game starts.
+
+**Acceptance criteria:**
+- [x] The sequencer schedules only the next lookahead window, with times correct across tempo changes, and loops at the song's end
+- [x] Channel 10 notes go to drum instruments; other channels follow the default or the manifest's mapping
+- [ ] In the browser the theme starts on the intro's dismiss, plays through the start screen, and fades when a game starts (left for you to listen: the browser check kept detaching while you were using it; the player logic is unit-tested)
+
+**Verification:**
+- [x] `npm test` (`tests/audio/sequencer.test.ts`, a manifest sanity test)
+- [ ] Manual: listen from the intro into a game; mute and volume affect the music (yours)
+
+**Dependencies:** Tasks 2, 5
+
+**Files likely touched:** `src/audio/sequencer.ts`, `src/audio/songs.ts`, `public/music/`, `src/main.ts` (+ tests)
+
+**Estimated scope:** M
+
+---
+
+## Task 7: Docs
+
+**Description:** README: a "Sound and music" section covering the sound effects, the speaker button, the `?soundtest` page, and how to add a MIDI song (where the file goes, the manifest entry, channel mapping, recording its licence). `SPEC.md` gets a pointer to `SPEC-audio.md`.
+
+**Acceptance criteria:**
+- [x] Someone can add a new MIDI song by following the README alone
+- [x] README and `SPEC.md` describe the audio accurately
 
 **Verification:**
 - [x] `npm run build`
-- [x] Manual: hover each tower type
 
-**Dependencies:** Task 4
+**Dependencies:** Task 6
 
-**Files likely touched:** `src/ui/tileInfo.ts`, `README.md`, `SPEC.md`
-
-**Estimated scope:** S
-
----
-
-## Task 6: Play-test fixes for turning towers
-
-**Description:** From play-testing: turning towers kept swinging round after each kill and rarely fired. They now pick the in-range enemy needing the least turning (ties: closest to the keep, then id). Splash towers fire once the shell, landing where the barrel points at the target's distance, would land within splash radius of the target, and the blast is centred on that landing point. See the revised rules in the spec.
-
-**Acceptance criteria:**
-- [x] A cannon picks an enemy just off its barrel over a more urgent one behind it
-- [x] A cannon fires at an off-axis target sooner than the old 5° rule allowed, and the target is still caught in the blast
-- [x] Blasts are centred where the shell lands. Archers are unchanged.
-
-**Verification:**
-- [x] `npm test` (`tests/sim/towers.test.ts`)
-- [x] Manual: a cannon fired at an off-axis enemy during a wave, the blast landing beside it and still catching it
-
-**Dependencies:** Task 5
-
-**Files likely touched:** `src/sim/towers.ts`, `tests/sim/towers.test.ts`, `SPEC-tower-aiming.md`
+**Files likely touched:** `README.md`, `SPEC.md`
 
 **Estimated scope:** S
 
 ---
 
-### Checkpoint F: tower-aiming complete
-- [x] All 6 success criteria in `SPEC-tower-aiming.md` met (re-checked after Task 6)
-- [x] `npm run coverage` passes (99.0% lines for `src/sim/`)
-- [ ] Review with human, then move this file to `tasks/tower-aiming/` and start `line-of-sight`
+### Checkpoint H: audio complete
+- [ ] All 7 success criteria in `SPEC-audio.md` met
+- [x] `npm run coverage` passes (98.2% lines overall; `src/audio` 96.8% with `synth.ts` excluded as planned)
+- [ ] Review with human, then move this file to `tasks/audio/`

@@ -3,6 +3,7 @@ import { priceAt } from "./enclosures";
 import { spawnEnemy, updateEnemies } from "./enemies";
 import { EMPTY, KEEP_TILE, canBuild, placeStructure } from "./grid";
 import { awardBounties, claimChest, collectIncome, sellStructure } from "./economy";
+import { addCue, updateCues } from "./cues";
 import { updateEffects } from "./effects";
 import { generateTerrain, layoutFor } from "./mapgen";
 import { randomInt } from "./rng";
@@ -48,6 +49,8 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     enemies: [],
     features: map.chests.map((c) => ({ kind: "chest" as const, ...c })),
     effects: [],
+    cues: [],
+    nextCueId: 1,
     spawnTiles,
     keep: { ...keep, hp: KEEP_HP, maxHp: KEEP_HP },
     wave: createWaveState(),
@@ -73,13 +76,17 @@ export function tick(state: GameState): void {
   if (state.paused || state.gameOver) return;
   state.tick++;
   updateEffects(state);
+  updateCues(state);
   updateEnemies(state);
   updateWaves(state);
   updateTowers(state);
   updateTraps(state);
   awardBounties(state);
   collectIncome(state);
-  if (state.keep.hp <= 0) state.gameOver = true;
+  if (state.keep.hp <= 0 && !state.gameOver) {
+    state.gameOver = true;
+    addCue(state, "gameOver");
+  }
 }
 
 export function applyCommand(

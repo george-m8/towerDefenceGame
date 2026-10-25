@@ -20,6 +20,7 @@ export function applyUpdate(view: GameState, update: StateUpdate): void {
   view.gridVersion = update.gridVersion;
   view.enemies = update.enemies.map(toEnemy);
   view.effects = update.effects;
+  view.cues = update.cues;
   view.structures = toStructures(update.structures);
   view.players = update.players;
   view.wave = update.wave;

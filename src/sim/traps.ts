@@ -1,4 +1,5 @@
 import { EFFECT_TICKS, STRUCTURES, TICK_RATE, type StructureStats, type TrapStats } from "./config";
+import { addCue } from "./cues";
 import { damageEnemy } from "./enemies";
 import type { Facing, GameState, Point, Structure } from "./types";
 
@@ -15,11 +16,14 @@ function updateTrap(state: GameState, structure: Structure, trap: TrapStats) {
   structure.cooldown = trap.fireIntervalSeconds * TICK_RATE;
 
   const target = hitTile(structure);
+  let hit = false;
   for (const enemy of state.enemies) {
     if (Math.round(enemy.x) === target.x && Math.round(enemy.y) === target.y) {
       damageEnemy(enemy, trap.damage, structure.owner);
+      hit = true;
     }
   }
+  if (hit) addCue(state, "enemyHit");
   state.effects.push({ kind: "spikes", x: target.x, y: target.y, ttl: EFFECT_TICKS });
 }
 

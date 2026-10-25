@@ -1,5 +1,6 @@
 import { SELL_REFUND, STRUCTURES, TICK_RATE, TREE_CLEAR_GOLD, type StructureStats } from "./config";
 import { enemyOccupies, isKeepTile, removeStructure, setTerrain, terrainAt, topAt } from "./grid";
+import { addCue } from "./cues";
 import { addGold, playerName } from "./players";
 import type { CommandResult, GameState, PlayerId, Structure } from "./types";
 
@@ -81,4 +82,5 @@ export function claimChest(state: GameState, player: PlayerId, x: number, y: num
   if (!chest) return;
   addGold(state, player, chest.gold);
   state.features = state.features.filter((f) => f !== chest);
+  addCue(state, "treasure");
 }

@@ -7,6 +7,7 @@ import {
   type TowerStats,
 } from "./config";
 import { angleBetween, angleTo, facingAngle, inArc, turnTowards } from "./aiming";
+import { addCue } from "./cues";
 import { damageEnemy } from "./enemies";
 import { distanceAt } from "./pathfinding";
 import type { Enemy, Facing, GameState, Point, Structure } from "./types";
@@ -59,8 +60,10 @@ function fire(
       radius: tower.splashRadius,
       ttl: EFFECT_TICKS,
     });
+    addCue(state, "splash");
   } else {
     damageEnemy(target, tower.damage, structure.owner);
+    addCue(state, "enemyHit");
   }
   state.effects.push({
     kind: "shot",

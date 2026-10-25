@@ -14,6 +14,13 @@ import { createOnlinePanel } from "./ui/players";
 import { createWaitingRoom } from "./ui/waitingRoom";
 import { rememberedName, showStartScreen } from "./ui/startScreen";
 import { showIntro } from "./ui/intro";
+import { createWebAudioEngine, unlockOnFirstGesture } from "./audio/engine";
+import { loadAudioSettings, saveAudioSettings } from "./audio/settings";
+import { createSoundControls } from "./ui/soundControls";
+import { createCuePlayer, soundForResult } from "./audio/cues";
+import { showSoundTest } from "./ui/soundTest";
+import { createMusicPlayer } from "./audio/sequencer";
+import { liveVoiceCount } from "./audio/synth";
 import { showNotice } from "./ui/notice";
 import type { Command, GameState } from "./sim/types";
 
@@ -25,7 +32,14 @@ let session: Session | null = null;
 /** Online-only parts of the page, updated every frame. */
 const onlineViews: { update(state: GameState | null): void }[] = [];
 
-const dispatch = (command: Command) => session?.send(command);
+/** Types of commands sent, oldest first, waiting for their results (to pick a sound). */
+const awaitingResults: string[] = [];
+const dispatch = (command: Command) => {
+  if (!session) return;
+  // Online, dev-only debug spawns are dropped without a result, so don't wait for one.
+  if (!(session.online && command.type === "debugSpawn")) awaitingResults.push(command.type);
+  session.send(command);
+};
 const canvas = element<HTMLCanvasElement>("#map");
 const renderer = createRenderer(canvas);
 const minimap = createMinimap(element<HTMLCanvasElement>("#minimap"), ui);
@@ -64,8 +78,27 @@ const gameOver = createGameOverDialog(element("#game-over"), () => {
 });
 bindInput(canvas, ui, dispatch);
 
+// Sound: silent until the first click or key press (browsers require a gesture).
+const audio = createWebAudioEngine();
+const audioStorage = deviceStorage();
+const audioSettings = loadAudioSettings(audioStorage);
+audio.setVolumes(audioSettings);
+unlockOnFirstGesture(audio);
+const cues = createCuePlayer(audio);
+const music = createMusicPlayer(audio);
+const MUSIC_FADE_SECONDS = 1;
+if (import.meta.env.DEV) {
+  // Lets you check from the console that sounds are playing (and cleaning up).
+  (window as unknown as { __liveVoices: () => number }).__liveVoices = liveVoiceCount;
+}
+createSoundControls(element("#sound"), audioSettings, (settings) => {
+  audio.setVolumes(settings);
+  saveAudioSettings(audioStorage, settings);
+});
+
 /** Starts playing: offline, or in a room on the game server. */
 function startSession(intent: Exclude<PageIntent, { mode: "menu" }>) {
+  music.fadeOut(MUSIC_FADE_SECONDS); // music is for the title and menus (for now)
   if (intent.mode === "offline") {
     session = createLocalSession(Date.now() >>> 0);
   } else {
@@ -85,20 +118,27 @@ function startSession(intent: Exclude<PageIntent, { mode: "menu" }>) {
   }
   session.onResult = (result) => {
     if (!result.ok) showMessage(ui, result.reason);
+    const sound = soundForResult(awaitingResults.shift() ?? "", result);
+    if (sound) cues.play(sound);
   };
 }
 
 const intent = readJoinIntent(location.search);
-if (intent.mode !== "menu") {
+if (import.meta.env.DEV && new URLSearchParams(location.search).has("soundtest")) {
+  showSoundTest(element("#intro"), audio);
+} else if (intent.mode !== "menu") {
   startSession(intent);
 } else if (intent.room && storage.getItem(tokenKey(intent.room))) {
   // A reload of a room this tab is already in: go straight back in as the same player.
   startSession({ mode: "join", room: intent.room, name: rememberedName() ?? "Player" });
 } else {
   // Direct room links and rejoins skip the intro; everyone else sees it before the menu.
-  showIntro(element("#intro"), () =>
-    showStartScreen(element("#start"), { room: intent.room, onChoose: startSession }),
-  );
+  // Dismissing the intro is the first gesture, so audio is unlocked by then.
+  showIntro(element("#intro"), () => {
+    void music.play("title");
+    showStartScreen(element("#start"), { room: intent.room, onChoose: startSession });
+    void music.play("menu"); // the same song carries on unless the manifest says otherwise
+  });
 }
 
 let lastFrame = performance.now();
@@ -125,6 +165,7 @@ function frame(now: number) {
       minimap.update(state);
       panel.update(state);
       gameOver.update(state);
+      cues.update(state.cues);
     }
   }
   requestAnimationFrame(frame);
@@ -148,5 +189,14 @@ function tabStorage(): NetworkDeps["storage"] {
   } catch {
     const memory = new Map<string, string>();
     return { getItem: (k) => memory.get(k) ?? null, setItem: (k, v) => void memory.set(k, v) };
+  }
+}
+
+/** localStorage (shared by every tab on this device), or null if it's blocked. */
+function deviceStorage(): Storage | null {
+  try {
+    return localStorage;
+  } catch {
+    return null;
   }
 }

@@ -19,6 +19,7 @@ export function toUpdate(state: GameState, lastGridVersion: number): StateUpdate
     gridVersion: state.gridVersion,
     enemies: state.enemies.map(toClientEnemy),
     effects: state.effects,
+    cues: state.cues,
     structures: toClientStructures(state.structures),
     players: state.players,
     wave: state.wave,
