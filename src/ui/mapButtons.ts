@@ -43,7 +43,7 @@ export function createMapButtons(
     <button class="button map-toggle" data-action="journal" title="Monster journal (J)">Journal</button>
     <button class="button map-toggle" data-toggle="settings" title="Sound and other settings">Settings</button>
     <div class="menu-anchor" data-menu="debug">
-      <button class="button map-toggle" title="Test options (D)">Debug</button>
+      <button class="button map-toggle" title="Test options (\`)">Debug</button>
     </div>
   `;
   const { settings } = options;
@@ -93,8 +93,8 @@ export function createMapButtons(
   });
   window.addEventListener("keydown", (e) => {
     if (e.code === "Escape" && !settings.hidden) showSettings(false);
-    // D opens and closes the debug menu (not while typing a name or code).
-    if (e.code === "KeyD" && !(e.target instanceof HTMLInputElement)) {
+    // ` opens and closes the debug menu (not while typing a name or code). D is for panning.
+    if (e.code === "Backquote" && !(e.target instanceof HTMLInputElement)) {
       debugMenu.show(debugMenu.menu.hidden === true);
     }
   });

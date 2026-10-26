@@ -17,7 +17,7 @@ export function createPanel(
     </div>
   `;
   keys.innerHTML = `
-    <p class="help">Space pause · F fast · R rotate · D debug · J journal · Esc cancel · drag to paint · arrows move · wheel or +/- zoom</p>
+    <p class="help">Space pause · F fast · R rotate · \` debug · J journal · Esc cancel · drag to paint · WASD or arrows move · wheel or +/- zoom</p>
   `;
   const pauseButton = root.querySelector<HTMLButtonElement>('[data-action="pause"]')!;
   const fastForwardButton = root.querySelector<HTMLButtonElement>('[data-action="fastForward"]')!;

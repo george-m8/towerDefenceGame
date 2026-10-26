@@ -44,7 +44,31 @@ function updateTower(state: GameState, structure: Structure, tower: TowerStats) 
   if (structure.cooldown > 0) return;
   const impact = turns ? landingPoint(structure, target) : target;
   if (turns && !shotWouldHit(structure, tower, target, impact)) return;
+  if (blastHitsOwn(state, structure, tower, impact)) return; // hold fire; keep tracking
   fire(state, structure, tower, target, impact);
+}
+
+/**
+ * True if a splash shot landing at `point` would catch any of the tower owner's own
+ * structures (the tower itself included), so it mustn't fire there. Things that can't be
+ * hurt (floor spikes, bridges) don't count, nor do other players' builds or the keep.
+ */
+export function blastHitsOwn(
+  state: GameState,
+  structure: Structure,
+  tower: TowerStats,
+  point: Point,
+): boolean {
+  const radius = tower.splashRadius;
+  if (radius <= 0 || structure.owner === null) return false;
+  for (let y = Math.ceil(point.y - radius); y <= Math.floor(point.y + radius); y++) {
+    for (let x = Math.ceil(point.x - radius); x <= Math.floor(point.x + radius); x++) {
+      for (const s of [baseAt(state, x, y), mountAt(state, x, y)]) {
+        if (s && s.owner === structure.owner && s.maxHp > 0) return true;
+      }
+    }
+  }
+  return false;
 }
 
 function fire(
@@ -137,6 +161,7 @@ function findTarget(state: GameState, structure: Structure, tower: TowerStats): 
   for (const enemy of state.enemies) {
     if (enemy.hp <= 0) continue;
     if (!canTarget(tower, structure, structure.facing, enemy)) continue;
+    if (blastHitsOwn(state, structure, tower, enemy)) continue;
     const turn = turns ? angleBetween(structure.aim ?? 0, angleTo(structure, enemy)) : 0;
     const key: [number, number, number] = [
       turn,
@@ -183,6 +208,7 @@ function updateSiegeTower(
   if (structure.cooldown > 0) return;
   const impact = turns ? landingPoint(structure, target) : target;
   if (turns && !shotWouldHit(structure, tower, target, impact)) return;
+  if (blastHitsOwn(state, structure, tower, impact)) return; // hold fire; keep tracking
 
   // Splash hits every rival target in the blast (a keep only once); otherwise just the target.
   const hits =
@@ -305,6 +331,7 @@ function findSiegeTarget(
         ...(building ? [building] : []),
       ];
       for (const target of targets) {
+        if (blastHitsOwn(state, structure, tower, target)) continue;
         const turn = turns ? angleBetween(structure.aim ?? 0, angleTo(structure, target)) : 0;
         const key = [
           target.unit ? 0 : 1,

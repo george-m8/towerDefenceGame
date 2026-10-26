@@ -16,6 +16,10 @@ const PAN_KEYS: Record<string, keyof UiState["panKeys"]> = {
   ArrowRight: "right",
   ArrowUp: "up",
   ArrowDown: "down",
+  KeyA: "left",
+  KeyD: "right",
+  KeyW: "up",
+  KeyS: "down",
 };
 
 export function bindInput(
@@ -50,7 +54,7 @@ export function bindInput(
     { passive: false },
   );
 
-  // Arrow keys pan while held (main.ts moves the camera each frame).
+  // Arrow keys and WASD pan while held (main.ts moves the camera each frame).
   window.addEventListener("keyup", (e) => {
     const direction = PAN_KEYS[e.code];
     if (direction) ui.panKeys[direction] = false;
@@ -74,7 +78,8 @@ export function bindInput(
   window.addEventListener("keydown", (e) => {
     // Typing a name or room code must not trigger game shortcuts.
     if (e.target instanceof HTMLInputElement) return;
-    const direction = PAN_KEYS[e.code];
+    // Not with Cmd or Ctrl held, so browser shortcuts (Cmd+S, Ctrl+W) don't pan the map.
+    const direction = e.metaKey || e.ctrlKey ? undefined : PAN_KEYS[e.code];
     if (direction) {
       e.preventDefault(); // don't scroll the page
       ui.panKeys[direction] = true;

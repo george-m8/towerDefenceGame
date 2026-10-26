@@ -134,6 +134,14 @@ describe("towers in PvP", () => {
     expect(own.hp).toBe(own.maxHp);
   });
 
+  it("hold fire on a rival structure when the blast would catch their own", () => {
+    const { state, wall } = siege();
+    const mine = placeStructure(state, "wall", wall.x, wall.y + 1, "N", 1);
+    for (let i = 0; i < 5 * TICK_RATE; i++) tick(state);
+    expect(wall.hp).toBe(wall.maxHp);
+    expect(mine.hp).toBe(mine.maxHp);
+  });
+
   it("hit the wall before the tower on it, and pay a bounty for wrecking it", () => {
     const { state, wall } = siege();
     const archer = placeStructure(state, "archer", wall.x, wall.y, "W", 2);
@@ -184,6 +192,18 @@ describe("PvP towers and units", () => {
 
     expect(first.hp).toBe(militiaHp - STRUCTURES.cannon.tower!.damage);
     expect(second.hp).toBe(militiaHp - STRUCTURES.cannon.tower!.damage);
+  });
+
+  it("a cannon holds fire on a rival unit when the blast would catch its own builds", () => {
+    const state = pvp();
+    const a = state.keeps[left];
+    placeStructure(state, "cannon", a.x + 10, a.y, "E", 1);
+    placeStructure(state, "wall", a.x + 13, a.y + 1, "N", 1);
+    const unit = spawnUnit(state, "militia", 2, a.x + 13, a.y)!;
+
+    for (let i = 0; i < 3 * TICK_RATE; i++) tick(state);
+
+    expect(unit.hp).toBe(militiaHp);
   });
 
   it("towers never shoot their own side's units, and Endless towers never shoot units", () => {
