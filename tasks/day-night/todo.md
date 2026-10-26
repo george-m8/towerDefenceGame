@@ -8,10 +8,10 @@ Standard verification for every task: `npm run typecheck && npm test && npm run 
 
 `src/render/sun.ts`: `shadowOffset(sun)` returns `{ dx, dy }`, the ground offset per pixel of caster height. The direction sweeps from left (0) through down (0.5) to right (1). The length factor is shortest at noon and longest at the ends, and is capped so the tallest block (15px) casts at most a tile. `DEFAULT_SUN` and every number are in a `SUN` table in `src/render/palette.ts`.
 
-- [ ] Noon: `dx` is 0, `dy` > 0, and it's the shortest shadow of the day
-- [ ] Sunrise and sunset mirror each other; `dy` is never negative for any `sun` in [0, 1]
-- [ ] Length never exceeds `TILE_SIZE / 15` per pixel of height
-- [ ] The default sun points mostly right (`dx` well above `dy`), about 0.5 long
+- [x] Noon: `dx` is 0, `dy` > 0, and it's the shortest shadow of the day
+- [x] Sunrise and sunset mirror each other; `dy` is never negative for any `sun` in [0, 1]
+- [x] Length never exceeds `TILE_SIZE / 15` per pixel of height
+- [x] The default sun points mostly right (`dx` well above `dy`), about 0.5 long
 
 Files: `src/render/sun.ts` (new), `src/render/palette.ts`, `tests/render/sun.test.ts` (new). Size: S. Depends on: none.
 
