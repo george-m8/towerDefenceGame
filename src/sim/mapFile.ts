@@ -96,6 +96,20 @@ const KNOWN_KEYS = [
 const FACINGS: Facing[] = ["N", "E", "S", "W"];
 const MODES: GameMode[] = ["endless", "pvp"];
 
+/** A map's file name (without `.map`): lowercase letters and digits, joined by single dashes. */
+export const MAP_NAME_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+/** A title as a file name: "River Crossing!" becomes "river-crossing". */
+export function mapName(title: string): string {
+  const name = title
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "") // accents off: "ö" is "o"
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return name || "untitled";
+}
+
 /** How many keeps a map of each mode has. */
 export const KEEPS_FOR_MODE: Record<GameMode, number> = { endless: 1, pvp: 2 };
 

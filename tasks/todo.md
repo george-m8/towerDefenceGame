@@ -30,13 +30,15 @@ Built: `mapFromGenerated` lives in `game.ts` (it calls `createGame`), on top of 
 
 ## Task 3: Map files on disk
 
-`tools/maps.ts`: lists `maps/*.map` as `virtual:maps` (client and server builds); under the dev server, `POST /__maps/<name>` saves one. An example map in `maps/`; `.vscode/settings.json` opens `.map` as JSON.
+`tools/maps.ts`: lists `maps/*.map` as `virtual:maps` (client and server builds); under the dev server, `POST /__maps/<name>` saves one. An example map in `maps/`.
 
-- [ ] Scanning a folder lists its maps by name, parsed
-- [ ] Saving writes a pretty file; bad names, oversize bodies and invalid maps are refused; nothing is written outside the folder
-- [ ] The example map parses and validates with no errors
+- [x] Scanning a folder lists its maps by name, parsed
+- [x] Saving writes a pretty file; bad names, oversize bodies and invalid maps are refused; nothing is written outside the folder
+- [x] The example map parses and validates with no errors
 
-Files: `tools/maps.ts`, `vite.config.ts`, `src/virtual-modules.d.ts`, `maps/`, `.vscode/settings.json`, `tests/tools/maps.test.ts`. Size: M. Depends on: 1.
+Files: `tools/maps.ts`, `vite.config.ts`, `src/virtual-modules.d.ts`, `maps/`, `tests/tools/maps.test.ts`. Size: M. Depends on: 1.
+
+Built: `GET /__maps` lists the maps on disk now, so the editor's Open sees a save at once; a changed map only refreshes `virtual:maps` for the next import and never reloads the page (that would lose the editor's undo history). `.vscode/` is gitignored, so instead of a settings file the README says to open `.map` as JSON. `mapName` (title to file name) and `MAP_NAME_PATTERN` live in `mapFile.ts`. Checked against a live dev server: list, save, a `../` name refused.
 
 ## Task 4: Editor model
 
