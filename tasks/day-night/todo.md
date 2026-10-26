@@ -140,6 +140,8 @@ Files: `src/ui/state.ts`, `src/render/canvas.ts`, `tests/ui/state.test.ts`. Size
 
 Files: `src/ui/clockControls.ts` (new), `tests/ui/clockControls.test.ts` (new), `src/main.ts`, `index.html`, `src/styles.css`. Size: M. Depends on: 10.
 
+Built: turning the Sun sliders off while the clock is on puts the sun back where the clock has it (not the default). The browser checks are left for a by-hand pass.
+
 ## Task 12: Docs
 
 `SPEC.md`, `CAPABILITIES.md`, README (Debug menu row).

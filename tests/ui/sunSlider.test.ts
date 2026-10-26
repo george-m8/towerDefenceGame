@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createUiState } from "../../src/ui/state";
 import { arcLabel, acrossLabel, toggleSun } from "../../src/ui/sunSlider";
 import { DEFAULT_SUN } from "../../src/render/sun";
+import { sunAt } from "../../src/render/dayNight";
 
 describe("toggleSun", () => {
   it("turns the sliders on, keeping the sun where it is", () => {
@@ -19,6 +20,15 @@ describe("toggleSun", () => {
     toggleSun(ui);
     expect(ui.showSun).toBe(false);
     expect(ui.sun).toEqual(DEFAULT_SUN);
+  });
+
+  it("puts the sun back where the day and night clock has it, when that's on", () => {
+    const ui = createUiState();
+    ui.clock = { hour: 16, playing: false };
+    toggleSun(ui);
+    ui.sun.across = 0.1;
+    toggleSun(ui);
+    expect(ui.sun).toEqual(sunAt(16));
   });
 
   it("never changes the default itself", () => {
