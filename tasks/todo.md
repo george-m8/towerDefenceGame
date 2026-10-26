@@ -18,13 +18,15 @@ Files: `src/sim/mapFile.ts`, `src/sim/config.ts`, `tests/sim/mapFile.test.ts`. S
 
 `createGame(seed, { map })` builds the state from the file. `mapFromGenerated(title, mode, size, seed)` turns a generated map into a file.
 
-- [ ] A map from a generated seed gives the same game as that seed today: terrain, resource amounts, ruins, chests, keeps, spawn tiles, starter walls
-- [ ] Everything goes where the file says, owned as it says, with no starter walls added
-- [ ] Enemies walk from the map's spawns to its keep
-- [ ] A PvP map starts with Player 1 on keep 0
-- [ ] Games without a map are unchanged (determinism test untouched)
+- [x] A map from a generated seed gives the same game as that seed today: terrain, resource amounts, ruins, chests, keeps, spawn tiles, starter walls
+- [x] Everything goes where the file says, owned as it says, with no starter walls added
+- [x] Enemies walk from the map's spawns to its keep
+- [x] A PvP map starts with Player 1 on keep 0
+- [x] Games without a map are unchanged (determinism test untouched)
 
 Files: `src/sim/mapFile.ts`, `src/sim/game.ts`, `tests/sim/mapFile.test.ts`. Size: M. Depends on: 1.
+
+Built: `mapFromGenerated` lives in `game.ts` (it calls `createGame`), on top of `mapFromGame(state, title, size)` in `mapFile.ts`, so the format module never imports the game. Structures from a map carry `keep` (their keep's index); `assignKeeps` gives them that keep's player, as it does the starter walls.
 
 ## Task 3: Map files on disk
 

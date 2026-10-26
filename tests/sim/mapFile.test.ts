@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { KEEP_SIZE, MAP_EDITOR, MAP_SIZES } from "../../src/sim/config";
+import { KEEP_SIZE, MAP_EDITOR, MAP_SIZES, STRUCTURES, TICK_RATE } from "../../src/sim/config";
+import { spawnEnemy } from "../../src/sim/enemies";
+import { assignKeeps, createGame, mapFromGenerated, tick } from "../../src/sim/game";
+import { addPlayer } from "../../src/sim/players";
 import {
   MAP_FORMAT,
   MAP_VERSION,
@@ -10,7 +13,7 @@ import {
   validateMap,
   type MapFile,
 } from "../../src/sim/mapFile";
-import type { Terrain } from "../../src/sim/types";
+import type { GameMode, GameState, Terrain } from "../../src/sim/types";
 
 const { width, height } = MAP_SIZES.XS;
 
@@ -246,5 +249,101 @@ describe("validating a map", () => {
   it("keeps are KEEP_SIZE square", () => {
     // Right up against the edge fits; one more doesn't.
     expect(validateMap(openMap({ keeps: [{ x: width - KEEP_SIZE, y: 20 }] })).errors).toEqual([]);
+  });
+});
+
+/** A game's structures without the `.map` keep index, for comparing with a generated game. */
+function structuresOf(state: GameState) {
+  return Object.values(state.structures).map(({ keep: _keep, ...s }) => s);
+}
+
+describe("a game from a map", () => {
+  it.each<[GameMode, number]>([
+    ["endless", 3],
+    ["endless", 11],
+    ["pvp", 5],
+  ])("a %s map made from seed %i plays as that seed's generated game", (mode, seed) => {
+    const plain = createGame(seed, { size: "XS", mode });
+    const file = mapFromGenerated("Generated", mode, "XS", seed);
+    const parsed = roundTrip(file);
+    if (!("map" in parsed)) throw new Error(parsed.error);
+    expect(validateMap(parsed.map).errors).toEqual([]);
+    const fromMap = createGame(seed, { map: parsed.map });
+    for (const key of [
+      "width",
+      "height",
+      "mode",
+      "terrain",
+      "resources",
+      "resourceWorth",
+      "base",
+      "mount",
+      "features",
+      "keeps",
+      "spawnTiles",
+      "explored",
+      "nextId",
+    ] as const) {
+      expect(fromMap[key], key).toEqual(plain[key]);
+    }
+    expect(structuresOf(fromMap)).toEqual(structuresOf(plain));
+  });
+
+  it("puts everything where the file says, with no starter walls added", () => {
+    const map = openMap({
+      ruins: [{ x: 10, y: 10, hp: 0.6 }],
+      chests: [{ x: 12, y: 10, gold: 75 }],
+      structures: [
+        { kind: "wall", x: 20, y: 20, facing: "N", keep: 0 },
+        { kind: "archer", x: 20, y: 20, facing: "E", keep: 0 },
+      ],
+    });
+    const state = createGame(map.seed, { map });
+    const placed = Object.values(state.structures);
+    expect(placed.map((s) => [s.kind, s.x, s.y, s.owner])).toEqual([
+      ["ruin", 10, 10, null],
+      ["wall", 20, 20, null],
+      ["archer", 20, 20, null],
+    ]);
+    expect(placed[0].hp).toBe(Math.round(STRUCTURES.ruin.maxHp * 0.6));
+    expect(placed[2].facing).toBe("E");
+    expect(state.features).toEqual([{ kind: "chest", x: 12, y: 10, gold: 75 }]);
+    expect(state.keeps.map(({ x, y }) => ({ x, y }))).toEqual(map.keeps);
+    expect(state.spawnTiles).toEqual(spawnTiles(map));
+    expect(state.mode).toBe("endless");
+  });
+
+  it("enemies walk from the map's spawn to its keep", () => {
+    const map = openMap();
+    const state = createGame(map.seed, { map, fog: false });
+    state.wave.countdown = Infinity;
+    const [spawn] = state.spawnTiles;
+    spawnEnemy(state, spawn.x, spawn.y);
+    const keep = state.keeps[0];
+    for (let i = 0; i < 60 * TICK_RATE && keep.hp === keep.maxHp; i++) tick(state);
+    expect(keep.hp).toBeLessThan(keep.maxHp);
+  });
+
+  it("in PvP, a structure belongs to its keep's player once the keeps are handed out", () => {
+    const map = openMap({
+      mode: "pvp",
+      spawns: [],
+      keeps: [
+        { x: 10, y: 20 },
+        { x: 50, y: 20 },
+      ],
+      structures: [
+        { kind: "wall", x: 14, y: 20, facing: "N", keep: 0 },
+        { kind: "wall", x: 49, y: 18, facing: "N", keep: 1 },
+      ],
+    });
+    const state = createGame(map.seed, { map });
+    const [mine, theirs] = Object.values(state.structures);
+    expect(state.keeps.map((k) => k.owner)).toEqual([1, null]);
+    expect([mine.owner, theirs.owner]).toEqual([1, null]);
+    // When a second player joins and the game starts, keep 1 and its wall are theirs.
+    addPlayer(state, "Bo");
+    assignKeeps(state);
+    expect([mine.owner, theirs.owner]).toEqual([1, 2]);
   });
 });

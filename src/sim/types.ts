@@ -54,6 +54,11 @@ export interface Structure {
   buildLeft?: number;
   /** How many ticks building it took in all, for showing progress. */
   buildTicks?: number;
+  /**
+   * From a `.map` file: the keep (index into `keeps`) it belongs to. Its owner is that keep's
+   * player, set when the keeps are handed out.
+   */
+  keep?: number;
 }
 
 export interface Enemy {

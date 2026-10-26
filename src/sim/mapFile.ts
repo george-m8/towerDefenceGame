@@ -10,7 +10,7 @@ import {
   type MapSize,
   type StructureStats,
 } from "./config";
-import type { Facing, GameMode, Point, StructureKind, Terrain } from "./types";
+import type { Facing, GameMode, GameState, Point, StructureKind, Terrain } from "./types";
 
 export const MAP_FORMAT = "keep-defence-map";
 export const MAP_VERSION = 1;
@@ -145,6 +145,92 @@ export function spawnTiles(map: Pick<MapFile, "spawns">): Point[] {
     }
   }
   return tiles.sort((a, b) => a.y - b.y || a.x - b.x);
+}
+
+/**
+ * Spawn tiles as rectangles: runs along each row, stacked where the rows below match, so a
+ * strip is one zone.
+ */
+export function spawnZones(tiles: Point[]): SpawnZone[] {
+  const set = new Set(tiles.map((t) => `${t.x},${t.y}`));
+  const sorted = [...tiles].sort((a, b) => a.y - b.y || a.x - b.x);
+  const zones: SpawnZone[] = [];
+  const open = new Map<string, SpawnZone>(); // "x,width" -> the zone the last row extends
+  let row = Number.NaN;
+  let rowRuns: SpawnZone[] = [];
+  const closeRow = () => {
+    const next = new Map<string, SpawnZone>();
+    for (const run of rowRuns) {
+      const key = `${run.x},${run.width}`;
+      const above = open.get(key);
+      if (above && above.y + above.height === run.y) {
+        above.height++;
+        next.set(key, above);
+      } else {
+        zones.push(run);
+        next.set(key, run);
+      }
+    }
+    open.clear();
+    for (const [key, zone] of next) open.set(key, zone);
+    rowRuns = [];
+  };
+  for (const t of sorted) {
+    if (t.y !== row) {
+      closeRow();
+      row = t.y;
+    }
+    if (!set.has(`${t.x - 1},${t.y}`)) rowRuns.push({ x: t.x, y: t.y, width: 1, height: 1 });
+    else rowRuns[rowRuns.length - 1].width++;
+  }
+  closeRow();
+  return zones;
+}
+
+/** A game's map (terrain, keeps, spawns, ruins, chests and structures) as a `.map` file. */
+export function mapFromGame(state: GameState, title: string, size: MapSize): MapFile {
+  const built = Object.values(state.structures).sort((a, b) => a.id - b.id);
+  return {
+    format: MAP_FORMAT,
+    version: MAP_VERSION,
+    title,
+    mode: state.mode,
+    size,
+    seed: state.seed,
+    terrain: terrainRows(state.terrain, state.width),
+    keeps: state.keeps.map(({ x, y }) => ({ x, y })),
+    spawns: spawnZones(state.spawnTiles),
+    ruins: built
+      .filter((s) => s.kind === "ruin")
+      .map((s) => ({ x: s.x, y: s.y, hp: s.hp / s.maxHp })),
+    chests: state.features
+      .filter((f) => f.kind === "chest")
+      .map(({ x, y, gold }) => ({ x, y, gold })),
+    structures: built
+      .filter((s) => s.kind !== "ruin")
+      .map((s) => ({
+        kind: s.kind,
+        x: s.x,
+        y: s.y,
+        facing: s.facing ?? "N",
+        keep: s.keep ?? nearestKeep(state.keeps, s),
+      })),
+  };
+}
+
+/** The index of the keep nearest a structure (by its centre). */
+export function nearestKeep(keeps: Point[], p: Point): number {
+  let best = 0;
+  let bestDistance = Infinity;
+  keeps.forEach((keep, i) => {
+    const centre = (KEEP_SIZE - 1) / 2;
+    const d = Math.hypot(keep.x + centre - p.x, keep.y + centre - p.y);
+    if (d < bestDistance) {
+      best = i;
+      bestDistance = d;
+    }
+  });
+  return best;
 }
 
 /**
