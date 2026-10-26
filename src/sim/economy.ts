@@ -4,6 +4,7 @@ import { addCue } from "./cues";
 import { addBurst } from "./effects";
 import { isExplored } from "./fog";
 import { addGold, playerName } from "./players";
+import { farmIncomePerMinute } from "./farms";
 import { clearResource } from "./resources";
 import type { CommandResult, GameState, PlayerId, Structure } from "./types";
 
@@ -36,7 +37,7 @@ export function incomePerMinute(state: GameState, player: PlayerId): number {
     const { income }: StructureStats = STRUCTURES[structure.kind];
     if (income) total += income.gold * (60 / income.intervalSeconds);
   }
-  return total;
+  return total + farmIncomePerMinute(state, player);
 }
 
 export function sellStructure(

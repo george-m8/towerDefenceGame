@@ -11,6 +11,7 @@ import { claimKeepWalls, placeKeepWalls } from "./keepWalls";
 import { generateTerrain, layoutFor } from "./mapgen";
 import { randomInt } from "./rng";
 import { startingWork, startingWorth } from "./resources";
+import { collectFarmIncome } from "./farms";
 import { updateTowers } from "./towers";
 import { updateTraps } from "./traps";
 import { removeDeadUnits, spawnUnit, updateSpawners, updateUnits } from "./units";
@@ -130,6 +131,7 @@ export function tick(state: GameState): void {
   awardBounties(state);
   removeDeadUnits(state);
   collectIncome(state);
+  collectFarmIncome(state);
   const fallen = state.keeps.find((keep) => keep.hp <= 0);
   if (fallen && !state.gameOver) {
     state.gameOver = true;

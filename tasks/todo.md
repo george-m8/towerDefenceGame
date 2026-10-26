@@ -17,10 +17,10 @@ Files: `src/sim/config.ts`, `tests/sim/enemies.test.ts`. Size: XS. Depends on: n
 
 `STRUCTURES` rows `farmhouse` (`farm`) and `farmland` (`field`); `src/sim/farms.ts` with `farmFields` (fields per farmhouse: joined through built same-owner farmland, nearest farmhouse first, older on ties, capped at `maxFields`) and `collectFarmIncome`; `incomePerMinute` counts farms.
 
-- [ ] No fields, no pay; N joined fields pay `N x goldPerField` per interval; a loose field doesn't count; a chain of fields does
-- [ ] At most `maxFields` count; another player's fields don't join; a field joined to two farmhouses counts once, for the nearer; unfinished fields neither count nor join
-- [ ] Farmland is walkable, doesn't close an enclosure, only goes on open ground, can't hold a tower, and is paintable
-- [ ] The income stat includes farms at their current field count
+- [x] No fields, no pay; N joined fields pay `N x goldPerField` per interval; a loose field doesn't count; a chain of fields does
+- [x] At most `maxFields` count; another player's fields don't join; a field joined to two farmhouses counts once, for the nearer; unfinished fields neither count nor join
+- [x] Farmland is walkable, doesn't close an enclosure, only goes on open ground, can't hold a tower (paintable comes with its tool row in Task 5)
+- [x] The income stat includes farms at their current field count
 
 Files: `src/sim/config.ts`, `src/sim/farms.ts` (new), `src/sim/economy.ts`, `src/sim/game.ts`, `tests/sim/farms.test.ts` (new). Size: M. Depends on: none.
 

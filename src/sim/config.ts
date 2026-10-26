@@ -95,9 +95,22 @@ export interface StructureStats {
   enclosing?: boolean;
   /** How far it lets players see (fog of war). Towers see in the shape of their arc. */
   sight?: SightStats;
+  /** Farmhouses (see sim/farms.ts). Its timer is the structure's `cooldown`, like income. */
+  farm?: FarmStats;
+  /** Farmland: counts for a farmhouse it's joined to; enemies trample it by their weight. */
+  field?: true;
   /** Spawns units (see sim/units.ts). Its timer is the structure's `cooldown`, so a spawner
    * can't also be a tower, a trap or earn income. */
   spawner?: SpawnerStats;
+}
+
+/** A farmhouse earns for each field joined to it (touching it, or through other fields). */
+export interface FarmStats {
+  /** Gold per counted field, paid every intervalSeconds. */
+  goldPerField: number;
+  intervalSeconds: number;
+  /** Most fields one farmhouse counts. */
+  maxFields: number;
 }
 
 /** A building that makes units: free, one every interval, while fewer than `quota` are alive. */
@@ -212,6 +225,24 @@ export const STRUCTURES = {
     blocksMovement: true,
     income: { gold: 2, intervalSeconds: 5 },
     sight: { inner: 3, outer: 6 },
+  },
+  // Farms: a farmhouse earns for each farmland tile joined to it (see sim/farms.ts).
+  farmhouse: {
+    name: "Farmhouse",
+    layer: "base",
+    cost: 50,
+    maxHp: 30,
+    blocksMovement: true,
+    sight: { inner: 3, outer: 6 },
+    farm: { goldPerField: 1, intervalSeconds: 10, maxFields: 8 },
+  },
+  farmland: {
+    name: "Farmland",
+    layer: "base",
+    cost: 3,
+    maxHp: 10,
+    blocksMovement: false,
+    field: true,
   },
   // Gatherer buildings: free workers up to `quota`, one every `intervalSeconds` (see UNIT_KINDS).
   timberYard: {
