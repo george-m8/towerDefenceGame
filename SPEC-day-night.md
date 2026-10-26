@@ -1,8 +1,8 @@
 # Spec: day-night
 
 Status: APPROVED (2026-10-26)
-Module: `day-night`. This spec covers **step 1, the sun angle**: shadows follow a sun that crosses the sky on an arc, set by two sliders switched on from the Debug menu. Later steps (an automatic cycle, night darkness, lights) get their own sections once this one is built. Builds on the raised blocks and their shadows in `src/render/canvas.ts`. Not on the capability map yet.
-Last updated: 2026-10-26 (v1.2 - the arc can lean past 90°, so shadows fall behind blocks; shadows are swept from their block, so they join its corners)
+Module: `day-night`. **Step 1, the sun angle**: shadows follow a sun that crosses the sky on an arc, set by two sliders switched on from the Debug menu. **Step 2, the cycle** (at the end): a clock runs the sun through the day, darkens the night and brings the sun back. Town lighting is a later step. Builds on the raised blocks and their shadows in `src/render/canvas.ts`. Not on the capability map yet.
+Last updated: 2026-10-27 (v2.0 - step 2, the day and night cycle, in the Debug menu). Before: (v1.2 - the arc can lean past 90°, so shadows fall behind blocks; shadows are swept from their block, so they join its corners)
 
 ## Objective
 
@@ -125,3 +125,68 @@ export function shadowOffset(sun: Sun): { dx: number; dy: number } {
 ## Open questions
 
 None. Settled on 2026-10-26: the default only needs its shadow going sideways (close to today is fine), and the editor gets the slider through its own Debug button. Changed the same day: a second slider for the arc's height, with the sun on a real tilted arc (in place of a fixed arc with a single time-of-day slider). Then: the arc can go past 90° (to 175°), and shadows are swept from their block so they join its corners (the gaps reported in review). Known, left for later: on a front face, shade from the block in front is the caster's moved footprint at each height, not swept, so a thin gap can still show there at an angle.
+
+---
+
+## Step 2: the day and night cycle
+
+Status: APPROVED (2026-10-27, asked for in review)
+
+### Objective
+
+A full day and night, for now in the Debug menu: a clock you can set or play. The sun rises on a shallow arc, is about overhead (90°) at noon, and leans well past 90° towards sunset for long evening shadows. Then night falls: the map gets darker but stays readable. Then the sun comes back up, and it repeats.
+
+1. As a developer, I turn on **Day/night** in the Debug menu and get a **Time** slider (0:00 to 24:00) and a **Play** button.
+2. Dragging Time sets the sun and the light for that time. Play runs the clock (a whole day in 96 seconds), wrapping from midnight round; the button then reads Pause.
+3. Turning Day/night off puts the sun and the light back to the default (full daylight).
+
+### Rules
+
+**The clock**
+- `ui.clock` is `{ hour, playing }` (hour from 0 to 24) or null when Day/night is off. It's drawing only, like the sun: not game state, not sent over the network, not saved. It runs on real time whether the game is paused or not.
+- Turning it on starts at 9:00, not playing.
+
+**The sun through the day**
+- Sunrise is 6:00 and sunset 18:00. Across goes from 0 at sunrise to 1 at sunset, in step with the clock.
+- The arc follows the clock in straight lines through three points: 20° at sunrise (shallow), 90° at noon (about overhead), 160° at sunset (well past 90°: long shadows leaning back). Before sunrise and after sunset the sun stays at the horizon.
+- Moving the clock (playing or dragging Time) sets `ui.sun`, so the Sun sliders, if open, follow it. While the clock is stopped, the Sun sliders can still nudge the sun by hand.
+
+**Light and dark**
+- `daylight` is 1 by day and 0 at night. It falls from 1 to 0 over the hour after sunset (18:00 to 19:00), and rises again over the hour before sunrise (5:00 to 6:00).
+- Shadows fade with the light: their strength is today's 30% times `daylight`, so there are none at night.
+- Night darkens everything on the map, fog included, with a dark blue wash: at most 60% (`DAY_NIGHT.darkness`), times `1 - daylight`. Previews (the build ghost, ranges, pending builds) are drawn over it, so they stay clear. Everything is still visible at night.
+- Every number (the hours, arcs, twilight length, darkness and its colour, the cycle's length, the start hour) is in a `DAY_NIGHT` table in `src/render/palette.ts`.
+
+**The controls**
+- A **Day/night** row in the Debug menu (game and editor), beside **Sun slider**.
+- Its box sits at the bottom middle of the map: **Time** (labelled e.g. "Time 14:30", in quarter hours) and a **Play** / **Pause** button. If the Sun sliders are open too, they sit just above it.
+- Turning it off stops the clock and resets the sun and light.
+
+### Out of scope
+
+- Town lighting (ambient light round buildings at night). The darkness is one even wash for now; lights are the next step.
+- The clock in the game itself (shared by players, in the sim, affecting play), and any player-facing control.
+- Moon, stars, or colouring the light at dawn and dusk.
+
+### Data and code
+
+- `src/render/dayNight.ts` (new, pure): `sunAt(hour): Sun`, `daylight(hour)`, `darknessAt(hour)`, `wrapHour(hour)` and `clockLabel(hour)`.
+- `src/render/palette.ts`: `DAY_NIGHT`.
+- `src/render/canvas.ts`: shadows drawn at `30% x daylight`; a night wash over the map after the fog, before the previews.
+- `src/ui/state.ts`: `clock: { hour: number; playing: boolean } | null`.
+- `src/ui/clockControls.ts` (new): `toggleClock`, `setHour`, `advanceClock` (pure, tested) and the box with the slider and button.
+- `src/main.ts`: the Debug row; the frame loop advances a playing clock and keeps the sliders in step.
+- `index.html`, `src/styles.css`: a bottom-middle container stacking the Sun box above the Day/night box.
+
+### Testing
+
+- Unit tests: the sun at sunrise, noon and sunset (across 0 / 0.5 / 1, arc 20° / 90° / 160°) and at the horizon outside them; `daylight` 1 at noon, 0 at midnight, part way through twilight; darkness never above `DAY_NIGHT.darkness`; the clock wraps past midnight; `toggleClock` and `advanceClock` (only while playing); the label.
+- Browser, by hand: play a whole day; check the evening shadows lean back, night darkens but stays readable, and morning returns.
+
+### Success criteria
+
+- [ ] Day/night in the Debug menu shows a Time slider and a Play button; off resets the sun and light.
+- [ ] Through a played day the sun rises shallow, is about overhead at noon, leans well past 90° at sunset, then night falls and the sun comes back up.
+- [ ] Night darkens the map (fog too) but everything stays visible; previews stay clear.
+- [ ] Shadows fade out through dusk and back in at dawn.
+- [ ] Unit tests, the typecheck and the build pass; docs updated.

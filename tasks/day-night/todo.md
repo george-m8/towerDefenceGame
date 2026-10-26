@@ -104,3 +104,46 @@ Asked for in review. The Arc slider runs to 175°: past 90° the sun crosses the
 - [ ] Browser, by hand: drag Arc past 90° and look at the joins
 
 Files: `src/render/sun.ts`, `src/render/palette.ts`, `src/render/canvas.ts`, `src/ui/sunSlider.ts`, `tests/render/sun.test.ts`. Size: M. Depends on: 6.
+
+---
+
+# Step 2: the day and night cycle
+
+Spec: "Step 2" in [`SPEC-day-night.md`](../../SPEC-day-night.md).
+
+## Task 9: The clock's maths
+
+`src/render/dayNight.ts`: `sunAt`, `daylight`, `darknessAt`, `wrapHour`, `clockLabel`, from a `DAY_NIGHT` table in `palette.ts`.
+
+- [x] Sunrise / noon / sunset give across 0 / 0.5 / 1 and arc 20° / 90° / 160°; the horizon outside them
+- [x] Daylight 1 by day, 0 at night, ramping over an hour after sunset and before sunrise; darkness at most `DAY_NIGHT.darkness`
+- [x] Hours wrap past midnight; the label reads "Time 14:30"
+
+Files: `src/render/dayNight.ts` (new), `src/render/palette.ts`, `tests/render/dayNight.test.ts` (new). Size: S. Depends on: 8.
+
+## Task 10: Night and fading shadows in the renderer
+
+`UiState.clock`; the renderer fades shadows by `daylight` and washes the map with the night colour after the fog, before previews.
+
+- [ ] No clock: drawn exactly as before
+- [ ] At midnight the map is dark blue but readable, with no shadows; previews stay clear
+
+Files: `src/ui/state.ts`, `src/render/canvas.ts`, `tests/ui/state.test.ts`. Size: S. Depends on: 9.
+
+## Task 11: Day/night in the Debug menu
+
+`src/ui/clockControls.ts`: `toggleClock`, `setHour`, `advanceClock` and the box (Time slider, Play/Pause). The Debug row; the frame loop advances a playing clock and syncs both boxes; a container stacks the Sun box above the clock box (raised in the editor).
+
+- [ ] The row shows the box; off resets sun and light
+- [ ] Dragging Time sets the sun and light; Play runs a whole day in 96 s, wrapping, and Pause stops it
+- [ ] The Sun sliders follow the clock while it moves
+
+Files: `src/ui/clockControls.ts` (new), `tests/ui/clockControls.test.ts` (new), `src/main.ts`, `index.html`, `src/styles.css`. Size: M. Depends on: 10.
+
+## Task 12: Docs
+
+`SPEC.md`, `CAPABILITIES.md`, README (Debug menu row).
+
+- [ ] Docs updated
+
+Files: `SPEC.md`, `CAPABILITIES.md`, `README.md`. Size: S. Depends on: 11.
