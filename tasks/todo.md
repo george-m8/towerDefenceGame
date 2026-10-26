@@ -1,127 +1,113 @@
-# Tasks: enemy-pathing
+# Tasks: unit-core
 
-Spec: [`SPEC-enemy-pathing.md`](../SPEC-enemy-pathing.md) · Plan: [`plan.md`](plan.md) (`enemy-pathing` section)
+Spec: [`SPEC-unit-core.md`](../SPEC-unit-core.md) · Plan: [`plan.md`](plan.md) ("AoE update: unit-core")
+
+Build time (PR #33) applies: a spawner does nothing while it's a construction site, so its first unit comes when it's finished, and a blocking site waits to finish while a unit stands on it, as it does for enemies.
 
 Standard verification for every task: `npm run typecheck && npm test && npm run build`
 
-## Task 1: Fields keyed by profile (refactor)
+## Task 1: Unit entity, militia and hold
 
-`MovementProfile` type; `GameState.flow` becomes `flows: Partial<Record<MovementProfile, FlowField>>`; `getFlowField(state, profile = "follower")`, `nextStep(..., profile)`, `distanceAt(..., profile)`; `canCross(state, profile, x, y)` (follower: today's `isWalkable`). Snapshot, protocol and view drop `flows` like `flow`. Only `follower` is used, so nothing changes in play.
+`UnitKind`, `UNIT_KINDS` (militia `i`), `UnitKindId` in config; `Unit` and `state.units` in types; `src/sim/units.ts` with `spawnUnit`, `damageUnit` (`max(1, damage - armour)`), `isHostileUnit`, the behaviour table with `hold`, `updateUnits` and `removeDeadUnits`; `debugUnit` command; units step before enemies in `tick`. No movement yet.
 
-- [x] The existing suite passes untouched (apart from `flow` -> `flows` in any test that reads it)
-- [x] Fields for different profiles are cached separately and rebuilt when `gridVersion` changes
-- [x] A field is only built when first asked for
+- [ ] A militia hits an adjacent enemy every `attackInterval` and ignores one 2 tiles away
+- [ ] The enemy's bounty goes to the militia's owner
+- [ ] Armour reduces damage, never below 1; a unit at 0 HP is gone after the tick, with no bounty paid
+- [ ] `debugUnit` spawns for the sending player only on a tile a unit can stand on
+- [ ] The existing suite passes untouched
 
-Files: `src/sim/types.ts`, `src/sim/pathfinding.ts`, `src/sim/game.ts`, `src/net/snapshot.ts`, `src/net/protocol.ts`, `src/net/view.ts`, `tests/sim/pathfinding.test.ts`. Size: S (mechanical). Depends on: none.
+Files: `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/units.ts` (new), `src/sim/game.ts`, `tests/sim/units.test.ts` (new). Size: M. Depends on: none.
 
-## Task 2: Wandering respects terrain (bug fix)
+## Task 2: Enemies fight units
 
-Wandering only picks tiles the enemy's profile can cross (`canCross`), as well as no structures and no keep.
+Per-tick occupancy index (units by tile) built at the start of `updateUnits`; `unitBlocking`. In `chooseNextTile`, an enemy checks its own tile, its next tile and the four beside it for a hostile unit and attacks it instead of moving (in its way first, then lowest HP, then lowest id). Rams ignore units. Bombers damage units in their blast.
 
-- [x] With wander chance 1 on generated maps, no enemy ever targets a rock, tree or water tile (fails before the fix)
-- [x] Existing wander tests still pass
+- [ ] A goblin whose next tile holds a militia stops and attacks it, and walks on once it dies
+- [ ] A goblin walking past a militia on the tile beside it stops and attacks it
+- [ ] A militia 2 tiles off the path is ignored
+- [ ] With two militia in reach, the one in the way is hit first
+- [ ] A ram walks through a militia's tile without stopping
+- [ ] A bomber's blast damages a militia
 
-Files: `src/sim/enemies.ts`, `tests/sim/enemies.test.ts`. Size: XS. Depends on: 1.
+Files: `src/sim/units.ts`, `src/sim/enemies.ts`, `tests/sim/enemies.test.ts`, `tests/sim/units.test.ts`. Size: M. Depends on: 1.
 
-## Task 3: Breacher profile
+**Checkpoint A:** a militia and a goblin fight to the death in a test, both ways round; the existing suite passes untouched.
 
-`profile` on every kind (followers by default); `d`, `D`, `G` become breachers. `BREACH` config; the breacher field costs a blocking structure `1 + ceil(HP / referenceDps x referenceSpeed)` using its HP when the field is built. Enemies step by their own profile's field.
+## Task 3: Paths and movement
 
-- [x] Detour 20 tiles longer than one wall: a dwarf breaks the wall, a goblin walks round
-- [x] Detour only 4 tiles longer: both walk round
-- [x] After a rebuild, a breacher picks a damaged wall over a full one
+`src/sim/unitPaths.ts` with `findPath(state, from, isGoal)` (breadth-first, multi-goal, capped at the tile count). Units store a path and `pathVersion`, search again when `gridVersion` changes or the next step is blocked, and move tile to tile like enemies. `UNIT_PATH_SEARCHES_PER_TICK` budget, with waiting units first in line next tick. A test-only `walkTo` behaviour.
 
-Files: `src/sim/config.ts`, `src/sim/pathfinding.ts`, `src/sim/enemies.ts`, `tests/sim/pathfinding.test.ts`, `tests/sim/enemies.test.ts`. Size: M. Depends on: 2.
+- [ ] Shortest route round a wall; null when the goal is walled off
+- [ ] Stops at the nearest of several goal tiles
+- [ ] A stored path is searched again after a wall is built across it
+- [ ] No more than the budget of searches run in one tick; the rest go first next tick
+- [ ] A unit moves at its kind's speed and never stands on water, the keep or a blocking structure
 
-## Task 4: Marine profile, marines and a timing test
+- [ ] A blocking construction site waits to finish while a unit stands on it
 
-`MARINE_COSTS` (river 2, sea 4); `canCross` lets marines onto river and sea; marine field. Rows for `m` and `M` (spec stats, descriptions, threat, first wave, mix weight). XL timing test: building all three fields stays within one tick (50 ms).
+Files: `src/sim/unitPaths.ts` (new), `src/sim/units.ts`, `src/sim/building.ts`, `src/sim/config.ts`, `tests/sim/unitPaths.test.ts` (new), `tests/sim/units.test.ts`. Size: M. Depends on: 1.
 
-- [x] A marine takes a river route that's shorter than the land route; a goblin doesn't
-- [x] For equal lengths a marine prefers river to sea; no other kind ever enters water
-- [x] Building a bridge on a river tile with a marine in it is refused
-- [x] All three fields on an XL map build within one tick (50 ms, standalone; revised from 20 ms, measured 24-34 ms); the unit test guards a 250 ms bound
+## Task 4: Spawners
 
-Files: `src/sim/config.ts`, `src/sim/pathfinding.ts`, `tests/sim/pathfinding.test.ts`, `tests/sim/enemies.test.ts`, `tests/sim/economy.test.ts`. Size: M. Depends on: 2.
+`SpawnerStats` and `spawner?` on `StructureStats`; `updateSpawners` runs first in `tick`, using `cooldown` as the timer. A test-only spawner kind, injected through test config and not in `STRUCTURES`. Removing a spawner sets its units' `home` to null.
 
-## Checkpoint C (after Tasks 1-4)
+- [ ] First unit as soon as it's built (on placement when build time is 0), the next after exactly `intervalSeconds`; nothing while it's a construction site
+- [ ] Never more than `quota` alive; at quota, a replacement right after a death
+- [ ] Spawns on the facing tile, else the next open neighbour clockwise, else waits
+- [ ] Selling the spawner leaves its units alive with no home; none are replaced
+- [ ] A new spawner counts from zero even with homeless units nearby
 
-- [x] All tests pass; typecheck and build clean
-- [ ] Browser: on a maze, dwarves and golems break through while goblins walk round; marines use a river on a generated map; nobody stands on rock, trees or water
-- [ ] **Review breacher eagerness (`BREACH`) with George**
+Files: `src/sim/config.ts`, `src/sim/units.ts`, `src/sim/game.ts`, `src/sim/grid.ts` (removal hook), `tests/sim/units.test.ts`. Size: M. Depends on: 3.
 
-## Task 5: Behaviour table and bombers
+## Task 5: Units give fog sight
 
-`BehaviourId`, `behaviour` on every kind, `BEHAVIOURS` table in `src/sim/behaviours.ts` (run before movement; true means the turn is used). `Enemy.mode` and `targetId`. Bombers `x`/`X`: spot a player-built wall, tower, house or wall spikes within 3 tiles; sprint (2.5x) to a tile next to it along a search of up to 6 tiles; explode for 60/120 on every structure and the keep in the 3x3; die with no bounty; splash effect and an `explosion` cue (with a sound).
+Units are sight sources for their owner's team, from their tile, with their kind's `sight`. The sight cache is invalidated when a unit changes tile (a `sightVersion` alongside `gridVersion`), not every tick.
 
-- [x] Sprints only once a target is within 3 tiles; ignores ruins, bridges, floor spikes and the keep as targets
-- [x] Explodes next to its target, damaging the 3x3 and nothing outside it; never damages enemies; drops no bounty
-- [x] No explosion if killed before it arrives; no sprint if there's no short path
+- [ ] A militia lifts fog around it for its own team, and not for a rival in PvP
+- [ ] Sight isn't recomputed on ticks where no unit changed tile
+- [ ] Measured: sight rebuild on XL with 200 units, recorded in the PR
 
-Files: `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/behaviours.ts`, `src/sim/enemies.ts`, `src/audio/sounds.ts` (+ `src/sim/cues.ts`), `tests/sim/behaviours.test.ts`. Size: M. Depends on: 2.
+Files: `src/sim/fog.ts`, `src/sim/units.ts`, `src/sim/types.ts`, `tests/sim/fog.test.ts`. Size: S. Depends on: 1.
 
-Built: the blast is `ability.amount` (60 / 120); a bomber's ordinary hit (when blocked, or at the keep) is a small `damage` (3 / 5), so a bomber that reaches the keep doesn't hit it for 60 a second. Tile-to-tile stepping moved to `src/sim/movement.ts` so sprinting reuses it. Enemies at 0 HP no longer act before they're removed.
+## Task 6: PvP towers shoot units
 
-## Task 6: Bands
+`findSiegeTarget` gains rival units (from the occupancy index) as targets, sorted before structures and keep tiles; splash damages rival units in the blast. Endless `findTarget` is unchanged.
 
-`leader` and `band` on kinds (`b` follows `B`, `d` follows `D`); `Enemy.leaderId`. A band member uses the leader's profile, waits rather than get more than 1 tile ahead (by field distance), and moves at 1.3x while more than 4 tiles behind; on the leader's death it uses its own profile. The stopgap mix spawns a drawn leader with a band (2-4 `b`, 2-3 `d`) on the same tile, within budget.
+- [ ] A rival archer shoots a unit in its arc before a wall in its arc
+- [ ] A rival cannon's splash damages units in the blast
+- [ ] Same-team units are never targeted; Endless towers never target units
+- [ ] The existing tower tests pass unchanged
 
-- [x] Members stay at most 1 tile ahead and catch up when behind
-- [x] Members attack the wall their breaching chief or thane stops at
-- [x] Members carry on alone when the leader dies
-- [x] The mix never draws a leader whose smallest band doesn't fit the budget; total threat stays within budget
+Files: `src/sim/towers.ts`, `tests/sim/pvp.test.ts`. Size: S. Depends on: 1.
 
-Files: `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/enemies.ts`, `src/sim/waves.ts`, `tests/sim/enemies.test.ts`, `tests/sim/waves.test.ts`. Size: M. Depends on: 3, 5.
+## Task 7: Drawing, hover and the U key
 
-Built: `leader` and `band.kind` are typed `string` in `EnemyKind` (an `EnemyKindId` there is a circular type), read through `bandOf`, and `tests/sim/config.test.ts` checks they name real kinds. `pickWaveGroup` replaces `pickWaveKind` as the mix's entry point; a band is as big as rolled or as the budget can pay for, never below its minimum.
+Units drawn as their glyph in the owner's colour, above terrain and below effects, with an HP bar when damaged. Rival units in fog are hidden. Hover shows `Militia (i) - <owner> - HP 24/30`. `U` over a tile sends `debugUnit`.
 
-## Task 7: Shaman and the heal effect
+- [ ] Browser: `U` places a militia; goblins stop for it; fog lifts; HP bars show
+- [ ] Hover text matches the spec
 
-Row for `s`; healer behaviour: every 2 s, +6 HP (up to max) to every other enemy within 2.5 tiles. `heal` effect, drawn as a green `+` in sight.
+Files: `src/render/canvas.ts`, `src/render/palette.ts`, `src/ui/tileInfo.ts`, `src/ui/input.ts`, `src/main.ts`. Size: M. Depends on: 2-6.
 
-- [x] Heals others in range every 2 s up to max HP; not itself; not out of range
-- [x] Heal effects only on enemies actually healed
+**Checkpoint B:** offline browser check with George.
 
-Files: `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/behaviours.ts`, `src/render/canvas.ts`, `tests/sim/behaviours.test.ts`. Size: S. Depends on: 5.
+## Task 8: Units over the network
 
-Built: a heal pulse fires as soon as someone in range is hurt, then waits its 2 s (`Enemy.abilityCooldown`, which diggers reuse). The green `+` floats up over 10 ticks.
+Units in the welcome snapshot; updates carry position and HP, with kind and owner sent once per unit (as for enemies); clients smooth unit movement; `debugUnit` validated in the protocol, with the owner taken from the sender.
 
-## Task 8: Battering ram and diggers
+- [ ] Snapshot and update tests: new units carry kind and owner, later updates don't
+- [ ] A client-supplied owner is ignored
+- [ ] Browser: a second player sees the militia and its HP bar move smoothly
 
-Rows for `R` (breacher, siege behaviour: no extra code yet) and `n`. Digger behaviour: spot a player-built wall or wall spikes within 4 tiles; walk to a tile next to it (search of up to 8 tiles); dig in (`mode: "digging"`), hitting that wall each interval until it falls (with its tower); then walk on. Diggers stay attackable while digging.
+Files: `src/net/protocol.ts`, `src/net/snapshot.ts`, `src/net/view.ts`, `src/net/networkSession.ts`, `tests/server/snapshot.test.ts`. Size: M. Depends on: 7.
 
-- [x] A ram breaks through a maze wall; its hits are 60 every 2.5 s
-- [x] A digger digs under the nearest wall within 4 tiles, brings it (and its tower) down, then walks on
-- [x] Towers and traps still hit a digging digger
+## Task 9: Determinism, timing test and docs
 
-Files: `src/sim/config.ts`, `src/sim/behaviours.ts`, `tests/sim/behaviours.test.ts`, `tests/sim/enemies.test.ts`. Size: M. Depends on: 5.
+- [ ] Two runs of the same seed and commands (including `debugUnit`) end in identical states
+- [ ] 200 units and 200 enemies on XL: one tick under 50 ms
+- [ ] README: units, the `U` dev key, hover info; CAPABILITIES and plan statuses updated
+- [ ] `src/sim/` coverage stays at 80% or more
 
-Built: a digger heads for its wall in `walking` mode with `targetId` set, and switches to `digging` once next to it. Once the wall falls it may notice another within 4 tiles and dig again.
+Files: `tests/sim/game.test.ts` (determinism block), `tests/sim/units.test.ts`, `README.md`, `CAPABILITIES.md`, `tasks/plan.md`. Size: S. Depends on: 8.
 
-## Task 9: Hover words and the network
-
-`ClientEnemy` gains `mode` (only when not walking) and `banded` (only while its leader lives). Hover info adds `sprinting`, `digging`, `with its chief` / `with its thane`.
-
-- [x] `mode` and `banded` survive snapshot and update round trips, and are left out when not needed
-- [x] Hover lines for a sprinting bomber, a digging digger and a banded barbarian
-- [x] The 200-enemy update size test still passes
-
-Files: `src/net/protocol.ts`, `src/net/snapshot.ts`, `src/net/view.ts`, `src/ui/tileInfo.ts`, tests. Size: S. Depends on: 6, 7, 8.
-
-Built: instead of a `banded: true` flag, `ClientEnemy` carries `leaderId` (only while the leader lives). Same information, and the client's `Enemy` then means what the server's does, so the hover code is shared. The "chief" / "thane" word is the last word of the leader kind's name.
-
-## Checkpoint D (after Tasks 5-9)
-
-- [x] All tests pass; coverage 80%+ lines for `src/sim/` (99% lines; the XL timing guards are flaky under coverage instrumentation, as they were before this module)
-- [ ] Browser: every new kind via `E` (bombers blow holes, shamans heal, bands follow, rams and diggers bring walls down); each gets a journal entry
-- [ ] Online: two clients see the same behaviours
-- [ ] **Review with George**
-
-## Task 10: Determinism test and docs
-
-A test that runs the same seed with every kind for 2,000 ticks twice and compares the state. README (enemy table with the new kinds, profiles and behaviours in plain words), SPEC.md "Since `enemy-pathing`", plan roadmap status.
-
-- [x] Same seed, same state
-- [x] Docs match the built behaviour
-
-Files: `tests/sim/game.test.ts`, `README.md`, `SPEC.md`, `tasks/plan.md`. Size: S. Depends on: 9.
+**Checkpoint C:** online check with two browsers, then review.

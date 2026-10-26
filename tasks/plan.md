@@ -1,7 +1,7 @@
 # Implementation Plan: Post-MVP Phases
 
 Capability map: [`CAPABILITIES.md`](../CAPABILITIES.md)
-Current module spec: [`SPEC-enemy-pathing.md`](../SPEC-enemy-pathing.md) (Armies)
+Current module spec: [`SPEC-unit-core.md`](../SPEC-unit-core.md) (AoE update)
 Task list (current module only): `tasks/todo.md`, written when the next module's spec is approved
 Finished modules: [`tasks/tile-layers/`](tile-layers/todo.md), [`tasks/tower-aiming/`](tower-aiming/todo.md), [`tasks/audio/`](audio/todo.md), [`tasks/map-gen/`](map-gen/todo.md), [`tasks/players/`](players/todo.md), [`tasks/game-server/`](game-server/todo.md) (awaiting the cross-machine probe and review), [`tasks/net-client/`](net-client/todo.md)
 Previous plan (MVP, complete except a Firefox/Safari smoke test): [`tasks/mvp/`](mvp/plan.md)
@@ -28,10 +28,10 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | | `line-of-sight` | Spec drafted |
 | 1d. Armies (see below) | `enemy-kinds` | Done (tasks in [`tasks/enemy-kinds/`](enemy-kinds/todo.md)) |
 | | `bestiary` | Built; browser check with George pending (tasks in [`tasks/bestiary/`](bestiary/todo.md)) |
-| | `enemy-pathing` | **Built (Tasks 1-10); browser checkpoints C and D and review with George pending** (tasks in [`tasks/todo.md`](todo.md)) |
+| | `enemy-pathing` | Built and merged (PR #32); browser checkpoints C and D pending (tasks in [`tasks/enemy-pathing/`](enemy-pathing/todo.md)) |
 | | `enemy-targeting` | Outline (moved after `field-units` by the AoE update) |
 | | `wave-director` | Outline (moved after `field-units` by the AoE update) |
-| 1e. AoE update (see [`CAPABILITIES.md`](../CAPABILITIES.md)) | `unit-core` | **Spec approved; tasks in [`tasks/unit-core/`](unit-core/todo.md)** (starts after `enemy-pathing`) |
+| 1e. AoE update (see [`CAPABILITIES.md`](../CAPABILITIES.md)) | `unit-core` | **Spec approved; tasks in [`tasks/todo.md`](todo.md)** |
 | | `resources` | Spec needed (gold only) |
 | | `town-economy` | Spec needed |
 | | `units` | Outline (guard towers only; entity moves to `unit-core`) |
@@ -578,7 +578,7 @@ enemy-kinds ──┬─ bestiary
 
 ### `enemy-pathing`
 
-Spec: [`SPEC-enemy-pathing.md`](../SPEC-enemy-pathing.md) (approved). Tasks: [`tasks/todo.md`](todo.md).
+Spec: [`SPEC-enemy-pathing.md`](../SPEC-enemy-pathing.md) (approved). Tasks: [`tasks/enemy-pathing/todo.md`](enemy-pathing/todo.md).
 
 **Architecture decisions**
 - **Refactor first, fix second, behaviour third.** Task 1 keys fields by profile with only `follower` in use (no behaviour change). Task 2 fixes the existing wander bug on its own, so its effect on the suite is visible in isolation. Only then do new profiles and behaviours arrive.
@@ -698,7 +698,7 @@ T1 Fields keyed by profile (refactor)
 
 ## AoE update: unit-core
 
-Spec: [`SPEC-unit-core.md`](../SPEC-unit-core.md) (approved). Tasks: [`tasks/unit-core/todo.md`](unit-core/todo.md), moved to `tasks/todo.md` once `enemy-pathing` is finished.
+Spec: [`SPEC-unit-core.md`](../SPEC-unit-core.md) (approved). Tasks: [`tasks/todo.md`](todo.md).
 
 ### Architecture decisions
 
