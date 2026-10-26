@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TICK_RATE, UNIT_KINDS, type UnitKind } from "../../src/sim/config";
+import { ENEMY_KINDS, TICK_RATE, UNIT_KINDS, type UnitKind } from "../../src/sim/config";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand, tick } from "../../src/sim/game";
 import { placeStructure } from "../../src/sim/grid";
@@ -134,5 +134,88 @@ describe("units", () => {
       ok: false,
       reason: "A unit can't stand there",
     });
+  });
+});
+
+describe("enemies fight units", () => {
+  /** A tile in the keep's row, `dx` tiles to its left: enemies there walk straight east. */
+  function lane(state: GameState, dx: number) {
+    return { x: state.keeps[0].x - dx, y: state.keeps[0].y + 1 };
+  }
+  const goblinHit = ENEMY_KINDS.goblin.damage;
+
+  it("a goblin stops to fight a unit on its next tile, and walks on once it's dead", () => {
+    const state = createGameWithoutWaves();
+    const p = lane(state, 20);
+    const goblin = spawnEnemy(state, p.x, p.y, { hp: 1000 });
+    const unit = spawnUnit(state, "militia", 1, p.x + 1, p.y)!;
+
+    tick(state);
+    expect(goblin.x).toBe(p.x);
+    expect(unit.hp).toBe(militia.hp - goblinHit);
+
+    for (let i = 0; i < 400 && state.units.length > 0; i++) tick(state);
+    expect(state.units).toEqual([]);
+    run(state, TICK_RATE);
+    expect(goblin.x).toBeGreaterThan(p.x);
+  });
+
+  it("stops for a unit on a tile beside it, but not one 2 tiles off its path", () => {
+    const state = createGameWithoutWaves();
+    const p = lane(state, 20);
+    const goblin = spawnEnemy(state, p.x, p.y, { hp: 1000 });
+    const beside = spawnUnit(state, "militia", 1, p.x + 2, p.y - 1)!;
+    const offPath = spawnUnit(state, "militia", 1, p.x + 1, p.y + 2)!;
+
+    run(state, 3 * TICK_RATE);
+
+    expect(goblin.x).toBe(p.x + 2);
+    expect(beside.hp).toBeLessThan(militia.hp);
+    expect(offPath.hp).toBe(militia.hp);
+  });
+
+  it("hits the unit in its way before one beside it, even a weaker one", () => {
+    const state = createGameWithoutWaves();
+    const p = lane(state, 20);
+    spawnEnemy(state, p.x, p.y, { hp: 1000 });
+    const inTheWay = spawnUnit(state, "militia", 1, p.x + 1, p.y)!;
+    const beside = spawnUnit(state, "militia", 1, p.x, p.y - 1)!;
+    beside.hp = 5;
+
+    tick(state);
+
+    expect(inTheWay.hp).toBe(militia.hp - goblinHit);
+    expect(beside.hp).toBe(5);
+  });
+
+  it("a battering ram walks straight through a unit", () => {
+    const state = createGameWithoutWaves();
+    const p = lane(state, 20);
+    const ram = spawnEnemy(state, p.x, p.y, { kind: "batteringRam" });
+    const unit = spawnUnit(state, "militia", 1, p.x + 1, p.y)!;
+
+    run(state, 4 * TICK_RATE);
+
+    expect(ram.x).toBeGreaterThan(p.x + 1);
+    expect(unit.hp).toBe(militia.hp);
+  });
+
+  it("a bomber's blast hurts units in it", () => {
+    const state = createGameWithoutWaves();
+    const p = lane(state, 20);
+    const wall = placeStructure(state, "wall", p.x + 1, p.y + 1, "N", 1);
+    wall.hp = wall.maxHp = 1000;
+    // It steps east next to the wall and explodes there, so the blast covers x .. x + 2.
+    spawnEnemy(state, p.x, p.y, { kind: "dwarfBomber" });
+    const caught = spawnUnit(state, "militia", 1, p.x, p.y - 1)!;
+    caught.hp = caught.maxHp = 1000;
+    const clear = spawnUnit(state, "militia", 1, p.x - 1, p.y)!;
+    clear.hp = clear.maxHp = 1000;
+
+    for (let i = 0; i < 40 && wall.hp === 1000; i++) tick(state);
+
+    expect(wall.hp).toBeLessThan(1000);
+    expect(caught.hp).toBe(1000 - ENEMY_KINDS.dwarfBomber.ability.amount);
+    expect(clear.hp).toBe(1000);
   });
 });

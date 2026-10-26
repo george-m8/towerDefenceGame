@@ -24,16 +24,18 @@ Built: `debugUnit` is a debug command, so it's offline only like `debugSpawn` (m
 
 Per-tick occupancy index (units by tile) built at the start of `updateUnits`; `unitBlocking`. In `chooseNextTile`, an enemy checks its own tile, its next tile and the four beside it for a hostile unit and attacks it instead of moving (in its way first, then lowest HP, then lowest id). Rams ignore units. Bombers damage units in their blast.
 
-- [ ] A goblin whose next tile holds a militia stops and attacks it, and walks on once it dies
-- [ ] A goblin walking past a militia on the tile beside it stops and attacks it
-- [ ] A militia 2 tiles off the path is ignored
-- [ ] With two militia in reach, the one in the way is hit first
-- [ ] A ram walks through a militia's tile without stopping
-- [ ] A bomber's blast damages a militia
+- [x] A goblin whose next tile holds a militia stops and attacks it, and walks on once it dies
+- [x] A goblin walking past a militia on the tile beside it stops and attacks it
+- [x] A militia 2 tiles off the path is ignored
+- [x] With two militia in reach, the one in the way is hit first
+- [x] A ram walks through a militia's tile without stopping
+- [x] A bomber's blast damages a militia
 
 Files: `src/sim/units.ts`, `src/sim/enemies.ts`, `tests/sim/enemies.test.ts`, `tests/sim/units.test.ts`. Size: M. Depends on: 1.
 
-**Checkpoint A:** a militia and a goblin fight to the death in a test, both ways round; the existing suite passes untouched.
+Built: the index is `unitsAt(state, x, y)`, cached per state and rebuilt when first asked for after units move, spawn or die (no separate `unitBlocking`). Tests live in `tests/sim/units.test.ts`.
+
+**Checkpoint A:** a militia and a goblin fight to the death in a test, both ways round; the existing suite passes untouched. Done: the goblin-kills-militia test above, and the militia-kills-goblin bounty test in Task 1.
 
 ## Task 3: Paths and movement
 

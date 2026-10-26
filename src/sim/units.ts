@@ -8,7 +8,7 @@ import {
   type UnitKindId,
 } from "./config";
 import { damageEnemy } from "./enemies";
-import { blocksAt, keepAt } from "./grid";
+import { blocksAt, inBounds, keepAt } from "./grid";
 import { canCross } from "./pathfinding";
 import type { Enemy, GameState, PlayerId, Unit } from "./types";
 
@@ -68,6 +68,29 @@ export function updateUnits(state: GameState): void {
     unit.attackCooldown = Math.max(0, unit.attackCooldown - 1);
     BEHAVIOURS[kindOf(unit).behaviour](state, unit);
   }
+  occupancy.delete(state); // units have moved: rebuilt when next asked
+}
+
+// Units by tile, so enemies (and towers) find the units near them without scanning them all.
+// Rebuilt when first asked for after units move, spawn or die; never sent over the wire.
+const occupancy = new WeakMap<
+  GameState,
+  { tick: number; count: number; byTile: Map<number, Unit[]> }
+>();
+
+/** The living units on (x, y), counting a moving unit on the tile it's nearest. */
+export function unitsAt(state: GameState, x: number, y: number): Unit[] {
+  if (!inBounds(state, x, y)) return [];
+  let index = occupancy.get(state);
+  if (!index || index.tick !== state.tick || index.count !== state.units.length) {
+    index = { tick: state.tick, count: state.units.length, byTile: new Map() };
+    for (const unit of state.units) {
+      const i = Math.round(unit.y) * state.width + Math.round(unit.x);
+      index.byTile.set(i, [...(index.byTile.get(i) ?? []), unit]);
+    }
+    occupancy.set(state, index);
+  }
+  return (index.byTile.get(y * state.width + x) ?? []).filter((unit) => unit.hp > 0);
 }
 
 /** Dead units are simply gone: nobody is paid for them. */

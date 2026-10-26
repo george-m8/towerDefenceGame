@@ -12,8 +12,9 @@ import { addCue } from "./cues";
 import { attackTargetAt, blocksAt, damageKeep, damageStructure, keepAt } from "./grid";
 import { DIRECTIONS, canCross, distanceAt, nextStep } from "./pathfinding";
 import { stepTo, walk } from "./movement";
+import { damageUnit, unitsAt } from "./units";
 import { nextRandom, randomInt } from "./rng";
-import type { Enemy, GameState, Keep, PlayerId, Point, Structure } from "./types";
+import type { Enemy, GameState, Keep, PlayerId, Point, Structure, Unit } from "./types";
 
 export interface SpawnOptions {
   kind?: EnemyKindId;
@@ -152,6 +153,11 @@ function chooseNextTile(state: GameState, enemy: Enemy): boolean {
   const leader = leaderOf(state, enemy);
   const profile = ENEMY_KINDS[(leader ?? enemy).kind].profile;
   const pathStep = nextStep(state, enemy.x, enemy.y, previous, profile);
+  const unit = unitToFight(state, enemy, pathStep);
+  if (unit) {
+    attackUnit(enemy, unit);
+    return false;
+  }
   // No step means it is already on the keep; attack the keep from there.
   const keep = pathStep ? keepAt(state, pathStep.x, pathStep.y) : keepAt(state, enemy.x, enemy.y);
   if (keep) {
@@ -203,6 +209,31 @@ function attackKeep(state: GameState, enemy: Enemy, keep: Keep) {
   damageKeep(state, keep, enemy.damage);
   enemy.attackCooldown = enemy.attackInterval;
   addCue(state, "keepHit");
+}
+
+/**
+ * A unit the enemy stops to fight: one in its way (on its tile or its next step) first, else
+ * one on a tile beside it; the weakest, then the oldest. Rams ignore units.
+ */
+function unitToFight(state: GameState, enemy: Enemy, pathStep: Point | null): Unit | undefined {
+  if (ENEMY_KINDS[enemy.kind].behaviour === "siege") return undefined;
+  const inTheWay = unitsAt(state, enemy.x, enemy.y);
+  if (pathStep) inTheWay.push(...unitsAt(state, pathStep.x, pathStep.y));
+  const beside = DIRECTIONS.flatMap((d) => unitsAt(state, enemy.x + d.x, enemy.y + d.y));
+  return weakest(inTheWay) ?? weakest(beside);
+}
+
+function weakest(units: Unit[]): Unit | undefined {
+  return units.reduce<Unit | undefined>(
+    (best, u) => (!best || u.hp < best.hp || (u.hp === best.hp && u.id < best.id) ? u : best),
+    undefined,
+  );
+}
+
+function attackUnit(enemy: Enemy, unit: Unit) {
+  if (enemy.attackCooldown > 0) return;
+  damageUnit(unit, enemy.damage);
+  enemy.attackCooldown = enemy.attackInterval;
 }
 
 function attack(state: GameState, enemy: Enemy, target: Structure) {
