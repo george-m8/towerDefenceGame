@@ -83,10 +83,10 @@ Built: `state.sightVersion` goes up when a unit spawns, dies or changes tile, an
 
 `findSiegeTarget` gains rival units (from the occupancy index) as targets, sorted before structures and keep tiles; splash damages rival units in the blast. Endless `findTarget` is unchanged.
 
-- [ ] A rival archer shoots a unit in its arc before a wall in its arc
-- [ ] A rival cannon's splash damages units in the blast
-- [ ] Same-team units are never targeted; Endless towers never target units
-- [ ] The existing tower tests pass unchanged
+- [x] A rival archer shoots a unit in its arc before a wall in its arc
+- [x] A rival cannon's splash damages units in the blast
+- [x] Same-team units are never targeted; Endless towers never target units
+- [x] The existing tower tests pass unchanged
 
 Files: `src/sim/towers.ts`, `tests/sim/pvp.test.ts`. Size: S. Depends on: 1.
 
