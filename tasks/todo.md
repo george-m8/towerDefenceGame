@@ -14,14 +14,15 @@ Remove the facing notch everywhere (built and while placing). `spawnTileOf(state
 
 Files: `src/sim/units.ts`, `src/sim/config.ts`, `src/render/canvas.ts`, `src/render/palette.ts`, `tests/sim/units.test.ts`. Size: M. Depends on: none.
 
-## Task 2: Two-letter building labels
+## Task 2: Building symbols
 
-`GLYPHS` entries for buildings that spawn or earn become the two-letter labels in the spec (`Ho`, `Sh`, `Fa`, `Ti`, `Mi`, `Fo`, `Gu`, `Ap`, `Pa`), drawn in a smaller font when two letters; the build picker uses them too.
+Per the spec's table: the keep's tiles draw `⛫` (the middle still shows HP), houses `⌂`, farmland `𐤄`, shop `¤`, guardhouse `⛨`, paladin hall `✠`, archery post `➶`, scout camp `⚑`; two-letter codes as the last resort (`Fa`, `Ti`, `Mi`, `Fo`, `Ba`, `Ra`), drawn smaller. The glyph font list gains symbol-font fallbacks. The build picker uses the same.
 
-- [ ] Every structure's label is one symbol or two letters, and the spec's table matches
-- [ ] Browser: two-letter labels fit their tiles and read clearly
+- [ ] Every structure's glyph is one symbol or a two-letter code, matching the spec's table
+- [ ] None of the symbols is an emoji-capable code point (a test lists the ones to avoid)
+- [ ] Browser: every symbol draws as a plain glyph (no boxes, no colour emoji) on this Mac; any that doesn't falls back to its code, recorded here
 
-Files: `src/render/palette.ts`, `src/render/canvas.ts`, `src/ui/hud.ts`, `tests/render/` (labels test). Size: S. Depends on: none.
+Files: `src/render/palette.ts`, `src/render/canvas.ts`, `src/ui/hud.ts`, `tests/render/` (glyphs test). Size: S. Depends on: none.
 
 ## Task 3: Explored-only and breaching paths
 
@@ -35,7 +36,7 @@ Files: `src/sim/unitPaths.ts`, `src/sim/units.ts`, `tests/sim/unitPaths.test.ts`
 
 ## Task 4: Buildings, unit kinds and the Offence tab
 
-`UNIT_KINDS` scout `!`, soldier `&`, ranger `}` (projectile arrow); `STRUCTURES` scoutCamp `Sc`, barracks `Ba`, archeryRange `Ra`, directional spawners per the spec's table; their tools in the Offence tab, which is no longer greyed out. Until Tasks 5-6, scouts and attackers behave like `hold`.
+`UNIT_KINDS` scout `!`, soldier `&`, ranger `}` (projectile arrow); `STRUCTURES` scoutCamp `⚑`, barracks `Ba`, archeryRange `Ra`, directional spawners per the spec's table; their tools in the Offence tab, which is no longer greyed out. Until Tasks 5-6, scouts and attackers behave like `hold`.
 
 - [ ] Each building spawns its own kind up to its quota, one per interval, once built
 - [ ] The Offence tab lists the three and is no longer greyed out; `3` opens it

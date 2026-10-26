@@ -23,7 +23,7 @@ Every offensive unit only walks on land its side has explored, so scouts open th
 
 | Building | Glyph | Cost | HP | Makes | Quota | Interval |
 |---|---|---|---|---|---|---|
-| Scout camp | `Sc` | 40 | 40 | Scout | 2 | 45 s |
+| Scout camp | `⚑` | 40 | 40 | Scout | 2 | 45 s |
 | Barracks | `Ba` | 80 | 60 | Soldier | 4 | 30 s |
 | Archery range | `Ra` | 90 | 50 | Ranger | 4 | 30 s |
 
@@ -71,26 +71,29 @@ How placed buildings show their direction changes for every structure, not just 
 - **Every spawner faces where you choose.** Gatherers and the new offensive buildings become directional like guard buildings: `R` turns which side the door is on, shown by the marker while placing. (Until now their door was always the south side.)
 - Building on a door is still allowed for now, since units come out of the next open side. Stopping it is for later.
 
-### Two-letter building labels (2026-10-26)
+### Building symbols (2026-10-26)
 
-Too many buildings share single letters, so buildings that spawn units or earn gold get labels of up to two letters, drawn a little smaller to fit a tile. Walls, towers, traps, bridges, gates, watchtowers and farmland keep their symbols.
+Too many buildings share single letters. Each building that spawns units or earns gold gets a **symbol** that says what it is; a two-letter code (like a country code) is the last resort when nothing sensible exists. The keep and houses get symbols too. Walls, towers, traps, bridges, gates and watchtowers keep theirs.
 
 | Building | Was | Now |
 |---|---|---|
-| House | `h` | `Ho` |
-| Shop | `S` | `Sh` |
+| Keep (each tile but the HP in the middle) | `K` | `⛫` castle (U+26EB) |
+| House | `h` | `⌂` house (U+2302) |
+| Farmland | `"` | `𐤄` Phoenician he (U+10904), as a crop |
+| Shop | `S` | `¤` currency sign (U+00A4) |
+| Guardhouse | `G` | `⛨` cross on a shield (U+26E8) |
+| Paladin hall | `K` | `✠` Maltese cross (U+2720) |
+| Archery post | `A` | `➶` arrow (U+27B6) |
+| Scout camp | - | `⚑` flag (U+2691) |
 | Farmhouse | `H` | `Fa` |
 | Timber yard | `L` | `Ti` |
 | Mine | `M` | `Mi` |
 | Forager hut | `F` | `Fo` |
-| Guardhouse | `G` | `Gu` |
-| Archery post | `A` | `Ap` |
-| Paladin hall | `K` | `Pa` |
-| Scout camp | - | `Sc` |
 | Barracks | - | `Ba` |
 | Archery range | - | `Ra` |
 
-The build picker and hover use the same labels.
+- **No emoji.** Symbols are only used if they draw as plain text glyphs, not colour emoji (so not ⚔, ⚒, ⛏, ⚖ or ⛺, which can turn into emoji). The glyph font list gains common symbol fonts as fallbacks (Apple Symbols, Segoe UI Symbol, Segoe UI Historic, Noto Sans Symbols 2), and any symbol that shows as a box or an emoji in the browser check falls back to its two-letter code.
+- Two-letter codes are drawn a little smaller to fit a tile. The build picker and hover use the same symbols.
 
 ## Out of scope
 
@@ -198,5 +201,5 @@ None.
 2. Scouts, soldiers and rangers now; knights and horsemen in `elite-units`, built after the enemy work (`enemy-targeting`, `wave-director`).
 3. Endless: hunt visible enemies, else patrol the fog edge. PvP: march on a known rival keep, breaking through the weakest wall.
 4. Numbers as in the tables (first guesses).
-5. Unit glyphs scout `!`, soldier `&`, ranger `}`. Buildings that spawn or earn get labels of up to two letters (table above).
+5. Unit glyphs scout `!`, soldier `&`, ranger `}`. Buildings that spawn or earn get a symbol where a sensible one exists, else a two-letter code; the keep `⛫`, houses `⌂`, farmland `𐤄` (table above).
 6. No facing notch on anything. Spawners show their door while placing and once built (a faint `S`), and every spawner turns its door with `R`, so it isn't trapped by your own walls.

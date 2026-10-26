@@ -832,7 +832,7 @@ Spec: [`SPEC-field-units.md`](../SPEC-field-units.md) (approved). Tasks: [`tasks
 
 ### Architecture decisions
 
-- **Look first.** The notch goes, doors and two-letter labels come in, before the new buildings, so every building added after looks right from the start.
+- **Look first.** The notch goes, doors and building symbols come in, before the new buildings, so every building added after looks right from the start.
 - **One door rule.** `spawnTileOf` decides where units come out, for spawning and for drawing alike; every spawner is directional so `R` picks the door.
 - **Paths get two options, not a new pathfinder.** `findPath` takes `exploredBy` (only explored tiles) and `breach` (rival structures crossable at a cost). With `breach` it runs Dijkstra on a typed-array heap; it still counts as one search against the per-tick budget.
 - **Behaviours in their own file.** `fieldUnits.ts` holds the frontier, the known-rival-keep check, and the scout and attack behaviours, registered in the units behaviour table, reusing `attackNearest`, shots and `walkTowards`.
@@ -841,7 +841,7 @@ Spec: [`SPEC-field-units.md`](../SPEC-field-units.md) (approved). Tasks: [`tasks
 
 ```
 T1 No notch; doors; every spawner directional; door markers
-T2 Two-letter building labels
+T2 Building symbols
 T3 Explored-only and breaching paths
  └─ T5 Scouts ──┐
 T4 Buildings, unit kinds, Offence tab ─┤
@@ -856,7 +856,7 @@ T1, T2, T3 and T4 can go in any order. T5 needs T3 and T4.
 ### Checkpoints
 
 - **A (after T7):** in tests, scouts explore the map; soldiers hunt and kill a visible goblin; in PvP they break the weakest wall of a ringed keep and damage the keep.
-- **B (after T8):** browser: markers and labels, scouts, hunting in Endless, and a PvP siege with two browsers (plus the open `town-economy` and `units` checks).
+- **B (after T8):** browser: markers and symbols, scouts, hunting in Endless, and a PvP siege with two browsers (plus the open `town-economy` and `units` checks).
 
 ## Later modules: provisional outlines
 
