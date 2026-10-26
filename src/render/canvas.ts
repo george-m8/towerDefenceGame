@@ -37,7 +37,7 @@ import type {
 } from "../sim/types";
 import type { PendingBuild } from "../net/session";
 import { isBuildTool, type UiState } from "../ui/state";
-import { visibleTiles, type VisibleTiles } from "../ui/camera";
+import { tilePixels, visibleTiles, type VisibleTiles } from "../ui/camera";
 import { minimapColour } from "../ui/minimap";
 import { KEEP, NONE, getEnclosures } from "../sim/enclosures";
 import { SEEN, canSeeEnemiesAt, forEachSightTile, getSight } from "../sim/fog";
@@ -59,6 +59,10 @@ import {
   GLYPH_FONT,
   STRUCTURE_COLOURS,
   TERRAIN_STYLES,
+  TERRAIN_TEXTURES,
+  KEEP_TEXTURE,
+  STRUCTURE_TEXTURES,
+  TEXTURE_MIN_TILE_PX,
   TILE_SIZE,
   OWNER_MARK_PX,
   enemyFont,
@@ -67,6 +71,7 @@ import {
 } from "./palette";
 import { fogImage } from "./fog";
 import { burstPixels, burstWaiting } from "./burst";
+import { textureSpecks, textureVariant, type TextureStyle } from "./textures";
 import { borderColour, borderTrace } from "./buildBorder";
 
 /** Compass degrees (0 = north, clockwise) to canvas radians (0 = east, clockwise). */
@@ -128,6 +133,10 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   let view: VisibleTiles = { x0: 0, y0: 0, x1: -1, y1: -1 };
   /** The player looking: in PvP, sight and enclosures are theirs. */
   let viewer: PlayerId = 1;
+  /** Tile textures, drawn once each ("style:variant"). */
+  const textureImages = new Map<string, HTMLCanvasElement>();
+  /** False when zoomed too far out for textures to show. */
+  let textured = true;
   /** The fog image and the sight it was made from. */
   let fog: { tier: Uint8Array; image: HTMLCanvasElement; lift: number } | null = null;
 
@@ -232,11 +241,12 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     const keep = keepAt(state, x, y)!;
     const bg = keep.owner !== null ? playerColour(keep.owner) : COLOURS.keep;
     const centre = Math.floor(keep.size / 2);
+    drawTile(x, y, bg);
+    drawTexture(x, y, KEEP_TEXTURE);
     if (x !== keep.x + centre || y !== keep.y + centre) {
-      drawTile(x, y, bg, "K", COLOURS.keepGlyph);
+      drawGlyph(x, y, "K", COLOURS.keepGlyph);
       return;
     }
-    drawTile(x, y, bg);
     ctx!.font = KEEP_HP_FONT;
     ctx!.fillStyle = COLOURS.keepGlyph;
     ctx!.fillText(
@@ -251,15 +261,37 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     const terrain = terrainAt(state, x, y);
     if (terrain === "ground") {
       drawTile(x, y, (x + y) % 2 === 0 ? COLOURS.ground : COLOURS.groundAlt);
+      drawTexture(x, y, TERRAIN_TEXTURES.ground);
       return;
     }
     const style = TERRAIN_STYLES[terrain];
-    drawTile(x, y, style.bg, style.glyph, style.fg);
+    drawTile(x, y, style.bg);
+    drawTexture(x, y, TERRAIN_TEXTURES[terrain]);
+    if (style.glyph && style.fg) drawGlyph(x, y, style.glyph, style.fg);
     // A resource being worked shows what's left (in sight only, like enemies).
     const resource = resourceAt(state, x, y);
     if (resource && resource.goldLeft < resource.worth && canSeeEnemiesAt(state, x, y, viewer)) {
       drawHpBar(x, y, resource.goldLeft / resource.worth, COLOURS.resourceLeft);
     }
+  }
+
+  /** A tile's texture over its flat colour, unless zoomed too far out to see it. */
+  function drawTexture(x: number, y: number, style: TextureStyle) {
+    if (!textured) return;
+    const variant = textureVariant(x, y);
+    const key = `${style}:${variant}`;
+    let image = textureImages.get(key);
+    if (!image) {
+      image = document.createElement("canvas");
+      image.width = image.height = TILE_SIZE;
+      const tctx = image.getContext("2d")!;
+      for (const s of textureSpecks(style, variant)) {
+        tctx.fillStyle = s.colour;
+        tctx.fillRect(s.x, s.y, s.w, s.h);
+      }
+      textureImages.set(key, image);
+    }
+    ctx!.drawImage(image, x * TILE_SIZE, y * TILE_SIZE);
   }
 
   /**
@@ -371,11 +403,18 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     const { x, y } = structure;
     const colours = STRUCTURE_COLOURS[structure.kind];
     if (!isBuilt(structure)) ctx!.globalAlpha = CONSTRUCTION_ALPHA;
-    drawTile(x, y, colours.bg);
+    drawStructureTile(x, y, structure.kind);
     drawSymbol(x, y, structure.kind, structure.facing, colours.fg, structure.aim);
     if (needsNotch(structure.kind)) drawFacingNotch(x, y, structure.facing);
     ctx!.globalAlpha = 1;
     drawBars(structure, structure);
+  }
+
+  /** A structure's tile colour, textured for those that have one (stone walls). */
+  function drawStructureTile(x: number, y: number, kind: StructureKind) {
+    drawTile(x, y, STRUCTURE_COLOURS[kind].bg);
+    const texture = STRUCTURE_TEXTURES[kind];
+    if (texture) drawTexture(x, y, texture);
   }
 
   /** A tower on a wall: the wall shows through, the tower glyph sits on it under a battlement strip. */
@@ -383,7 +422,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     const { x, y } = tower;
     const towerColour = STRUCTURE_COLOURS[tower.kind].bg;
     if (!isBuilt(wall)) ctx!.globalAlpha = CONSTRUCTION_ALPHA;
-    drawTile(x, y, STRUCTURE_COLOURS[wall.kind].bg);
+    drawStructureTile(x, y, wall.kind);
     ctx!.globalAlpha = isBuilt(tower) ? 1 : CONSTRUCTION_ALPHA;
     drawSymbol(x, y, tower.kind, tower.facing, towerColour, tower.aim);
     ctx!.fillStyle = towerColour;
@@ -660,7 +699,8 @@ export function createRenderer(canvas: HTMLCanvasElement) {
         ctx!.fillText(glyph, (burst.x + 0.5) * TILE_SIZE, (burst.y + 0.5) * TILE_SIZE + 1);
       } else if (burst.structure) {
         const look = STRUCTURE_COLOURS[burst.structure];
-        drawTile(burst.x, burst.y, look.bg, glyphFor(burst.structure), look.fg);
+        drawStructureTile(burst.x, burst.y, burst.structure);
+        drawGlyph(burst.x, burst.y, glyphFor(burst.structure), look.fg);
       }
       drawHpBar(burst.x, burst.y, 0, COLOURS.hpEmpty);
       return;
@@ -745,6 +785,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       view = visibleTiles(cam);
+      textured = tilePixels(cam) >= TEXTURE_MIN_TILE_PX;
       drawGrid(state);
       drawEnclosures(state);
       if (ui.showFlow) drawFlow(state);

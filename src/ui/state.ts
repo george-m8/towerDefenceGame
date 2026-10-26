@@ -29,6 +29,7 @@ export const TOOLS: ToolDef[] = [
   { tool: "foragerHut", key: "KeyB", label: "B", paintable: false },
   { tool: "bridge", key: "Digit8", label: "8", paintable: true },
   { tool: "watchtower", key: "Digit9", label: "9", paintable: false },
+  { tool: "gate", key: "Digit0", label: "0", paintable: true },
   { tool: "sell", key: "KeyX", label: "X", paintable: true },
 ];
 

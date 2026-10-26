@@ -5,8 +5,17 @@
 // PvP has no spawn: the biggest open area is no-man's land, and every pocket walled off from
 // it belongs to the player who built its walls (land touching your keep is always yours).
 // Only the owner gets the discount, and the rival can't build inside.
-import { ENCLOSURE_DISCOUNT, STRUCTURES } from "./config";
-import { baseAt, blocksAt, inBounds, isKeepTile, isWalkable, keepAt, mountAt } from "./grid";
+import { ENCLOSURE_DISCOUNT, STRUCTURES, type StructureStats } from "./config";
+import {
+  baseAt,
+  blocksAt,
+  inBounds,
+  isBuilt,
+  isKeepTile,
+  isWalkable,
+  keepAt,
+  mountAt,
+} from "./grid";
 import type { GameState, PlayerId, StructureKind } from "./types";
 
 /** What kind of enclosure a tile belongs to (inside it, or on its boundary). */
@@ -96,7 +105,10 @@ function findEnclosures(state: GameState): Enclosures {
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       open[y * width + x] =
-        isWalkable(state, x, y) && !blocksAt(state, x, y) && !isKeepTile(state, x, y);
+        isWalkable(state, x, y) &&
+        !blocksAt(state, x, y) &&
+        !closesRingAt(state, x, y) &&
+        !isKeepTile(state, x, y);
     }
   }
 
@@ -190,6 +202,14 @@ function findEnclosures(state: GameState): Enclosures {
       k === KEEP ? ENCLOSURE_DISCOUNT.keep : k === OUTER ? ENCLOSURE_DISCOUNT.outer : 0,
     ),
   };
+}
+
+/** A built gate: enemies walk through it, but it closes a ring of walls like a wall does. */
+function closesRingAt(state: GameState, x: number, y: number): boolean {
+  const base = baseAt(state, x, y);
+  if (!base || !isBuilt(base)) return false;
+  const stats: StructureStats = STRUCTURES[base.kind];
+  return stats.enclosing === true;
 }
 
 /** Endless: everywhere enemies can walk to from the spawn. */
