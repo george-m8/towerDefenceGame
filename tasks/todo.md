@@ -49,13 +49,15 @@ Built: `workableFrom` says where a worker can work: walkable resources (bushes) 
 
 `STRUCTURES` rows `timberYard` (`T`), `mine` (`M`) and `foragerHut` (`F`), each a spawner of its worker; build tools on `T`, `G` and `B`.
 
-- [ ] Each spawns its own worker kind, up to its quota, one per interval, once built
-- [ ] Selling one leaves its workers working, with none replaced
-- [ ] The build keys pick the tools; placement follows house rules
+- [x] Each spawns its own worker kind, up to its quota, one per interval, once built
+- [x] Selling one leaves its workers working, with none replaced
+- [x] The build keys pick the tools; placement follows house rules
 
 Files: `src/sim/config.ts`, `src/ui/state.ts`, `tests/sim/units.test.ts` (or `resources.test.ts`). Size: S. Depends on: 3.
 
-**Checkpoint A:** a timber yard fills to 5 lumberjacks who clear trees and earn gold; a goblin kills one and the yard sends another.
+Built: the timber yard is drawn `L` (lumber), not `T`, because the watchtower already uses `T`. The mine is `M` and the forager hut `F`; build keys are `T` / `G` / `B` as agreed.
+
+**Checkpoint A:** a timber yard fills to 5 lumberjacks who clear trees and earn gold; a goblin kills one and the yard sends another. Done: the checkpoint A test in `tests/sim/resources.test.ts`.
 
 ## Task 5: Drawing and hover
 
