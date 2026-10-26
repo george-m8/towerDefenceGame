@@ -68,7 +68,7 @@ const canvas = element<HTMLCanvasElement>("#map");
 const renderer = createRenderer(canvas);
 // Nothing on the page uses the map's font, so ask for it; the map draws in it once it's here.
 void document.fonts.load(GLYPH_FONT);
-void document.fonts.load(GLYPH_FONT, TERRAIN_STYLES.tree.glyph); // the tree's and berries' file
+void document.fonts.load(GLYPH_FONT, TERRAIN_STYLES.tree.glyph); // the upper-plane glyphs' file
 const minimap = createMinimap(element<HTMLCanvasElement>("#minimap"), ui);
 /** Arrow-key panning speed, in screen pixels per second (so it feels the same at any zoom). */
 const PAN_PIXELS_PER_SECOND = 900;

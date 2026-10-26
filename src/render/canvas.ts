@@ -73,6 +73,14 @@ import { burstPixels, burstWaiting } from "./burst";
 import { textureSpecks, textureVariant, type TextureStyle } from "./textures";
 import { borderColour, borderTrace } from "./buildBorder";
 
+/** The keep's corner flags, in map pixels: how far in from the tower's outer edge the pole
+ * stands, its height and width, and the pennant's size. */
+const FLAG_INSET_PX = 2.5;
+const FLAG_POLE_PX = 12;
+const FLAG_POLE_WIDTH_PX = 1.5;
+const FLAG_LENGTH_PX = 8;
+const FLAG_HEIGHT_PX = 6;
+
 /** Blocks' shadows, on the ground and on lower blocks beside them. */
 const SHADOW = "rgba(0, 0, 0, 0.3)";
 
@@ -288,6 +296,52 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     if (x !== keep.x + centre || y !== keep.y + centre) {
       drawGlyph(x, y, "\u265C", COLOURS.keepGlyph);
     }
+  }
+
+  /**
+   * A flag on each corner tower of each keep, in its owner's colour in multiplayer. Drawn after
+   * every block, like the HP, so the pole can stand up above the tower. Each stands at the
+   * tower's outer edge and flies outward, clear of the keep's other glyphs.
+   */
+  function drawKeepFlags(state: GameState) {
+    for (const keep of state.keeps) {
+      const colour = keep.owner !== null ? playerColour(keep.owner) : COLOURS.keepFlag;
+      const last = keep.size - 1;
+      for (const [dx, dy] of [
+        [0, 0],
+        [last, 0],
+        [0, last],
+        [last, last],
+      ]) {
+        const x = keep.x + dx;
+        const y = keep.y + dy;
+        if (x < view.x0 || x > view.x1 || y < view.y0 || y > view.y1) continue;
+        const outward = dx === 0 ? -1 : 1;
+        const poleX = x * TILE_SIZE + (outward < 0 ? FLAG_INSET_PX : TILE_SIZE - FLAG_INSET_PX);
+        drawFlag(poleX, y * TILE_SIZE - blockHeight(state, x, y), outward, colour);
+      }
+    }
+  }
+
+  /**
+   * A flag whose pole stands at (x, base) in map pixels, its pennant flying left (direction -1)
+   * or right (1).
+   */
+  function drawFlag(x: number, base: number, direction: number, colour: string) {
+    const top = base - FLAG_POLE_PX;
+    ctx!.fillStyle = COLOURS.keepFlagPole;
+    ctx!.fillRect(x - FLAG_POLE_WIDTH_PX / 2, top, FLAG_POLE_WIDTH_PX, FLAG_POLE_PX + 1);
+    const hoist = x + (direction * FLAG_POLE_WIDTH_PX) / 2;
+    ctx!.beginPath();
+    ctx!.moveTo(hoist, top);
+    ctx!.lineTo(hoist + direction * FLAG_LENGTH_PX, top + FLAG_HEIGHT_PX / 2);
+    ctx!.lineTo(hoist, top + FLAG_HEIGHT_PX);
+    ctx!.closePath();
+    ctx!.fillStyle = colour;
+    ctx!.fill();
+    ctx!.lineWidth = 0.75;
+    ctx!.strokeStyle = "rgba(0, 0, 0, 0.6)"; // stands out against a keep in the same colour
+    ctx!.stroke();
   }
 
   /**
@@ -845,6 +899,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       view = visibleTiles(cam);
       textured = tilePixels(cam) >= TEXTURE_MIN_TILE_PX;
       drawGrid(state);
+      drawKeepFlags(state);
       drawKeepHp(state);
       if (ui.showFlow) drawFlow(state);
       drawEffects(state);

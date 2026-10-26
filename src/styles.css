@@ -180,6 +180,11 @@ body {
 .hud-box[hidden] {
   display: none;
 }
+/* Structure glyphs: anything VT323 lacks (the watchtower's eye) comes from the map's font. */
+.hud-glyph,
+.tool .glyph {
+  font-family: "VT323", "Unifont", "Monaco", monospace;
+}
 .hud-glyph {
   display: inline-block;
   min-width: 1em;
@@ -902,7 +907,9 @@ a.button {
   justify-content: center;
   background: #2b2418;
   color: #777;
-  font: 32px/1 Unifont, monospace; /* as on the map */
+  font:
+    32px/1 Unifont,
+    monospace; /* as on the map */
 }
 
 .journal-name {
