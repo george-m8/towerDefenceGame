@@ -370,6 +370,8 @@ Rooms live in memory: restarting the server ends every game. See [`SPEC-game-ser
 
 ## Project structure
 
+Every glyph on the map (enemies, units, buildings, terrain, markers) and why it was chosen is listed in [`GLYPHS.md`](GLYPHS.md).
+
 ```
 index.html            Page shell: map canvas + side panel
 src/main.ts           Bootstraps the game and runs the fixed-step loop (20 ticks/s)

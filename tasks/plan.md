@@ -1,7 +1,7 @@
 # Implementation Plan: Post-MVP Phases
 
 Capability map: [`CAPABILITIES.md`](../CAPABILITIES.md)
-Current module spec: [`SPEC-units.md`](../SPEC-units.md) (AoE update)
+Current module spec: [`SPEC-field-units.md`](../SPEC-field-units.md) (AoE update)
 Task list (current module only): `tasks/todo.md`, written when the next module's spec is approved
 Finished modules: [`tasks/tile-layers/`](tile-layers/todo.md), [`tasks/tower-aiming/`](tower-aiming/todo.md), [`tasks/audio/`](audio/todo.md), [`tasks/map-gen/`](map-gen/todo.md), [`tasks/players/`](players/todo.md), [`tasks/game-server/`](game-server/todo.md) (awaiting the cross-machine probe and review), [`tasks/net-client/`](net-client/todo.md)
 Previous plan (MVP, complete except a Firefox/Safari smoke test): [`tasks/mvp/`](mvp/plan.md)
@@ -34,8 +34,9 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | 1e. AoE update (see [`CAPABILITIES.md`](../CAPABILITIES.md)) | `unit-core` | Built; browser checkpoint B and online check pending, done with `resources` (tasks in [`tasks/unit-core/`](unit-core/todo.md)) |
 | | `resources` | Done, browser-checked (tasks in [`tasks/resources/`](resources/todo.md)) |
 | | `town-economy` | Built; browser checkpoint B pending (tasks in [`tasks/town-economy/`](town-economy/todo.md)) |
-| | `units` | **Built (Tasks 1-7); browser checkpoint B pending** (tasks in [`tasks/todo.md`](todo.md)) |
-| | `field-units` | Outline |
+| | `units` | Built; browser checkpoint B pending (tasks in [`tasks/units/`](units/todo.md)) |
+| | `field-units` | **Spec approved; tasks in [`tasks/todo.md`](todo.md)** |
+| | `elite-units` | Knights and horsemen; after `enemy-targeting` and `wave-director` |
 | | `game-setup` | Spec drafted; deferred until `food` |
 | | `food` | Deferred |
 | 1c. Presentation | `audio` | Done |
@@ -824,6 +825,38 @@ T1 Guard kinds and buildings
 
 - **A (after T5):** in tests, paladins hold a gap with archers behind and goblins die there; a swordsman runs out and back.
 - **B (after T6):** browser check, with `town-economy`'s still-open checkpoint B alongside.
+
+## AoE update: field-units
+
+Spec: [`SPEC-field-units.md`](../SPEC-field-units.md) (approved). Tasks: [`tasks/todo.md`](todo.md). Replaces the older `field-units` outline in the Armies section.
+
+### Architecture decisions
+
+- **Look first.** The notch goes, doors and building symbols come in, before the new buildings, so every building added after looks right from the start.
+- **One door rule.** `spawnTileOf` decides where units come out, for spawning and for drawing alike; every spawner is directional so `R` picks the door.
+- **Paths get two options, not a new pathfinder.** `findPath` takes `exploredBy` (only explored tiles) and `breach` (rival structures crossable at a cost). With `breach` it runs Dijkstra on a typed-array heap; it still counts as one search against the per-tick budget.
+- **Behaviours in their own file.** `fieldUnits.ts` holds the frontier, the known-rival-keep check, and the scout and attack behaviours, registered in the units behaviour table, reusing `attackNearest`, shots and `walkTowards`.
+
+### Dependency graph
+
+```
+T1 No notch; doors; every spawner directional; door markers
+T2 Building symbols
+T3 Explored-only and breaching paths
+ └─ T5 Scouts ──┐
+T4 Buildings, unit kinds, Offence tab ─┤
+                └─ T6 Hunt and patrol
+                    └─ T7 PvP siege
+                        └─ T8 Hover words
+                            └─ T9 Determinism, timing, docs
+```
+
+T1, T2, T3 and T4 can go in any order. T5 needs T3 and T4.
+
+### Checkpoints
+
+- **A (after T7):** in tests, scouts explore the map; soldiers hunt and kill a visible goblin; in PvP they break the weakest wall of a ringed keep and damage the keep.
+- **B (after T8):** browser: markers and symbols, scouts, hunting in Endless, and a PvP siege with two browsers (plus the open `town-economy` and `units` checks).
 
 ## Later modules: provisional outlines
 
