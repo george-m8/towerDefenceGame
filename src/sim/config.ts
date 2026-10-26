@@ -307,6 +307,38 @@ export const STRUCTURES = {
     enclosing: true,
     sight: { inner: 2, outer: 3 }, // a little further than a wall: you can look out through it
   },
+  // Guard buildings: free guards up to `quota`, one every `intervalSeconds`, holding the tiles
+  // in front of the building (its facing, set with R). See sim/guards.ts.
+  guardhouse: {
+    name: "Guardhouse",
+    layer: "base",
+    cost: 60,
+    maxHp: 60,
+    blocksMovement: true,
+    directional: true,
+    sight: { inner: 4, outer: 6 },
+    spawner: { unit: "swordsman", quota: 3, intervalSeconds: 30 },
+  },
+  archeryPost: {
+    name: "Archery post",
+    layer: "base",
+    cost: 70,
+    maxHp: 50,
+    blocksMovement: true,
+    directional: true,
+    sight: { inner: 4, outer: 6 },
+    spawner: { unit: "archer", quota: 3, intervalSeconds: 30 },
+  },
+  paladinHall: {
+    name: "Paladin hall",
+    layer: "base",
+    cost: 90,
+    maxHp: 80,
+    blocksMovement: true,
+    directional: true,
+    sight: { inner: 4, outer: 6 },
+    spawner: { unit: "paladin", quota: 3, intervalSeconds: 30 },
+  },
   ruin: {
     name: "Ruin",
     layer: "base",
@@ -331,7 +363,7 @@ export const BURST_DELAY_TICKS = 6;
 export const BURST_TICKS = 24;
 
 /** What a unit does each tick (see sim/units.ts). */
-export type UnitBehaviourId = "hold" | "gather";
+export type UnitBehaviourId = "hold" | "gather" | "guard";
 
 /** A kind of the player's own unit. Units spawn free from their building (see SpawnerStats). */
 export interface UnitKind {
@@ -351,6 +383,10 @@ export interface UnitKind {
   gathers?: ResourceTerrain[];
   /** Workers: what hover info says while it works ("chopping"). */
   working?: string;
+  /** Guards: tiles from its spot it will chase an enemy (0 = never leaves its spot). */
+  chase?: number;
+  /** Ranged units: the projectile drawn for each shot (melee units have none). */
+  projectile?: ProjectileKind;
 }
 
 export const UNIT_KINDS = {
@@ -366,6 +402,47 @@ export const UNIT_KINDS = {
     speed: 1,
     sight: { inner: 3, outer: 5 },
     behaviour: "hold",
+  },
+  // Guards, spawned by guard buildings: they hold the tiles in front of it (see sim/guards.ts).
+  swordsman: {
+    glyph: "/",
+    name: "Swordsman",
+    hp: 60,
+    armour: 1,
+    damage: 8,
+    attackInterval: 1,
+    range: 1,
+    speed: 1.3,
+    sight: { inner: 4, outer: 6 },
+    behaviour: "guard",
+    chase: 3,
+  },
+  archer: {
+    glyph: ")",
+    name: "Archer",
+    hp: 35,
+    armour: 0,
+    damage: 6,
+    attackInterval: 1.2,
+    range: 4,
+    speed: 1,
+    sight: { inner: 5, outer: 7 },
+    behaviour: "guard",
+    chase: 0,
+    projectile: "arrow",
+  },
+  paladin: {
+    glyph: "]",
+    name: "Paladin",
+    hp: 120,
+    armour: 4,
+    damage: 5,
+    attackInterval: 1.2,
+    range: 1,
+    speed: 0.8,
+    sight: { inner: 3, outer: 5 },
+    behaviour: "guard",
+    chase: 0,
   },
   // Workers, spawned by gatherer buildings. They work a resource every `attackInterval`
   // seconds (how often gold comes in); RESOURCES says what a tile pays and how long it takes.

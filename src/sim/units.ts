@@ -26,6 +26,7 @@ type Behaviour = (state: GameState, unit: Unit) => void;
 const BEHAVIOURS: Record<UnitBehaviourId, Behaviour> = {
   hold,
   gather,
+  guard: hold, // holding their spot comes with sim/guards.ts
 };
 
 /**

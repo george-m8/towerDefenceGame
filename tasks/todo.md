@@ -8,11 +8,13 @@ Standard verification for every task: `npm run typecheck && npm test && npm run 
 
 `UNIT_KINDS` rows swordsman `/`, archer `)` and paladin `]` (behaviour `guard`, `chase` 3 / 0 / 0, archer `projectile: "arrow"`); `STRUCTURES` rows guardhouse `G`, archeryPost `A` and paladinHall `K`: directional spawners, quota 3, every 30 s, blocking, in the Defence tab. Until Task 3, `guard` behaves like `hold`.
 
-- [ ] Each building spawns its own guard kind, up to 3, one every 30 s, once built
-- [ ] They're placed facing a direction (like towers) and are in the Defence tab
-- [ ] Selling one leaves its guards alive with no home
+- [x] Each building spawns its own guard kind, up to 3, one every 30 s, once built
+- [x] They're placed facing a direction (like towers) and are in the Defence tab
+- [x] Selling one leaves its guards alive with no home
 
 Files: `src/sim/config.ts`, `src/sim/units.ts`, `src/ui/state.ts`, `src/render/palette.ts`, `tests/sim/guards.test.ts` (new). Size: M. Depends on: none.
+
+Built: guard buildings show a facing notch like cannons, and the placing preview only highlights a target tile for traps (it had assumed every directional structure was wall spikes).
 
 ## Task 2: Guard spots
 

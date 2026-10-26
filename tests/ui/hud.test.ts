@@ -186,6 +186,9 @@ describe("build tabs", () => {
       "bridge",
       "watchtower",
       "gate",
+      "guardhouse",
+      "archeryPost",
+      "paladinHall",
       "sell",
     ]);
     expect(tools("civic")).toEqual([
