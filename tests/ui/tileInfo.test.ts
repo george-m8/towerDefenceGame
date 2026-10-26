@@ -149,6 +149,24 @@ describe("fog hover info", () => {
     expect(describeTile(state, { x: 20, y: 10 })).toContain("Farmland - not joined to a farmhouse");
   });
 
+  it("says whether a guard is guarding, fighting, chasing or returning", () => {
+    const state = createGame(1, { blankMap: true, fog: false, players: ["Ann"] });
+    spawnUnit(state, "paladin", 1, 5, 5);
+    spawnUnit(state, "paladin", 1, 5, 10);
+    spawnEnemy(state, 6, 10).speed = 0;
+    const chaser = spawnUnit(state, "swordsman", 1, 20, 5)!;
+    chaser.x = 20.5;
+    spawnEnemy(state, 23, 5).speed = 0;
+    const walker = spawnUnit(state, "archer", 1, 30, 5)!;
+    walker.x = 30.5;
+
+    const line = (x: number, y: number) => describeTile(state, { x, y }).join("\n");
+    expect(line(5, 5)).toContain("Paladin (Ann's), HP 120 / 120, guarding");
+    expect(line(5, 10)).toContain("Paladin (Ann's), HP 120 / 120, fighting");
+    expect(line(21, 5)).toContain("Swordsman (Ann's), HP 60 / 60, chasing");
+    expect(line(31, 5)).toContain("Archer (Ann's), HP 35 / 35, returning");
+  });
+
   it("the price line says why you can't build on unexplored land", () => {
     const state = createGame(1, { blankMap: true });
     expect(priceLine(state, "wall", { x: 0, y: 0 })).toBe("Wall: can't build on unexplored land");

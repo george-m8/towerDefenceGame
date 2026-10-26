@@ -11,7 +11,7 @@ import {
 } from "../sim/config";
 import { farmFields, farmhouseFor } from "../sim/farms";
 import { resourceAt } from "../sim/resources";
-import { workableFrom } from "../sim/units";
+import { guardActivity, workableFrom } from "../sim/units";
 import { playerName } from "../sim/players";
 import {
   KEEP,
@@ -215,9 +215,10 @@ export function hoverText(state: GameState, ui: UiState): string {
   return lines.join("\n");
 }
 
-/** What a worker is up to: its work ("chopping"), walking, or idle. Other units say nothing. */
+/** What a unit is up to: a guard's activity, a worker's work ("chopping"), walking or idle. */
 function unitDoing(state: GameState, unit: Unit): string | null {
   const kind: UnitKind = UNIT_KINDS[unit.kind];
+  if (kind.behaviour === "guard") return guardActivity(state, unit);
   if (!kind.gathers) return null;
   const between = !Number.isInteger(unit.x) || !Number.isInteger(unit.y);
   if (!between && workableFrom(state, unit.x, unit.y, kind.gathers)) return kind.working ?? null;
