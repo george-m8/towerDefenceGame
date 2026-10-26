@@ -28,13 +28,13 @@ Files: `src/sim/config.ts`, `src/sim/farms.ts` (new), `src/sim/economy.ts`, `src
 
 When an enemy moves onto a new tile, farmland there takes damage equal to the enemy's weight (broken fields burst like other structures). Units don't trample.
 
-- [ ] A weight-0 enemy crossing a field leaves it whole; a heavier one takes its weight off per step and enough steps remove it
-- [ ] A unit walking over a field leaves it whole
-- [ ] A trampled-away field stops counting, and fields joined only through it come loose
+- [x] A weight-0 enemy crossing a field leaves it whole; a heavier one takes its weight off per step and enough steps remove it
+- [x] A unit walking over a field leaves it whole
+- [x] A trampled-away field stops counting, and fields joined only through it come loose
 
 Files: `src/sim/enemies.ts`, `src/sim/farms.ts`, `tests/sim/farms.test.ts`. Size: S. Depends on: 1, 2.
 
-**Checkpoint A:** a full farm earns 8 fields' worth; a golem wears a field row away and the far fields come loose; goblins leave them alone.
+**Checkpoint A:** a full farm earns 8 fields' worth; a golem wears a field row away and the far fields come loose; goblins leave them alone. Done: covered by the cap, trampling and loose-field tests in `tests/sim/farms.test.ts`.
 
 ## Task 4: Shop
 

@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { STRUCTURES, TICK_RATE, type FarmStats } from "../../src/sim/config";
+import { ENEMY_KINDS, STRUCTURES, TICK_RATE, type FarmStats } from "../../src/sim/config";
 import { incomePerMinute } from "../../src/sim/economy";
+import { spawnEnemy } from "../../src/sim/enemies";
 import { enclosureAt, NONE } from "../../src/sim/enclosures";
 import { tick } from "../../src/sim/game";
 import { blocksAt, canBuild, placeStructure } from "../../src/sim/grid";
 import { farmFields } from "../../src/sim/farms";
 import { placeResource } from "../../src/sim/resources";
+import { spawnUnit } from "../../src/sim/units";
 import type { GameState, PlayerId, Point, Structure } from "../../src/sim/types";
 import { createGameWithoutWaves, goldOf, ring } from "./helpers";
 
@@ -110,5 +112,67 @@ describe("farmland", () => {
     expect(canBuild(state, 1, "farmland", 6, 6).ok).toBe(true);
     fields(state, [{ x: 6, y: 6 }]);
     expect(canBuild(state, 1, "archer", 6, 6).ok).toBe(false);
+  });
+});
+
+describe("trampling", () => {
+  /** A tile in the keep's row, `dx` tiles to its left: enemies there walk straight east. */
+  const lane = (state: GameState, dx: number) => ({
+    x: state.keeps[0].x - dx,
+    y: state.keeps[0].y + 1,
+  });
+
+  /** Runs until every enemy has gone past x (or a time limit). */
+  function crossed(state: GameState, x: number) {
+    for (let i = 0; i < 60 * TICK_RATE && state.enemies.some((e) => e.x <= x); i++) tick(state);
+  }
+
+  it("a light enemy walks over a field without harming it", () => {
+    const state = createGameWithoutWaves();
+    const p = lane(state, 20);
+    const [field] = fields(state, [{ x: p.x + 2, y: p.y }]);
+    expect(ENEMY_KINDS.goblin.weight).toBe(0);
+    spawnEnemy(state, p.x, p.y);
+    crossed(state, field.x);
+    expect(field.hp).toBe(field.maxHp);
+  });
+
+  it("a heavier enemy takes its weight off each field it steps on, and enough steps remove one", () => {
+    const state = createGameWithoutWaves();
+    const p = lane(state, 20);
+    const [field] = fields(state, [{ x: p.x + 2, y: p.y }]);
+    spawnEnemy(state, p.x, p.y, { kind: "golem" });
+    crossed(state, field.x);
+    expect(field.hp).toBe(field.maxHp - ENEMY_KINDS.golem.weight);
+
+    const steps = Math.ceil(field.hp / ENEMY_KINDS.golem.weight);
+    for (let i = 0; i < steps; i++) spawnEnemy(state, p.x - i * 2, p.y, { kind: "golem" });
+    crossed(state, field.x);
+    expect(state.structures[field.id]).toBeUndefined();
+  });
+
+  it("units don't trample", () => {
+    const state = createGameWithoutWaves();
+    const [field] = fields(state, [{ x: 7, y: 5 }]);
+    const unit = spawnUnit(state, "militia", 1, 5, 5)!;
+    unit.goal = { x: 9, y: 5 };
+    run(state, 6 * TICK_RATE);
+    expect(unit.x).toBe(9);
+    expect(field.hp).toBe(field.maxHp);
+  });
+
+  it("a trampled-away field stops counting, and fields joined only through it come loose", () => {
+    const state = createGameWithoutWaves();
+    const p = lane(state, 20);
+    const house = farmhouse(state, p.x + 2, p.y - 1);
+    const [first] = fields(state, row(p.x + 2, p.x + 4, p.y));
+    expect(counted(state, house)).toHaveLength(3);
+
+    first.hp = 1;
+    spawnEnemy(state, p.x, p.y, { kind: "golem" });
+    for (let i = 0; i < 30 * TICK_RATE && state.structures[first.id]; i++) tick(state);
+
+    expect(state.structures[first.id]).toBeUndefined();
+    expect(counted(state, house)).toHaveLength(0);
   });
 });
