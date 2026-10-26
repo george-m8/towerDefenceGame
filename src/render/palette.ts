@@ -28,9 +28,8 @@ export const CONSTRUCTION_ALPHA = 0.45;
 export const BUILD_BORDER_PX = 3;
 /** From this much of the longest build time on, the build-time border turns orange. */
 export const BUILD_BORDER_LONG = 0.75;
-export const GLYPH_FONT = `bold ${TILE_SIZE - 4}px Menlo, Consolas, monospace`;
-/** Slightly smaller font so a two-digit HP fits inside one tile. */
-export const KEEP_HP_FONT = `bold ${TILE_SIZE - 6}px Menlo, Consolas, monospace`;
+/** The map's font: GNU Unifont (fonts/Unifont, declared in styles.css) at its native 16px. */
+export const GLYPH_FONT = `${TILE_SIZE - 4}px Unifont, monospace`;
 
 /** Each enemy kind's glyph colour. Variants never change it; they change the glyph size. */
 export const ENEMY_COLOURS: Record<EnemyKindId, string> = {
@@ -59,7 +58,7 @@ export const ENEMY_GLYPH_SCALE: Record<EnemyVariant["size"], number> = {
 };
 
 export function enemyFont(size: EnemyVariant["size"]): string {
-  return `bold ${Math.round((TILE_SIZE - 4) * ENEMY_GLYPH_SCALE[size])}px Menlo, Consolas, monospace`;
+  return `${Math.round((TILE_SIZE - 4) * ENEMY_GLYPH_SCALE[size])}px Unifont, monospace`;
 }
 
 export const COLOURS = {
@@ -140,8 +139,8 @@ export const FOG = {
     { tiles: 1, opacity: 0.5, height: 5 },
     { tiles: 1, opacity: 0.8, height: 9 },
   ],
-  /** Higher than the tallest block (the keep, 12), so nothing pokes through. */
-  unexplored: { opacity: 1, height: 14 },
+  /** Higher than the tallest block (the keep's corners, 15), so nothing pokes through. */
+  unexplored: { opacity: 1, height: 17 },
 };
 
 export const GLYPHS: Record<StructureKind, string> = {
@@ -258,9 +257,11 @@ export const TERRAIN_STYLES: Record<
   river: { bg: "#2d5f8a", glyph: "~", fg: "#8fc3ea" },
   sea: { bg: "#1a3550", glyph: "≈", fg: "#4f7fae" },
   rock: { bg: "#4a4a4a", glyph: "o", fg: "#9a9a9a" },
-  tree: { bg: "#1f3d1f", glyph: "♣", fg: "#5fae5f" },
+  // Unifont's evergreen tree; the text selector (FE0E) keeps it from turning into an emoji.
+  tree: { bg: "#1f3d1f", glyph: "\u{1F332}\uFE0E", fg: "#5fae5f" },
   goldRock: { bg: "#4a4a4a", glyph: "o", fg: "#e3c04d" },
-  berries: { bg: "#2f5a2a", glyph: "b", fg: "#e2453c" },
+  // Unifont's blueberries, kept as text like the tree.
+  berries: { bg: "#2f5a2a", glyph: "\u{1FAD0}\uFE0E", fg: "#7a3b4f" },
 };
 
 /** The texture over each kind of terrain (see render/textures.ts). */

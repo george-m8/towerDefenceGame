@@ -267,7 +267,7 @@ body {
   align-items: center;
   gap: 1px;
   transform: translateX(-50%);
-  font-size: 18px;
+  font-size: 22px;
   line-height: 1;
   pointer-events: none;
   white-space: nowrap;
@@ -541,6 +541,24 @@ a.button {
   margin: 10px auto;
   width: max-content;
   text-align: left;
+}
+
+/* The map's font, GNU Unifont, cut down to Latin and the symbols the game draws with:
+   pyftsubset unifont-18.0.01.otf --unicodes="U+0020-007E,U+00A0-017F,U+2000-206F,U+20A0-20CF,
+   U+2100-214F,U+2190-23FF,U+2500-27BF" --layout-features='*' --name-IDs='*' --notdef-outline
+   --no-prune-unicode-ranges --flavor=woff2 --output-file=fonts/Unifont/Unifont-Regular.woff2 */
+@font-face {
+  font-family: "Unifont";
+  src: url("../fonts/Unifont/Unifont-Regular.woff2") format("woff2");
+  font-display: block;
+}
+/* The tree and berries, from Unifont's upper planes (unifont_upper-18.0.01.otf, same pyftsubset
+   options with --unicodes="U+1F332,U+1FAD0" --output-file=fonts/Unifont/UnifontUpper-Regular.woff2). */
+@font-face {
+  font-family: "Unifont";
+  src: url("../fonts/Unifont/UnifontUpper-Regular.woff2") format("woff2");
+  font-display: block;
+  unicode-range: U+1F332, U+1FAD0;
 }
 
 /* Intro splash */
@@ -884,10 +902,7 @@ a.button {
   justify-content: center;
   background: #2b2418;
   color: #777;
-  font:
-    bold 22px Menlo,
-    Consolas,
-    monospace;
+  font: 32px/1 Unifont, monospace; /* as on the map */
 }
 
 .journal-name {

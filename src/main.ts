@@ -1,5 +1,6 @@
 import { GRID_HEIGHT, GRID_WIDTH } from "./sim/config";
 import { createRenderer } from "./render/canvas";
+import { GLYPH_FONT, TERRAIN_STYLES } from "./render/palette";
 import { centerOn, panBy, setViewport, tilePixels, zoomBy } from "./ui/camera";
 import { ZOOM_STEP } from "./ui/input";
 import { createMinimap } from "./ui/minimap";
@@ -65,6 +66,9 @@ const dispatch = (command: Command) => {
 };
 const canvas = element<HTMLCanvasElement>("#map");
 const renderer = createRenderer(canvas);
+// Nothing on the page uses the map's font, so ask for it; the map draws in it once it's here.
+void document.fonts.load(GLYPH_FONT);
+void document.fonts.load(GLYPH_FONT, TERRAIN_STYLES.tree.glyph); // the tree's and berries' file
 const minimap = createMinimap(element<HTMLCanvasElement>("#minimap"), ui);
 /** Arrow-key panning speed, in screen pixels per second (so it feels the same at any zoom). */
 const PAN_PIXELS_PER_SECOND = 900;
