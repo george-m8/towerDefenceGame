@@ -44,10 +44,22 @@ function rememberName(name: string) {
   }
 }
 
+/** A hand-made map Endless can be played on (from maps/), as the mode screen lists it. */
+export interface MapChoice {
+  name: string;
+  title: string;
+  size: MapSize;
+}
+
 /** Shows the start screen in `root` and calls `onChoose` once with the player's choice. */
 export function showStartScreen(
   root: HTMLElement,
-  options: { room?: string; onChoose: (intent: Exclude<PageIntent, { mode: "menu" }>) => void },
+  options: {
+    room?: string;
+    /** Hand-made Endless maps to offer solo, besides a generated one. */
+    maps?: MapChoice[];
+    onChoose: (intent: Exclude<PageIntent, { mode: "menu" }>) => void;
+  },
 ) {
   root.innerHTML = `
     <div class="window dialog-window start-window">
@@ -108,9 +120,10 @@ export function showStartScreen(
     if (!chosen) return;
     showModeScreen(root, {
       online,
+      maps: options.maps ?? [],
       onBack: () => showStartScreen(root, { ...options, room: room() }),
-      onChoose: (game, size) => {
-        if (!online) return choose({ mode: "offline", size });
+      onChoose: (game, size, map) => {
+        if (!online) return choose(map ? { mode: "offline", map } : { mode: "offline", size });
         choose(
           game === "endless"
             ? { mode: "create", name: chosen, size }
@@ -134,17 +147,32 @@ export function showStartScreen(
 
 /**
  * Picks a map size and a game mode, each mode with a short description. Online-only modes are
- * greyed out solo.
+ * greyed out solo. Solo, Endless can be played on a hand-made map instead of a generated one
+ * (online rooms can't load them yet), which brings its own size.
  */
 function showModeScreen(
   root: HTMLElement,
   options: {
     online: boolean;
+    maps: MapChoice[];
     onBack: () => void;
-    onChoose: (mode: GameMode, size: MapSize) => void;
+    onChoose: (mode: GameMode, size: MapSize, map?: string) => void;
   },
 ) {
   let size: MapSize = DEFAULT_MAP_SIZE;
+  const offerMaps = !options.online && options.maps.length > 0;
+  const mapChoice = offerMaps
+    ? `
+      <label class="field map-choice">
+        <span>Endless map</span>
+        <select name="map">
+          <option value="">A new generated map</option>
+          ${options.maps
+            .map((m) => `<option value="${m.name}">${escapeHtml(m.title)} (${m.size})</option>`)
+            .join("")}
+        </select>
+      </label>`
+    : "";
   root.innerHTML = `
     <div class="window dialog-window start-window">
       <p class="dialog-title">Game mode</p>
@@ -164,7 +192,7 @@ function showModeScreen(
             <strong>${m.name}</strong>
             <span>${m.description}</span>
             ${m.online && !options.online ? "<em>Needs two players: create a room.</em>" : ""}
-          </button>`,
+          </button>${m.mode === "endless" ? mapChoice : ""}`,
         ).join("")}
       </div>
       <button class="button" data-action="back">Back</button>
@@ -181,9 +209,20 @@ function showModeScreen(
     });
   }
   showSize();
+  const mapSelect = root.querySelector<HTMLSelectElement>('select[name="map"]');
+  // A hand-made map has its own size, so the size buttons only matter for a generated one.
+  mapSelect?.addEventListener("change", () => {
+    for (const b of sizeButtons) b.disabled = mapSelect.value !== "";
+  });
   for (const card of root.querySelectorAll<HTMLButtonElement>("[data-mode]")) {
-    card.addEventListener("click", () => options.onChoose(card.dataset.mode as GameMode, size));
+    card.addEventListener("click", () => {
+      const mode = card.dataset.mode as GameMode;
+      const map = mode === "endless" ? mapSelect?.value || undefined : undefined;
+      options.onChoose(mode, size, map);
+    });
   }
   root.querySelector('[data-action="back"]')!.addEventListener("click", options.onBack);
   root.querySelector<HTMLButtonElement>("[data-mode]:not([disabled])")?.focus();
 }
+
+const escapeHtml = (text: string) => text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);

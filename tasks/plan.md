@@ -1,7 +1,7 @@
 # Implementation Plan: Post-MVP Phases
 
 Capability map: [`CAPABILITIES.md`](../CAPABILITIES.md)
-Current module spec: [`SPEC-field-units.md`](../SPEC-field-units.md) (AoE update)
+Current module spec: [`SPEC-map-editor.md`](../SPEC-map-editor.md) (editors)
 Task list (current module only): `tasks/todo.md`, written when the next module's spec is approved
 Finished modules: [`tasks/tile-layers/`](tile-layers/todo.md), [`tasks/tower-aiming/`](tower-aiming/todo.md), [`tasks/audio/`](audio/todo.md), [`tasks/map-gen/`](map-gen/todo.md), [`tasks/players/`](players/todo.md), [`tasks/game-server/`](game-server/todo.md) (awaiting the cross-machine probe and review), [`tasks/net-client/`](net-client/todo.md)
 Previous plan (MVP, complete except a Firefox/Safari smoke test): [`tasks/mvp/`](mvp/plan.md)
@@ -35,13 +35,17 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | | `resources` | Done, browser-checked (tasks in [`tasks/resources/`](resources/todo.md)) |
 | | `town-economy` | Done, browser-checked (tasks in [`tasks/town-economy/`](town-economy/todo.md)) |
 | | `units` | Done, browser-checked (tasks in [`tasks/units/`](units/todo.md)) |
-| | `field-units` | Done, browser-checked (tasks in [`tasks/todo.md`](todo.md)) |
+| | `field-units` | Done, browser-checked (tasks in [`tasks/field-units/`](field-units/todo.md)) |
 | | `elite-units` | Knights and horsemen; after `enemy-targeting` and `wave-director` |
 | | `game-setup` | Spec drafted; deferred until `food` |
 | | `food` | Deferred |
 | 1c. Presentation | `audio` | Done |
 | | `music-packs` | Done (tasks in [`tasks/music-packs/`](music-packs/todo.md)) |
 | | `music-director` | Outline only (see below); intro hand-over now part of `music-packs` |
+| 1f. Editors and levels (see below) | `map-editor` | **Built; browser-checked headless, hand checks pending (tasks in [`tasks/todo.md`](todo.md))** |
+| | `wave-editor` | Next: `.wave` files |
+| | `loadout-editor` | After: `.loadout` files |
+| | `levels` | A level = a `.map`, a `.wave` and a `.loadout`; the level picker and online play |
 | 2. Setup and modes | `game-setup` | Moved to 1e (deferred) |
 | | `mode-ramparts` | Spec needed |
 | 3. Economy | `resources`, `town-economy` | Moved to 1e |
@@ -828,7 +832,7 @@ T1 Guard kinds and buildings
 
 ## AoE update: field-units
 
-Spec: [`SPEC-field-units.md`](../SPEC-field-units.md) (approved). Tasks: [`tasks/todo.md`](todo.md). Replaces the older `field-units` outline in the Armies section.
+Spec: [`SPEC-field-units.md`](../SPEC-field-units.md) (approved). Tasks: [`tasks/field-units/`](field-units/todo.md). Replaces the older `field-units` outline in the Armies section.
 
 ### Architecture decisions
 
@@ -929,6 +933,22 @@ Moved to the Armies plan above (now split into `units` and `field-units`).
 2. Factions and ownership on every entity; one flow field per target keep
 3. AI barbarian scripts: build a keep, walls, towers and units, then send attacks
 4. Elimination: an eliminated player's walls stay on the map as neutral ruins
+
+## Editors and levels: map-editor
+
+Spec: [`SPEC-map-editor.md`](../SPEC-map-editor.md) (approved). Tasks: [`tasks/todo.md`](todo.md).
+
+A **level** will be three files: a `.map` (this module), a `.wave` and a `.loadout` (the next two editors). The hosted game ships with them, and players choose from those; the `levels` module adds the picker and online play.
+
+### Architecture decisions
+
+- **The format first, in the sim.** `src/sim/mapFile.ts` parses, serializes and validates `.map` files with no DOM, so the game server can use it later. `createGame(seed, { map })` builds a game from one.
+- **Files through a Vite plugin.** `tools/maps.ts` lists `maps/*.map` as `virtual:maps` (client and server builds), and only the dev server can save.
+- **The editor is pure state plus a thin page.** Every edit is a function on a `MapFile` with undo, tested without a browser; the page draws through the game's renderer and uses the game's keys.
+
+### Order
+
+Format → game from a map → files plugin → editor model → editor page → file dialogs → Play → docs.
 
 ## Open questions
 

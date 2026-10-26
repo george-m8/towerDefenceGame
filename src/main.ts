@@ -19,7 +19,7 @@ import { loadPointerSettings, pointerCursor, savePointerSettings } from "./ui/po
 import { createGameOverDialog } from "./ui/gameOver";
 import { createOnlinePanel } from "./ui/players";
 import { createWaitingRoom } from "./ui/waitingRoom";
-import { rememberedName, showStartScreen } from "./ui/startScreen";
+import { rememberedName, showStartScreen, type MapChoice } from "./ui/startScreen";
 import { showIntro } from "./ui/intro";
 import { createWebAudioEngine, unlockOnFirstGesture } from "./audio/engine";
 import { loadAudioSettings, saveAudioSettings } from "./audio/settings";
@@ -42,6 +42,12 @@ import { SONGS } from "./audio/songs";
 import musicPacks from "virtual:music-packs";
 import { liveVoiceCount } from "./audio/synth";
 import { showNotice } from "./ui/notice";
+import bundledMaps from "virtual:maps";
+import { createEditor, keepWalls, type Editor } from "./editor/editor";
+import { createFileActions } from "./editor/files";
+import { newMap } from "./editor/model";
+import { validateMap } from "./sim/mapFile";
+import { createToolbar } from "./editor/toolbar";
 import type { Command, DebugOption, GameState, PlayerId } from "./sim/types";
 
 const element = <T extends HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
@@ -55,6 +61,9 @@ let session: Session | null = null;
 let network: NetworkSession | null = null;
 /** Online-only parts of the page, updated every frame. */
 const onlineViews: { update(state: GameState | null): void }[] = [];
+/** The map editor (?editor), and whether it has the map (false while Play is running). */
+let editing: { editor: Editor; toolbar: ReturnType<typeof createToolbar> } | null = null;
+let editorActive = false;
 
 /** Types of commands sent, oldest first, waiting for their results (to pick a sound). */
 const awaitingResults: string[] = [];
@@ -158,14 +167,21 @@ const gameOver = createGameOverDialog(element("#game-over"), () => {
   session?.restart();
   ui.tool = null;
 });
-bindInput(canvas, ui, dispatch, () => session?.state ?? null, {
-  journal: () => journalView.toggle(),
-  escape: () => {
-    if (!journalView.isOpen) return false;
-    journalView.close();
-    return true;
+bindInput(
+  canvas,
+  ui,
+  dispatch,
+  () => session?.state ?? (editorActive ? editing!.editor.state : null),
+  {
+    playing: () => !editorActive,
+    journal: () => journalView.toggle(),
+    escape: () => {
+      if (!journalView.isOpen) return false;
+      journalView.close();
+      return true;
+    },
   },
-});
+);
 
 // Sound: silent until the first click or key press (browsers require a gesture).
 const audio = createWebAudioEngine();
@@ -233,7 +249,10 @@ function followMusic() {
 /** Starts playing: offline, or in a room on the game server. */
 function startSession(intent: Exclude<PageIntent, { mode: "menu" }>) {
   if (intent.mode === "offline") {
-    session = createLocalSession(Date.now() >>> 0, undefined, { fog, size: intent.size });
+    const map = intent.map ? bundledMaps[intent.map] : undefined;
+    session = map
+      ? createLocalSession(map.seed, () => map.seed, { fog, map }) // Restart replays the map
+      : createLocalSession(Date.now() >>> 0, undefined, { fog, size: intent.size });
   } else {
     network = createNetworkSession(
       serverUrl(location),
@@ -254,15 +273,89 @@ function startSession(intent: Exclude<PageIntent, { mode: "menu" }>) {
     );
     session = network;
   }
-  session.onResult = (result) => {
+  listen(session);
+}
+
+/** The hand-made Endless maps in maps/ with nothing wrong with them, for the mode screen. */
+function playableMaps(): MapChoice[] {
+  return Object.entries(bundledMaps)
+    .filter(([, map]) => map.mode === "endless" && validateMap(map).errors.length === 0)
+    .map(([name, map]) => ({ name, title: map.title, size: map.size }));
+}
+
+/** Shows refusals and plays the sound for each command's result. */
+function listen(playing: Session) {
+  playing.onResult = (result) => {
     if (!result.ok) showMessage(ui, result.reason);
     const sound = soundForResult(awaitingResults.shift() ?? "", result);
     if (sound) cues.play(sound);
   };
 }
 
+/** The map editor: ?editor for a new map, ?editor=<name> to open maps/<name>.map. */
+function startEditor() {
+  const asked = new URLSearchParams(location.search).get("editor");
+  const name = asked && bundledMaps[asked] ? asked : null;
+  const start = name
+    ? bundledMaps[name]
+    : newMap("Untitled", "endless", "M", (Math.random() * 1e6) >>> 0);
+  document.body.classList.add("editing");
+  editorActive = true;
+  const editor = createEditor(canvas, ui, start, { active: () => editorActive, play: playMap });
+  const files = createFileActions(
+    element("#editor-dialog"),
+    { name, map: start },
+    {
+      current: () => editor.map,
+      load: (map) => {
+        editor.load(map);
+        centredFor = "";
+      },
+      say: (message) => editor.say(message),
+    },
+  );
+  const toolbar = createToolbar(element("#editor"), editor, ui, files, {
+    undo: () => editor.undo(),
+    redo: () => editor.redo(),
+    keepWalls: () => keepWalls(editor),
+    play: playMap,
+  });
+  element("#editor-back").addEventListener("click", backToEditor);
+  editing = { editor, toolbar };
+}
+
+/** Plays the map being edited: a normal single-player game, with today's waves and gold. */
+function playMap() {
+  if (!editing || !editorActive) return;
+  const { editor } = editing;
+  const { errors } = editor.problems;
+  if (errors.length > 0) {
+    editor.say(`Fix first: ${errors[0]}`);
+    return;
+  }
+  const map = editor.map;
+  editorActive = false;
+  ui.tool = null;
+  editor.item = null;
+  document.body.classList.replace("editing", "testing");
+  session = createLocalSession(map.seed, () => map.seed, { fog, map });
+  listen(session);
+  centredFor = "";
+}
+
+/** Ends the game and goes back to the design, as it was (undo history too). */
+function backToEditor() {
+  if (!editing) return;
+  session = null;
+  editorActive = true;
+  ui.tool = null;
+  document.body.classList.replace("testing", "editing");
+}
+
 const intent = readJoinIntent(location.search);
-if (import.meta.env.DEV && new URLSearchParams(location.search).has("soundtest")) {
+if (new URLSearchParams(location.search).has("editor")) {
+  startEditor();
+} else if (import.meta.env.DEV && new URLSearchParams(location.search).has("soundtest")) {
   showSoundTest(element("#intro"), audio);
 } else if (intent.mode !== "menu") {
   startSession(intent);
@@ -274,7 +367,11 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has("soundtest")
   // Dismissing the intro is the first gesture, so audio is unlocked by then.
   showIntro(element("#intro"), () => {
     void music.play("intro");
-    showStartScreen(element("#start"), { room: intent.room, onChoose: startSession });
+    showStartScreen(element("#start"), {
+      room: intent.room,
+      maps: playableMaps(),
+      onChoose: startSession,
+    });
   });
 }
 
@@ -283,7 +380,25 @@ let lastFrame = performance.now();
 function frame(now: number) {
   const seconds = Math.min(0.1, (now - lastFrame) / 1000);
   lastFrame = now;
-  if (session) {
+  if (editing && editorActive) {
+    const { editor, toolbar } = editing;
+    editor.update(now);
+    const state = editor.state;
+    fitCanvas(state.width, state.height);
+    // Opening the editor, New or Open (which clear centredFor): start looking at the keep.
+    if (centredFor !== "editor") {
+      ui.camera.zoom = 1;
+      const keep = state.keeps[0];
+      if (keep) centerOn(ui.camera, keep.x + keep.size / 2, keep.y + keep.size / 2);
+      else centerOn(ui.camera, state.width / 2, state.height / 2);
+      centredFor = "editor";
+    }
+    panWithKeys(seconds);
+    renderer.render(state, ui);
+    editor.drawOverlay(canvas.getContext("2d")!, ui);
+    minimap.update(state);
+    toolbar.update(now);
+  } else if (session) {
     session.frame(now);
     ui.playerId = session.playerId;
     const state = session.state;

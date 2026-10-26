@@ -1,11 +1,12 @@
 import { defineConfig } from "vitest/config";
 import { DEFAULT_PORT, WS_PATH } from "./server/config";
+import { maps } from "./tools/maps";
 import { musicPacks } from "./tools/musicPacks";
 
 const serverPort = Number(process.env.PORT ?? DEFAULT_PORT);
 
 export default defineConfig({
-  plugins: [musicPacks()],
+  plugins: [musicPacks(), maps()],
   server: {
     // The browser always connects to its own origin; Vite forwards /ws to the game server.
     proxy: { [WS_PATH]: { target: `ws://localhost:${serverPort}`, ws: true } },

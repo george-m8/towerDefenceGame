@@ -151,7 +151,7 @@ When the trees and rocks nearby are gone, farms and a town keep the gold coming.
 
 ### The map
 
-Every game starts on a new, randomly generated map (the seed is shown in the panel and on the game-over screen).
+Every game starts on a new, randomly generated map (the seed is shown in the panel and on the game-over screen). Hand-made maps come from the [map editor](#map-editor).
 
 | Terrain | Look | Walk | Build | Notes |
 |---|---|---|---|---|
@@ -161,8 +161,8 @@ Every game starts on a new, randomly generated map (the seed is shown in the pan
 | Sea | `≈` dark blue | no | no | Coastline along one edge |
 | Rock | `o` grey | no | no | Miners mine it (worth 30-60g, 135s of work); open ground once used up |
 | Gold-veined rock | `o` gold | no | no | About 1 rock in 8. Miners mine it (worth 90-180g, 135s) |
-| Tree | `♣` green | no | no | Lumberjacks chop it (worth 20-40g, 90s). Or clear it with `X` for 1 gold |
-| Berry bush | `b` red on green | yes | no | Foragers pick it (worth 15-30g, 60s) |
+| Tree | `🌲` green | no | no | Lumberjacks chop it (worth 20-40g, 90s). Or clear it with `X` for 1 gold |
+| Berry bush | `🫐` dusky red on green | yes | no | Foragers pick it (worth 15-30g, 60s) |
 
 - **Ruins** (`#` in dark stone) are old, damaged walls. They block enemies, can hold a tower, and sell for a little salvage. You can't build new ones.
 - **Treasure chests** (`$` in gold) are piles of gold lying on the map (20-60, more the further from the keep). Build anything on one to claim it.
@@ -247,6 +247,31 @@ Towers always shoot the enemy closest to the keep. Traps fire on a fixed timer f
 | `-` / `+` / `Fit` buttons | Zoom out, zoom in, or show the whole map |
 
 Dev server only: `E` spawns one enemy of each kind in turn (goblin, zerg, wolf rider, ...), `M` spawns 200 goblins (stress test), and `U` puts a militia on the hovered tile. These only work offline.
+
+## Map editor
+
+Open http://localhost:5173/?editor (or `?editor=example` to open `maps/example.map`) to design a map by hand. A map is drawn exactly as in the game, and saved as a `.map` file in [`maps/`](maps/) that you commit like code. Later, a **level** will combine a `.map` file with a `.wave` file and a `.loadout` file (the next two editors); a `.map` file holds only the map, no settings.
+
+- **New** starts on open ground or on a generated map (pick the seed), at any size, for Endless (one keep, enemy spawns) or PvP (two keeps). The seed also fixes how much each tree, rock and bush holds.
+- **Open** lists the maps in `maps/`, or opens a `.map` file from your computer. **Save** writes `maps/<name>.map` (with `npm run dev` only); **Download** saves a copy anywhere. Leaving with unsaved changes asks first (the title shows a dot).
+- **Play** (`P`) plays the map as a single-player game with today's waves and starting gold; **Back to editor** returns to it, undo history and all. Play is off while the map has errors (no spawn, no way from the spawn to the keep, a keep on rock...), listed in the status line; warnings (a spawn close to the keep, a chest you can't reach) don't stop it.
+- **Keep walls** rebuilds the ring of walls and the gate round each keep, as a new game has.
+- **Playing a map:** solo, the Endless card on the mode screen has a map dropdown listing the Endless maps in `maps/` (those with no errors), or open `?solo&map=<name>`. Online rooms still play generated maps for now.
+
+| Input | Action |
+|---|---|
+| `1` / `2` / `3` | The build picker, as in game: pick a structure to place (free, built at once, belonging to the nearest keep) |
+| `4` | The Map tab: terrain, keep, spawn zone, ruin, chest |
+| `R` | Turn the facing of what you're placing |
+| `X` | Eraser: a tower, then what it stands on, then a ruin or chest, then a spawn tile, then terrain back to ground |
+| Left click / drag | Use the tool; terrain, walls and the eraser paint along a drag; drag a keep to move it |
+| `Shift` + drag | Fill a rectangle with the picked terrain (a spawn zone is always a rectangle) |
+| `[` / `]` | Brush size (1, 3, 5), or the ruin's HP or chest's gold |
+| `Ctrl+Z` / `Ctrl+Y` (or `Ctrl+Shift+Z`) | Undo / redo (whole strokes, 100 steps) |
+| Right click or `Esc` | Drop the tool |
+| `W` `A` `S` `D`, arrows, wheel, `+` / `-`, minimap | Move and zoom, as in game |
+
+Painting terrain under something that can't stand on it removes that thing, and the status line says so. A `.map` file is JSON: the terrain is one line per row (`.` ground, `,` ford, `~` river, `=` sea, `o` rock, `$` gold rock, `T` tree, `b` berries), then the keeps, spawn zones, ruins, chests and structures. Tell your editor to open `*.map` as JSON (it isn't a source map). The format is in [`SPEC-map-editor.md`](SPEC-map-editor.md).
 
 ## Sound and music
 
@@ -414,13 +439,16 @@ src/sim/              Pure, deterministic game simulation (no DOM, seeded RNG)
   waves.ts            Wave formulas and scheduling
   economy.ts          Bounties, house income, selling
   players.ts          Players, per-player gold, pause/fast-forward votes
+  mapFile.ts          .map files: parse, write, validate
 src/net/              Message types and state snapshots, shared by browser and server
 src/render/           Canvas drawing (reads state, never changes it)
 src/ui/               Side panel, input, hover info, game-over dialog
 src/audio/            Synth, sound effects, MIDI reader, music player, playlist and song list
 public/music/         MIDI files for the songs listed in src/audio/songs.ts
 public/music/music-packs/  Your music packs (git-ignored)
-tools/                Vite plugin that finds the music packs
+tools/                Vite plugins: the music packs, and the .map files in maps/ (and saving them)
+src/editor/           The map editor (?editor): edits, undo, tools, toolbar, files
+maps/                 Hand-made maps (.map files), made in the map editor
 src/styles.css        System 6/7 style window chrome
 server/               Multiplayer game server (Node): rooms, connections, static files, probe
 tests/sim/            Unit tests for the simulation

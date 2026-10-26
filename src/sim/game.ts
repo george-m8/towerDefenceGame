@@ -1,4 +1,12 @@
-import { DEFAULT_MAP_SIZE, ENEMY, KEEP_HP, MAP_SIZES, PVP, type MapSize } from "./config";
+import {
+  DEFAULT_MAP_SIZE,
+  ENEMY,
+  KEEP_HP,
+  KEEP_SIZE,
+  MAP_SIZES,
+  PVP,
+  type MapSize,
+} from "./config";
 import { buildTicksAt, updateBuilding } from "./building";
 import { priceAt } from "./enclosures";
 import { spawnEnemy, updateEnemies } from "./enemies";
@@ -9,6 +17,7 @@ import { updateEffects } from "./effects";
 import { initialExplored, revealKeep } from "./fog";
 import { claimKeepWalls, placeKeepWalls } from "./keepWalls";
 import { generateTerrain, layoutFor } from "./mapgen";
+import { mapFromGame, spawnTiles, terrainGrid, type MapFile } from "./mapFile";
 import { randomInt } from "./rng";
 import { startingWork, startingWorth } from "./resources";
 import { collectFarmIncome } from "./farms";
@@ -30,13 +39,26 @@ export interface GameOptions {
   mode?: GameMode;
   /** How big the map is (default M). */
   size?: MapSize;
+  /**
+   * A hand-made map (a parsed, valid `.map` file). Its size, mode, terrain, keeps, spawns,
+   * ruins, chests and structures replace the generated ones, and no starter walls are added.
+   */
+  map?: MapFile;
 }
 
 export function createGame(seed: number, options: GameOptions = {}): GameState {
-  const { width, height } = MAP_SIZES[options.size ?? DEFAULT_MAP_SIZE];
-  const mode = options.mode ?? "endless";
-  const layout = layoutFor(width, height, mode);
-  const { spawnTiles } = layout;
+  const file = options.map;
+  const { width, height } = MAP_SIZES[file?.size ?? options.size ?? DEFAULT_MAP_SIZE];
+  const mode = file?.mode ?? options.mode ?? "endless";
+  const layout = file
+    ? {
+        width,
+        height,
+        keeps: file.keeps.map((k) => ({ ...k, size: KEEP_SIZE })),
+        spawnTiles: spawnTiles(file),
+      }
+    : layoutFor(width, height, mode);
+  const { spawnTiles: spawns } = layout;
   const keepHp = mode === "pvp" ? PVP.keepHp : KEEP_HP;
 
   const base = new Array<number>(width * height).fill(EMPTY);
@@ -46,9 +68,15 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     }
   }
 
-  const map = options.blankMap
-    ? { terrain: new Array<Terrain>(width * height).fill("ground"), ruins: [], chests: [] }
-    : generateTerrain(layout, seed);
+  const map = file
+    ? {
+        terrain: terrainGrid(file),
+        ruins: file.ruins.map(({ x, y, hp }) => ({ x, y, hpFraction: hp })),
+        chests: file.chests,
+      }
+    : options.blankMap
+      ? { terrain: new Array<Terrain>(width * height).fill("ground"), ruins: [], chests: [] }
+      : generateTerrain(layout, seed);
 
   const state: GameState = {
     seed,
@@ -71,7 +99,7 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     effects: [],
     cues: [],
     nextCueId: 1,
-    spawnTiles,
+    spawnTiles: spawns,
     mode,
     keeps: layout.keeps.map((keep) => ({ ...keep, hp: keepHp, maxHp: keepHp, owner: null })),
     winner: null,
@@ -97,8 +125,31 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     const ruin = placeStructure(state, "ruin", spot.x, spot.y, "N", null);
     ruin.hp = Math.round(ruin.maxHp * spot.hpFraction);
   }
-  if (!options.blankMap) placeKeepWalls(state);
+  if (file) {
+    for (const s of file.structures) {
+      const structure = placeStructure(
+        state,
+        s.kind,
+        s.x,
+        s.y,
+        s.facing,
+        state.keeps[s.keep].owner,
+      );
+      structure.keep = s.keep;
+      structure.paid = 0;
+    }
+  } else if (!options.blankMap) placeKeepWalls(state);
   return state;
+}
+
+/** A generated map (as `createGame` makes it for this seed) as a `.map` file to edit. */
+export function mapFromGenerated(
+  title: string,
+  mode: GameMode,
+  size: MapSize,
+  seed: number,
+): MapFile {
+  return mapFromGame(createGame(seed, { mode, size, players: [] }), title, size);
 }
 
 /**
@@ -114,6 +165,10 @@ export function assignKeeps(state: GameState): void {
     if (keep.owner !== null) revealKeep(state, keep);
     claimKeepWalls(state, keep);
   });
+  // A .map file's structures belong to their keep's player.
+  for (const s of Object.values(state.structures)) {
+    if (s.keep !== undefined) s.owner = state.keeps[s.keep]?.owner ?? null;
+  }
   state.gridVersion++; // sight and enclosures depend on who owns the keeps
 }
 

@@ -1,112 +1,99 @@
-# Tasks: field-units
+# Tasks: map-editor
 
-Spec: [`SPEC-field-units.md`](../SPEC-field-units.md) · Plan: [`plan.md`](plan.md) ("AoE update: field-units")
+Spec: [`SPEC-map-editor.md`](../SPEC-map-editor.md) · Plan: [`plan.md`](plan.md) ("Editors and levels: map-editor")
 
 Standard verification for every task: `npm run typecheck && npm test && npm run build`, checked by exit code. Tests read their numbers from config, never repeat them.
 
-## Task 1: No notch; doors and door markers
+## Task 1: The `.map` format
 
-Remove the facing notch everywhere (built and while placing). `spawnTileOf(state, structure)` in `units.ts` is the one door rule (facing tile, else next open clockwise, else none), used by spawning and drawing. Gatherer buildings become directional. While placing a spawner, its door gets a white border (guard buildings: their guard spots too, fainter); built spawners show a faint `S` on their current door.
+`src/sim/mapFile.ts`: `MapFile`, `parseMap`, `serializeMap`, `validateMap`. Editor numbers (brush sizes, ruin HP and chest gold steps, size limit) in `MAP_EDITOR` in config.
 
-- [x] `spawnTileOf` returns the facing tile, else the next open one clockwise, else null
-- [x] A timber yard placed facing west sends its lumberjacks out to the west
-- [x] Browser: no notches; door borders while placing; faint `S` on built doors, moving when the door is blocked (checked by George, 2026-10-26)
+- [x] Serialize then parse gives back the same map, extra fields included
+- [x] Bad files are refused with a message naming the problem: wrong format, newer version, wrong row count or length, unknown terrain character, unknown structure kind, bad size or mode
+- [x] One test per validation error and warning in the spec
 
-Files: `src/sim/units.ts`, `src/sim/config.ts`, `src/render/canvas.ts`, `src/render/palette.ts`, `tests/sim/units.test.ts`. Size: M. Depends on: none.
+Files: `src/sim/mapFile.ts`, `src/sim/config.ts`, `tests/sim/mapFile.test.ts`. Size: M. Depends on: none.
 
-Built: the notch code is gone (`needsNotch`, `drawFacingNotch`, its constants and colour). `guardSpotsFor` works out a not-yet-placed building's guard spots for the preview. The faint `S` only shows where the viewer has explored. The browser check is still to do.
+## Task 2: A game from a map
 
-## Task 2: Building symbols and the digger's glyph
+`createGame(seed, { map })` builds the state from the file. `mapFromGenerated(title, mode, size, seed)` turns a generated map into a file.
 
-Per the spec's table: the keep's tiles draw `⛫` (the middle still shows HP), houses `⌂`, farmland `𐤄`, shop `¤`, guardhouse `⛨`, paladin hall `✠`, archery post `➶`, scout camp `⚑`, archery range `◎`; two-letter codes as the last resort (`Fa`, `Ti`, `Mi`, `Fo`, `Ba`), drawn smaller. The digger enemy's glyph changes from `n` to `t` (README enemy table and journal follow, since they read config). The glyph font list gains symbol-font fallbacks. The build picker uses the same.
+- [x] A map from a generated seed gives the same game as that seed today: terrain, resource amounts, ruins, chests, keeps, spawn tiles, starter walls
+- [x] Everything goes where the file says, owned as it says, with no starter walls added
+- [x] Enemies walk from the map's spawns to its keep
+- [x] A PvP map starts with Player 1 on keep 0
+- [x] Games without a map are unchanged (determinism test untouched)
 
-- [x] The digger is `t`, and no two enemy kinds share a glyph
-- [x] Every structure's glyph is one symbol or a two-letter code, matching the spec's table and [`GLYPHS.md`](../GLYPHS.md) (planned marks there become current)
-- [x] None of the symbols is an emoji-capable code point (a test lists the ones to avoid)
-- [x] Browser: every symbol draws as a plain glyph (no boxes, no colour emoji) on this Mac; any that doesn't falls back to its code, recorded here (checked by George, 2026-10-26: all draw as plain glyphs, no fallbacks needed)
+Files: `src/sim/mapFile.ts`, `src/sim/game.ts`, `tests/sim/mapFile.test.ts`. Size: M. Depends on: 1.
 
-Files: `src/render/palette.ts`, `src/render/canvas.ts`, `src/ui/hud.ts`, `src/sim/config.ts` (digger), `tests/render/` (glyphs test), `tests/sim/behaviours.test.ts`, `README.md`, `GLYPHS.md`. Size: S. Depends on: none.
+Built: `mapFromGenerated` lives in `game.ts` (it calls `createGame`), on top of `mapFromGame(state, title, size)` in `mapFile.ts`, so the format module never imports the game. Structures from a map carry `keep` (their keep's index); `assignKeeps` gives them that keep's player, as it does the starter walls.
 
-Built: the emoji check is Unicode's `Emoji` property, which every symbol to avoid (⚔ ⚒ ⛏ ⚖ ⛺) has and none of the picks do. Two-letter codes draw in a smaller `CODE_FONT`, counting code points since 𐤄 is two UTF-16 units. The scout camp, barracks and archery range symbols arrive with their buildings in Task 4. The tree's `♣` is emoji-capable too, but it has always drawn as plain text, so it's worth a glance in the browser check. The browser check of the symbols is still to do.
+## Task 3: Map files on disk
 
-## Task 3: Explored-only and breaching paths
+`tools/maps.ts`: lists `maps/*.map` as `virtual:maps` (client and server builds); under the dev server, `POST /__maps/<name>` saves one. An example map in `maps/`.
 
-`findPath(state, from, isGoal, { exploredBy, breach })`: `exploredBy` keeps to tiles that team has explored; `breach: { owner, dps }` lets the search cross that owner's rivals' structures at `1 + ceil(HP / dps)` extra tiles each (Dijkstra, typed-array heap). `walkTowards` passes the options through and keys its cache by them.
+- [x] Scanning a folder lists its maps by name, parsed
+- [x] Saving writes a pretty file; bad names, oversize bodies and invalid maps are refused; nothing is written outside the folder
+- [x] The example map parses and validates with no errors
 
-- [x] An explored-only search never crosses an unexplored tile, and is null when the goal lies beyond one
-- [x] A breaching search goes round when that's cheaper, through the weakest wall when it isn't
-- [x] Without options, searches are exactly as before (existing tests untouched)
+Files: `tools/maps.ts`, `vite.config.ts`, `src/virtual-modules.d.ts`, `maps/`, `tests/tools/maps.test.ts`. Size: M. Depends on: 1.
 
-Files: `src/sim/unitPaths.ts`, `src/sim/units.ts`, `tests/sim/unitPaths.test.ts`. Size: M. Depends on: none.
+Built: `GET /__maps` lists the maps on disk now, so the editor's Open sees a save at once; a changed map only refreshes `virtual:maps` for the next import and never reloads the page (that would lose the editor's undo history). `.vscode/` is gitignored, so instead of a settings file the README says to open `.map` as JSON. `mapName` (title to file name) and `MAP_NAME_PATTERN` live in `mapFile.ts`. Checked against a live dev server: list, save, a `../` name refused.
 
-Built: `Unit.pathSight` records the `sightVersion` of the last search, so a unit limited to explored land with no way yet searches again once more land is explored (explored land changes sight, not the grid). The breaching search reuses the path buffers plus one reusable typed-array heap.
+## Task 4: Editor model
 
-## Task 4: Buildings, unit kinds and the Offence tab
+`src/editor/model.ts`: the editing operations on a `MapFile` and an undo history. No DOM.
 
-`UNIT_KINDS` scout `!`, soldier `&`, ranger `}` (projectile arrow); `STRUCTURES` scoutCamp `⚑`, barracks `Ba`, archeryRange `◎`, directional spawners per the spec's table; their tools in the Offence tab, which is no longer greyed out. Until Tasks 5-6, scouts and attackers behave like `hold`.
+- [x] Terrain brush (1, 3, 5) and rectangle fill; painting under something that can't stand there removes it
+- [x] Keep: place and move (Endless one, PvP two in order), keep walls rebuilt on request
+- [x] Spawn zones added and erased; ruins and chests placed with their amounts
+- [x] Structures placed by the game's terrain and layer rules, with facing and nearest keep
+- [x] Eraser: structure, then ruin or chest, then spawn tile, else ground
+- [x] Undo and redo step through strokes, 100 deep
 
-- [x] Each building spawns its own kind up to its quota, one per interval, once built
-- [x] The Offence tab lists the three and is no longer greyed out; `3` opens it
+Files: `src/editor/model.ts`, `tests/editor/model.test.ts`. Size: L. Depends on: 1, 2.
 
-Files: `src/sim/config.ts`, `src/sim/units.ts`, `src/ui/state.ts`, `src/render/palette.ts`, `tests/sim/fieldUnits.test.ts` (new), `tests/ui/hud.test.ts`. Size: S. Depends on: none.
+Built: every edit returns `{ map, note? }`; the note goes to the status line ("Removed a wall and a chest that couldn't stand there", "Keeps can't overlap"). Placing a keep or a spawn zone puts ground under it and clears what was there. Rebuilding the keep walls runs the game's own `placeKeepWalls` on a scratch game, so the ring is exactly a new game's. `ringTiles` takes just a keep's position and size now.
 
-## Task 5: Scouts
+## Task 5: Editor page
 
-`src/sim/fieldUnits.ts`: `isFrontier` (explored, standable, next to unexplored, for a team); `scout` behaviour: walk (explored-only) to the nearest frontier tile, then the next; with none, go home and wait; never fight.
+`?editor` route; the map drawn by the game's renderer with the game's camera; picker tabs `1`–`3` (structures) and `4` (Map); `R`, `X`, `Esc`, right-click as in game; `[` / `]`, `Shift`+drag, undo keys; a status line with the hovered tile, the tool and validation.
 
-- [x] A scout walks to the nearest frontier and explores past it, again and again
-- [x] With nothing left to explore it walks home and waits
-- [x] It never attacks, and never steps on unexplored land
+- [x] Key handling matches the spec's table (tested on the key-to-action function)
+- [x] Browser: paint, place and erase everything with mouse and keys
 
-Files: `src/sim/fieldUnits.ts` (new), `src/sim/units.ts`, `tests/sim/fieldUnits.test.ts`. Size: M. Depends on: 3, 4.
+Files: `src/editor/editor.ts`, `src/editor/toolbar.ts`, `src/main.ts`, `src/styles.css`, `tests/editor/keys.test.ts`. Size: L. Depends on: 4.
 
-Built: `state.exploredVersion` goes up only when a team explores a tile new to it, and explored-only paths go stale on that (`Unit.pathExplored`), not on `sightVersion`, which changes whenever any unit steps. So a scout with nothing left doesn't search again every tick. A scout waits at its building's door.
+Built: the editor reuses the game's input handler for the keys they share (`bindInput` gained `playing()`, false while editing, which turns off `Space`, `F`, `J`, the dev keys and game clicks); its own keys are `keys.ts`. The map is drawn through a scratch game rebuilt at most once a frame when the map changes (9 ms on M, 20 ms on XL); validation was sped up to 2 ms on M, 4 ms on XL so it runs on every change. Panning is the game's (keys, wheel, minimap): the game has no drag-to-pan, so neither does the editor (spec updated). The Map tab lives in the editor's toolbar, not `ui/state.ts`. Dragging a keep clears only where it ends up. Browser-checked headless (Chrome over DevTools): every tool and key, the picker tabs, Esc, undo.
 
-## Task 6: Hunt and patrol
+## Task 6: File dialogs
 
-`attack` behaviour: fight what's in reach (rangers shoot); else walk (explored-only) to the nearest enemy (or rival unit) the team can see; else patrol to the nearest frontier.
+New (title, size, mode, blank or generated with a seed), Open (folder list or a file from disk), Save (dev only), Download; the unsaved dot and the leave prompt.
 
-- [x] A soldier walks to and kills an enemy its side can see; a ranger shoots one from range
-- [x] With no enemy in sight it patrols to the frontier
-- [x] It never steps on unexplored land, and in Endless attacks nothing but enemies
+- [x] Titles become names (`River Crossing!` → `river-crossing`)
+- [x] Browser: new, save, open; Save hidden in a production build (headless)
+- [ ] Browser, by hand: reload with unsaved changes asks first; Download, then open that file from disk
 
-Files: `src/sim/fieldUnits.ts`, `tests/sim/fieldUnits.test.ts`. Size: M. Depends on: 5.
+Files: `src/editor/files.ts`, `src/editor/toolbar.ts`, `tests/editor/files.test.ts`. Size: M. Depends on: 3, 5.
 
-## Task 7: PvP siege
+Built: in dev, Open asks the server for the list (`GET /__maps`), so a map saved a moment ago is there; a build lists the bundled maps. `?editor=<name>` opens `maps/<name>.map` directly. Browser-checked headless: New (blank, and a generated PvP S map), Open from the list, Save with the name dialog (the title's unsaved dot goes), and in a production build Save is hidden, the endpoint answers nothing (POST 404) and the bundled example opens.
 
-`knownRivalKeep(state, owner)`: a rival keep with any tile the owner's team has explored. Attackers walk to it (explored-only, breaching); a rival structure on the next step is hit (the wall before a tower on it) until it falls, paying the tower bounty; next to the keep they hit the keep. Never their own side's buildings or ruins.
+## Task 7: Play and back
 
-- [x] Once the rival keep is explored, soldiers walk to it and damage it
-- [x] With a wall ring round it, they break the weakest wall and get in
-- [x] They hit the wall before the tower on it, and wrecking pays the owner the bounty
-- [x] They never hit their own side's buildings or ruins
+`P` or Play starts a local single-player game on the map with today's settings; Back to editor returns with the design and undo history intact. Play is blocked while there are errors.
 
-Files: `src/sim/fieldUnits.ts`, `src/sim/towers.ts` (share the rival-target rule), `tests/sim/fieldUnits.test.ts`. Size: M. Depends on: 6.
+- [x] Browser: play a map, go back; the design is unchanged and undo still works (headless)
+- [ ] Browser, by hand: lose a game on a map (Restart replays it), then go back
 
-Built: `towers.ts` exports `siegeTargetAt` and `damageRival`, so units and towers share the same target rule and bounty. `walkTowards` stops in front of a breakable rival structure on a breaching path rather than re-routing. A unit with no explored way to the keep patrols instead, and records `Unit.siegeBlockedAt` so it doesn't search again until more land is explored.
+Files: `src/main.ts`, `src/editor/editor.ts`. Size: M. Depends on: 2, 5.
 
-**Checkpoint A:** scouts explore; soldiers hunt a visible goblin; in PvP they break the weakest wall of a ringed keep and damage the keep. Done: covered by `tests/sim/fieldUnits.test.ts`.
+Built: Play makes a local session from the map (`createLocalSession` takes `map`; restarting after game over replays the same map). The game's own controls show while playing, with Back to editor at the top; the editor's are hidden. Browser-checked headless: Play blocked while there are errors; play, Back to editor, design and undo intact.
 
-## Task 8: Hover words
+## Task 8: Docs and coverage
 
-Scouts: `scouting` / `waiting: nothing left to explore`. Soldiers and rangers: `fighting` / `besieging` / `hunting` / `patrolling`, worked out from what clients can see (like guards).
+- [x] README: the editor, its keys, where `.map` files go; SPEC.md "Since `map-editor`"; CAPABILITIES and plan statuses
+- [x] Coverage for `src/sim/` and `tools/` stays at 80% or more
 
-- [x] Hover words for each
-- [x] Browser checkpoint B (with the open `town-economy` and `units` checks) (checked by George, 2026-10-26)
+Files: `README.md`, `SPEC.md`, `CAPABILITIES.md`, `tasks/plan.md`. Size: S. Depends on: all.
 
-Files: `src/sim/fieldUnits.ts`, `src/ui/tileInfo.ts`, `tests/ui/tileInfo.test.ts`. Size: S. Depends on: 7.
-
-Built: `fieldActivity` works from positions, explored land and keeps, which online clients also have. Online clients don't know a unit's home, so their scouts always read `scouting`. The browser check is still to do.
-
-**Checkpoint B:** browser check with George, PvP with two browsers.
-
-## Task 9: Determinism, timing and docs
-
-- [x] The 2,000-tick determinism test gains a scout camp and a barracks; a PvP determinism run with a siege
-- [x] Timing: 20 offensive buildings (60 units) and 200 enemies on XL, median and 95th percentile as the other timing tests; measured standalone and recorded here
-- [x] README: Offence tab, scouts, soldiers, rangers, doors and symbols (structures table), Tuning rows; SPEC.md "Since `field-units`"; plan and CAPABILITIES statuses; `GLYPHS.md` has no "planned" marks left
-- [x] `src/sim/` coverage stays at 80% or more
-
-Files: `tests/sim/game.test.ts`, `tests/sim/fieldUnits.test.ts`, `README.md`, `SPEC.md`, `CAPABILITIES.md`, `tasks/plan.md`. Size: S. Depends on: 8.
-
-Built: field units got their own determinism test (an Endless game with scouts and soldiers, plus a PvP siege that damages the rival keep), because soldiers hunting every visible enemy would stop the big test's bombers and diggers. Measured standalone on a foggy XL map with 66 field units: 0.13 ms median while filling up; with 200 enemies 1.3 ms median, 11.7 ms p95, 22 ms worst. `src/sim/` coverage: 99% of lines.
+Built: lines covered 98% overall, `src/sim/mapFile.ts` 98%, `tools/` 80% (`tools/maps.ts` 85%; the rest is the dev server's file watcher, checked against a live server). Under `npm run coverage` the XL timing tests in `guards` and `units` fail on `main` too (coverage slows the code they time); they pass under `npm test`. The README's terrain table now shows the tree and berry glyphs from the Unifont change.
