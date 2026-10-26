@@ -64,7 +64,7 @@ Built: the timber yard is drawn `L` (lumber), not `T`, because the watchtower al
 Berry bush (green tile, red `b`), gold-veined rock (gold flecks), a thin bar on worked resource tiles, building glyphs and colours. Hover: `Tree - 18 of 30 timber left (18g)` and the like; workers add `chopping` / `mining` / `foraging`, `walking`, or `idle: nothing to gather`.
 
 - [x] Hover lines for each resource and for a working, walking and idle worker
-- [ ] Browser: every gatherer works, resources shrink and vanish, gold rises (also `unit-core` checkpoint B)
+- [x] Browser: every gatherer works, resources shrink and vanish, gold rises (also `unit-core` checkpoint B). Checked by George, 2026-10-26: rewards feel low for the time taken
 
 Files: `src/render/canvas.ts`, `src/render/palette.ts`, `src/ui/tileInfo.ts`, `tests/ui/tileInfo.test.ts`. Size: M. Depends on: 4.
 
@@ -77,7 +77,7 @@ Built: the resource bar only shows on tiles in sight, so PvP rivals can't watch 
 `resources` and `resourceStart` in the welcome snapshot; updates carry changed `resources` tiles only.
 
 - [x] Welcome carries both layers; a hit sends just that tile next update; `resourceStart` is never resent
-- [ ] Browser: a second player sees workers and resources vanish in step (also `unit-core`'s online check)
+- [x] Browser: a second player sees workers and resources vanish in step (also `unit-core`'s online check). Checked by George with two browsers, 2026-10-26
 
 Files: `src/net/protocol.ts`, `src/net/snapshot.ts`, `src/net/view.ts`, `tests/net/view.test.ts`. Size: S. Depends on: 5.
 
