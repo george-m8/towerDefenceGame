@@ -88,9 +88,6 @@ export const COLOURS = {
   spawnGlyph: "#8a3a3a",
   keep: "#6b6b6b",
   keepGlyph: "#ffffff",
-  /** The flags on the keep's corners; in multiplayer, the owner's colour instead. */
-  keepFlag: "#d93a2b",
-  keepFlagPole: "#2b2418",
   ghostOk: "rgba(255, 255, 255, 0.35)",
   ghostBad: "rgba(255, 60, 60, 0.45)",
   ghostSell: "rgba(255, 210, 60, 0.55)",

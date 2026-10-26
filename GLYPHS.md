@@ -52,7 +52,7 @@ Colours are per kind (`ENEMY_COLOURS` in `palette.ts`); a family shares a colour
 
 | Building | Glyph | Why |
 |---|---|---|
-| Keep (HP over the middle tile) | `♜` rook (U+265C) | A castle's tower, as in chess (was `K`, then `⛫`). Each corner tower flies a flag, in the owner's colour in multiplayer |
+| Keep (HP over the middle tile) | `♜` rook (U+265C) | A castle's tower, as in chess (was `K`, then `⛫`) |
 | Wall | `#` | Stacked stone |
 | Ruin | `#` | A wall, crumbling (darker stone) |
 | Gate | `∩` | An arch you can walk through |
