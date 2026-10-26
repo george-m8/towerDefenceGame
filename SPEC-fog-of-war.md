@@ -2,7 +2,7 @@
 
 Status: APPROVED (2026-10-25)
 Builds on `tile-layers`, `map-gen`, `players`, `net-client` and `enclosures`. Not on the capability map yet: one self-contained capability.
-Last updated: 2026-10-25 (v1.1 - white fog, with see-through steps at its edge)
+Last updated: 2026-10-25 (v1.2 - fog raised in layers, like the raised blocks)
 
 ## Objective
 
@@ -83,8 +83,9 @@ Each kind of building has its own sight region: an inner radius (in sight) and a
 - Seen: a thin mist (30% opacity), so terrain, structures and enclosure shading all show, a little washed out.
 - Unexplored: solid white, except along its edge, so you can just see beyond what you've explored. Unexplored tiles next to explored land (counting diagonals) are 50% opaque, the ring after that 80%, and everything further out 100%.
 - Every tile has one flat opacity. Tile edges are hard (no smoothing), to fit the grid look.
+- The fog is raised like the raised blocks: each tile's fog top is lifted by its height, with a darker grey front face where it's higher than the fog (or clear land) in front of it. Seen fog is very low (2px), each edge band a little higher (5px, then 9px), and unexplored fog highest (14px, above the tallest block, so nothing pokes through). So the fog reads as layers stepping up into the unexplored land. It casts no shadow.
 - Like the ground, the fog is a checker of two colours: white and a very light grey.
-- The band widths and opacities, the seen opacity and the fog colours are all in `FOG` (`src/render/palette.ts`), to tune in play.
+- The band widths, every opacity and height, and the fog colours are all in `FOG` (`src/render/palette.ts`), to tune in play.
 - The minimap uses the same three tiers, mixed with white (seen 30%, unexplored solid), and only shows enemy dots that are in sight.
 - Hover info on an unexplored tile says "Unexplored". On a seen tile it shows terrain and structures as usual, plus "Out of sight: enemies here aren't shown".
 - The build preview on an unexplored tile shows as not allowed, with the reason in the info line.
