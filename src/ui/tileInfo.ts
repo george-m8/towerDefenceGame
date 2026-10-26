@@ -49,6 +49,8 @@ const TERRAIN_DESCRIPTIONS: Record<Terrain, string> = {
   sea: "Sea",
   rock: "Rock - impassable",
   tree: `Tree - X to clear for ${TREE_CLEAR_GOLD}g`,
+  goldRock: "Gold-veined rock - impassable",
+  berries: "Berry bush",
 };
 
 /** Human-readable lines describing what is on a tile, for the hover info box. */

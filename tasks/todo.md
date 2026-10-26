@@ -8,13 +8,15 @@ Standard verification for every task: `npm run typecheck && npm test && npm run 
 
 Terrain rows `goldRock` and `berries`; `RESOURCES` (amount range, value, word) in config; `state.resources` and `state.resourceStart`; `src/sim/resources.ts` with `resourceAt`, `placeResource` and `harvest`. `createGame` fills amounts for every resource tile from the map seed. The sell tool's tree clearing also clears its timber.
 
-- [ ] `harvest` takes the units, pays `units x value` to the owner, and returns what it paid; the last hit pays only what was left; nothing is paid on an empty tile
-- [ ] At 0 the tile becomes ground and `gridVersion` changes; a used-up rock opens a route enemies then take
-- [ ] Amounts are within each kind's range and the same for the same seed; blank maps have none
-- [ ] Clearing a tree with the sell tool still pays 1 gold and leaves no timber behind
-- [ ] The existing suite passes untouched
+- [x] `harvest` takes the units, pays `units x value` to the owner, and returns what it paid; the last hit pays only what was left; nothing is paid on an empty tile
+- [x] At 0 the tile becomes ground and `gridVersion` changes; a used-up rock opens a route enemies then take
+- [x] Amounts are within each kind's range and the same for the same seed; blank maps have none
+- [x] Clearing a tree with the sell tool still pays 1 gold and leaves no timber behind
+- [x] The existing suite passes untouched
 
 Files: `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/resources.ts` (new), `src/sim/game.ts`, `src/sim/economy.ts`, `tests/sim/resources.test.ts` (new). Size: M. Depends on: none.
+
+Built: starting amounts are a roll from the map seed and the tile index (not the shared generator), so map-gen's rolls are untouched. `clearResource` turns a tile into empty ground for both `harvest` and the sell tool. New terrain got a basic look and hover line now (polished in Task 5), since the palette and hover tables must list every terrain.
 
 ## Task 2: Gold veins and berry patches
 

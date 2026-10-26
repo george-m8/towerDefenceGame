@@ -237,6 +237,8 @@ export const TERRAIN_STYLES: Record<
   sea: { bg: "#1a3550", glyph: "≈", fg: "#4f7fae" },
   rock: { bg: "#4a4a4a", glyph: "o", fg: "#9a9a9a" },
   tree: { bg: "#1f3d1f", glyph: "♣", fg: "#5fae5f" },
+  goldRock: { bg: "#4a4a4a", glyph: "o", fg: "#e3c04d" },
+  berries: { bg: "#2f5a2a", glyph: "b", fg: "#e2453c" },
 };
 
 export const OWNER_MARK_PX = 6;

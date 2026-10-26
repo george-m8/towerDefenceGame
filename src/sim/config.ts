@@ -692,7 +692,29 @@ export const TERRAIN = {
   sea: { name: "Sea", walkable: false, buildable: "none" },
   rock: { name: "Rock", walkable: false, buildable: "none" },
   tree: { name: "Tree", walkable: false, buildable: "none" },
+  goldRock: { name: "Gold-veined rock", walkable: false, buildable: "none" },
+  berries: { name: "Berry bush", walkable: true, buildable: "none" },
 } satisfies Record<string, TerrainStats>;
+
+/** What a resource tile holds and pays (see sim/resources.ts). Tune freely: tests read these. */
+export interface ResourceStats {
+  /** Units a tile starts with, rolled per tile from the map seed: [least, most]. */
+  amount: [number, number];
+  /** Gold paid per unit gathered. */
+  value: number;
+  /** What a unit of it is called, for hover info. */
+  word: string;
+}
+
+export const RESOURCES = {
+  tree: { amount: [20, 40], value: 1, word: "timber" },
+  rock: { amount: [30, 60], value: 1, word: "ore" },
+  goldRock: { amount: [30, 60], value: 3, word: "ore" },
+  berries: { amount: [15, 30], value: 1, word: "berries" },
+} satisfies Record<string, ResourceStats>;
+
+/** Terrain that holds a resource. */
+export type ResourceTerrain = keyof typeof RESOURCES;
 
 export const MAP_GEN = {
   maxAttempts: 20, // regenerate (deterministically) this many times before falling back to open ground
