@@ -133,6 +133,14 @@ describe("towers in PvP", () => {
     expect(own.hp).toBe(own.maxHp);
   });
 
+  it("hold fire on a rival structure when the blast would catch their own", () => {
+    const { state, wall } = siege();
+    const mine = placeStructure(state, "wall", wall.x, wall.y + 1, "N", 1);
+    for (let i = 0; i < 5 * TICK_RATE; i++) tick(state);
+    expect(wall.hp).toBe(wall.maxHp);
+    expect(mine.hp).toBe(mine.maxHp);
+  });
+
   it("hit the wall before the tower on it, and pay a bounty for wrecking it", () => {
     const { state, wall } = siege();
     const archer = placeStructure(state, "archer", wall.x, wall.y, "W", 2);
