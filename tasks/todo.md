@@ -14,15 +14,16 @@ Remove the facing notch everywhere (built and while placing). `spawnTileOf(state
 
 Files: `src/sim/units.ts`, `src/sim/config.ts`, `src/render/canvas.ts`, `src/render/palette.ts`, `tests/sim/units.test.ts`. Size: M. Depends on: none.
 
-## Task 2: Building symbols
+## Task 2: Building symbols and the digger's glyph
 
-Per the spec's table: the keep's tiles draw `⛫` (the middle still shows HP), houses `⌂`, farmland `𐤄`, shop `¤`, guardhouse `⛨`, paladin hall `✠`, archery post `➶`, scout camp `⚑`; two-letter codes as the last resort (`Fa`, `Ti`, `Mi`, `Fo`, `Ba`, `Ra`), drawn smaller. The glyph font list gains symbol-font fallbacks. The build picker uses the same.
+Per the spec's table: the keep's tiles draw `⛫` (the middle still shows HP), houses `⌂`, farmland `𐤄`, shop `¤`, guardhouse `⛨`, paladin hall `✠`, archery post `➶`, scout camp `⚑`, archery range `◎`; two-letter codes as the last resort (`Fa`, `Ti`, `Mi`, `Fo`, `Ba`), drawn smaller. The digger enemy's glyph changes from `n` to `t` (README enemy table and journal follow, since they read config). The glyph font list gains symbol-font fallbacks. The build picker uses the same.
 
+- [ ] The digger is `t`, and no two enemy kinds share a glyph
 - [ ] Every structure's glyph is one symbol or a two-letter code, matching the spec's table and [`GLYPHS.md`](../GLYPHS.md) (planned marks there become current)
 - [ ] None of the symbols is an emoji-capable code point (a test lists the ones to avoid)
 - [ ] Browser: every symbol draws as a plain glyph (no boxes, no colour emoji) on this Mac; any that doesn't falls back to its code, recorded here
 
-Files: `src/render/palette.ts`, `src/render/canvas.ts`, `src/ui/hud.ts`, `tests/render/` (glyphs test). Size: S. Depends on: none.
+Files: `src/render/palette.ts`, `src/render/canvas.ts`, `src/ui/hud.ts`, `src/sim/config.ts` (digger), `tests/render/` (glyphs test), `tests/sim/behaviours.test.ts`, `README.md`, `GLYPHS.md`. Size: S. Depends on: none.
 
 ## Task 3: Explored-only and breaching paths
 
@@ -36,7 +37,7 @@ Files: `src/sim/unitPaths.ts`, `src/sim/units.ts`, `tests/sim/unitPaths.test.ts`
 
 ## Task 4: Buildings, unit kinds and the Offence tab
 
-`UNIT_KINDS` scout `!`, soldier `&`, ranger `}` (projectile arrow); `STRUCTURES` scoutCamp `⚑`, barracks `Ba`, archeryRange `Ra`, directional spawners per the spec's table; their tools in the Offence tab, which is no longer greyed out. Until Tasks 5-6, scouts and attackers behave like `hold`.
+`UNIT_KINDS` scout `!`, soldier `&`, ranger `}` (projectile arrow); `STRUCTURES` scoutCamp `⚑`, barracks `Ba`, archeryRange `◎`, directional spawners per the spec's table; their tools in the Offence tab, which is no longer greyed out. Until Tasks 5-6, scouts and attackers behave like `hold`.
 
 - [ ] Each building spawns its own kind up to its quota, one per interval, once built
 - [ ] The Offence tab lists the three and is no longer greyed out; `3` opens it

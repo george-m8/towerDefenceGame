@@ -2,7 +2,7 @@
 
 Every character drawn on the map, and why it was picked. Glyphs live in `src/sim/config.ts` (enemies, units), `src/render/palette.ts` (structures, terrain, projectiles) and `src/render/canvas.ts` (a few markers). **Keep this page up to date when you add or change one.**
 
-"Planned" marks the symbols `field-units` brings in (its Task 2; see [`SPEC-field-units.md`](SPEC-field-units.md)).
+"Planned" marks the glyphs `field-units` brings in (its Task 2; see [`SPEC-field-units.md`](SPEC-field-units.md)).
 
 ## The rules
 
@@ -27,9 +27,9 @@ Every character drawn on the map, and why it was picked. Glyphs live in `src/sim
 | `m` | Marine | **M**arine |
 | `M` | Marine captain | Uppercase: the tougher marine |
 | `s` | Shaman | **S**haman |
-| `x` | Dwarf bomber | `x` marks an explosion (`b` and `d` are taken) |
+| `x` | Dwarf bomber | **X**-plosion |
 | `X` | Dwarf demolisher | Uppercase: the bigger bomber |
-| `n` | Digger | `n` for tu**n**neller, the hump of a tunnel (`d` is the dwarf) |
+| `n` | Digger | Now: `n`, chosen only because `d` is the dwarf. *Planned:* `t` for **t**unneller (fallback `↳`, U+21B3, a path going down and along) |
 | `R` | Battering ram | **R**am: uppercase because it's huge |
 
 Colours are per kind (`ENEMY_COLOURS` in `palette.ts`); a family shares a colour (barbarians orange, dwarves yellow, marines blue).
@@ -59,7 +59,7 @@ Colours are per kind (`ENEMY_COLOURS` in `palette.ts`); a family shares a colour
 | Gate | `∩` | | An arch you can walk through |
 | Archer tower | arrow in its facing | | Fires one way, through a slit |
 | Cannon | `C` | | **C**annon (fires all round: no facing shown) |
-| Catapult | `P` | | Its arm and **p**ivot; `C` was taken (fires all round) |
+| Catapult | `P` | | **'P**ult (fires all round) |
 | Watchtower | `T` | | A **t**ower |
 | Floor spikes | `^` | | Spikes coming up |
 | Wall spikes | arrow in its facing | | Fires at the tile it faces |
@@ -76,7 +76,7 @@ Colours are per kind (`ENEMY_COLOURS` in `palette.ts`); a family shares a colour
 | Paladin hall | `K` | `✠` Maltese cross (U+2720) | **K**nights; then a holy order's cross |
 | Scout camp | - | `⚑` flag (U+2691) | A flag planted at a camp |
 | Barracks | - | `Ba` | **Ba**rracks (⚔ would be emoji) |
-| Archery range | - | `Ra` | **Ra**nge (the archery post has `➶`) |
+| Archery range | - | `◎` bullseye (U+25CE) | A target |
 
 The two-letter codes are where no clear, non-emoji symbol has been found yet. Better symbols are welcome.
 

@@ -25,7 +25,7 @@ Every offensive unit only walks on land its side has explored, so scouts open th
 |---|---|---|---|---|---|---|
 | Scout camp | `⚑` | 40 | 40 | Scout | 2 | 45 s |
 | Barracks | `Ba` | 80 | 60 | Soldier | 4 | 30 s |
-| Archery range | `Ra` | 90 | 50 | Ranger | 4 | 30 s |
+| Archery range | `◎` | 90 | 50 | Ranger | 4 | 30 s |
 
 Base layer, block movement, spawners (free units up to the quota, `unit-core`), not directional (units leave anyway), in the **Offence** tab, which stops being greyed out. Build time applies. Selling one leaves its units out in the field, unreplaced.
 
@@ -90,10 +90,11 @@ Too many buildings share single letters. Each building that spawns units or earn
 | Mine | `M` | `Mi` |
 | Forager hut | `F` | `Fo` |
 | Barracks | - | `Ba` |
-| Archery range | - | `Ra` |
+| Archery range | - | `◎` bullseye (U+25CE), a target |
 
 - **No emoji.** Symbols are only used if they draw as plain text glyphs, not colour emoji (so not ⚔, ⚒, ⛏, ⚖ or ⛺, which can turn into emoji). The glyph font list gains common symbol fonts as fallbacks (Apple Symbols, Segoe UI Symbol, Segoe UI Historic, Noto Sans Symbols 2), and any symbol that shows as a box or an emoji in the browser check falls back to its two-letter code.
 - Two-letter codes are drawn a little smaller to fit a tile. The build picker and hover use the same symbols.
+- **The digger enemy changes from `n` to `t`** (for tunneller); `↳` (U+21B3) if `t` ever clashes. All glyphs and their reasons are listed in [`GLYPHS.md`](GLYPHS.md).
 
 ## Out of scope
 
