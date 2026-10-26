@@ -4,6 +4,8 @@ import { screenToTile, zoomAt, zoomBy } from "./camera";
 import { pickTile } from "../render/canvas";
 import { TOOLS, hasBuildTools, rotateFacing, tabForKey, type UiState } from "./state";
 
+/** Keys that act on a running game, so they do nothing in the map editor. */
+export const GAME_ONLY_KEYS = ["Space", "KeyF", "KeyJ", "KeyE", "KeyU", "KeyM"];
 /** Dev-only stress test: M spawns this many enemies at once. */
 const STRESS_TEST_ENEMIES = 200;
 /** Zoom step for the + and - keys (and the panel buttons). */
@@ -28,9 +30,14 @@ export function bindInput(
   dispatch: (command: Command) => void,
   /** The game being shown, so clicks on a raised block's lifted top pick that block. */
   getState: () => GameState | null = () => null,
-  /** Window keys: J toggles the journal; escape() closes an open window and returns true if it did. */
-  keys?: { journal(): void; escape(): boolean },
+  /**
+   * Window keys: J toggles the journal; escape() closes an open window and returns true if it
+   * did. playing() is false while the map editor has the map: then the keys and clicks that
+   * act on a game do nothing, and the ones the editor shares (pan, zoom, 1-3, R, X, Esc) work.
+   */
+  keys?: { journal(): void; escape(): boolean; playing?(): boolean },
 ) {
+  const playing = () => keys?.playing?.() ?? true;
   let painting = false;
   let debugKind = 0;
   let lastPainted: Point | null = null;
@@ -66,7 +73,7 @@ export function bindInput(
   });
 
   function useToolAt(p: Point) {
-    if (!ui.tool) return;
+    if (!ui.tool || !playing()) return;
     // Refusals come back through the session's onResult.
     dispatch(
       ui.tool === "sell"
@@ -87,6 +94,8 @@ export function bindInput(
       zoomBy(ui.camera, ZOOM_STEP);
     } else if (e.code === "Minus" || e.code === "NumpadSubtract") {
       zoomBy(ui.camera, 1 / ZOOM_STEP);
+    } else if (!playing() && GAME_ONLY_KEYS.includes(e.code)) {
+      // The editor has the map: no pausing, journal or debug spawns.
     } else if (e.code === "Space") {
       e.preventDefault();
       dispatch({ type: "togglePause" });
@@ -151,7 +160,7 @@ export function bindInput(
 }
 
 /** 4-connected tiles from a (exclusive) to b (inclusive), so painted walls have no diagonal gaps. */
-function lineBetween(a: Point, b: Point): Point[] {
+export function lineBetween(a: Point, b: Point): Point[] {
   const points: Point[] = [];
   let { x, y } = a;
   const dx = Math.abs(b.x - a.x);

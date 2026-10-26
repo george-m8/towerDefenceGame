@@ -1019,3 +1019,108 @@ a.button {
 .hud-stat.short:hover {
   background: #d22;
 }
+
+/* The map editor (?editor; SPEC-map-editor.md). It shares the map and the HUD's look; the
+   game's own controls are hidden while it has the map, and "Back to editor" shows while a map
+   is being played from it. */
+.editor,
+.editor-back {
+  display: none;
+}
+body.editing .editor {
+  display: block;
+}
+body.testing .editor-back {
+  display: block;
+}
+body.editing #hud,
+body.editing .map-left,
+body.editing #status,
+body.editing #info-box,
+body.editing #toast,
+body.editing #game-over,
+body.editing .pointer-label {
+  display: none !important;
+}
+.editor-title {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  width: auto;
+  max-width: 50%;
+}
+.editor-title span {
+  font-size: 16px;
+}
+.editor-status {
+  position: absolute;
+  right: 12px;
+  bottom: 76px;
+  width: auto;
+  max-width: 460px;
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.1;
+  white-space: pre-line;
+}
+.editor-status.has-errors {
+  border-color: #d22;
+}
+.editor-hud .editor-files {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+.editor-hud .hud-action:disabled {
+  color: #888;
+  cursor: default;
+}
+.editor-amount {
+  margin-left: 10px;
+  font-size: 22px;
+  opacity: 0.7;
+}
+.editor-swatch {
+  width: 20px;
+  height: 20px;
+  font-family: "Unifont", "VT323", monospace;
+  font-size: 16px;
+  line-height: 20px;
+  text-align: center;
+}
+.editor-back {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  z-index: 5;
+  transform: translateX(-50%);
+}
+.editor-form {
+  min-width: 340px;
+}
+.editor-form .field label {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.editor-form select {
+  padding: 2px 6px;
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--ink);
+}
+.editor-map-list {
+  display: grid;
+  gap: 6px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.editor-map-choice {
+  text-align: left;
+}
+.editor-map-choice small {
+  display: block;
+  font-size: 16px;
+  opacity: 0.7;
+}

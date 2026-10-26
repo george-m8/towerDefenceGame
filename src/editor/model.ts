@@ -1,11 +1,22 @@
 // The map editor's edits (SPEC-map-editor.md): each one takes a map and gives back a new one,
 // with a note when it did something the designer should know about (or couldn't do what was
 // asked). No DOM, so it's all tested directly. The page (editor.ts) wires these to the mouse.
-import { KEEP_SIZE, MAP_EDITOR, STRUCTURES, TERRAIN, type StructureStats } from "../sim/config";
+import {
+  KEEP_SIZE,
+  MAP_EDITOR,
+  MAP_SIZES,
+  STRUCTURES,
+  TERRAIN,
+  type MapSize,
+  type StructureStats,
+} from "../sim/config";
 import { createGame } from "../sim/game";
 import { placeKeepWalls, ringTiles } from "../sim/keepWalls";
+import { layoutFor } from "../sim/mapgen";
 import {
   KEEPS_FOR_MODE,
+  MAP_FORMAT,
+  MAP_VERSION,
   TERRAIN_CHARS,
   mapFromGame,
   mapHeight,
@@ -17,7 +28,31 @@ import {
   type MapFile,
   type MapStructure,
 } from "../sim/mapFile";
-import type { Facing, Point, StructureKind, Terrain } from "../sim/types";
+import type { Facing, GameMode, Point, StructureKind, Terrain } from "../sim/types";
+
+/**
+ * A blank map: open ground, with the keeps and spawn where a new game puts them, walled in as a
+ * new game is.
+ */
+export function newMap(title: string, mode: GameMode, size: MapSize, seed: number): MapFile {
+  const { width, height } = MAP_SIZES[size];
+  const layout = layoutFor(width, height, mode);
+  const blank: MapFile = {
+    format: MAP_FORMAT,
+    version: MAP_VERSION,
+    title,
+    mode,
+    size,
+    seed,
+    terrain: Array.from({ length: height }, () => TERRAIN_CHARS.ground.repeat(width)),
+    keeps: layout.keeps.map(({ x, y }) => ({ x, y })),
+    spawns: spawnZones(layout.spawnTiles),
+    ruins: [],
+    chests: [],
+    structures: [],
+  };
+  return rebuildKeepWalls(blank).map;
+}
 
 export interface Edit {
   map: MapFile;
@@ -368,6 +403,14 @@ export class History {
     public map: MapFile,
     private readonly limit = MAP_EDITOR.undoSteps,
   ) {}
+
+  /** Starts again on another map (New, Open), with nothing to undo. */
+  reset(map: MapFile): void {
+    this.map = map;
+    this.undos = [];
+    this.redos = [];
+    this.open = false;
+  }
 
   begin(): void {
     if (this.open) this.end();

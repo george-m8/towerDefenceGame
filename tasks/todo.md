@@ -59,27 +59,35 @@ Built: every edit returns `{ map, note? }`; the note goes to the status line ("R
 
 `?editor` route; the map drawn by the game's renderer with the game's camera; picker tabs `1`–`3` (structures) and `4` (Map); `R`, `X`, `Esc`, right-click as in game; `[` / `]`, `Shift`+drag, undo keys; a status line with the hovered tile, the tool and validation.
 
-- [ ] Key handling matches the spec's table (tested on the key-to-action function)
-- [ ] Browser: paint, place and erase everything with mouse and keys
+- [x] Key handling matches the spec's table (tested on the key-to-action function)
+- [x] Browser: paint, place and erase everything with mouse and keys
 
 Files: `src/editor/editor.ts`, `src/editor/toolbar.ts`, `src/main.ts`, `src/styles.css`, `tests/editor/keys.test.ts`. Size: L. Depends on: 4.
+
+Built: the editor reuses the game's input handler for the keys they share (`bindInput` gained `playing()`, false while editing, which turns off `Space`, `F`, `J`, the dev keys and game clicks); its own keys are `keys.ts`. The map is drawn through a scratch game rebuilt at most once a frame when the map changes (9 ms on M, 20 ms on XL); validation was sped up to 2 ms on M, 4 ms on XL so it runs on every change. Panning is the game's (keys, wheel, minimap): the game has no drag-to-pan, so neither does the editor (spec updated). The Map tab lives in the editor's toolbar, not `ui/state.ts`. Dragging a keep clears only where it ends up. Browser-checked headless (Chrome over DevTools): every tool and key, the picker tabs, Esc, undo.
 
 ## Task 6: File dialogs
 
 New (title, size, mode, blank or generated with a seed), Open (folder list or a file from disk), Save (dev only), Download; the unsaved dot and the leave prompt.
 
-- [ ] Titles become names (`River Crossing!` → `river-crossing`)
-- [ ] Browser: new, save, reload, open; download and open from disk; Save hidden in a production build
+- [x] Titles become names (`River Crossing!` → `river-crossing`)
+- [x] Browser: new, save, open; Save hidden in a production build (headless)
+- [ ] Browser, by hand: reload with unsaved changes asks first; Download, then open that file from disk
 
 Files: `src/editor/files.ts`, `src/editor/toolbar.ts`, `tests/editor/files.test.ts`. Size: M. Depends on: 3, 5.
+
+Built: in dev, Open asks the server for the list (`GET /__maps`), so a map saved a moment ago is there; a build lists the bundled maps. `?editor=<name>` opens `maps/<name>.map` directly. Browser-checked headless: New (blank, and a generated PvP S map), Open from the list, Save with the name dialog (the title's unsaved dot goes), and in a production build Save is hidden, the endpoint answers nothing (POST 404) and the bundled example opens.
 
 ## Task 7: Play and back
 
 `P` or Play starts a local single-player game on the map with today's settings; Back to editor returns with the design and undo history intact. Play is blocked while there are errors.
 
-- [ ] Browser: play a map, lose, go back; the design is unchanged and undo still works
+- [x] Browser: play a map, go back; the design is unchanged and undo still works (headless)
+- [ ] Browser, by hand: lose a game on a map (Restart replays it), then go back
 
 Files: `src/main.ts`, `src/editor/editor.ts`. Size: M. Depends on: 2, 5.
+
+Built: Play makes a local session from the map (`createLocalSession` takes `map`; restarting after game over replays the same map). The game's own controls show while playing, with Back to editor at the top; the editor's are hidden. Browser-checked headless: Play blocked while there are errors; play, Back to editor, design and undo intact.
 
 ## Task 8: Docs and coverage
 

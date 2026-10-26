@@ -2,7 +2,7 @@
 
 Status: APPROVED (2026-10-26)
 Module: `map-editor`, the first of three editors. A **level** will combine three files: a `.map` file (this module), a `.wave` file and a `.loadout` file (the next two modules). Builds on `map-gen` ([`SPEC-map-gen.md`](SPEC-map-gen.md)), `tile-layers` ([`SPEC-tile-layers.md`](SPEC-tile-layers.md)) and the keep walls from `enclosures` ([`SPEC-enclosures.md`](SPEC-enclosures.md)).
-Last updated: 2026-10-26
+Last updated: 2026-10-26 (built: panning as in game, with no drag-to-pan; the Map tab lives in the editor's toolbar)
 
 ## Objective
 
@@ -33,7 +33,7 @@ Today every map is generated from a seed, with the keep and spawn in fixed place
 
 - **Route:** `?editor` (like `?soundtest`), in dev and in a production build. No intro, start screen or server connection.
 - **Layout:** the map fills the window, drawn by the game's renderer, with the same tiles, heights, textures and glyphs. The editor's toolbar sits where the game's HUD is, and a status line shows the hovered tile, the current tool and any validation problems.
-- **Camera:** the same as in game: drag to pan, wheel, WASD or arrow keys, `+` / `-`, and Fit. Fog is off.
+- **Camera:** the same as in game: wheel, WASD or arrow keys, `+` / `-`, the minimap and Fit. Fog is off.
 - **File actions:**
   - **New:** name, size XS to XL, Endless or PvP, blank or generated from a seed.
   - **Open:** maps from the folder, or a file from disk.
@@ -198,7 +198,7 @@ Unchanged: `npm run dev`, `npm run server`, `npm test`, `npm run coverage`, `npm
 - `src/sim/mapFile.ts` (new): the format: parse, serialize, validate, and making a map file from a generated map
 - `src/sim/game.ts`: `createGame` from a map file
 - `src/editor/` (new): `editor.ts` (page, state, undo), `tools.ts` (each tool), `toolbar.ts` (DOM), `files.ts` (open, save, download)
-- `src/ui/state.ts`: the Map tab beside the build tabs, for the editor only
+- `src/ui/input.ts`: the game's keys that act on a running game (`Space`, `F`, `J`, dev keys) and its clicks are off while the editor has the map; the editor reuses the rest
 - `src/main.ts`: the `?editor` route, and Play / Back to editor
 - `src/styles.css`: the editor's toolbar and dialogs, in the game's existing style
 - `tools/maps.ts` (new): the Vite plugin (list and save); `vite.config.ts` and the server build add it
