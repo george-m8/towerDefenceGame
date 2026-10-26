@@ -1,4 +1,4 @@
-import { KEEP_SIZE, MAP_GEN, PVP, SPAWN_ZONE, TERRAIN } from "./config";
+import { KEEP_SIZE, KEEP_WALLS, MAP_GEN, PVP, SPAWN_ZONE, TERRAIN } from "./config";
 import { nextRandom, randomInt } from "./rng";
 import type { GameMode, Point, Terrain } from "./types";
 
@@ -38,7 +38,16 @@ export interface MapGenResult {
   fallback: boolean;
 }
 
-export function layoutFor(width: number, height: number, mode: GameMode = "endless"): MapLayout {
+/**
+ * Where the keeps and spawn go. An Endless keep sits in the middle, or with `keepSide: "right"`
+ * as far right as its starter wall ring allows (the ring touches the edge).
+ */
+export function layoutFor(
+  width: number,
+  height: number,
+  mode: GameMode = "endless",
+  keepSide: "centre" | "right" = "centre",
+): MapLayout {
   const y = Math.floor(height / 2) - Math.floor(KEEP_SIZE / 2);
   if (mode === "pvp") {
     const inset = Math.round(width * PVP.keepInset);
@@ -49,7 +58,11 @@ export function layoutFor(width: number, height: number, mode: GameMode = "endle
     }));
     return { width, height, keeps, spawnTiles: [] };
   }
-  const keep = { x: Math.floor(width / 2) - Math.floor(KEEP_SIZE / 2), y, size: KEEP_SIZE };
+  const x =
+    keepSide === "right"
+      ? width - KEEP_SIZE - (KEEP_WALLS.courtyard + 1)
+      : Math.floor(width / 2) - Math.floor(KEEP_SIZE / 2);
+  const keep = { x, y, size: KEEP_SIZE };
   const spawnY = Math.floor(height / 2) - Math.floor(SPAWN_ZONE.height / 2);
   const spawnTiles: Point[] = [];
   for (let y = spawnY; y < spawnY + SPAWN_ZONE.height; y++) {

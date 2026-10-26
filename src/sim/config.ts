@@ -1,7 +1,14 @@
 // All tunable game numbers live here.
 
-/** Map sizes players pick from when starting a game, in tiles. M is the default. */
-export const MAP_SIZES = {
+/**
+ * Map sizes players pick from when starting a game, in tiles. M is the default. `keep: "right"`
+ * puts an Endless keep at the far right instead of the middle (PvP keeps don't move).
+ */
+export const MAP_SIZES: Record<
+  "XXS" | "XS" | "S" | "M" | "L" | "XL",
+  { width: number; height: number; keep?: "right" }
+> = {
+  XXS: { width: 42, height: 28, keep: "right" },
   XS: { width: 66, height: 44 },
   S: { width: 108, height: 72 },
   M: { width: 153, height: 102 },
