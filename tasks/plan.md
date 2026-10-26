@@ -34,7 +34,7 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | 1e. AoE update (see [`CAPABILITIES.md`](../CAPABILITIES.md)) | `unit-core` | Built; browser checkpoint B and online check pending, done with `resources` (tasks in [`tasks/unit-core/`](unit-core/todo.md)) |
 | | `resources` | Done, browser-checked (tasks in [`tasks/resources/`](resources/todo.md)) |
 | | `town-economy` | Built; browser checkpoint B pending (tasks in [`tasks/town-economy/`](town-economy/todo.md)) |
-| | `units` | **Spec approved; tasks in [`tasks/todo.md`](todo.md)** |
+| | `units` | **Built (Tasks 1-7); browser checkpoint B pending** (tasks in [`tasks/todo.md`](todo.md)) |
 | | `field-units` | Outline |
 | | `game-setup` | Spec drafted; deferred until `food` |
 | | `food` | Deferred |

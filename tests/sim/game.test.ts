@@ -98,7 +98,7 @@ describe("determinism", () => {
     expect(run()).toBe(run());
   });
 
-  it("stays identical over 2,000 ticks with every kind of enemy, walls, units, gatherers and farms", () => {
+  it("stays identical over 2,000 ticks with every kind of enemy, walls, units, gatherers, farms and guards", () => {
     const run = () => {
       const s = createGame(42);
       const keep = s.keeps[0];
@@ -128,6 +128,16 @@ describe("determinism", () => {
         const x = keep.x + (dx > 0 ? keep.size + dx : dx);
         if (canBuild(s, 1, kind, x, keep.y).ok) placeStructure(s, kind, x, keep.y, "N", 1);
       }
+      // Guards on the far side of the keep, out of the way so every enemy behaviour still
+      // gets to happen; wanderers and leakers meet them there.
+      for (const [kind, dy] of [
+        ["paladinHall", 1],
+        ["archeryPost", 4],
+      ] as const) {
+        const x = keep.x + keep.size + 5;
+        if (canBuild(s, 1, kind, x, keep.y + dy).ok)
+          placeStructure(s, kind, x, keep.y + dy, "E", 1);
+      }
       // A farm with a band of fields across the enemies' approach, for heavy ones to trample.
       const fieldsAt = { x: keep.x - 10, y: keep.y + 1 };
       if (canBuild(s, 1, "farmhouse", fieldsAt.x, fieldsAt.y - 3).ok) {
@@ -155,7 +165,8 @@ describe("determinism", () => {
       }
       const harvested = total() < resourcesBefore;
       const trampled = fieldHp() < fieldsBefore;
-      return { json: JSON.stringify(s), modes, unitsFought, harvested, trampled };
+      const guarded = s.units.some((u) => u.kind === "paladin" || u.kind === "archer");
+      return { json: JSON.stringify(s), modes, unitsFought, harvested, trampled, guarded };
     };
     const first = run();
     expect(first.json).toBe(run().json);
@@ -163,6 +174,7 @@ describe("determinism", () => {
     expect(first.unitsFought).toBe(true);
     expect(first.harvested).toBe(true);
     expect(first.trampled).toBe(true);
+    expect(first.guarded).toBe(true);
   }, 20_000); // two long runs; slow under coverage instrumentation
 });
 

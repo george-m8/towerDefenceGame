@@ -63,7 +63,7 @@ Most kinds come in **variants**, shown by glyph size: a small `g` is a goblin ru
 
 ### Your units
 
-You have people of your own on the map: workers now, with guards and soldiers to come, each spawned free by the building that makes them (one a minute, up to a set number alive). A unit belongs to a player, finds its own way around walls, fights enemies within reach and sees around itself (lifting fog as it goes). Enemies stop to fight a unit that's in their way or right next to them; battering rams ignore units. In PvP your towers shoot a rival's units before their buildings. A unit that dies bursts into pixels in its owner's colour, and nobody is paid for it.
+You have people of your own on the map: workers and guards now, with soldiers to come, each spawned free by the building that makes them (one a minute, up to a set number alive). A unit belongs to a player, finds its own way around walls, fights enemies within reach and sees around itself (lifting fog as it goes). Enemies stop to fight a unit that's in their way or right next to them; battering rams ignore units. In PvP your towers shoot a rival's units before their buildings. A unit that dies bursts into pixels in its owner's colour, and nobody is paid for it.
 
 Gatherer buildings make workers (see [Resources](#resources)). On the dev server you can also press `U` to put a militia (`i`) on the tile under the mouse; hover it to see `Militia (your name's), HP 30 / 30`.
 
@@ -98,6 +98,9 @@ Open the build picker with the Build box or `1` / `2` / `3` for the **Defence**,
 | Defence | Bridge | `=` | 10 | Only on river tiles. Makes the river walkable there (for enemies too). |
 | Defence | Watchtower | `T` | 20 | Doesn't attack. Sees all round, as far as a cannon (see [Fog of war](#fog-of-war)). Stands on open ground or a wall, like a tower. |
 | Defence | Gate | `∩` | 15 | Part of a wall that enemies walk straight through. Still closes a ring of walls, so the area inside counts as enclosed (and keeps its discount). |
+| Defence | Guardhouse | `G` | 60 | Sends out up to 3 swordsmen, one every 30s, to guard the tiles in front of it. Placed facing a way (`R`). See [Guards](#guards). |
+| Defence | Archery post | `A` | 70 | Sends out up to 3 archers who shoot from the tiles in front of it. Placed facing a way. |
+| Defence | Paladin hall | `K` | 90 | Sends out up to 3 paladins who hold the tiles in front of it. Placed facing a way. |
 | Civic | House | `h` | 40 | +2 gold every 5s. Blocks movement. |
 | Civic | Shop | `S` | 70 | +4 gold every 5s. Blocks movement. |
 | Civic | Farmhouse | `H` | 50 | +1 gold every 10s for each field joined to it (up to 8). Blocks movement. See [Farms](#farms-and-town). |
@@ -106,6 +109,18 @@ Open the build picker with the Build box or `1` / `2` / `3` for the **Defence**,
 | Civic | Mine | `M` | 100 | Sends out up to 5 miners to mine rock (gold-veined rock pays 3x). Blocks movement. |
 | Civic | Forager hut | `F` | 40 | Sends out up to 5 foragers to pick berry bushes. Blocks movement. |
 | Every tab (`X`) | Sell | `$` | - | Refunds 50% of cost, less if damaged. Sells the top layer first (a tower before the wall under it). Also clears trees. |
+
+### Guards
+
+Guard buildings (Defence tab) each make one kind of guard, free, up to 3 at a time (a new one every 30 seconds while short). Build one facing where you want it guarded (`R` rotates): its guards stand on the open tiles in front of it, two rows of three, the middle first, sharing a tile if there's little room. Build over a spot and its guard moves to the next.
+
+| Guard | Glyph | HP | Armour | Hit | Range | What it does |
+|---|---|---|---|---|---|---|
+| Swordsman | `/` | 60 | 1 | 8 every 1s | 1 | Runs at enemies that come within 3 tiles of its spot, then walks back |
+| Archer | `)` | 35 | 0 | 6 every 1.2s | 4 | Stays on its spot and shoots arrows |
+| Paladin | `]` | 120 | 4 | 5 every 1.2s | 1 | Holds its tile: enemies stop to fight it and its armour takes the edge off every hit |
+
+Armour is taken off each hit a guard takes (at least 1 always gets through). Enemies stop to fight a guard in their way or beside them, so paladins in a gap with archers behind hold it well; battering rams walk straight through guards, and bomber blasts hurt them. Sell or lose a guard building and its guards stay on their spots, but nobody replaces them. Hover a guard to see `guarding`, `fighting`, `chasing` or `returning`. In PvP, guards also fight a rival's units, and rival towers shoot them.
 
 ### Farms and town
 
@@ -369,6 +384,7 @@ src/sim/              Pure, deterministic game simulation (no DOM, seeded RNG)
   units.ts            Player units: spawning, spawner buildings, behaviours (hold, gather), fighting
   resources.ts        Resource amounts on the map, and harvesting them for gold
   farms.ts            Farmhouses, which fields count for them, farm income, trampling
+  guards.ts           Guard spots in front of guard buildings
   unitPaths.ts        Path search for units (to the nearest of any number of goals)
   towers.ts           Tower targeting and damage
   traps.ts            Spike trap cycles
@@ -406,6 +422,8 @@ The economy, to balance against each other:
 | Farm: farmhouse cost, gold per field, interval, most fields | `STRUCTURES.farmhouse` (`cost`, `farm`) | 50g; 1g per field every 10s; 8 fields (a full farm: 48g a minute) |
 | Farmland cost and HP | `STRUCTURES.farmland` | 3g; 10 HP |
 | How hard each enemy tramples | `ENEMY_KINDS.*.weight` | 0 (goblin, zerg) up to 6 (ram) |
+| Guard buildings: cost, quota, spawn interval | `STRUCTURES.guardhouse`, `.archeryPost`, `.paladinHall` | 60 / 70 / 90g; 3 guards; one every 30s |
+| Guard stats (HP, armour, damage, range, speed, how far swordsmen chase) | `UNIT_KINDS.swordsman`, `.archer`, `.paladin` (`chase`) | see [Guards](#guards) |
 | Gatherer cost, quota, spawn interval | `STRUCTURES.timberYard`, `.mine`, `.foragerHut` (`cost`, `spawner`) | 60 / 100 / 40g; 5 workers; one every 60s |
 | Worker stats (HP, speed, how often gold comes in) | `UNIT_KINDS.lumberjack`, `.miner`, `.forager` (`attackInterval`) | paid every 3s |
 | What each resource tile is worth, and how long one worker takes to clear it | `RESOURCES` (`worth`, `seconds`) | trees 20-40g / 90s, rock 30-60g / 135s, gold-veined 90-180g / 135s, berries 15-30g / 60s |

@@ -8,7 +8,7 @@ import {
 } from "../../src/sim/config";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand, createGame, tick } from "../../src/sim/game";
-import { placeStructure } from "../../src/sim/grid";
+import { canBuild, placeStructure } from "../../src/sim/grid";
 import { guardSpotOf, guardSpots } from "../../src/sim/guards";
 import { spawnUnit } from "../../src/sim/units";
 import { toolsInTab } from "../../src/ui/state";
@@ -313,5 +313,37 @@ describe("checkpoint A", () => {
     expect(keep.hp).toBe(keep.maxHp);
     expect(state.units.filter((u) => u.kind === "paladin")).toHaveLength(quota);
     expect(state.units.every((u) => u.x > gap.x - 2)).toBe(true); // nobody wandered off
+  });
+});
+
+describe("performance", () => {
+  // Spec target: a tick under 50 ms, measured standalone. Here: the median within it, and the
+  // 95th percentile within a loose bound, since other test files share the CPU.
+  it("keeps a tick quick with 30 guard buildings (90 guards) and 200 enemies on an XL map", () => {
+    const state = createGame(3, { size: "XL", fog: false });
+    state.wave.countdown = Infinity;
+    const kinds = ["guardhouse", "archeryPost", "paladinHall"] as const;
+    let built = 0;
+    for (let y = 4; y < state.height - 4 && built < 30; y += 6) {
+      for (let x = 10; x < state.keeps[0].x - 6 && built < 30; x += 12) {
+        const kind = kinds[built % 3];
+        if (!canBuild(state, 1, kind, x, y).ok) continue;
+        placeStructure(state, kind, x, y, "W", 1);
+        built++;
+      }
+    }
+    run(state, 3 * STRUCTURES.guardhouse.spawner.intervalSeconds * TICK_RATE); // all 90 out
+    expect(state.units.length).toBeGreaterThanOrEqual(80);
+    applyCommand(state, 1, { type: "debugSpawn", count: 200 });
+    tick(state); // warm-up
+    const times: number[] = [];
+    for (let i = 0; i < 60; i++) {
+      const start = performance.now();
+      tick(state);
+      times.push(performance.now() - start);
+    }
+    times.sort((a, b) => a - b);
+    expect(times[30]).toBeLessThan(50);
+    expect(times[57]).toBeLessThan(250);
   });
 });
