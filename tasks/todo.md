@@ -1,80 +1,77 @@
-# Tasks: town-economy
+# Tasks: units (guards)
 
-Spec: [`SPEC-town-economy.md`](../SPEC-town-economy.md) · Plan: [`plan.md`](plan.md) ("AoE update: town-economy")
+Spec: [`SPEC-units.md`](../SPEC-units.md) · Plan: [`plan.md`](plan.md) ("AoE update: units (guards)")
 
-Standard verification for every task: `npm run typecheck && npm test && npm run build`, checked by exit code. Tests take their numbers from config (`STRUCTURES`, `ENEMY_KINDS`), never repeat them.
+Standard verification for every task: `npm run typecheck && npm test && npm run build`, checked by exit code. Tests read their numbers from config (`UNIT_KINDS`, `STRUCTURES`), never repeat them.
 
-## Task 1: Enemy weight
+## Task 1: Guard kinds and buildings
 
-`weight` on every enemy kind (0 goblin, zerg; 1 wolf rider, barbarian, dwarf, marine, shaman, digger, dwarf bomber; 2 chief, thane, marine captain, demolisher; 4 golem; 6 ram), documented as trampling now, knockback later.
+`UNIT_KINDS` rows swordsman `/`, archer `)` and paladin `]` (behaviour `guard`, `chase` 3 / 0 / 0, archer `projectile: "arrow"`); `STRUCTURES` rows guardhouse `G`, archeryPost `A` and paladinHall `K`: directional spawners, quota 3, every 30 s, blocking, in the Defence tab. Until Task 3, `guard` behaves like `hold`.
 
-- [x] Every kind has a whole-number weight of 0 or more, matching the spec's table
-- [x] The existing suite passes untouched
+- [ ] Each building spawns its own guard kind, up to 3, one every 30 s, once built
+- [ ] They're placed facing a direction (like towers) and are in the Defence tab
+- [ ] Selling one leaves its guards alive with no home
 
-Files: `src/sim/config.ts`, `tests/sim/enemies.test.ts`. Size: XS. Depends on: none.
+Files: `src/sim/config.ts`, `src/sim/units.ts`, `src/ui/state.ts`, `src/render/palette.ts`, `tests/sim/guards.test.ts` (new). Size: M. Depends on: none.
 
-## Task 2: Farmhouse, farmland and farm income
+## Task 2: Guard spots
 
-`STRUCTURES` rows `farmhouse` (`farm`) and `farmland` (`field`); `src/sim/farms.ts` with `farmFields` (fields per farmhouse: joined through built same-owner farmland, nearest farmhouse first, older on ties, capped at `maxFields`) and `collectFarmIncome`; `incomePerMinute` counts farms.
+`src/sim/guards.ts`: `guardSpots(state, building)` (the open, reachable tiles of the two rows of three in front, in order: near middle, near sides, far middle, far sides) and `guardSpotOf(state, unit)` (its building's spot by age among its living guards, sharing when short; its `goal` when homeless; beside its building when no spot is open).
 
-- [x] No fields, no pay; N joined fields pay `N x goldPerField` per interval; a loose field doesn't count; a chain of fields does
-- [x] At most `maxFields` count; another player's fields don't join; a field joined to two farmhouses counts once, for the nearer; unfinished fields neither count nor join
-- [x] Farmland is walkable, doesn't close an enclosure, only goes on open ground, can't hold a tower (paintable comes with its tool row in Task 5)
-- [x] The income stat includes farms at their current field count
+- [ ] Facing east, spots run straight ahead, then the sides, then the far row; blocked or unreachable tiles are skipped
+- [ ] One open tile in front: every guard shares it
+- [ ] Building over a spot moves its guard to the next open spot
+- [ ] A homeless guard keeps its last spot
 
-Files: `src/sim/config.ts`, `src/sim/farms.ts` (new), `src/sim/economy.ts`, `src/sim/game.ts`, `tests/sim/farms.test.ts` (new). Size: M. Depends on: none.
+Files: `src/sim/guards.ts` (new), `tests/sim/guards.test.ts`. Size: S. Depends on: 1.
 
-## Task 3: Trampling
+## Task 3: Guard behaviour: holding a spot
 
-When an enemy moves onto a new tile, farmland there takes damage equal to the enemy's weight (broken fields burst like other structures). Units don't trample.
+`guard`: fight what's in reach, otherwise walk to its spot and stand. `walkTowards` searches again when a path runs out short of the goal (needed for moving goals in Task 4).
 
-- [x] A weight-0 enemy crossing a field leaves it whole; a heavier one takes its weight off per step and enough steps remove it
-- [x] A unit walking over a field leaves it whole
-- [x] A trampled-away field stops counting, and fields joined only through it come loose
+- [ ] Guards walk to their spots in age order and stay there
+- [ ] A paladin never leaves its spot; a goblin stops at it and its armour cuts each hit
+- [ ] A guard knocked off its spot (spot built over) walks to its new one
 
-Files: `src/sim/enemies.ts`, `src/sim/farms.ts`, `tests/sim/farms.test.ts`. Size: S. Depends on: 1, 2.
+Files: `src/sim/units.ts`, `src/sim/guards.ts`, `tests/sim/guards.test.ts`. Size: M. Depends on: 2.
 
-**Checkpoint A:** a full farm earns 8 fields' worth; a golem wears a field row away and the far fields come loose; goblins leave them alone. Done: covered by the cap, trampling and loose-field tests in `tests/sim/farms.test.ts`.
+## Task 4: Swordsmen chase and return
 
-## Task 4: Shop
+With nothing in reach, a guard with `chase` > 0 walks to the tile next to the nearest enemy in its sight that's within `chase` tiles of its spot, then walks back when there's none.
 
-`STRUCTURES.shop`: a flat income building (70g, +4g every 5 s), built like a house.
+- [ ] A swordsman chases and kills an enemy within `chase` of its spot, then walks back
+- [ ] It ignores an enemy further than `chase` from its spot
+- [ ] It follows a moving target
 
-- [x] Pays `income.gold` every `income.intervalSeconds`, and counts in the income stat
+Files: `src/sim/units.ts`, `tests/sim/guards.test.ts`. Size: S. Depends on: 3.
 
-Files: `src/sim/config.ts`, `tests/sim/economy.test.ts`. Size: XS. Depends on: none.
+## Task 5: Archers shoot arrows
 
-## Task 5: Build tabs
+A unit kind with a `projectile` fires a shot effect (from it to the target, `flight` like the archer tower) with each hit, plus the hit cue; damage lands at once, as for towers.
 
-`TOOLS` rows gain `tab` (`defence`, `civic`, `offence`, or `all` for sell); the picker shows tab buttons Defence / Civic / Offence (Offence greyed out while it has no tools); `1` / `2` / `3` open the picker on that tab; per-tool keys removed except `X` for sell.
+- [ ] An archer hits an enemy within `range` from its spot, with a shot effect and a hit cue
+- [ ] It never leaves its spot
 
-- [x] Each tool is in its spec tab; sell is on every tab
-- [x] `1` / `2` / `3` open their tab; digits no longer pick tools, nor do `T` / `G` / `B`; `X` still picks sell
-- [x] Offence is greyed out with no tools
+Files: `src/sim/units.ts`, `src/sim/config.ts`, `tests/sim/guards.test.ts`. Size: S. Depends on: 3.
 
-Files: `src/ui/state.ts`, `src/ui/hud.ts`, `src/ui/input.ts`, `src/styles.css`, `tests/ui/hud.test.ts`, `tests/sim/resources.test.ts` (its key test). Size: M. Depends on: none.
+**Checkpoint A:** in tests, paladins hold a gap with archers behind and the goblins die there; a swordsman runs out and back.
 
-Built: the tab rules are pure functions in `state.ts` (`toolsInTab`, `hasBuildTools`, `tabForKey`). Keys ask the HUD to open the picker through `ui.openPicker`, which the HUD clears each frame. Farmland and shop got their tool rows here (farmland paints). The tab buttons and filtering are checked in the browser at checkpoint B.
+## Task 6: Hover and drawing
 
-## Task 6: Drawing and hover
+Hover adds `guarding` / `fighting` / `chasing` / `returning` for guards. Glyphs and colours for the buildings and guards.
 
-Glyphs and colours: farmhouse `H`, farmland `"` (flat, walkable look), shop `S`. Hover: `Farmhouse - 6 of 8 fields, +6g every 10s`; `Farmland - counts for the farmhouse at x, y` or `Farmland - not joined to a farmhouse`.
+- [ ] Hover words for a guard on its spot, fighting, chasing and returning
+- [ ] Browser: guards walk out and hold a gap; swordsmen chase and return; arrows fly; replacements arrive (with `town-economy` checkpoint B)
 
-- [x] Hover lines for a farmhouse, a joined field and a loose field
-- [ ] Browser: tabs, farms built and painted, gold arriving, a heavy enemy trampling a field
-
-Files: `src/render/palette.ts`, `src/ui/tileInfo.ts`, `tests/ui/tileInfo.test.ts`. Size: S. Depends on: 2, 4, 5.
-
-Built: glyphs and colours went in with Tasks 2 and 4. Farmland draws flat like other walkable structures. Also fixed a `resources` miss: gold-veined rock now draws raised like plain rock. The browser check is still to do.
+Files: `src/ui/tileInfo.ts`, `src/render/palette.ts`, `tests/ui/tileInfo.test.ts`. Size: S. Depends on: 4, 5.
 
 **Checkpoint B:** browser check with George.
 
-## Task 7: Docs, tuning table and determinism
+## Task 7: Determinism, timing and docs
 
-- [x] The 2,000-tick determinism test gains a farm with fields that a heavy enemy can trample
-- [x] README: farms, shops, tabs and the new keys (controls table), enemy weight, and the Tuning table (farm and shop rows, income per minute next to houses and gatherers); SPEC.md "Since `town-economy`"; plan and CAPABILITIES statuses
-- [x] `src/sim/` coverage stays at 80% or more
+- [ ] The 2,000-tick determinism test gains a paladin hall and an archery post at the keep's gate
+- [ ] Measured standalone: 30 guard buildings (90 guards) and 200 enemies on XL, within the tick budget; the unit test guards a loose bound
+- [ ] README: guards and their buildings (structures table, a Guards section), Tuning rows; SPEC.md "Since `units`"; plan and CAPABILITIES statuses
+- [ ] `src/sim/` coverage stays at 80% or more
 
-Files: `tests/sim/game.test.ts`, `README.md`, `SPEC.md`, `CAPABILITIES.md`, `tasks/plan.md`. Size: S. Depends on: 6.
-
-Built: the README's structures table now lists each structure's tab instead of its key. `src/sim/` coverage: 99% of lines, `farms.ts` 100%.
+Files: `tests/sim/game.test.ts`, `tests/sim/guards.test.ts`, `README.md`, `SPEC.md`, `CAPABILITIES.md`, `tasks/plan.md`. Size: S. Depends on: 6.
