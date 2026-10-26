@@ -61,6 +61,12 @@ Hover an enemy to see what it's doing, e.g. `Dwarf bomber, HP 18 / 18, sprinting
 
 Most kinds come in **variants**, shown by glyph size: a small `g` is a goblin runt (weaker, faster), a large one a brute (tougher, hits harder). Hover an enemy to see which it is, e.g. `Goblin brute, HP 18 / 28`. All the numbers live in `ENEMY_KINDS` in `src/sim/config.ts`.
 
+### Your units
+
+You'll soon have people of your own on the map: workers, guards and soldiers, each spawned free by the building that makes them (one a minute, up to a set number alive). The groundwork is in: a unit belongs to a player, finds its own way around walls, fights enemies within reach and sees around itself (lifting fog as it goes). Enemies stop to fight a unit that's in their way or right next to them; battering rams ignore units. In PvP your towers shoot a rival's units before their buildings. A unit that dies bursts into pixels in its owner's colour, and nobody is paid for it.
+
+No building makes units yet (the timber yard comes with `resources`). To try them, press `U` on the dev server to put a militia (`i`) on the tile under the mouse; hover it to see `Militia (your name's), HP 30 / 30`.
+
 ### Monster journal
 
 The first time a kind of enemy comes into sight (not while it's hidden in fog), it gets an entry in the monster journal and a notice pops up over the map. Press `J`, or the **Monster journal** button, to read it: each kind you've found shows its glyph, what it does, its stats, the wave it first turns up in and the wave you first saw it, and its variants. Kinds you haven't met yet show as `?` with the wave they can first appear in. The journal is remembered on this device across games; **Forget** clears it.
@@ -172,7 +178,7 @@ Towers always shoot the enemy closest to the keep. Traps fire on a fixed timer f
 | Minimap (top of the panel) | Click or drag to move the view there; the white box is what you're looking at |
 | `-` / `+` / `Fit` buttons | Zoom out, zoom in, or show the whole map |
 
-Dev server only: `E` spawns one enemy of each kind in turn (goblin, zerg, wolf rider, ...) and `M` spawns 200 goblins (stress test).
+Dev server only: `E` spawns one enemy of each kind in turn (goblin, zerg, wolf rider, ...), `M` spawns 200 goblins (stress test), and `U` puts a militia on the hovered tile. These only work offline.
 
 ## Sound and music
 
@@ -325,7 +331,9 @@ src/sim/              Pure, deterministic game simulation (no DOM, seeded RNG)
   pathfinding.ts      Flow fields from the keep, one per movement profile (follower, breacher, marine)
   enemies.ts          Spawning, walking, bands and attacking
   behaviours.ts       Bombers, shamans and diggers
-  movement.ts         Tile-to-tile stepping shared by walking and sprinting
+  movement.ts         Tile-to-tile stepping shared by enemies and units
+  units.ts            Player units: spawning, spawner buildings, behaviours, fighting
+  unitPaths.ts        Path search for units (to the nearest of any number of goals)
   towers.ts           Tower targeting and damage
   traps.ts            Spike trap cycles
   waves.ts            Wave formulas and scheduling

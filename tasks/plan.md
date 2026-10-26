@@ -31,7 +31,7 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | | `enemy-pathing` | Built and merged (PR #32); browser checkpoints C and D pending (tasks in [`tasks/enemy-pathing/`](enemy-pathing/todo.md)) |
 | | `enemy-targeting` | Outline (moved after `field-units` by the AoE update) |
 | | `wave-director` | Outline (moved after `field-units` by the AoE update) |
-| 1e. AoE update (see [`CAPABILITIES.md`](../CAPABILITIES.md)) | `unit-core` | **Spec approved; tasks in [`tasks/todo.md`](todo.md)** |
+| 1e. AoE update (see [`CAPABILITIES.md`](../CAPABILITIES.md)) | `unit-core` | **Built (Tasks 1-9); browser checkpoint B pending** (tasks in [`tasks/todo.md`](todo.md)) |
 | | `resources` | Spec needed (gold only) |
 | | `town-economy` | Spec needed |
 | | `units` | Outline (guard towers only; entity moves to `unit-core`) |

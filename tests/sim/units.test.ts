@@ -10,7 +10,7 @@ import {
   type UnitKind,
 } from "../../src/sim/config";
 import { spawnEnemy } from "../../src/sim/enemies";
-import { applyCommand, tick } from "../../src/sim/game";
+import { applyCommand, createGame, tick } from "../../src/sim/game";
 import { blocksAt, placeStructure, removeStructure } from "../../src/sim/grid";
 import { damageUnit, spawnUnit } from "../../src/sim/units";
 import type { Enemy, Facing, GameState } from "../../src/sim/types";
@@ -434,3 +434,29 @@ function sellAt(state: GameState, x: number, y: number) {
   const structure = Object.values(state.structures).find((s) => s.x === x && s.y === y)!;
   removeStructure(state, structure);
 }
+
+describe("performance", () => {
+  // Spec target: one tick under 50 ms, measured standalone. The parallel test run is too noisy
+  // for that, so this guards against a large regression only (as the flow-field timing test does).
+  it("keeps a tick quick with 200 units and 200 enemies on an XL map", () => {
+    const state = createGame(3, { size: "XL", fog: false });
+    state.wave.countdown = Infinity;
+    const keep = state.keeps[0];
+    for (let y = 2; y < state.height - 2 && state.units.length < 200; y += 3) {
+      for (let x = 2; x < keep.x - 4 && state.units.length < 200; x += 9) {
+        const unit = spawnUnit(state, "militia", 1, x, y);
+        if (unit) unit.goal = { x: x + 20, y: state.height - 1 - y };
+      }
+    }
+    applyCommand(state, 1, { type: "debugSpawn", count: 200 });
+    expect(state.units).toHaveLength(200);
+
+    let slowest = 0;
+    for (let i = 0; i < 60; i++) {
+      const start = performance.now();
+      tick(state);
+      slowest = Math.max(slowest, performance.now() - start);
+    }
+    expect(slowest).toBeLessThan(250);
+  });
+});

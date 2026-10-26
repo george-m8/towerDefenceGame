@@ -117,11 +117,13 @@ Built: updates also carry `sightVersion`, so clients redo fog when units move. `
 
 ## Task 9: Determinism, timing test and docs
 
-- [ ] Two runs of the same seed and commands (including `debugUnit`) end in identical states
-- [ ] 200 units and 200 enemies on XL: one tick under 50 ms
-- [ ] README: units, the `U` dev key, hover info; CAPABILITIES and plan statuses updated
-- [ ] `src/sim/` coverage stays at 80% or more
+- [x] Two runs of the same seed and commands (including `debugUnit`) end in identical states
+- [x] 200 units and 200 enemies on XL: one tick under 50 ms
+- [x] README: units, the `U` dev key, hover info; CAPABILITIES and plan statuses updated
+- [x] `src/sim/` coverage stays at 80% or more
 
 Files: `tests/sim/game.test.ts` (determinism block), `tests/sim/units.test.ts`, `README.md`, `CAPABILITIES.md`, `tasks/plan.md`. Size: S. Depends on: 8.
+
+Built: the first measurement missed the target (p95 83 ms, worst 150 ms) because each XL path search took about 11 ms. `findPath` now uses typed arrays and a grid of open tiles cached per `gridVersion`: one corner-to-corner search on XL takes 2.9 ms, and 200 units walking to goals with 200 enemies gives a 0.2 ms median tick, 18.5 ms p95 and 29 ms worst (the first tick, which also builds the enemy flow fields). The unit test guards 250 ms, like the other timing tests. `src/sim/` coverage: 99% of lines.
 
 **Checkpoint C:** online check with two browsers, then review.
