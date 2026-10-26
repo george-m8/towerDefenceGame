@@ -216,3 +216,15 @@ describe("bursts", () => {
     expect(state.effects).toEqual([]);
   });
 });
+
+describe("shop", () => {
+  it("pays a flat income like a house, and counts in the income stat", () => {
+    const state = createGameWithoutWaves();
+    const { income } = STRUCTURES.shop;
+    placeStructure(state, "shop", 10, 10, "N", 1);
+    const gold = goldOf(state);
+    for (let i = 0; i < income.intervalSeconds * TICK_RATE; i++) tick(state);
+    expect(goldOf(state)).toBe(gold + income.gold);
+    expect(incomePerMinute(state, 1)).toBe(income.gold * (60 / income.intervalSeconds));
+  });
+});

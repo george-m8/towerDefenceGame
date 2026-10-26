@@ -226,6 +226,15 @@ export const STRUCTURES = {
     income: { gold: 2, intervalSeconds: 5 },
     sight: { inner: 3, outer: 6 },
   },
+  shop: {
+    name: "Shop",
+    layer: "base",
+    cost: 70,
+    maxHp: 30,
+    blocksMovement: true,
+    income: { gold: 4, intervalSeconds: 5 },
+    sight: { inner: 3, outer: 6 },
+  },
   // Farms: a farmhouse earns for each farmland tile joined to it (see sim/farms.ts).
   farmhouse: {
     name: "Farmhouse",

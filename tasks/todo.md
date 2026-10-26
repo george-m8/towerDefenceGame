@@ -40,7 +40,7 @@ Files: `src/sim/enemies.ts`, `src/sim/farms.ts`, `tests/sim/farms.test.ts`. Size
 
 `STRUCTURES.shop`: a flat income building (70g, +4g every 5 s), built like a house.
 
-- [ ] Pays `income.gold` every `income.intervalSeconds`, and counts in the income stat
+- [x] Pays `income.gold` every `income.intervalSeconds`, and counts in the income stat
 
 Files: `src/sim/config.ts`, `tests/sim/economy.test.ts`. Size: XS. Depends on: none.
 
