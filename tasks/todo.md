@@ -63,10 +63,12 @@ Built: the timber yard is drawn `L` (lumber), not `T`, because the watchtower al
 
 Berry bush (green tile, red `b`), gold-veined rock (gold flecks), a thin bar on worked resource tiles, building glyphs and colours. Hover: `Tree - 18 of 30 timber left (18g)` and the like; workers add `chopping` / `mining` / `foraging`, `walking`, or `idle: nothing to gather`.
 
-- [ ] Hover lines for each resource and for a working, walking and idle worker
+- [x] Hover lines for each resource and for a working, walking and idle worker
 - [ ] Browser: every gatherer works, resources shrink and vanish, gold rises (also `unit-core` checkpoint B)
 
 Files: `src/render/canvas.ts`, `src/render/palette.ts`, `src/ui/tileInfo.ts`, `tests/ui/tileInfo.test.ts`. Size: M. Depends on: 4.
+
+Built: the resource bar only shows on tiles in sight, so PvP rivals can't watch your workers through fog. A tree's hover keeps the `X to clear` line under the timber line. Online clients don't get unit paths, so "walking" means between tiles (or with a path, offline). The browser check is still to do.
 
 **Checkpoint B:** offline browser check with George.
 

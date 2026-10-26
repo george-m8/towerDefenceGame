@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { spawnUnit } from "../../src/sim/units";
+import { placeResource } from "../../src/sim/resources";
+import { RESOURCES } from "../../src/sim/config";
 import { createGame } from "../../src/sim/game";
 import type { Enemy } from "../../src/sim/types";
 import { describeTile, hoverText, priceLine } from "../../src/ui/tileInfo";
@@ -96,6 +98,42 @@ describe("fog hover info", () => {
     spawnUnit(pvp, "militia", 2, p.x, p.y);
     expect(describeTile(pvp, p, 2)).toContain("Militia (Bo's), HP 30 / 30");
     expect(describeTile(pvp, p, 1).join("\n")).not.toContain("Militia");
+  });
+
+  it("says how much each resource has left and what it's worth", () => {
+    const state = createGame(1, { blankMap: true, fog: false });
+    placeResource(state, 5, 5, "tree", 30);
+    state.resources[5 * state.width + 5] = 18;
+    placeResource(state, 6, 5, "goldRock", 52);
+    state.resources[5 * state.width + 6] = 40;
+    placeResource(state, 7, 5, "berries", 20);
+    const tree = RESOURCES.tree.value * 18;
+    const ore = RESOURCES.goldRock.value * 40;
+    expect(describeTile(state, { x: 5, y: 5 })).toContain(`Tree - 18 of 30 timber left (${tree}g)`);
+    expect(describeTile(state, { x: 6, y: 5 })).toContain(
+      `Gold-veined rock - 40 of 52 ore left (${ore}g)`,
+    );
+    expect(describeTile(state, { x: 7, y: 5 })).toContain(
+      `Berry bush - 20 of 20 berries left (${RESOURCES.berries.value * 20}g)`,
+    );
+  });
+
+  it("says whether a worker is working, walking or idle", () => {
+    const state = createGame(1, { blankMap: true, fog: false, players: ["Ann"] });
+    placeResource(state, 6, 5, "tree", 30);
+    spawnUnit(state, "lumberjack", 1, 5, 5);
+    const walker = spawnUnit(state, "miner", 1, 5, 8)!;
+    walker.x = 5.5; // between tiles
+    spawnUnit(state, "forager", 1, 5, 11);
+    expect(describeTile(state, { x: 5, y: 5 })).toContain(
+      "Lumberjack (Ann's), HP 15 / 15, chopping",
+    );
+    expect(describeTile(state, { x: 6, y: 8 }).join("\n")).toMatch(
+      /Miner \(Ann's\), HP 18 \/ 18, walking/,
+    );
+    expect(describeTile(state, { x: 5, y: 11 })).toContain(
+      "Forager (Ann's), HP 12 / 12, idle: nothing to gather",
+    );
   });
 
   it("the price line says why you can't build on unexplored land", () => {

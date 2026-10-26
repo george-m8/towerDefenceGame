@@ -290,6 +290,8 @@ export interface UnitKind {
   behaviour: UnitBehaviourId;
   /** Workers: the resources it gathers. Its `damage` is the units it takes per hit. */
   gathers?: ResourceTerrain[];
+  /** Workers: what hover info says while it works ("chopping"). */
+  working?: string;
 }
 
 export const UNIT_KINDS = {
@@ -320,6 +322,7 @@ export const UNIT_KINDS = {
     sight: { inner: 3, outer: 5 },
     behaviour: "gather",
     gathers: ["tree"],
+    working: "chopping",
   },
   miner: {
     glyph: "p",
@@ -333,6 +336,7 @@ export const UNIT_KINDS = {
     sight: { inner: 3, outer: 5 },
     behaviour: "gather",
     gathers: ["rock", "goldRock"],
+    working: "mining",
   },
   forager: {
     glyph: "f",
@@ -346,6 +350,7 @@ export const UNIT_KINDS = {
     sight: { inner: 3, outer: 5 },
     behaviour: "gather",
     gathers: ["berries"],
+    working: "foraging",
   },
 } satisfies Record<string, UnitKind>;
 

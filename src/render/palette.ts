@@ -96,6 +96,7 @@ export const COLOURS = {
   buildTrack: "rgba(0, 0, 0, 0.45)",
   /** The sliver left on a destroyed thing's emptied health bar. */
   hpEmpty: "#d22020",
+  resourceLeft: "#e3c04d",
   flowArrow: "rgba(120, 200, 255, 0.55)",
   flowAttack: "rgba(255, 90, 90, 0.9)",
   range: "rgba(255, 255, 160, 0.12)",
