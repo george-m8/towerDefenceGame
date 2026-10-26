@@ -240,7 +240,7 @@ Towers always shoot the enemy closest to the keep. Traps fire on a fixed timer f
 | `Space` or Pause button | Pause / resume (you can still build while paused) |
 | `F` or `>>` button | Toggle fast forward (2x game speed) |
 | Send wave button | Start the next wave now, for +1 gold per second skipped |
-| `` ` `` or Debug button | Open the Debug menu: test options, Show paths (arrows show where enemies will walk; red means "will attack this"), and Sun slider (two sliders over the map: **Across** moves the sun from the left horizon to the right, **Arc** sets how high its path rises, 90° being straight overhead; shadows follow. Off puts the sun back) |
+| `` ` `` or Debug button | Open the Debug menu: test options, Show paths (arrows show where enemies will walk; red means "will attack this"), and Sun slider (two sliders over the map: **Across** moves the sun from the left horizon to the right, **Arc** sets how its path leans: up to 90° over the top of the sky (90° straight overhead), past 90° over the bottom, so shadows fall behind blocks; shadows follow. Off puts the sun back) |
 | `J` | Open or close the monster journal (`Esc` also closes it) |
 | Hover a tile | Show its details in the Info box, and a tower's range |
 | `W` `A` `S` `D` or arrow keys | Move the view around the map |

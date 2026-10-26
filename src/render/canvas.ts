@@ -75,7 +75,7 @@ import { fogImage } from "./fog";
 import { burstPixels, burstWaiting } from "./burst";
 import { textureSpecks, textureVariant, type TextureStyle } from "./textures";
 import { borderColour, borderTrace } from "./buildBorder";
-import { CASTERS, castShade, shadowOffset, type Block, type Sun } from "./sun";
+import { CASTERS, castShade, shadowOffset, sweptTile, type Block, type Sun } from "./sun";
 
 /** Blocks' shadows, on the ground and on lower blocks beside them. */
 const SHADOW = "rgba(0, 0, 0, 0.3)";
@@ -212,14 +212,14 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     }
     drawDoors(state);
     // Shadows cast away from the sun, under every block, from a tile beyond the view too (a
-    // shadow reaches at most a tile, never up). One fill, so overlapping shadows aren't darker.
+    // shadow reaches at most a tile). One fill, so overlapping shadows aren't darker.
     const { dx, dy } = shadowOffset(sun);
     ctx!.fillStyle = SHADOW;
     ctx!.beginPath();
-    for (let y = Math.max(0, y0 - 1); y <= y1; y++) {
+    for (let y = Math.max(0, y0 - 1); y <= Math.min(state.height - 1, y1 + 1); y++) {
       for (let x = Math.max(0, x0 - 1); x <= Math.min(state.width - 1, x1 + 1); x++) {
         const h = blockHeight(state, x, y);
-        if (h > 0) ctx!.rect(x * TILE_SIZE + h * dx, y * TILE_SIZE + h * dy, TILE_SIZE, TILE_SIZE);
+        if (h > 0) tracePolygon(sweptTile(x, y, h * dx, h * dy));
       }
     }
     ctx!.fill();
@@ -257,7 +257,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   }
 
   /**
-   * The shadows taller blocks beside and behind cast over a lower block's front face and top:
+   * The shadows taller blocks round it cast over a lower block's front face and top:
    * e.g. a catapult on a wall shading the wall beside it. One fill, so overlaps aren't darker.
    */
   function drawCastShadows(state: GameState, receiver: Block, offset: { dx: number; dy: number }) {
@@ -267,15 +267,18 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       const y = receiver.y + dy;
       if (!inBounds(state, x, y)) continue;
       const { top, face } = castShade(offset, { x, y, height: blockHeight(state, x, y) }, receiver);
-      if (top) ctx!.rect(top.x, top.y, top.width, top.height);
-      if (face) {
-        ctx!.moveTo(...face[0]);
-        for (const point of face.slice(1)) ctx!.lineTo(...point);
-        ctx!.closePath();
-      }
+      if (top) tracePolygon(top);
+      if (face) tracePolygon(face);
     }
     ctx!.fillStyle = SHADOW;
     ctx!.fill();
+  }
+
+  /** Adds a closed polygon to the path being built. */
+  function tracePolygon(points: [number, number][]) {
+    ctx!.moveTo(...points[0]);
+    for (const point of points.slice(1)) ctx!.lineTo(...point);
+    ctx!.closePath();
   }
 
   /**

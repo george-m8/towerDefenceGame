@@ -23,7 +23,7 @@ export function arcLabel(arc: number): string {
 export function createSunSlider(root: HTMLElement, ui: UiState) {
   root.innerHTML = `
     <label class="slider"><span data-label="across"></span><input type="range" min="0" max="1" step="0.01" data-sun="across" title="Where the sun is, from the left horizon to the right" /></label>
-    <label class="slider"><span data-label="arc"></span><input type="range" min="${SUN.arcMin}" max="90" step="1" data-sun="arc" title="How high the sun's path rises (90°: straight overhead)" /></label>
+    <label class="slider"><span data-label="arc"></span><input type="range" min="${SUN.arcMin}" max="${SUN.arcMax}" step="1" data-sun="arc" title="How the sun's path leans: up to 90° over the top of the sky (90°: straight overhead), past it over the bottom, so shadows fall behind" /></label>
   `;
   const inputs = [...root.querySelectorAll<HTMLInputElement>("[data-sun]")];
   const label = (key: keyof Sun) => root.querySelector<HTMLElement>(`[data-label="${key}"]`)!;

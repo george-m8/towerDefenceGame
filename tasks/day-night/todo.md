@@ -93,3 +93,14 @@ A "Since `day-night`" line in `SPEC.md`, a `day-night` row in `CAPABILITIES.md`,
 - [x] Each task's "Built:" notes added below it where the build differed from the plan
 
 Files: `SPEC.md`, `CAPABILITIES.md`, `README.md`, `SPEC-day-night.md`. Size: S. Depends on: 6.
+
+## Task 8: The arc past 90°, and shadows that join their blocks (spec v1.2)
+
+Asked for in review. The Arc slider runs to 175°: past 90° the sun crosses the bottom of the sky and shadows fall up, behind blocks. `CASTERS` covers all 8 neighbours, and a front face's shade is the face clipped to the caster's moved footprint (works for any direction). Shadows on the ground and on tops are the footprint swept along the shadow (`sweptTile`, a hull), so there's no gap at the casting corner.
+
+- [x] Past 90°, shadows lean up; 180° - arc mirrors arc
+- [x] The block in front shades the face and top of a lower block behind it
+- [x] Ground and top shadows join the caster's corners (no notch)
+- [ ] Browser, by hand: drag Arc past 90° and look at the joins
+
+Files: `src/render/sun.ts`, `src/render/palette.ts`, `src/render/canvas.ts`, `src/ui/sunSlider.ts`, `tests/render/sun.test.ts`. Size: M. Depends on: 6.
