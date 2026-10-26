@@ -10,7 +10,7 @@ Remove the facing notch everywhere (built and while placing). `spawnTileOf(state
 
 - [x] `spawnTileOf` returns the facing tile, else the next open one clockwise, else null
 - [x] A timber yard placed facing west sends its lumberjacks out to the west
-- [ ] Browser: no notches; door borders while placing; faint `S` on built doors, moving when the door is blocked
+- [x] Browser: no notches; door borders while placing; faint `S` on built doors, moving when the door is blocked (checked by George, 2026-10-26)
 
 Files: `src/sim/units.ts`, `src/sim/config.ts`, `src/render/canvas.ts`, `src/render/palette.ts`, `tests/sim/units.test.ts`. Size: M. Depends on: none.
 
@@ -23,7 +23,7 @@ Per the spec's table: the keep's tiles draw `⛫` (the middle still shows HP), h
 - [x] The digger is `t`, and no two enemy kinds share a glyph
 - [x] Every structure's glyph is one symbol or a two-letter code, matching the spec's table and [`GLYPHS.md`](../GLYPHS.md) (planned marks there become current)
 - [x] None of the symbols is an emoji-capable code point (a test lists the ones to avoid)
-- [ ] Browser: every symbol draws as a plain glyph (no boxes, no colour emoji) on this Mac; any that doesn't falls back to its code, recorded here
+- [x] Browser: every symbol draws as a plain glyph (no boxes, no colour emoji) on this Mac; any that doesn't falls back to its code, recorded here (checked by George, 2026-10-26: all draw as plain glyphs, no fallbacks needed)
 
 Files: `src/render/palette.ts`, `src/render/canvas.ts`, `src/ui/hud.ts`, `src/sim/config.ts` (digger), `tests/render/` (glyphs test), `tests/sim/behaviours.test.ts`, `README.md`, `GLYPHS.md`. Size: S. Depends on: none.
 
@@ -92,7 +92,7 @@ Built: `towers.ts` exports `siegeTargetAt` and `damageRival`, so units and tower
 Scouts: `scouting` / `waiting: nothing left to explore`. Soldiers and rangers: `fighting` / `besieging` / `hunting` / `patrolling`, worked out from what clients can see (like guards).
 
 - [x] Hover words for each
-- [ ] Browser checkpoint B (with the open `town-economy` and `units` checks)
+- [x] Browser checkpoint B (with the open `town-economy` and `units` checks) (checked by George, 2026-10-26)
 
 Files: `src/sim/fieldUnits.ts`, `src/ui/tileInfo.ts`, `tests/ui/tileInfo.test.ts`. Size: S. Depends on: 7.
 
