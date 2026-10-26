@@ -33,9 +33,9 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | | `wave-director` | Outline (moved after `field-units` by the AoE update) |
 | 1e. AoE update (see [`CAPABILITIES.md`](../CAPABILITIES.md)) | `unit-core` | Built; browser checkpoint B and online check pending, done with `resources` (tasks in [`tasks/unit-core/`](unit-core/todo.md)) |
 | | `resources` | Done, browser-checked (tasks in [`tasks/resources/`](resources/todo.md)) |
-| | `town-economy` | Built; browser checkpoint B pending (tasks in [`tasks/town-economy/`](town-economy/todo.md)) |
-| | `units` | Built; browser checkpoint B pending (tasks in [`tasks/units/`](units/todo.md)) |
-| | `field-units` | **Spec approved; tasks in [`tasks/todo.md`](todo.md)** |
+| | `town-economy` | Done, browser-checked (tasks in [`tasks/town-economy/`](town-economy/todo.md)) |
+| | `units` | Done, browser-checked (tasks in [`tasks/units/`](units/todo.md)) |
+| | `field-units` | Done, browser-checked (tasks in [`tasks/todo.md`](todo.md)) |
 | | `elite-units` | Knights and horsemen; after `enemy-targeting` and `wave-director` |
 | | `game-setup` | Spec drafted; deferred until `food` |
 | | `food` | Deferred |

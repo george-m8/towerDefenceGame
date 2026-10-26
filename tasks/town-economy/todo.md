@@ -61,7 +61,7 @@ Built: the tab rules are pure functions in `state.ts` (`toolsInTab`, `hasBuildTo
 Glyphs and colours: farmhouse `H`, farmland `"` (flat, walkable look), shop `S`. Hover: `Farmhouse - 6 of 8 fields, +6g every 10s`; `Farmland - counts for the farmhouse at x, y` or `Farmland - not joined to a farmhouse`.
 
 - [x] Hover lines for a farmhouse, a joined field and a loose field
-- [ ] Browser: tabs, farms built and painted, gold arriving, a heavy enemy trampling a field
+- [x] Browser: tabs, farms built and painted, gold arriving, a heavy enemy trampling a field (checked by George, 2026-10-26)
 
 Files: `src/render/palette.ts`, `src/ui/tileInfo.ts`, `tests/ui/tileInfo.test.ts`. Size: S. Depends on: 2, 4, 5.
 

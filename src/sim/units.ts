@@ -21,8 +21,10 @@ import { teamOf, unitMoved } from "./fog";
 import { atTileCentre, walk } from "./movement";
 import { DIRECTIONS, canCross } from "./pathfinding";
 import { harvest, resourceAt } from "./resources";
+import { attack, scout } from "./fieldUnits";
 import { guardSpotOf } from "./guards";
-import { findPath } from "./unitPaths";
+import { siegeTargetAt } from "./towers";
+import { findPath, type PathOptions } from "./unitPaths";
 import type { Enemy, Facing, GameState, PlayerId, Point, Structure, Terrain, Unit } from "./types";
 
 type Behaviour = (state: GameState, unit: Unit) => void;
@@ -31,6 +33,8 @@ const BEHAVIOURS: Record<UnitBehaviourId, Behaviour> = {
   hold,
   gather,
   guard,
+  scout,
+  attack,
 };
 
 /**
@@ -52,6 +56,12 @@ function guard(state: GameState, unit: Unit) {
   }
 }
 
+/** Whether an enemy (or, in PvP, a rival unit) is within the unit's reach. */
+export function foeInReach(state: GameState, unit: Unit): boolean {
+  const { range } = kindOf(unit);
+  return !!(nearestEnemy(state, unit, range) ?? nearestRival(state, unit, range));
+}
+
 /**
  * What a guard is doing, for hover info. Worked out from what online clients also have
  * (positions, not paths): fighting what's in reach, else moving (chasing if an enemy is in
@@ -59,9 +69,7 @@ function guard(state: GameState, unit: Unit) {
  */
 export function guardActivity(state: GameState, unit: Unit): string {
   const kind = kindOf(unit);
-  if (nearestEnemy(state, unit, kind.range) || nearestRival(state, unit, kind.range)) {
-    return "fighting";
-  }
+  if (foeInReach(state, unit)) return "fighting";
   if (Number.isInteger(unit.x) && Number.isInteger(unit.y)) return "guarding";
   const seen = state.enemies.some(
     (e) => e.hp > 0 && Math.hypot(e.x - unit.x, e.y - unit.y) <= kind.sight.inner,
@@ -175,6 +183,8 @@ export function spawnUnit(
     path: null,
     pathGoal: null,
     pathVersion: -1,
+    pathExplored: -1,
+    siegeBlockedAt: -1,
     waitingForPath: false,
   };
   state.units.push(unit);
@@ -195,7 +205,7 @@ export function updateSpawners(state: GameState): void {
     if (structure.cooldown > 0) continue;
     const alive = state.units.filter((u) => u.home === structure.id && u.hp > 0).length;
     if (alive >= spawner.quota) continue;
-    const tile = spawnTile(state, structure);
+    const tile = spawnTileOf(state, structure);
     if (!tile) continue;
     spawnUnit(state, spawner.unit, structure.owner, tile.x, tile.y, structure.id);
     structure.cooldown = spawner.intervalSeconds * TICK_RATE;
@@ -210,8 +220,14 @@ const STEP: Record<Facing, Point> = {
   W: { x: -1, y: 0 },
 };
 
-/** The tile a spawner faces (south without a facing) if open, else the next open one clockwise. */
-function spawnTile(state: GameState, structure: Structure): Point | null {
+/**
+ * A spawner's door: the tile it faces (south without a facing) if open, else the next open one
+ * clockwise, else none. Spawning and drawing the door marker both use it.
+ */
+export function spawnTileOf(
+  state: GameState,
+  structure: Pick<Structure, "x" | "y" | "facing">,
+): Point | null {
   const first = CLOCKWISE.indexOf(structure.facing ?? "S");
   for (let i = 0; i < 4; i++) {
     const d = STEP[CLOCKWISE[(first + i) % 4]];
@@ -280,7 +296,7 @@ export function removeDeadUnits(state: GameState): void {
 }
 
 /** Tiles between a tile (a unit's, a spot) and a point, counting diagonals as 1. */
-function reach(from: Point, x: number, y: number): number {
+export function reach(from: Point, x: number, y: number): number {
   return Math.max(
     Math.abs(Math.round(x) - Math.round(from.x)),
     Math.abs(Math.round(y) - Math.round(from.y)),
@@ -291,7 +307,7 @@ function reach(from: Point, x: number, y: number): number {
  * Hits the nearest enemy within range once its attack is ready. True while there's an enemy
  * in reach (even between hits), so the unit stays to fight.
  */
-function attackNearest(state: GameState, unit: Unit): boolean {
+export function attackNearest(state: GameState, unit: Unit): boolean {
   const kind = kindOf(unit);
   const enemy = nearestEnemy(state, unit, kind.range);
   const target = enemy ?? nearestRival(state, unit, kind.range);
@@ -306,7 +322,7 @@ function attackNearest(state: GameState, unit: Unit): boolean {
 }
 
 /** A ranged unit's shot: the hit has already landed, the arrow shows it flying (as for towers). */
-function shoot(state: GameState, unit: Unit, target: Point, projectile: ProjectileKind) {
+export function shoot(state: GameState, unit: Unit, target: Point, projectile: ProjectileKind) {
   state.effects.push({
     kind: "shot",
     fromX: unit.x,
@@ -347,19 +363,26 @@ export function walkTowards(
   unit: Unit,
   goalKey: string,
   isGoal: (x: number, y: number) => boolean,
+  options: PathOptions = {},
 ): boolean {
   if (atTileCentre(unit) && isGoal(unit.x, unit.y)) return true;
   walk(unit, kindOf(unit).speed, () => {
     if (isGoal(unit.x, unit.y)) return false;
     // Search again for a new goal, a changed grid, or a path that ran out short of a goal that
     // moved (a chased enemy). With no way there at all (null), wait for the grid to change.
+    // On explored land only, a unit with no way yet tries again once more land is explored.
     const stale = unit.pathGoal !== goalKey || unit.pathVersion !== state.gridVersion;
-    if (stale || unit.path?.length === 0) {
-      if (!searchPath(state, unit, goalKey, isGoal)) return false;
+    const moreLand =
+      options.exploredBy !== undefined && unit.pathExplored !== state.exploredVersion;
+    if (stale || unit.path?.length === 0 || (unit.path === null && moreLand)) {
+      if (!searchPath(state, unit, goalKey, isGoal, options)) return false;
     }
     const step = unit.path?.[0];
     if (!step) return false; // no way there
     if (!canStand(state, step.x, step.y)) {
+      // A rival's structure a breaching path goes through: stop here for the caller to break it.
+      if (options.breach && siegeTargetAt(state, options.breach.owner, step.x, step.y))
+        return false;
       unit.pathVersion = -1; // something's in the way now: search again
       return false;
     }
@@ -377,6 +400,7 @@ function searchPath(
   unit: Unit,
   goalKey: string,
   isGoal: (x: number, y: number) => boolean,
+  options: PathOptions,
 ): boolean {
   if (searchesLeft <= 0) {
     unit.waitingForPath = true;
@@ -384,9 +408,10 @@ function searchPath(
   }
   searchesLeft--;
   unit.waitingForPath = false;
-  unit.path = findPath(state, { x: unit.x, y: unit.y }, isGoal);
+  unit.path = findPath(state, { x: unit.x, y: unit.y }, isGoal, options);
   unit.pathGoal = goalKey;
   unit.pathVersion = state.gridVersion;
+  unit.pathExplored = state.exploredVersion;
   return true;
 }
 

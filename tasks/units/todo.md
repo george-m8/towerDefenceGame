@@ -69,7 +69,7 @@ Built: also filled a gap the spec asked for but no task covered. In PvP, units n
 Hover adds `guarding` / `fighting` / `chasing` / `returning` for guards. Glyphs and colours for the buildings and guards.
 
 - [x] Hover words for a guard on its spot, fighting, chasing and returning
-- [ ] Browser: guards walk out and hold a gap; swordsmen chase and return; arrows fly; replacements arrive (with `town-economy` checkpoint B)
+- [x] Browser: guards walk out and hold a gap; swordsmen chase and return; arrows fly; replacements arrive (with `town-economy` checkpoint B) (checked by George, 2026-10-26)
 
 Files: `src/ui/tileInfo.ts`, `src/render/palette.ts`, `tests/ui/tileInfo.test.ts`. Size: S. Depends on: 4, 5.
 

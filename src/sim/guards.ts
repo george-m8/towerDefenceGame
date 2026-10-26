@@ -29,13 +29,17 @@ export function guardSpots(state: GameState, building: Structure): Point[] {
   }
   let spots = entry.spots.get(building.id);
   if (!spots) {
-    spots = findSpots(state, building);
+    spots = guardSpotsFor(state, building);
     entry.spots.set(building.id, spots);
   }
   return spots;
 }
 
-function findSpots(state: GameState, building: Structure): Point[] {
+/** `guardSpots` for a building at a place and facing, built or not (the placing preview). */
+export function guardSpotsFor(
+  state: GameState,
+  building: Pick<Structure, "x" | "y" | "facing">,
+): Point[] {
   const f = AHEAD[building.facing ?? "S"];
   const side = { x: -f.y, y: f.x };
   const area: Point[] = [];
@@ -52,7 +56,7 @@ function findSpots(state: GameState, building: Structure): Point[] {
 }
 
 /** Tiles a unit could walk to within a few steps of the building. */
-function reachableNear(state: GameState, building: Structure): Set<number> {
+function reachableNear(state: GameState, building: Point): Set<number> {
   const seen = new Set<number>();
   let frontier: Point[] = [building];
   for (let step = 0; step < REACH_STEPS && frontier.length > 0; step++) {

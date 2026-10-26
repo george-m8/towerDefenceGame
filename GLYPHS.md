@@ -2,7 +2,6 @@
 
 Every character drawn on the map, and why it was picked. Glyphs live in `src/sim/config.ts` (enemies, units), `src/render/palette.ts` (structures, terrain, projectiles) and `src/render/canvas.ts` (a few markers). **Keep this page up to date when you add or change one.**
 
-"Planned" marks the glyphs `field-units` brings in (its Task 2; see [`SPEC-field-units.md`](SPEC-field-units.md)).
 
 ## The rules
 
@@ -10,7 +9,7 @@ Every character drawn on the map, and why it was picked. Glyphs live in `src/sim
 - **Your units are drawn in your player colour.** Guards and field units use symbols, never letters, so they can't be mistaken for an enemy. Workers and the dev militia use lowercase letters that no enemy uses.
 - **Structures are a tile with a background colour and a glyph.** The glyph says what the building does. A symbol is used where a clear one exists; a two-letter code is the last resort. Symbols must draw as plain text (no colour emoji), so emoji-capable characters such as ⚔ ⚒ ⛏ ⚖ ⛺ are avoided.
 - **Terrain is a background colour**, with a glyph where the colour alone isn't enough.
-- **Arrows point where things face.** Archer towers and wall spikes draw an arrow in their facing. Nothing else shows a facing (the old notch goes in `field-units`).
+- **Arrows point where things face.** Archer towers and wall spikes draw an arrow in their facing. Nothing else shows a facing; spawners show their door instead.
 
 ## Enemies
 
@@ -29,7 +28,7 @@ Every character drawn on the map, and why it was picked. Glyphs live in `src/sim
 | `s` | Shaman | **S**haman |
 | `x` | Dwarf bomber | **X**-plosion |
 | `X` | Dwarf demolisher | Uppercase: the bigger bomber |
-| `n` | Digger | Now: `n`, chosen only because `d` is the dwarf. *Planned:* `t` for **t**unneller (fallback `↳`, U+21B3, a path going down and along) |
+| `t` | Digger | **T**unneller (fallback `↳`, U+21B3, a path going down and along, if `t` ever clashes). It was `n` until `field-units` |
 | `R` | Battering ram | **R**am: uppercase because it's huge |
 
 Colours are per kind (`ENEMY_COLOURS` in `palette.ts`); a family shares a colour (barbarians orange, dwarves yellow, marines blue).
@@ -45,40 +44,40 @@ Colours are per kind (`ENEMY_COLOURS` in `palette.ts`); a family shares a colour
 | `/` | Swordsman | A blade |
 | `)` | Archer | A bow |
 | `]` | Paladin | A shield |
-| `!` | Scout *(planned)* | Alert, on the lookout |
-| `&` | Soldier *(planned)* | A figure with a weapon |
-| `}` | Ranger *(planned)* | A bigger bow than the archer's `)` |
+| `!` | Scout | Alert, on the lookout |
+| `&` | Soldier | A figure with a weapon |
+| `}` | Ranger | A bigger bow than the archer's `)` |
 
 ## Structures
 
-| Building | Now | Planned | Why |
-|---|---|---|---|
-| Keep | `K` on each tile (HP in the middle) | `⛫` castle (U+26EB) | **K**eep, then a castle |
-| Wall | `#` | | Stacked stone |
-| Ruin | `#` | | A wall, crumbling (darker stone) |
-| Gate | `∩` | | An arch you can walk through |
-| Archer tower | arrow in its facing | | Fires one way, through a slit |
-| Cannon | `C` | | **C**annon (fires all round: no facing shown) |
-| Catapult | `P` | | **'P**ult (fires all round) |
-| Watchtower | `T` | | A **t**ower |
-| Floor spikes | `^` | | Spikes coming up |
-| Wall spikes | arrow in its facing | | Fires at the tile it faces |
-| Bridge | `=` | | Planks across |
-| House | `h` | `⌂` house (U+2302) | **H**ouse, then a house shape |
-| Shop | `S` | `¤` currency sign (U+00A4) | **S**hop, then money |
-| Farmhouse | `H` | `Fa` | **H**omestead; then **Fa**rm (`⌂` is the house) |
-| Farmland | `"` | `𐤄` Phoenician he (U+10904) | Rows of a crop, then a crop |
-| Timber yard | `L` | `Ti` | **L**umber; then **Ti**mber (the watchtower has `T`) |
-| Mine | `M` | `Mi` | **M**ine; then **Mi**ne |
-| Forager hut | `F` | `Fo` | **F**orager; then **Fo**rager |
-| Guardhouse | `G` | `⛨` cross on a shield (U+26E8) | **G**uard, then a shield |
-| Archery post | `A` | `➶` arrow (U+27B6) | **A**rchery, then an arrow |
-| Paladin hall | `K` | `✠` Maltese cross (U+2720) | **K**nights; then a holy order's cross |
-| Scout camp | - | `⚑` flag (U+2691) | A flag planted at a camp |
-| Barracks | - | `Ba` | **Ba**rracks (⚔ would be emoji) |
-| Archery range | - | `◎` bullseye (U+25CE) | A target |
+| Building | Glyph | Why |
+|---|---|---|
+| Keep (HP in the middle tile) | `⛫` castle (U+26EB) | A castle (was `K`) |
+| Wall | `#` | Stacked stone |
+| Ruin | `#` | A wall, crumbling (darker stone) |
+| Gate | `∩` | An arch you can walk through |
+| Archer tower | arrow in its facing | Fires one way, through a slit |
+| Cannon | `C` | **C**annon (fires all round: no facing shown) |
+| Catapult | `P` | **'P**ult (fires all round) |
+| Watchtower | `T` | A **t**ower |
+| Floor spikes | `^` | Spikes coming up |
+| Wall spikes | arrow in its facing | Fires at the tile it faces |
+| Bridge | `=` | Planks across |
+| House | `⌂` house (U+2302) | A house shape (was `h`) |
+| Shop | `¤` currency sign (U+00A4) | Money (was `S`) |
+| Farmhouse | `Fa` | **Fa**rm; `⌂` is the house (was `H`) |
+| Farmland | `𐤄` Phoenician he (U+10904) | A crop in a field (was `"`) |
+| Timber yard | `Ti` | **Ti**mber; the watchtower has `T` (was `L`) |
+| Mine | `Mi` | **Mi**ne; ⚒ and ⛏ can turn into emoji (was `M`) |
+| Forager hut | `Fo` | **Fo**rager (was `F`) |
+| Guardhouse | `⛨` cross on a shield (U+26E8) | A shield (was `G`) |
+| Archery post | `➶` arrow (U+27B6) | An arrow (was `A`) |
+| Paladin hall | `✠` Maltese cross (U+2720) | A holy order's cross (was `K`) |
+| Scout camp | `⚑` flag (U+2691) | A flag planted at a camp |
+| Barracks | `Ba` | **Ba**rracks (⚔ would be emoji) |
+| Archery range | `◎` bullseye (U+25CE) | A target |
 
-The two-letter codes are where no clear, non-emoji symbol has been found yet. Better symbols are welcome.
+The two-letter codes are where no clear, non-emoji symbol has been found yet; they're drawn a little smaller. Better symbols are welcome. A test (`tests/render/glyphs.test.ts`) keeps every building glyph to one symbol or two letters, and rejects emoji-capable characters.
 
 ## Terrain
 
@@ -103,5 +102,5 @@ The two-letter codes are where no clear, non-emoji symbol has been found yet. Be
 | `→` | Arrow in flight | An arrow (turns along its arc) |
 | `•` | Cannonball in flight | A ball |
 | `*` | Catapult stone in flight | A tumbling rock |
-| `S` faint *(planned)* | A spawner's door | **S**pawn: where its units come out |
-| white border *(planned)* | Where a spawner being placed sends its units (and a guard building's spots) | Shows where not to build |
+| `S` faint | A spawner's door | **S**pawn: where its units come out |
+| white border | Where a spawner being placed sends its units (fainter: a guard building's spots) | Shows where not to build |

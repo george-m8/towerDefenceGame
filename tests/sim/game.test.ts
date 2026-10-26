@@ -178,6 +178,39 @@ describe("determinism", () => {
   }, 20_000); // two long runs; slow under coverage instrumentation
 });
 
+describe("determinism with field units", () => {
+  it("stays identical with scouts and soldiers out in Endless, and a siege in PvP", () => {
+    const endless = () => {
+      const s = createGame(7, { size: "S" });
+      const keep = s.keeps[0];
+      for (const [kind, dy] of [
+        ["scoutCamp", -3],
+        ["barracks", 4],
+      ] as const) {
+        const x = keep.x + keep.size + 4;
+        if (canBuild(s, 1, kind, x, keep.y + dy).ok)
+          placeStructure(s, kind, x, keep.y + dy, "E", 1);
+      }
+      for (let i = 0; i < 1500; i++) tick(s);
+      return { json: JSON.stringify(s), explored: s.exploredVersion };
+    };
+    const pvp = () => {
+      const s = createGame(7, { mode: "pvp", players: ["Ann", "Bo"], size: "S", fog: false });
+      const [ann, bo] = s.keeps;
+      placeStructure(s, "barracks", ann.x + ann.size + 3, ann.y, "E", 1);
+      placeStructure(s, "archeryRange", ann.x + ann.size + 3, ann.y + 3, "E", 1);
+      for (let i = 0; i < 2000; i++) tick(s);
+      return { json: JSON.stringify(s), hit: bo.hp < bo.maxHp };
+    };
+    const first = endless();
+    expect(first.json).toBe(endless().json);
+    expect(first.explored).toBeGreaterThan(0);
+    const siege = pvp();
+    expect(siege.json).toBe(pvp().json);
+    expect(siege.hit).toBe(true);
+  }, 30_000);
+});
+
 describe("ownership", () => {
   it("structures built by command belong to the player; generated ruins to no one", () => {
     const state = createGame(7);

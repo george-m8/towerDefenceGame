@@ -187,7 +187,7 @@ function isLess(a: number[], b: number[]): boolean {
 // range, arcs, turning and splash. A wall shields the tower on it, as it does from enemies.
 
 /** Something a PvP tower can hit: a rival unit, a rival structure, or a tile of a rival keep. */
-type SiegeTarget = Point & { unit?: Unit; structure?: Structure; keep?: Keep };
+export type SiegeTarget = Point & { unit?: Unit; structure?: Structure; keep?: Keep };
 
 function updateSiegeTower(
   state: GameState,
@@ -254,14 +254,19 @@ function updateSiegeTower(
 }
 
 /** Damages a rival's structure; wrecking it pays the attacker a share of what it cost. */
-function damageRival(state: GameState, target: Structure, damage: number, by: PlayerId | null) {
+export function damageRival(
+  state: GameState,
+  target: Structure,
+  damage: number,
+  by: PlayerId | null,
+) {
   const bounty = Math.floor((target.paid ?? STRUCTURES[target.kind].cost) * PVP.destroyBounty);
   damageStructure(state, target, damage);
   if (target.hp <= 0) addGold(state, by, bounty);
 }
 
 /** What a tower owned by `owner` would hit on (x, y): the wall before the tower on it. */
-function siegeTargetAt(
+export function siegeTargetAt(
   state: GameState,
   owner: PlayerId | null,
   x: number,

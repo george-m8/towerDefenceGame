@@ -48,6 +48,9 @@ export const TOOLS: ToolDef[] = [
   { tool: "timberYard", tab: "civic", paintable: false },
   { tool: "mine", tab: "civic", paintable: false },
   { tool: "foragerHut", tab: "civic", paintable: false },
+  { tool: "scoutCamp", tab: "offence", paintable: false },
+  { tool: "barracks", tab: "offence", paintable: false },
+  { tool: "archeryRange", tab: "offence", paintable: false },
   { tool: "sell", tab: "all", key: "KeyX", label: "X", paintable: true },
 ];
 

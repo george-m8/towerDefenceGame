@@ -63,6 +63,7 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     nextId: 1,
     gridVersion: 0,
     sightVersion: 0,
+    exploredVersion: 0,
     flows: {},
     enemies: [],
     units: [],

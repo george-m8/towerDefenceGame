@@ -10,6 +10,7 @@ import {
   type UnitKind,
 } from "../sim/config";
 import { farmFields, farmhouseFor } from "../sim/farms";
+import { fieldActivity } from "../sim/fieldUnits";
 import { resourceAt } from "../sim/resources";
 import { guardActivity, workableFrom } from "../sim/units";
 import { playerName } from "../sim/players";
@@ -219,6 +220,7 @@ export function hoverText(state: GameState, ui: UiState): string {
 function unitDoing(state: GameState, unit: Unit): string | null {
   const kind: UnitKind = UNIT_KINDS[unit.kind];
   if (kind.behaviour === "guard") return guardActivity(state, unit);
+  if (kind.behaviour === "scout" || kind.behaviour === "attack") return fieldActivity(state, unit);
   if (!kind.gathers) return null;
   const between = !Number.isInteger(unit.x) || !Number.isInteger(unit.y);
   if (!between && workableFrom(state, unit.x, unit.y, kind.gathers)) return kind.working ?? null;

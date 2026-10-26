@@ -4,8 +4,6 @@ import type { TextureStyle } from "./textures";
 
 export const TILE_SIZE = 20;
 /** Facing notch on a tower tile edge, and the hovered turning tower's aim line. */
-export const NOTCH_LENGTH_PX = 8;
-export const NOTCH_DEPTH_PX = 3;
 export const AIM_LINE_TILES = 2;
 /**
  * How each tower's shot looks in flight: its symbol, and how high its arc rises as a fraction
@@ -28,7 +26,16 @@ export const CONSTRUCTION_ALPHA = 0.45;
 export const BUILD_BORDER_PX = 3;
 /** From this much of the longest build time on, the build-time border turns orange. */
 export const BUILD_BORDER_LONG = 0.75;
-export const GLYPH_FONT = `bold ${TILE_SIZE - 4}px Menlo, Consolas, monospace`;
+/**
+ * Glyphs: monospace for letters, then the usual symbol fonts for building symbols such as ⛫ ⌂ 𐤄
+ * (see GLYPHS.md), so they draw as plain glyphs on macOS and Windows.
+ */
+const GLYPH_FONTS = `Menlo, Consolas, "Apple Symbols", "Segoe UI Symbol", "Segoe UI Historic", "Noto Sans Symbols 2", monospace`;
+export const GLYPH_FONT = `bold ${TILE_SIZE - 4}px ${GLYPH_FONTS}`;
+/** Smaller, so a two-letter code (like Ti) fits a tile. */
+export const CODE_FONT = `bold ${TILE_SIZE - 9}px ${GLYPH_FONTS}`;
+/** Every keep tile but the middle one (which shows its HP). */
+export const KEEP_GLYPH = "⛫";
 /** Slightly smaller font so a two-digit HP fits inside one tile. */
 export const KEEP_HP_FONT = `bold ${TILE_SIZE - 6}px Menlo, Consolas, monospace`;
 
@@ -108,7 +115,10 @@ export const COLOURS = {
   /** A shot's projectile in flight. */
   projectile: "#ffe08a",
   chest: "#ffcc33",
-  facingNotch: "#ffffff",
+  /** A spawner's door: a border while placing, a faint S once built. */
+  door: "#ffffff",
+  /** Where a guard building being placed will station its guards. */
+  guardSpot: "rgba(255, 255, 255, 0.45)",
   aimLine: "#ff6b6b",
   splash: "rgba(255, 150, 40, 0.45)",
   heal: "#5ee36a",
@@ -151,16 +161,20 @@ export const GLYPHS: Record<StructureKind, string> = {
   catapult: "P",
   floorSpikes: "^",
   wallSpikes: "↑",
-  house: "h",
-  timberYard: "L",
-  mine: "M",
-  foragerHut: "F",
-  shop: "S",
-  guardhouse: "G",
-  archeryPost: "A",
-  paladinHall: "K",
-  farmhouse: "H",
-  farmland: '"',
+  // A symbol where a clear one exists, else a two-letter code (see GLYPHS.md for why each).
+  house: "⌂",
+  timberYard: "Ti",
+  mine: "Mi",
+  foragerHut: "Fo",
+  shop: "¤",
+  guardhouse: "⛨",
+  archeryPost: "➶",
+  paladinHall: "✠",
+  scoutCamp: "⚑",
+  barracks: "Ba",
+  archeryRange: "◎",
+  farmhouse: "Fa",
+  farmland: "𐤄",
   bridge: "=",
   watchtower: "T",
   gate: "∩",
@@ -241,6 +255,9 @@ export const STRUCTURE_COLOURS: Record<StructureKind, { bg: string; fg: string }
   guardhouse: { bg: "#5a3a3a", fg: "#ffd0c0" },
   archeryPost: { bg: "#3a5a3a", fg: "#d8f5c8" },
   paladinHall: { bg: "#4a4a6a", fg: "#e8e8ff" },
+  scoutCamp: { bg: "#5a5a3a", fg: "#ffe8a0" },
+  barracks: { bg: "#6a3a3a", fg: "#ffd0c0" },
+  archeryRange: { bg: "#3a5a4a", fg: "#ffffff" },
   farmhouse: { bg: "#8a5a2b", fg: "#ffe08a" },
   farmland: { bg: "#6b5a2a", fg: "#c9b45a" },
   bridge: { bg: "#6b4f2a", fg: "#d9b77a" },
@@ -288,6 +305,8 @@ export const STRUCTURE_TEXTURES: Partial<Record<StructureKind, TextureStyle>> = 
 export const TEXTURE_MIN_TILE_PX = 10;
 
 export const OWNER_MARK_PX = 6;
+/** How faint a built spawner's door S is. */
+export const DOOR_ALPHA = 0.25;
 
 /** One colour per player (ids 1-4; later ids wrap round), for owner marks and the players list. */
 export const PLAYER_COLOURS = ["#f2c14e", "#4ea8de", "#f25c54", "#6fd08c"];
