@@ -619,3 +619,28 @@ describe("bands", () => {
     expect(member.y).toBeLessThan(at.y); // heading for the gap at the top, like any barbarian
   });
 });
+
+describe("weight", () => {
+  it("every kind has the spec's weight: light ones 0, up to the ram", () => {
+    const weights = Object.fromEntries(
+      (Object.keys(ENEMY_KINDS) as EnemyKindId[]).map((k) => [k, ENEMY_KINDS[k].weight]),
+    );
+    expect(weights).toEqual({
+      goblin: 0,
+      zerg: 0,
+      wolfRider: 1,
+      barbarian: 1,
+      dwarf: 1,
+      marine: 1,
+      shaman: 1,
+      digger: 1,
+      dwarfBomber: 1,
+      barbarianChief: 2,
+      dwarfThane: 2,
+      marineCaptain: 2,
+      dwarfDemolisher: 2,
+      golem: 4,
+      batteringRam: 6,
+    });
+  });
+});

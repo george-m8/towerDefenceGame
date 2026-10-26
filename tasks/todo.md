@@ -8,8 +8,8 @@ Standard verification for every task: `npm run typecheck && npm test && npm run 
 
 `weight` on every enemy kind (0 goblin, zerg; 1 wolf rider, barbarian, dwarf, marine, shaman, digger, dwarf bomber; 2 chief, thane, marine captain, demolisher; 4 golem; 6 ram), documented as trampling now, knockback later.
 
-- [ ] Every kind has a whole-number weight of 0 or more, matching the spec's table
-- [ ] The existing suite passes untouched
+- [x] Every kind has a whole-number weight of 0 or more, matching the spec's table
+- [x] The existing suite passes untouched
 
 Files: `src/sim/config.ts`, `tests/sim/enemies.test.ts`. Size: XS. Depends on: none.
 
