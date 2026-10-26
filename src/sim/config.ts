@@ -85,6 +85,16 @@ export interface StructureStats {
   salvageGold?: number;
   /** How far it lets players see (fog of war). Towers see in the shape of their arc. */
   sight?: SightStats;
+  /** Spawns units (see sim/units.ts). Its timer is the structure's `cooldown`, so a spawner
+   * can't also be a tower, a trap or earn income. */
+  spawner?: SpawnerStats;
+}
+
+/** A building that makes units: free, one every interval, while fewer than `quota` are alive. */
+export interface SpawnerStats {
+  unit: UnitKindId;
+  quota: number;
+  intervalSeconds: number;
 }
 
 /** Sight radii in tiles, centre to centre: enemies are visible within `inner`, land within `outer`. */

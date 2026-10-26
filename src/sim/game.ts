@@ -11,7 +11,7 @@ import { generateTerrain, layoutFor } from "./mapgen";
 import { randomInt } from "./rng";
 import { updateTowers } from "./towers";
 import { updateTraps } from "./traps";
-import { removeDeadUnits, spawnUnit, updateUnits } from "./units";
+import { removeDeadUnits, spawnUnit, updateSpawners, updateUnits } from "./units";
 import { createWaveState, sendWaveEarly, updateWaves } from "./waves";
 import { addPlayer, updateVotes } from "./players";
 import type { Command, CommandResult, GameMode, GameState, PlayerId, Terrain } from "./types";
@@ -114,6 +114,7 @@ export function tick(state: GameState): void {
   updateEffects(state);
   updateCues(state);
   updateBuilding(state);
+  updateSpawners(state);
   updateUnits(state); // before enemies, so a unit that steps in the way blocks them this tick
   updateEnemies(state);
   updateWaves(state);

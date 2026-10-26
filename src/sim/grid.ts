@@ -251,6 +251,8 @@ export function removeStructure(state: GameState, structure: Structure): void {
     if (mount) removeStructure(state, mount);
   }
   delete state.structures[structure.id];
+  // Its units live on, homeless: nothing replaces them.
+  for (const unit of state.units) if (unit.home === structure.id) unit.home = null;
   layerOf(state, structure.kind)[tileIndex(state, structure.x, structure.y)] = EMPTY;
   state.gridVersion++;
 }

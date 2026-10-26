@@ -3,14 +3,17 @@ import {
   ENEMY_KINDS,
   TICK_RATE,
   UNIT_KINDS,
+  STRUCTURES,
   UNIT_PATH_SEARCHES_PER_TICK,
+  type SpawnerStats,
+  type StructureStats,
   type UnitKind,
 } from "../../src/sim/config";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand, tick } from "../../src/sim/game";
-import { blocksAt, placeStructure } from "../../src/sim/grid";
+import { blocksAt, placeStructure, removeStructure } from "../../src/sim/grid";
 import { damageUnit, spawnUnit } from "../../src/sim/units";
-import type { Enemy, GameState } from "../../src/sim/types";
+import type { Enemy, Facing, GameState } from "../../src/sim/types";
 import { buildAt, createGameWithoutWaves, goldOf, paintTerrain, ring } from "./helpers";
 
 const militia = UNIT_KINDS.militia;
@@ -301,3 +304,123 @@ describe("unit movement", () => {
     expect(wall.buildLeft).toBe(0);
   });
 });
+
+describe("spawners", () => {
+  const spawner: SpawnerStats = { unit: "militia", quota: 2, intervalSeconds: 3 };
+  const interval = spawner.intervalSeconds * TICK_RATE;
+
+  /** Walls become test spawners for the length of `body` (no real kind spawns yet). */
+  function withSpawner(body: () => void) {
+    const wall: StructureStats = STRUCTURES.wall;
+    wall.spawner = spawner;
+    try {
+      body();
+    } finally {
+      delete wall.spawner;
+    }
+  }
+
+  function spawnerAt(state: GameState, x: number, y: number, facing?: Facing) {
+    const s = placeStructure(state, "wall", x, y, "N", 1);
+    s.facing = facing; // walls have no facing of their own; spawners face south without one
+    return s;
+  }
+
+  it("spawns its first unit straight away, then one every interval", () =>
+    withSpawner(() => {
+      const state = createGameWithoutWaves();
+      const home = spawnerAt(state, 10, 10);
+
+      tick(state);
+      expect(state.units).toEqual([
+        expect.objectContaining({ kind: "militia", owner: 1, home: home.id, x: 10, y: 11 }),
+      ]);
+      run(state, interval - 1);
+      expect(state.units).toHaveLength(1);
+      tick(state);
+      expect(state.units).toHaveLength(2);
+    }));
+
+  it("never has more than its quota alive, and replaces a death straight away", () =>
+    withSpawner(() => {
+      const state = createGameWithoutWaves();
+      spawnerAt(state, 10, 10);
+      run(state, 5 * interval);
+      expect(state.units).toHaveLength(2);
+
+      const dead = state.units[0];
+      damageUnit(dead, 100);
+      tick(state); // replaced on the same tick the dead one is cleared away
+      expect(state.units).toHaveLength(2);
+      expect(state.units).not.toContain(dead);
+    }));
+
+  it("does nothing while it's a construction site", () =>
+    withSpawner(() => {
+      const state = createGameWithoutWaves();
+      const home = spawnerAt(state, 10, 10);
+      home.buildLeft = home.buildTicks = 5;
+      run(state, 4);
+      expect(state.units).toHaveLength(0);
+      tick(state);
+      expect(state.units).toHaveLength(1);
+    }));
+
+  it("spawns on the tile it faces, else the next open one clockwise, else waits", () =>
+    withSpawner(() => {
+      const state = createGameWithoutWaves();
+      const home = spawnerAt(state, 10, 10, "E");
+      const spawnedAt = () => state.units.map((u) => ({ x: u.x, y: u.y }));
+
+      tick(state);
+      expect(spawnedAt()).toEqual([{ x: 11, y: 10 }]);
+
+      state.units = [];
+      buildAt(state, [{ x: 11, y: 10 }], "house");
+      run(state, interval);
+      expect(spawnedAt()).toEqual([{ x: 10, y: 11 }]); // east is taken: south is next clockwise
+
+      state.units = [];
+      buildAt(
+        state,
+        [
+          { x: 10, y: 11 },
+          { x: 9, y: 10 },
+          { x: 10, y: 9 },
+        ],
+        "house",
+      );
+      run(state, 2 * interval);
+      expect(state.units).toHaveLength(0);
+      expect(home.cooldown).toBe(0); // ready, waiting for room
+
+      sellAt(state, 10, 9);
+      tick(state);
+      expect(spawnedAt()).toEqual([{ x: 10, y: 9 }]);
+    }));
+
+  it("leaves its units alive with no home when sold; a new one starts counting from zero", () =>
+    withSpawner(() => {
+      const state = createGameWithoutWaves();
+      const home = spawnerAt(state, 10, 10);
+      tick(state);
+      const unit = state.units[0];
+
+      expect(applyCommand(state, 1, { type: "sell", x: 10, y: 10 })).toEqual({ ok: true });
+      run(state, 3 * interval);
+      expect(state.units).toEqual([unit]);
+      expect(unit.home).toBeNull();
+      expect(unit.hp).toBe(militia.hp);
+
+      const next = spawnerAt(state, 20, 10);
+      run(state, interval + 1);
+      expect(state.units.filter((u) => u.home === next.id)).toHaveLength(2);
+      expect(next.id).not.toBe(home.id);
+    }));
+});
+
+/** Removes whatever is built on (x, y), bypassing gold and ownership. */
+function sellAt(state: GameState, x: number, y: number) {
+  const structure = Object.values(state.structures).find((s) => s.x === x && s.y === y)!;
+  removeStructure(state, structure);
+}

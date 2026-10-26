@@ -57,13 +57,15 @@ Built: instead of a test-only `walkTo` behaviour, every unit has an optional `go
 
 `SpawnerStats` and `spawner?` on `StructureStats`; `updateSpawners` runs first in `tick`, using `cooldown` as the timer. A test-only spawner kind, injected through test config and not in `STRUCTURES`. Removing a spawner sets its units' `home` to null.
 
-- [ ] First unit as soon as it's built (on placement when build time is 0), the next after exactly `intervalSeconds`; nothing while it's a construction site
-- [ ] Never more than `quota` alive; at quota, a replacement right after a death
-- [ ] Spawns on the facing tile, else the next open neighbour clockwise, else waits
-- [ ] Selling the spawner leaves its units alive with no home; none are replaced
-- [ ] A new spawner counts from zero even with homeless units nearby
+- [x] First unit as soon as it's built (on placement when build time is 0), the next after exactly `intervalSeconds`; nothing while it's a construction site
+- [x] Never more than `quota` alive; at quota, a replacement right after a death
+- [x] Spawns on the facing tile, else the next open neighbour clockwise, else waits
+- [x] Selling the spawner leaves its units alive with no home; none are replaced
+- [x] A new spawner counts from zero even with homeless units nearby
 
 Files: `src/sim/config.ts`, `src/sim/units.ts`, `src/sim/game.ts`, `src/sim/grid.ts` (removal hook), `tests/sim/units.test.ts`. Size: M. Depends on: 3.
+
+Built: the test spawner is `wall` with a `spawner` row added for the length of each test. A spawner kind can't also be a tower, trap or income building, because they share `cooldown`. A dead unit is replaced on the same tick it's cleared away.
 
 ## Task 5: Units give fog sight
 

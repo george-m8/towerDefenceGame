@@ -1,19 +1,21 @@
 // The player's own people on the map. Each unit belongs to a player, has a kind (UNIT_KINDS)
 // and does what its kind's behaviour says every tick. See SPEC-unit-core.md.
 import {
+  STRUCTURES,
   TICK_RATE,
   UNIT_KINDS,
   UNIT_PATH_SEARCHES_PER_TICK,
+  type StructureStats,
   type UnitBehaviourId,
   type UnitKind,
   type UnitKindId,
 } from "./config";
 import { damageEnemy } from "./enemies";
-import { blocksAt, inBounds, keepAt } from "./grid";
+import { blocksAt, inBounds, isBuilt, keepAt } from "./grid";
 import { atTileCentre, walk } from "./movement";
 import { canCross } from "./pathfinding";
 import { findPath } from "./unitPaths";
-import type { Enemy, GameState, PlayerId, Point, Unit } from "./types";
+import type { Enemy, Facing, GameState, PlayerId, Point, Structure, Unit } from "./types";
 
 type Behaviour = (state: GameState, unit: Unit) => void;
 
@@ -71,6 +73,45 @@ export function spawnUnit(
   };
   state.units.push(unit);
   return unit;
+}
+
+/**
+ * Every finished spawner counts down its timer (`cooldown`); at 0, while it has fewer than its
+ * quota alive, it spawns a unit and starts again. At quota it stays ready, so a death is
+ * replaced straight away. With no open tile beside it, it waits.
+ */
+export function updateSpawners(state: GameState): void {
+  for (const structure of Object.values(state.structures)) {
+    const { spawner }: StructureStats = STRUCTURES[structure.kind];
+    if (!spawner || !isBuilt(structure) || structure.owner === null) continue;
+    structure.cooldown = Math.max(0, structure.cooldown - 1);
+    if (structure.cooldown > 0) continue;
+    const alive = state.units.filter((u) => u.home === structure.id && u.hp > 0).length;
+    if (alive >= spawner.quota) continue;
+    const tile = spawnTile(state, structure);
+    if (!tile) continue;
+    spawnUnit(state, spawner.unit, structure.owner, tile.x, tile.y, structure.id);
+    structure.cooldown = spawner.intervalSeconds * TICK_RATE;
+  }
+}
+
+const CLOCKWISE: Facing[] = ["N", "E", "S", "W"];
+const STEP: Record<Facing, Point> = {
+  N: { x: 0, y: -1 },
+  E: { x: 1, y: 0 },
+  S: { x: 0, y: 1 },
+  W: { x: -1, y: 0 },
+};
+
+/** The tile a spawner faces (south without a facing) if open, else the next open one clockwise. */
+function spawnTile(state: GameState, structure: Structure): Point | null {
+  const first = CLOCKWISE.indexOf(structure.facing ?? "S");
+  for (let i = 0; i < 4; i++) {
+    const d = STEP[CLOCKWISE[(first + i) % 4]];
+    const tile = { x: structure.x + d.x, y: structure.y + d.y };
+    if (canStand(state, tile.x, tile.y)) return tile;
+  }
+  return null;
 }
 
 /** Armour takes something off every hit, but a hit always does at least 1. */
