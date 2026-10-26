@@ -260,6 +260,7 @@ export const STRUCTURES = {
     cost: 60,
     maxHp: 40,
     blocksMovement: true,
+    directional: true, // R turns which side its door is on
     sight: { inner: 3, outer: 6 },
     spawner: { unit: "lumberjack", quota: 5, intervalSeconds: 60 },
   },
@@ -269,6 +270,7 @@ export const STRUCTURES = {
     cost: 100,
     maxHp: 40,
     blocksMovement: true,
+    directional: true, // R turns which side its door is on
     sight: { inner: 3, outer: 6 },
     spawner: { unit: "miner", quota: 5, intervalSeconds: 60 },
   },
@@ -278,6 +280,7 @@ export const STRUCTURES = {
     cost: 40,
     maxHp: 30,
     blocksMovement: true,
+    directional: true, // R turns which side its door is on
     sight: { inner: 3, outer: 6 },
     spawner: { unit: "forager", quota: 5, intervalSeconds: 60 },
   },
@@ -339,6 +342,37 @@ export const STRUCTURES = {
     sight: { inner: 4, outer: 6 },
     spawner: { unit: "paladin", quota: 3, intervalSeconds: 30 },
   },
+  // Offensive buildings (Offence tab): field units that go out exploring and attacking.
+  scoutCamp: {
+    name: "Scout camp",
+    layer: "base",
+    cost: 40,
+    maxHp: 40,
+    blocksMovement: true,
+    directional: true,
+    sight: { inner: 4, outer: 6 },
+    spawner: { unit: "scout", quota: 2, intervalSeconds: 45 },
+  },
+  barracks: {
+    name: "Barracks",
+    layer: "base",
+    cost: 80,
+    maxHp: 60,
+    blocksMovement: true,
+    directional: true,
+    sight: { inner: 4, outer: 6 },
+    spawner: { unit: "soldier", quota: 4, intervalSeconds: 30 },
+  },
+  archeryRange: {
+    name: "Archery range",
+    layer: "base",
+    cost: 90,
+    maxHp: 50,
+    blocksMovement: true,
+    directional: true,
+    sight: { inner: 4, outer: 6 },
+    spawner: { unit: "ranger", quota: 4, intervalSeconds: 30 },
+  },
   ruin: {
     name: "Ruin",
     layer: "base",
@@ -363,7 +397,7 @@ export const BURST_DELAY_TICKS = 6;
 export const BURST_TICKS = 24;
 
 /** What a unit does each tick (see sim/units.ts). */
-export type UnitBehaviourId = "hold" | "gather" | "guard";
+export type UnitBehaviourId = "hold" | "gather" | "guard" | "scout" | "attack";
 
 /** A kind of the player's own unit. Units spawn free from their building (see SpawnerStats). */
 export interface UnitKind {
@@ -443,6 +477,44 @@ export const UNIT_KINDS = {
     sight: { inner: 3, outer: 5 },
     behaviour: "guard",
     chase: 0,
+  },
+  // Field units, spawned by offensive buildings: they leave home and go out (see sim/fieldUnits.ts).
+  scout: {
+    glyph: "!",
+    name: "Scout",
+    hp: 20,
+    armour: 0,
+    damage: 0, // never fights
+    attackInterval: 1,
+    range: 0,
+    speed: 2,
+    sight: { inner: 6, outer: 9 },
+    behaviour: "scout",
+  },
+  soldier: {
+    glyph: "&",
+    name: "Soldier",
+    hp: 70,
+    armour: 2,
+    damage: 10,
+    attackInterval: 1,
+    range: 1,
+    speed: 1.2,
+    sight: { inner: 4, outer: 6 },
+    behaviour: "attack",
+  },
+  ranger: {
+    glyph: "}",
+    name: "Ranger",
+    hp: 40,
+    armour: 0,
+    damage: 7,
+    attackInterval: 1.2,
+    range: 5,
+    speed: 1.1,
+    sight: { inner: 5, outer: 8 },
+    behaviour: "attack",
+    projectile: "arrow",
   },
   // Workers, spawned by gatherer buildings. They work a resource every `attackInterval`
   // seconds (how often gold comes in); RESOURCES says what a tile pays and how long it takes.
@@ -838,7 +910,7 @@ export const ENEMY_KINDS = {
     variants: [{ name: "demolisher", weight: 1, hp: 1, speed: 1, damage: 1, size: "normal" }],
   },
   digger: {
-    glyph: "n",
+    glyph: "t", // for tunneller
     name: "Digger",
     description: "Digs under a nearby wall until it falls, then walks on.",
     profile: "follower",

@@ -1,89 +1,112 @@
-# Tasks: units (guards)
+# Tasks: field-units
 
-Spec: [`SPEC-units.md`](../SPEC-units.md) · Plan: [`plan.md`](plan.md) ("AoE update: units (guards)")
+Spec: [`SPEC-field-units.md`](../SPEC-field-units.md) · Plan: [`plan.md`](plan.md) ("AoE update: field-units")
 
-Standard verification for every task: `npm run typecheck && npm test && npm run build`, checked by exit code. Tests read their numbers from config (`UNIT_KINDS`, `STRUCTURES`), never repeat them.
+Standard verification for every task: `npm run typecheck && npm test && npm run build`, checked by exit code. Tests read their numbers from config, never repeat them.
 
-## Task 1: Guard kinds and buildings
+## Task 1: No notch; doors and door markers
 
-`UNIT_KINDS` rows swordsman `/`, archer `)` and paladin `]` (behaviour `guard`, `chase` 3 / 0 / 0, archer `projectile: "arrow"`); `STRUCTURES` rows guardhouse `G`, archeryPost `A` and paladinHall `K`: directional spawners, quota 3, every 30 s, blocking, in the Defence tab. Until Task 3, `guard` behaves like `hold`.
+Remove the facing notch everywhere (built and while placing). `spawnTileOf(state, structure)` in `units.ts` is the one door rule (facing tile, else next open clockwise, else none), used by spawning and drawing. Gatherer buildings become directional. While placing a spawner, its door gets a white border (guard buildings: their guard spots too, fainter); built spawners show a faint `S` on their current door.
 
-- [x] Each building spawns its own guard kind, up to 3, one every 30 s, once built
-- [x] They're placed facing a direction (like towers) and are in the Defence tab
-- [x] Selling one leaves its guards alive with no home
+- [x] `spawnTileOf` returns the facing tile, else the next open one clockwise, else null
+- [x] A timber yard placed facing west sends its lumberjacks out to the west
+- [x] Browser: no notches; door borders while placing; faint `S` on built doors, moving when the door is blocked (checked by George, 2026-10-26)
 
-Files: `src/sim/config.ts`, `src/sim/units.ts`, `src/ui/state.ts`, `src/render/palette.ts`, `tests/sim/guards.test.ts` (new). Size: M. Depends on: none.
+Files: `src/sim/units.ts`, `src/sim/config.ts`, `src/render/canvas.ts`, `src/render/palette.ts`, `tests/sim/units.test.ts`. Size: M. Depends on: none.
 
-Built: guard buildings show a facing notch like cannons, and the placing preview only highlights a target tile for traps (it had assumed every directional structure was wall spikes).
+Built: the notch code is gone (`needsNotch`, `drawFacingNotch`, its constants and colour). `guardSpotsFor` works out a not-yet-placed building's guard spots for the preview. The faint `S` only shows where the viewer has explored. The browser check is still to do.
 
-## Task 2: Guard spots
+## Task 2: Building symbols and the digger's glyph
 
-`src/sim/guards.ts`: `guardSpots(state, building)` (the open, reachable tiles of the two rows of three in front, in order: near middle, near sides, far middle, far sides) and `guardSpotOf(state, unit)` (its building's spot by age among its living guards, sharing when short; its `goal` when homeless; beside its building when no spot is open).
+Per the spec's table: the keep's tiles draw `⛫` (the middle still shows HP), houses `⌂`, farmland `𐤄`, shop `¤`, guardhouse `⛨`, paladin hall `✠`, archery post `➶`, scout camp `⚑`, archery range `◎`; two-letter codes as the last resort (`Fa`, `Ti`, `Mi`, `Fo`, `Ba`), drawn smaller. The digger enemy's glyph changes from `n` to `t` (README enemy table and journal follow, since they read config). The glyph font list gains symbol-font fallbacks. The build picker uses the same.
 
-- [x] Facing east, spots run straight ahead, then the sides, then the far row; blocked or unreachable tiles are skipped
-- [x] One open tile in front: every guard shares it
-- [x] Building over a spot moves its guard to the next open spot
-- [x] A homeless guard keeps its last spot
+- [x] The digger is `t`, and no two enemy kinds share a glyph
+- [x] Every structure's glyph is one symbol or a two-letter code, matching the spec's table and [`GLYPHS.md`](../GLYPHS.md) (planned marks there become current)
+- [x] None of the symbols is an emoji-capable code point (a test lists the ones to avoid)
+- [x] Browser: every symbol draws as a plain glyph (no boxes, no colour emoji) on this Mac; any that doesn't falls back to its code, recorded here (checked by George, 2026-10-26: all draw as plain glyphs, no fallbacks needed)
 
-Files: `src/sim/guards.ts` (new), `tests/sim/guards.test.ts`. Size: S. Depends on: 1.
+Files: `src/render/palette.ts`, `src/render/canvas.ts`, `src/ui/hud.ts`, `src/sim/config.ts` (digger), `tests/render/` (glyphs test), `tests/sim/behaviours.test.ts`, `README.md`, `GLYPHS.md`. Size: S. Depends on: none.
 
-Built: a spot counts as reachable if it's within 12 steps of the building's sides; spots are cached per building and grid version. With no open spot, `guardSpotOf` returns null and the guard stays put.
+Built: the emoji check is Unicode's `Emoji` property, which every symbol to avoid (⚔ ⚒ ⛏ ⚖ ⛺) has and none of the picks do. Two-letter codes draw in a smaller `CODE_FONT`, counting code points since 𐤄 is two UTF-16 units. The scout camp, barracks and archery range symbols arrive with their buildings in Task 4. The tree's `♣` is emoji-capable too, but it has always drawn as plain text, so it's worth a glance in the browser check. The browser check of the symbols is still to do.
 
-## Task 3: Guard behaviour: holding a spot
+## Task 3: Explored-only and breaching paths
 
-`guard`: fight what's in reach, otherwise walk to its spot and stand. `walkTowards` searches again when a path runs out short of the goal (needed for moving goals in Task 4).
+`findPath(state, from, isGoal, { exploredBy, breach })`: `exploredBy` keeps to tiles that team has explored; `breach: { owner, dps }` lets the search cross that owner's rivals' structures at `1 + ceil(HP / dps)` extra tiles each (Dijkstra, typed-array heap). `walkTowards` passes the options through and keys its cache by them.
 
-- [x] Guards walk to their spots in age order and stay there
-- [x] A paladin never leaves its spot; a goblin stops at it and its armour cuts each hit
-- [x] A guard knocked off its spot (spot built over) walks to its new one
+- [x] An explored-only search never crosses an unexplored tile, and is null when the goal lies beyond one
+- [x] A breaching search goes round when that's cheaper, through the weakest wall when it isn't
+- [x] Without options, searches are exactly as before (existing tests untouched)
 
-Files: `src/sim/units.ts`, `src/sim/guards.ts`, `tests/sim/guards.test.ts`. Size: M. Depends on: 2.
+Files: `src/sim/unitPaths.ts`, `src/sim/units.ts`, `tests/sim/unitPaths.test.ts`. Size: M. Depends on: none.
 
-Built: `Unit.path` now tells "no way there" (null: wait for the grid to change) from "walked it all" (empty: search again if not at the goal yet).
+Built: `Unit.pathSight` records the `sightVersion` of the last search, so a unit limited to explored land with no way yet searches again once more land is explored (explored land changes sight, not the grid). The breaching search reuses the path buffers plus one reusable typed-array heap.
 
-## Task 4: Swordsmen chase and return
+## Task 4: Buildings, unit kinds and the Offence tab
 
-With nothing in reach, a guard with `chase` > 0 walks to the tile next to the nearest enemy in its sight that's within `chase` tiles of its spot, then walks back when there's none.
+`UNIT_KINDS` scout `!`, soldier `&`, ranger `}` (projectile arrow); `STRUCTURES` scoutCamp `⚑`, barracks `Ba`, archeryRange `◎`, directional spawners per the spec's table; their tools in the Offence tab, which is no longer greyed out. Until Tasks 5-6, scouts and attackers behave like `hold`.
 
-- [x] A swordsman chases and kills an enemy within `chase` of its spot, then walks back
-- [x] It ignores an enemy further than `chase` from its spot
-- [x] It follows a moving target
+- [x] Each building spawns its own kind up to its quota, one per interval, once built
+- [x] The Offence tab lists the three and is no longer greyed out; `3` opens it
 
-Files: `src/sim/units.ts`, `tests/sim/guards.test.ts`. Size: S. Depends on: 3.
+Files: `src/sim/config.ts`, `src/sim/units.ts`, `src/ui/state.ts`, `src/render/palette.ts`, `tests/sim/fieldUnits.test.ts` (new), `tests/ui/hud.test.ts`. Size: S. Depends on: none.
 
-## Task 5: Archers shoot arrows
+## Task 5: Scouts
 
-A unit kind with a `projectile` fires a shot effect (from it to the target, `flight` like the archer tower) with each hit, plus the hit cue; damage lands at once, as for towers.
+`src/sim/fieldUnits.ts`: `isFrontier` (explored, standable, next to unexplored, for a team); `scout` behaviour: walk (explored-only) to the nearest frontier tile, then the next; with none, go home and wait; never fight.
 
-- [x] An archer hits an enemy within `range` from its spot, with a shot effect and a hit cue
-- [x] It never leaves its spot
+- [x] A scout walks to the nearest frontier and explores past it, again and again
+- [x] With nothing left to explore it walks home and waits
+- [x] It never attacks, and never steps on unexplored land
 
-Files: `src/sim/units.ts`, `src/sim/config.ts`, `tests/sim/guards.test.ts`. Size: S. Depends on: 3.
+Files: `src/sim/fieldUnits.ts` (new), `src/sim/units.ts`, `tests/sim/fieldUnits.test.ts`. Size: M. Depends on: 3, 4.
 
-Built: also filled a gap the spec asked for but no task covered. In PvP, units now attack a rival's units in reach when no enemy is (until now `unit-core` only ever targeted enemies).
+Built: `state.exploredVersion` goes up only when a team explores a tile new to it, and explored-only paths go stale on that (`Unit.pathExplored`), not on `sightVersion`, which changes whenever any unit steps. So a scout with nothing left doesn't search again every tick. A scout waits at its building's door.
 
-**Checkpoint A:** in tests, paladins hold a gap with archers behind and the goblins die there; a swordsman runs out and back. Done: the checkpoint A test and the swordsman tests in `tests/sim/guards.test.ts`.
+## Task 6: Hunt and patrol
 
-## Task 6: Hover and drawing
+`attack` behaviour: fight what's in reach (rangers shoot); else walk (explored-only) to the nearest enemy (or rival unit) the team can see; else patrol to the nearest frontier.
 
-Hover adds `guarding` / `fighting` / `chasing` / `returning` for guards. Glyphs and colours for the buildings and guards.
+- [x] A soldier walks to and kills an enemy its side can see; a ranger shoots one from range
+- [x] With no enemy in sight it patrols to the frontier
+- [x] It never steps on unexplored land, and in Endless attacks nothing but enemies
 
-- [x] Hover words for a guard on its spot, fighting, chasing and returning
-- [ ] Browser: guards walk out and hold a gap; swordsmen chase and return; arrows fly; replacements arrive (with `town-economy` checkpoint B)
+Files: `src/sim/fieldUnits.ts`, `tests/sim/fieldUnits.test.ts`. Size: M. Depends on: 5.
 
-Files: `src/ui/tileInfo.ts`, `src/render/palette.ts`, `tests/ui/tileInfo.test.ts`. Size: S. Depends on: 4, 5.
+## Task 7: PvP siege
 
-Built: the guard word comes from `guardActivity`, which only uses what online clients also have (positions and enemies, not paths): fighting, else chasing or returning while moving, else guarding. Glyphs and colours went in with Task 1. The browser check is still to do.
+`knownRivalKeep(state, owner)`: a rival keep with any tile the owner's team has explored. Attackers walk to it (explored-only, breaching); a rival structure on the next step is hit (the wall before a tower on it) until it falls, paying the tower bounty; next to the keep they hit the keep. Never their own side's buildings or ruins.
 
-**Checkpoint B:** browser check with George.
+- [x] Once the rival keep is explored, soldiers walk to it and damage it
+- [x] With a wall ring round it, they break the weakest wall and get in
+- [x] They hit the wall before the tower on it, and wrecking pays the owner the bounty
+- [x] They never hit their own side's buildings or ruins
 
-## Task 7: Determinism, timing and docs
+Files: `src/sim/fieldUnits.ts`, `src/sim/towers.ts` (share the rival-target rule), `tests/sim/fieldUnits.test.ts`. Size: M. Depends on: 6.
 
-- [x] The 2,000-tick determinism test gains a paladin hall and an archery post at the keep's gate
-- [x] Measured standalone: 30 guard buildings (90 guards) and 200 enemies on XL, within the tick budget; the unit test guards a loose bound
-- [x] README: guards and their buildings (structures table, a Guards section), Tuning rows; SPEC.md "Since `units`"; plan and CAPABILITIES statuses
+Built: `towers.ts` exports `siegeTargetAt` and `damageRival`, so units and towers share the same target rule and bounty. `walkTowards` stops in front of a breakable rival structure on a breaching path rather than re-routing. A unit with no explored way to the keep patrols instead, and records `Unit.siegeBlockedAt` so it doesn't search again until more land is explored.
+
+**Checkpoint A:** scouts explore; soldiers hunt a visible goblin; in PvP they break the weakest wall of a ringed keep and damage the keep. Done: covered by `tests/sim/fieldUnits.test.ts`.
+
+## Task 8: Hover words
+
+Scouts: `scouting` / `waiting: nothing left to explore`. Soldiers and rangers: `fighting` / `besieging` / `hunting` / `patrolling`, worked out from what clients can see (like guards).
+
+- [x] Hover words for each
+- [x] Browser checkpoint B (with the open `town-economy` and `units` checks) (checked by George, 2026-10-26)
+
+Files: `src/sim/fieldUnits.ts`, `src/ui/tileInfo.ts`, `tests/ui/tileInfo.test.ts`. Size: S. Depends on: 7.
+
+Built: `fieldActivity` works from positions, explored land and keeps, which online clients also have. Online clients don't know a unit's home, so their scouts always read `scouting`. The browser check is still to do.
+
+**Checkpoint B:** browser check with George, PvP with two browsers.
+
+## Task 9: Determinism, timing and docs
+
+- [x] The 2,000-tick determinism test gains a scout camp and a barracks; a PvP determinism run with a siege
+- [x] Timing: 20 offensive buildings (60 units) and 200 enemies on XL, median and 95th percentile as the other timing tests; measured standalone and recorded here
+- [x] README: Offence tab, scouts, soldiers, rangers, doors and symbols (structures table), Tuning rows; SPEC.md "Since `field-units`"; plan and CAPABILITIES statuses; `GLYPHS.md` has no "planned" marks left
 - [x] `src/sim/` coverage stays at 80% or more
 
-Files: `tests/sim/game.test.ts`, `tests/sim/guards.test.ts`, `README.md`, `SPEC.md`, `CAPABILITIES.md`, `tasks/plan.md`. Size: S. Depends on: 6.
+Files: `tests/sim/game.test.ts`, `tests/sim/fieldUnits.test.ts`, `README.md`, `SPEC.md`, `CAPABILITIES.md`, `tasks/plan.md`. Size: S. Depends on: 8.
 
-Built: in the determinism test the guards stand on the far side of the keep. On the enemies' side they killed the bombers and diggers before those could sprint and dig, and the test checks every behaviour happens. Measured on XL with 90 guards and 200 enemies over 600 ticks: 0.45 ms median, 1 ms p95, 17 ms worst. `src/sim/` coverage: 99% of lines, `guards.ts` 100%.
+Built: field units got their own determinism test (an Endless game with scouts and soldiers, plus a PvP siege that damages the rival keep), because soldiers hunting every visible enemy would stop the big test's bombers and diggers. Measured standalone on a foggy XL map with 66 field units: 0.13 ms median while filling up; with 200 enemies 1.3 ms median, 11.7 ms p95, 22 ms worst. `src/sim/` coverage: 99% of lines.

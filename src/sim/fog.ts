@@ -109,13 +109,20 @@ export function initialExplored(state: GameState): number[] {
 /** Marks everything a new structure can see as explored by its owner's team, for good. */
 export function reveal(state: GameState, viewer: Viewer & { owner?: PlayerId | null }): void {
   const bit = 1 << teamOf(state, viewer.owner);
-  forEachSightTile(state, viewer, (i) => (state.explored[i] |= bit));
+  forEachSightTile(state, viewer, (i) => explore(state, i, bit));
+}
+
+/** Marks a tile explored by a team, counting it in exploredVersion if it's new to them. */
+function explore(state: GameState, index: number, bit: number) {
+  if (state.explored[index] & bit) return;
+  state.explored[index] |= bit;
+  state.exploredVersion++;
 }
 
 /** A unit has spawned or moved to another tile: sight changes, and what it sees is explored. */
 export function unitMoved(state: GameState, unit: Unit): void {
   const bit = 1 << teamOf(state, unit.owner);
-  forEachUnitSightTile(state, unit, (i) => (state.explored[i] |= bit));
+  forEachUnitSightTile(state, unit, (i) => explore(state, i, bit));
   state.sightVersion++;
 }
 
@@ -154,7 +161,7 @@ function forEachCircleTile(
 /** Marks a keep's outer sight as explored by its owner's team. */
 export function revealKeep(state: GameState, keep: Keep): void {
   const bit = 1 << teamOf(state, keep.owner);
-  forEachKeepSightTile(state, keep, (i) => (state.explored[i] |= bit));
+  forEachKeepSightTile(state, keep, (i) => explore(state, i, bit));
 }
 
 /**

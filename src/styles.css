@@ -557,13 +557,13 @@ a.button {
   src: url("../fonts/Unifont/Unifont-Regular.woff2") format("woff2");
   font-display: block;
 }
-/* The tree and berries, from Unifont's upper planes (unifont_upper-18.0.01.otf, same pyftsubset
-   options with --unicodes="U+1F332,U+1FAD0" --output-file=fonts/Unifont/UnifontUpper-Regular.woff2). */
+/* Farmland, the tree and berries, from Unifont's upper planes (unifont_upper-18.0.01.otf, same
+   pyftsubset options with --unicodes="U+10904,U+1F332,U+1FAD0" --output-file=fonts/Unifont/UnifontUpper-Regular.woff2). */
 @font-face {
   font-family: "Unifont";
   src: url("../fonts/Unifont/UnifontUpper-Regular.woff2") format("woff2");
   font-display: block;
-  unicode-range: U+1F332, U+1FAD0;
+  unicode-range: U+10904, U+1F332, U+1FAD0;
 }
 
 /* Intro splash */

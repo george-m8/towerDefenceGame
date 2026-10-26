@@ -23,7 +23,9 @@ import {
   type StructureStats,
   type TowerStats,
 } from "../sim/config";
+import { guardSpotsFor } from "../sim/guards";
 import { resourceAt } from "../sim/resources";
+import { spawnTileOf } from "../sim/units";
 import { canTarget } from "../sim/towers";
 import { hitTile } from "../sim/traps";
 import type {
@@ -40,17 +42,15 @@ import { isBuildTool, type UiState } from "../ui/state";
 import { tilePixels, visibleTiles, type VisibleTiles } from "../ui/camera";
 import { minimapColour } from "../ui/minimap";
 import { KEEP, NONE, getEnclosures } from "../sim/enclosures";
-import { SEEN, canSeeEnemiesAt, forEachSightTile, getSight } from "../sim/fog";
+import { SEEN, canSeeEnemiesAt, forEachSightTile, getSight, isExplored } from "../sim/fog";
 import {
   AIM_LINE_TILES,
   ARROWS,
   ARROW_SYMBOLS,
   type ArrowStyle,
   COLOURS,
-  NOTCH_DEPTH_PX,
   ARC_SEGMENTS,
   PROJECTILES,
-  NOTCH_LENGTH_PX,
   BATTLEMENT_PX,
   BUILD_BORDER_PX,
   CONSTRUCTION_ALPHA,
@@ -67,6 +67,8 @@ import {
   enemyFont,
   glyphFor,
   playerColour,
+  DOOR_ALPHA,
+  KEEP_GLYPH,
 } from "./palette";
 import { fogImage } from "./fog";
 import { burstPixels, burstWaiting } from "./burst";
@@ -87,11 +89,6 @@ const SHADOW = "rgba(0, 0, 0, 0.3)";
 /** Compass degrees (0 = north, clockwise) to canvas radians (0 = east, clockwise). */
 function toCanvasAngle(compassDegrees: number): number {
   return ((compassDegrees - 90) * Math.PI) / 180;
-}
-
-function isTower(kind: StructureKind): boolean {
-  const stats: StructureStats = STRUCTURES[kind];
-  return stats.tower !== undefined;
 }
 
 /**
@@ -219,6 +216,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
         drawEnclosureTint(state, x, y, 0);
       }
     }
+    drawDoors(state);
     // Shadows cast down and to the right, under every block.
     ctx!.fillStyle = SHADOW;
     for (let y = y0; y <= y1; y++) {
@@ -284,7 +282,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   }
 
   /**
-   * Keep tiles show a rook (♜), except the centre, which has the keep's HP over it (see
+   * Keep tiles show KEEP_GLYPH, except the centre, which has the keep's HP over it (see
    * drawKeepHp). A PvP keep is drawn in its owner's colour.
    */
   function drawKeepTile(state: GameState, x: number, y: number) {
@@ -294,7 +292,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     drawTile(x, y, bg);
     drawTexture(x, y, KEEP_TEXTURE);
     if (x !== keep.x + centre || y !== keep.y + centre) {
-      drawGlyph(x, y, "\u265C", COLOURS.keepGlyph);
+      drawGlyph(x, y, KEEP_GLYPH, COLOURS.keepGlyph);
     }
   }
 
@@ -504,11 +502,6 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   }
 
   /** Towers drawn as an arrow already show their facing; the rest get the edge notch. */
-  /** Faced things drawn without an arrow (cannons, guard buildings) show a notch instead. */
-  function needsNotch(kind: StructureKind): boolean {
-    const stats: StructureStats = STRUCTURES[kind];
-    return (isTower(kind) || stats.directional === true) && !ARROW_SYMBOLS[kind];
-  }
 
   /** A structure still being built is see-through (the caller draws what's under it). */
   function drawStructure(structure: Structure) {
@@ -517,7 +510,6 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     if (!isBuilt(structure)) ctx!.globalAlpha = CONSTRUCTION_ALPHA;
     drawStructureTile(x, y, structure.kind);
     drawSymbol(x, y, structure.kind, structure.facing, colours.fg, structure.aim);
-    if (needsNotch(structure.kind)) drawFacingNotch(x, y, structure.facing);
     ctx!.globalAlpha = 1;
     drawBars(structure, structure);
   }
@@ -539,7 +531,6 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     drawSymbol(x, y, tower.kind, tower.facing, towerColour, tower.aim);
     ctx!.fillStyle = towerColour;
     ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, BATTLEMENT_PX);
-    if (needsNotch(tower.kind)) drawFacingNotch(x, y, tower.facing);
     ctx!.globalAlpha = 1;
     drawBars(isBuilt(wall) ? tower : wall, wall);
   }
@@ -575,7 +566,15 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
     const stats: StructureStats = STRUCTURES[ui.tool];
     drawSymbol(x, y, ui.tool, ui.facing, "#ffffff");
-    if (needsNotch(ui.tool)) drawFacingNotch(x, y, ui.facing);
+    if (stats.spawner) {
+      // Where its units will come out (and a guard building's guards will stand).
+      const placing = { x, y, facing: ui.facing };
+      if (UNIT_KINDS[stats.spawner.unit].behaviour === "guard") {
+        for (const spot of guardSpotsFor(state, placing)) outlineTile(spot, COLOURS.guardSpot);
+      }
+      const door = spawnTileOf(state, placing);
+      if (door) outlineTile(door, COLOURS.door);
+    }
     if (stats.directional && stats.trap) {
       const facing = ui.facing;
       const target = hitTile({ x, y, facing });
@@ -694,21 +693,25 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     ctx!.lineWidth = 1;
   }
 
-  /** A small mark on the tile edge a tower faces. */
-  function drawFacingNotch(x: number, y: number, facing: Facing | undefined) {
-    if (!facing) return;
-    const left = x * TILE_SIZE;
-    const top = y * TILE_SIZE;
-    const mid = (TILE_SIZE - NOTCH_LENGTH_PX) / 2;
-    const far = TILE_SIZE - NOTCH_DEPTH_PX;
-    const rects: Record<Facing, [number, number, number, number]> = {
-      N: [left + mid, top, NOTCH_LENGTH_PX, NOTCH_DEPTH_PX],
-      E: [left + far, top + mid, NOTCH_DEPTH_PX, NOTCH_LENGTH_PX],
-      S: [left + mid, top + far, NOTCH_LENGTH_PX, NOTCH_DEPTH_PX],
-      W: [left, top + mid, NOTCH_DEPTH_PX, NOTCH_LENGTH_PX],
-    };
-    ctx!.fillStyle = COLOURS.facingNotch;
-    ctx!.fillRect(...rects[facing]);
+  /** A border just inside a tile. */
+  function outlineTile(p: Point, colour: string) {
+    ctx!.strokeStyle = colour;
+    ctx!.lineWidth = 2;
+    ctx!.strokeRect(p.x * TILE_SIZE + 1, p.y * TILE_SIZE + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+    ctx!.lineWidth = 1;
+  }
+
+  /** A faint S on each spawner's door, over the terrain, so you can see where not to build. */
+  function drawDoors(state: GameState) {
+    for (const structure of Object.values(state.structures)) {
+      const stats: StructureStats = STRUCTURES[structure.kind];
+      if (!stats.spawner || !isBuilt(structure)) continue;
+      const door = spawnTileOf(state, structure);
+      if (!door || !isExplored(state, door.x, door.y, viewer)) continue;
+      ctx!.globalAlpha = DOOR_ALPHA;
+      drawGlyph(door.x, door.y, "S", COLOURS.door);
+      ctx!.globalAlpha = 1;
+    }
   }
 
   function drawEffects(state: GameState) {

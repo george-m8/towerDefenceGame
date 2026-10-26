@@ -201,14 +201,14 @@ describe("build tabs", () => {
       "foragerHut",
       "sell",
     ]);
-    expect(tools("offence")).toEqual(["sell"]);
+    expect(tools("offence")).toEqual(["scoutCamp", "barracks", "archeryRange", "sell"]);
   });
 
-  it("open on 1, 2 and 3; Offence has nothing to build yet", () => {
+  it("open on 1, 2 and 3, each with something to build", () => {
     expect(["Digit1", "Digit2", "Digit3"].map(tabForKey)).toEqual(["defence", "civic", "offence"]);
     expect(hasBuildTools("defence")).toBe(true);
     expect(hasBuildTools("civic")).toBe(true);
-    expect(hasBuildTools("offence")).toBe(false);
+    expect(hasBuildTools("offence")).toBe(true);
   });
 
   it("only sell keeps a key; the old tool keys pick nothing", () => {

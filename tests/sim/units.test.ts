@@ -16,7 +16,7 @@ import { spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand, createGame, tick } from "../../src/sim/game";
 import { blocksAt, placeStructure, removeStructure } from "../../src/sim/grid";
 import { placeResource, resourceAt } from "../../src/sim/resources";
-import { damageUnit, spawnUnit } from "../../src/sim/units";
+import { damageUnit, spawnTileOf, spawnUnit } from "../../src/sim/units";
 import type { Enemy, Facing, GameState } from "../../src/sim/types";
 import { buildAt, createGameWithoutWaves, goldOf, paintTerrain, ring } from "./helpers";
 
@@ -547,5 +547,34 @@ describe("workers", () => {
 
     spawnEnemy(state, p.x, p.y);
     until(state, () => !state.units.includes(worker), 30 * TICK_RATE);
+  });
+});
+
+describe("spawner doors", () => {
+  it("are the tile the spawner faces, else the next open one clockwise, else none", () => {
+    const state = createGameWithoutWaves();
+    const yard = placeStructure(state, "timberYard", 10, 10, "E", 1);
+    expect(spawnTileOf(state, yard)).toEqual({ x: 11, y: 10 });
+    buildAt(state, [{ x: 11, y: 10 }]);
+    expect(spawnTileOf(state, yard)).toEqual({ x: 10, y: 11 }); // south is next clockwise
+    buildAt(state, [
+      { x: 10, y: 11 },
+      { x: 9, y: 10 },
+      { x: 10, y: 9 },
+    ]);
+    expect(spawnTileOf(state, yard)).toBeNull();
+  });
+
+  it("every spawner is placed facing a way, so a timber yard facing west sends workers west", () => {
+    for (const [kind, stats] of Object.entries(STRUCTURES) as [string, StructureStats][]) {
+      if (stats.spawner) expect(stats.directional, kind).toBe(true);
+    }
+    const state = createGameWithoutWaves();
+    expect(
+      applyCommand(state, 1, { type: "build", kind: "timberYard", x: 10, y: 10, facing: "W" }),
+    ).toEqual({ ok: true });
+    Object.values(state.structures)[0].buildLeft = 0; // skip the build time out here
+    tick(state);
+    expect(state.units[0]).toMatchObject({ kind: "lumberjack", x: 9, y: 10 });
   });
 });

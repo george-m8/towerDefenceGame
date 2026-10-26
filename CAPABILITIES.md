@@ -146,7 +146,7 @@ It **replaces** the `units` row in the post-MVP map. That row is split into `uni
 | `wave-director` | **Waves are put together by code:** each wave gets a threat budget that grows with the wave number, spent on group templates (e.g. a warband is 1 `B` + 3-6 `b`, a swarm is 15-30 `z`). Kinds unlock by wave. **Edge spawns:** each group enters at one point on the map edge, and different groups in the same wave can use different points. A point qualifies if it is walkable, has nothing built on it, and has a terrain route to the keep (water edges count for marines). This replaces the fixed spawn zone, and `enclosures` and `fog-of-war` then measure reachability from the edge instead of from the spawn zone. | enemy-kinds (marine spawns arrive with `enemy-pathing`) |
 | `bestiary` | Monster journal panel. An entry unlocks the first time a kind is **in sight**. It shows glyph, name, variants, stats, a one-line behaviour description and the first wave seen. Unlocks are saved per device. | enemy-kinds |
 | `units` | Player units: entity with faction, owner, HP, armour, attack, range, speed and sight. Combat runs both ways: enemies stop to fight units that block them. Units give fog sight. Each unit costs `{ gold, food }`, but only gold is charged until `resources` adds food (with the economy off, gold only, as already decided). **Guard towers** spawn units, with a unit limit, a respawn timer and the facing as their guard spot. Defensive roster: swordsman (moves a little to attack), archer (guards and shoots, moves a little), paladin (stays put and blocks: high armour, less damage than a swordsman). | enemy-kinds, tile-layers, fog-of-war |
-| `field-units` | Offensive and exploring units from a **barracks**. Each unit finds its own path, over explored land only. **Scout:** walks to the nearest fog frontier. **Soldier / knight / ranger** (the ranger is the offensive ranged unit, a separate type from the defensive archer): go to a known enemy keep; else to known enemy walls (circle them to look inside; if they still can't see in, break through); else patrol the fog edge, fighting what they meet. **Horsemen:** only move on explored land, and only once an enemy keep, wall or tower is known. In Endless, where there is no enemy keep, they explore and hunt enemies. Their full behaviour shows in PvP and later in `mode-barbarians`. | units |
+| `field-units` | *(Narrowed 2026-10-26: scouts, soldiers and rangers here; knights and horsemen in `elite-units`. See the AoE update map.)* Offensive and exploring units from a **barracks**. Each unit finds its own path, over explored land only. **Scout:** walks to the nearest fog frontier. **Soldier / knight / ranger** (the ranger is the offensive ranged unit, a separate type from the defensive archer): go to a known enemy keep; else to known enemy walls (circle them to look inside; if they still can't see in, break through); else patrol the fog edge, fighting what they meet. **Horsemen:** only move on explored land, and only once an enemy keep, wall or tower is known. In Endless, where there is no enemy keep, they explore and hunt enemies. Their full behaviour shows in PvP and later in `mode-barbarians`. | units |
 
 Build order: `enemy-kinds` -> `bestiary` -> `enemy-pathing` -> `enemy-targeting` -> `wave-director` -> `units` -> `field-units`
 
@@ -174,7 +174,7 @@ Build order: `enemy-kinds` -> `bestiary` -> `enemy-pathing` -> `enemy-targeting`
 
 # Capability Map: AoE update (economy, workers, unit spawners)
 
-Status: APPROVED (2026-10-25); `unit-core`, `resources`, `town-economy` and `units` built (2026-10-26)
+Status: APPROVED (2026-10-25); `unit-core`, `resources`, `town-economy`, `units` and `field-units` built (2026-10-26)
 Last updated: 2026-10-25
 
 Gatherer buildings spawn workers that go out and chop trees, mine rocks and forage berries, paying out gold and food as they go. Guard towers spawn defensive units, and barracks spawn offensive ones. Every spawner is a building that costs gold and spawns its units free, one per minute, up to a quota.
@@ -192,9 +192,10 @@ This map **changes** earlier rows:
 | `town-economy` | Income once map resources run low: farms and other civic buildings make gold per minute (food per minute once `food` lands). A **Civic** build tab, which absorbs today's houses. | resources |
 | `food` *(deferred)* | Food as a second currency, switched on by `game-setup`'s economy toggle. Berry bushes, forager huts and farms make food instead of gold. In gold-only games they keep paying gold. A food counter in the panel, and later food costs for units. | game-setup, resources, town-economy |
 | `units` | Defensive units from **guard towers**. Units stand in front of the tower on its facing side and attack enemies that come near. Roster: swordsman, archer, paladin (see the Armies map). | unit-core |
-| `field-units` | Offensive and exploring units from a barracks, as described in the Armies map. | units |
+| `field-units` | Offensive and exploring units: scout camp, barracks and archery range (Offence tab) sending scouts (explore the fog), soldiers and rangers (hunt visible enemies, else patrol the fog edge; in PvP, march on a known rival keep and break through its weakest wall). Paths over explored land only. Spec: [`SPEC-field-units.md`](SPEC-field-units.md). | units |
+| `elite-units` | Knights (tougher soldiers) and horsemen (fast, explored land only, once a rival keep, wall or tower is known). Split from `field-units` (2026-10-26). | field-units |
 
-Build order (after `enemy-pathing` is finished): `unit-core` -> `resources` -> `town-economy` -> `units` -> `field-units`, then `enemy-targeting` -> `wave-director`. Later: `game-setup` -> `food`.
+Build order (after `enemy-pathing` is finished): `unit-core` -> `resources` -> `town-economy` -> `units` -> `field-units`, then `enemy-targeting` -> `wave-director` -> `elite-units`. Later: `game-setup` -> `food`.
 
 ### Decisions captured
 

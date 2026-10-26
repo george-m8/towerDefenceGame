@@ -4,8 +4,6 @@ import type { TextureStyle } from "./textures";
 
 export const TILE_SIZE = 20;
 /** Facing notch on a tower tile edge, and the hovered turning tower's aim line. */
-export const NOTCH_LENGTH_PX = 8;
-export const NOTCH_DEPTH_PX = 3;
 export const AIM_LINE_TILES = 2;
 /**
  * How each tower's shot looks in flight: its symbol, and how high its arc rises as a fraction
@@ -28,8 +26,16 @@ export const CONSTRUCTION_ALPHA = 0.45;
 export const BUILD_BORDER_PX = 3;
 /** From this much of the longest build time on, the build-time border turns orange. */
 export const BUILD_BORDER_LONG = 0.75;
-/** The map's font: GNU Unifont (fonts/Unifont, declared in styles.css) at its native 16px. */
-export const GLYPH_FONT = `${TILE_SIZE - 4}px Unifont, monospace`;
+/**
+ * The map's font: GNU Unifont (fonts/Unifont, declared in styles.css) at its native 16px. It has
+ * every map glyph, letters and building symbols such as ⛫ ⌂ 𐤄 alike (see GLYPHS.md); the usual
+ * symbol fonts are only a fallback.
+ */
+const GLYPH_FONTS = `Unifont, "Apple Symbols", "Segoe UI Symbol", "Segoe UI Historic", "Noto Sans Symbols 2", monospace`;
+/** Unifont's letters are half width, so two-letter codes (like Ti) fit a tile at this size too. */
+export const GLYPH_FONT = `${TILE_SIZE - 4}px ${GLYPH_FONTS}`;
+/** Every keep tile but the middle one (which has its HP over it): a rook. */
+export const KEEP_GLYPH = "♜";
 
 /** Each enemy kind's glyph colour. Variants never change it; they change the glyph size. */
 export const ENEMY_COLOURS: Record<EnemyKindId, string> = {
@@ -58,7 +64,7 @@ export const ENEMY_GLYPH_SCALE: Record<EnemyVariant["size"], number> = {
 };
 
 export function enemyFont(size: EnemyVariant["size"]): string {
-  return `${Math.round((TILE_SIZE - 4) * ENEMY_GLYPH_SCALE[size])}px Unifont, monospace`;
+  return `${Math.round((TILE_SIZE - 4) * ENEMY_GLYPH_SCALE[size])}px ${GLYPH_FONTS}`;
 }
 
 export const COLOURS = {
@@ -110,7 +116,10 @@ export const COLOURS = {
   /** A shot's projectile in flight. */
   projectile: "#ffe08a",
   chest: "#ffcc33",
-  facingNotch: "#ffffff",
+  /** A spawner's door: a border while placing, a faint S once built. */
+  door: "#ffffff",
+  /** Where a guard building being placed will station its guards. */
+  guardSpot: "rgba(255, 255, 255, 0.45)",
   aimLine: "#ff6b6b",
   splash: "rgba(255, 150, 40, 0.45)",
   heal: "#5ee36a",
@@ -153,16 +162,20 @@ export const GLYPHS: Record<StructureKind, string> = {
   catapult: "P",
   floorSpikes: "^",
   wallSpikes: "↑",
-  house: "h",
-  timberYard: "L",
-  mine: "M",
-  foragerHut: "F",
-  shop: "S",
-  guardhouse: "G",
-  archeryPost: "A",
-  paladinHall: "K",
-  farmhouse: "H",
-  farmland: '"',
+  // A symbol where a clear one exists, else a two-letter code (see GLYPHS.md for why each).
+  house: "⌂",
+  timberYard: "Ti",
+  mine: "Mi",
+  foragerHut: "Fo",
+  shop: "¤",
+  guardhouse: "⛨",
+  archeryPost: "➶",
+  paladinHall: "✠",
+  scoutCamp: "⚑",
+  barracks: "Ba",
+  archeryRange: "◎",
+  farmhouse: "Fa",
+  farmland: "𐤄",
   bridge: "=",
   watchtower: "\u23FF", // observer eye
   gate: "∩",
@@ -243,6 +256,9 @@ export const STRUCTURE_COLOURS: Record<StructureKind, { bg: string; fg: string }
   guardhouse: { bg: "#5a3a3a", fg: "#ffd0c0" },
   archeryPost: { bg: "#3a5a3a", fg: "#d8f5c8" },
   paladinHall: { bg: "#4a4a6a", fg: "#e8e8ff" },
+  scoutCamp: { bg: "#5a5a3a", fg: "#ffe8a0" },
+  barracks: { bg: "#6a3a3a", fg: "#ffd0c0" },
+  archeryRange: { bg: "#3a5a4a", fg: "#ffffff" },
   farmhouse: { bg: "#8a5a2b", fg: "#ffe08a" },
   farmland: { bg: "#6b5a2a", fg: "#c9b45a" },
   bridge: { bg: "#6b4f2a", fg: "#d9b77a" },
@@ -292,6 +308,8 @@ export const STRUCTURE_TEXTURES: Partial<Record<StructureKind, TextureStyle>> = 
 export const TEXTURE_MIN_TILE_PX = 10;
 
 export const OWNER_MARK_PX = 6;
+/** How faint a built spawner's door S is. */
+export const DOOR_ALPHA = 0.25;
 
 /** One colour per player (ids 1-4; later ids wrap round), for owner marks and the players list. */
 export const PLAYER_COLOURS = ["#f2c14e", "#4ea8de", "#f25c54", "#6fd08c"];

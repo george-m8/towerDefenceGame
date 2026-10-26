@@ -104,6 +104,8 @@ function toUnit(u: ClientUnit): Unit {
     path: null,
     pathGoal: null,
     pathVersion: -1,
+    pathExplored: -1,
+    siegeBlockedAt: -1,
     waitingForPath: false,
   };
 }

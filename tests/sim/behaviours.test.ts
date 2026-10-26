@@ -279,7 +279,7 @@ describe("battering ram", () => {
 describe("digger", () => {
   it("is the spec's digger", () => {
     expect(ENEMY_KINDS.digger).toMatchObject({
-      glyph: "n",
+      glyph: "t",
       hp: 20,
       speed: 1.2,
       damage: 6,
