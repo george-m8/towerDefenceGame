@@ -229,3 +229,10 @@ Status: `map-editor` built (2026-10-26). Hand-made content for the game: a **lev
 | `loadout-editor` | `.loadout` files: starting gold and settings (what can be built is now `items-editor`). | map-editor |
 | `levels` | A level = a `.map`, a `.wave` and a `.loadout`. The level picker, and playing levels online (rooms send the level's name; client and server read the same bundled files). | the three editors |
 
+## Day and night (2026-10-26)
+
+Status: step 1 built (2026-10-26).
+
+| Module | What it delivers | Depends on |
+|---|---|---|
+| `day-night` | Step 1: shadows follow a sun on a tilted arc (across the sky, and the arc's height), set from two sliders in the Debug menu (game and map editor); taller blocks shade lower neighbours on any side the shadow falls. Drawing only. Next: an automatic cycle, then night. Spec: [`SPEC-day-night.md`](SPEC-day-night.md). | core (raised blocks) |

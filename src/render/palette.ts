@@ -18,6 +18,22 @@ export const PROJECTILES: Record<ProjectileKind, { glyph: string; arc: number; t
 /** Straight pieces a shot's arc is drawn with. */
 export const ARC_SEGMENTS = 16;
 
+/**
+ * The sun, for blocks' shadows (see sun.ts). No shadow is longer than `maxLength` times its
+ * block's height: `tallestBlock` (the keep's corners, in pixels) times it must stay under a tile,
+ * so a shadow only reaches the tiles next to its block. `across` and `arc` are where the sun is
+ * when nobody sets it (high on the left, so shadows fall right); `arcMin` and `arcMax` are the
+ * Arc slider's ends (past 90° the sun crosses the bottom of the sky, and shadows fall behind).
+ */
+export const SUN = {
+  maxLength: 1.25,
+  tallestBlock: 15,
+  across: 0.33,
+  arc: 80,
+  arcMin: 5,
+  arcMax: 175,
+};
+
 /** Height of the strip drawn along the top of a wall-mounted tower. */
 export const BATTLEMENT_PX = 3;
 /** How solid a structure still being built is drawn. */

@@ -1,6 +1,7 @@
 import type { Facing, PlayerId, Point, StructureKind } from "../sim/types";
 import { createCamera, type Camera } from "./camera";
 import type { StatId } from "./stats";
+import { DEFAULT_SUN, type Sun } from "../render/sun";
 
 export type Tool = StructureKind | "sell";
 
@@ -75,6 +76,10 @@ export interface UiState {
   messageUntil: number;
   /** Debug overlay: show the flow field direction on every tile. */
   showFlow: boolean;
+  /** Debug: the sun slider shown over the map. */
+  showSun: boolean;
+  /** Where the sun is, for shadows (see render/sun.ts). */
+  sun: Sun;
   /** Debug Damage tool: clicks wear down what's on the tile (offline only). Picking a tool ends it. */
   debugDamage: boolean;
   /** Facing for directional structures, rotated with R. */
@@ -100,6 +105,8 @@ export function createUiState(): UiState {
     message: "",
     messageUntil: 0,
     showFlow: false,
+    showSun: false,
+    sun: { ...DEFAULT_SUN },
     debugDamage: false,
     facing: "N",
     playerId: 1,

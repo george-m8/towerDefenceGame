@@ -950,6 +950,44 @@ A **level** will be three files: a `.map` (this module), a `.wave` and a `.loado
 
 Format → game from a map → files plugin → editor model → editor page → file dialogs → Play → docs.
 
+## Day and night: day-night (step 1, sun angle)
+
+Spec: [`SPEC-day-night.md`](../SPEC-day-night.md) (approved). Tasks: [`tasks/day-night/todo.md`](day-night/todo.md).
+
+### Architecture decisions
+
+- **The sun is drawing only.** `ui.sun` (`{ across, arc }`: where it is from the left horizon to the right, and how high its arc rises; spec v1.1) lives on `UiState`, like `showFlow`. It's not in `GameState`, not sent over the network and not saved. The later automatic cycle can move it into the sim when it needs to be shared.
+- **One pure function holds the maths.** `shadowOffset(sun)` in `src/render/sun.ts` gives the ground offset per pixel of height (from the sun on a tilted arc, cut to a maximum length), tested without a canvas. The `SUN` table in `palette.ts` holds the tuning numbers. The renderer only multiplies by height.
+- **One tile at most.** The longest shadow is capped at a tile, so cast shadows only ever reach the 8 neighbours. That keeps `drawCastShadow` local and doesn't need a shadow map.
+- **Ground shadows are filled once.** All ground-shadow shapes go into one path with a single `fill()`, so neighbouring shadows that overlap (now visible, as they lean down) don't double-darken.
+- **Reuse the Debug menu.** The slider is a `ToggleItem` row. The editor shows the same Debug button, with game-only rows hidden through `available`.
+- **Check the renderer before the UI exists.** `window.__ui` (dev) lets the browser checks set `__ui.sun` directly, so Tasks 2-3 are checked before the slider is built.
+
+### Dependency graph
+
+```
+T1 shadowOffset and the SUN table
+ └─ T2 Ground shadows follow ui.sun
+     └─ T3 Cast shadows on any lower neighbour
+         └─ T4 Sun slider in the Debug menu
+             └─ T5 Debug button and slider in the map editor
+                 └─ T6 Docs
+```
+
+### Checkpoints
+
+- **A (after T3):** in the browser, setting `__ui.sun` to 0, 0.5, 0.9 and 1 gives the right shadows on walls, towers on walls, trees and the keep. Tests, typecheck and build pass.
+- **B (after T5):** the full flow in game and editor, by hand.
+
+### Risks
+
+| Risk | Impact | Mitigation |
+|---|---|---|
+| Overlapping ground shadows double-darken now that they lean down | Med | One path, one fill (T2) |
+| A block just above or left of the view casts into it, but the shadow pass only covers visible tiles | Low | Start the shadow pass one tile further up and to the left (T2) |
+| Cast shadows on diagonal or front neighbours look wrong (shading tops that should be lit) | Med | Done early (T3) and checked at several sun values, with a pure helper for which neighbours are reached |
+| Showing `.map-left` in the editor brings back game panels | Low | CSS shows only the Debug anchor in `body.editing` (T5) |
+
 ## Open questions
 
 None for `tower-aiming`. Each later module's questions are settled in its spec.

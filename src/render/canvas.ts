@@ -2,6 +2,7 @@ import {
   baseAt,
   blocksAt,
   canBuild,
+  inBounds,
   isBuilt,
   isKeepTile,
   isSpawnTile,
@@ -77,6 +78,7 @@ import { createHpBarTracker } from "./hpBars";
 import { burstPixels, burstWaiting } from "./burst";
 import { textureSpecks, textureVariant, type TextureStyle } from "./textures";
 import { borderColour, borderTrace } from "./buildBorder";
+import { CASTERS, castShade, shadowOffset, sweptTile, type Block, type Sun } from "./sun";
 
 /** Blocks' shadows, on the ground and on lower blocks beside them. */
 const SHADOW = "rgba(0, 0, 0, 0.3)";
@@ -215,7 +217,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     drawTile(x, y, (x + y) % 2 === 0 ? COLOURS.ground : COLOURS.groundAlt);
   }
 
-  function drawGrid(state: GameState) {
+  function drawGrid(state: GameState, sun: Sun) {
     const { x0, y0, x1, y1 } = view;
     const showOwners = Object.keys(state.players).length > 1;
     // Flat tiles first (ground under raised ones), then raised blocks back to front, so a
@@ -231,14 +233,18 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       }
     }
     drawDoors(state);
-    // Shadows cast down and to the right, under every block.
+    // Shadows cast away from the sun, under every block, from a tile beyond the view too (a
+    // shadow reaches at most a tile). One fill, so overlapping shadows aren't darker.
+    const { dx, dy } = shadowOffset(sun);
     ctx!.fillStyle = SHADOW;
-    for (let y = y0; y <= y1; y++) {
-      for (let x = x0; x <= x1; x++) {
+    ctx!.beginPath();
+    for (let y = Math.max(0, y0 - 1); y <= Math.min(state.height - 1, y1 + 1); y++) {
+      for (let x = Math.max(0, x0 - 1); x <= Math.min(state.width - 1, x1 + 1); x++) {
         const h = blockHeight(state, x, y);
-        if (h > 0) ctx!.fillRect(x * TILE_SIZE + h / 2, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        if (h > 0) tracePolygon(sweptTile(x, y, h * dx, h * dy));
       }
     }
+    ctx!.fill();
     // Enemies and units go in with their row, so blocks in front of them (further down) hide them.
     const enemiesByRow = new Map<number, GameState["enemies"]>();
     for (const enemy of state.enemies) {
@@ -267,32 +273,34 @@ export function createRenderer(canvas: HTMLCanvasElement) {
         drawTileContents(state, x, y, showOwners);
         ctx!.restore();
         drawEnclosureTint(state, x, y, h);
-        const caster = blockHeight(state, x - 1, y);
-        if (caster > h) drawCastShadow(x, y, h, caster);
+        drawCastShadows(state, { x, y, height: h }, { dx, dy });
       }
     }
   }
 
   /**
-   * The shadow a taller block on the left casts over a lower block's front face and top, as it
-   * would on the ground (out to the right by half the caster's height), less the lower block's
-   * own height: e.g. a catapult on a wall shading the wall beside it.
+   * The shadows taller blocks round it cast over a lower block's front face and top:
+   * e.g. a catapult on a wall shading the wall beside it. One fill, so overlaps aren't darker.
    */
-  function drawCastShadow(x: number, y: number, h: number, caster: number) {
-    const left = x * TILE_SIZE;
-    const foot = (y + 1) * TILE_SIZE;
-    const reach = (caster - h) / 2;
-    ctx!.fillStyle = SHADOW;
-    // The face: as wide as the ground shadow at its foot, narrowing to `reach` at its top edge.
+  function drawCastShadows(state: GameState, receiver: Block, offset: { dx: number; dy: number }) {
     ctx!.beginPath();
-    ctx!.moveTo(left, foot);
-    ctx!.lineTo(left + caster / 2, foot);
-    ctx!.lineTo(left + reach, foot - h);
-    ctx!.lineTo(left, foot - h);
-    ctx!.closePath();
+    for (const [dx, dy] of CASTERS) {
+      const x = receiver.x + dx;
+      const y = receiver.y + dy;
+      if (!inBounds(state, x, y)) continue;
+      const { top, face } = castShade(offset, { x, y, height: blockHeight(state, x, y) }, receiver);
+      if (top) tracePolygon(top);
+      if (face) tracePolygon(face);
+    }
+    ctx!.fillStyle = SHADOW;
     ctx!.fill();
-    // The top, lifted by h.
-    ctx!.fillRect(left, y * TILE_SIZE - h, reach, TILE_SIZE);
+  }
+
+  /** Adds a closed polygon to the path being built. */
+  function tracePolygon(points: [number, number][]) {
+    ctx!.moveTo(...points[0]);
+    for (const point of points.slice(1)) ctx!.lineTo(...point);
+    ctx!.closePath();
   }
 
   /**
@@ -886,7 +894,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       ctx.textBaseline = "middle";
       view = visibleTiles(cam);
       textured = tilePixels(cam) >= TEXTURE_MIN_TILE_PX;
-      drawGrid(state);
+      drawGrid(state, ui.sun);
       drawKeepHp(state);
       if (ui.showFlow) drawFlow(state);
       drawEffects(state);
