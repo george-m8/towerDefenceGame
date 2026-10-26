@@ -35,7 +35,7 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | | `resources` | Done, browser-checked (tasks in [`tasks/resources/`](resources/todo.md)) |
 | | `town-economy` | Built; browser checkpoint B pending (tasks in [`tasks/town-economy/`](town-economy/todo.md)) |
 | | `units` | Built; browser checkpoint B pending (tasks in [`tasks/units/`](units/todo.md)) |
-| | `field-units` | **Spec approved; tasks in [`tasks/todo.md`](todo.md)** |
+| | `field-units` | **Built (Tasks 1-9); browser checkpoint B pending** (tasks in [`tasks/todo.md`](todo.md)) |
 | | `elite-units` | Knights and horsemen; after `enemy-targeting` and `wave-director` |
 | | `game-setup` | Spec drafted; deferred until `food` |
 | | `food` | Deferred |

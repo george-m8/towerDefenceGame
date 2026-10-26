@@ -2,7 +2,6 @@
 
 Every character drawn on the map, and why it was picked. Glyphs live in `src/sim/config.ts` (enemies, units), `src/render/palette.ts` (structures, terrain, projectiles) and `src/render/canvas.ts` (a few markers). **Keep this page up to date when you add or change one.**
 
-"Planned" marks the glyphs `field-units` brings in (its Task 2; see [`SPEC-field-units.md`](SPEC-field-units.md)).
 
 ## The rules
 
@@ -45,9 +44,9 @@ Colours are per kind (`ENEMY_COLOURS` in `palette.ts`); a family shares a colour
 | `/` | Swordsman | A blade |
 | `)` | Archer | A bow |
 | `]` | Paladin | A shield |
-| `!` | Scout *(planned)* | Alert, on the lookout |
-| `&` | Soldier *(planned)* | A figure with a weapon |
-| `}` | Ranger *(planned)* | A bigger bow than the archer's `)` |
+| `!` | Scout | Alert, on the lookout |
+| `&` | Soldier | A figure with a weapon |
+| `}` | Ranger | A bigger bow than the archer's `)` |
 
 ## Structures
 
@@ -74,9 +73,9 @@ Colours are per kind (`ENEMY_COLOURS` in `palette.ts`); a family shares a colour
 | Guardhouse | `⛨` cross on a shield (U+26E8) | A shield (was `G`) |
 | Archery post | `➶` arrow (U+27B6) | An arrow (was `A`) |
 | Paladin hall | `✠` Maltese cross (U+2720) | A holy order's cross (was `K`) |
-| Scout camp *(planned)* | `⚑` flag (U+2691) | A flag planted at a camp |
-| Barracks *(planned)* | `Ba` | **Ba**rracks (⚔ would be emoji) |
-| Archery range *(planned)* | `◎` bullseye (U+25CE) | A target |
+| Scout camp | `⚑` flag (U+2691) | A flag planted at a camp |
+| Barracks | `Ba` | **Ba**rracks (⚔ would be emoji) |
+| Archery range | `◎` bullseye (U+25CE) | A target |
 
 The two-letter codes are where no clear, non-emoji symbol has been found yet; they're drawn a little smaller. Better symbols are welcome. A test (`tests/render/glyphs.test.ts`) keeps every building glyph to one symbol or two letters, and rejects emoji-capable characters.
 

@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { STRUCTURES, TICK_RATE, UNIT_KINDS } from "../../src/sim/config";
 import { isExplored } from "../../src/sim/fog";
 import { spawnEnemy } from "../../src/sim/enemies";
-import { createGame, tick } from "../../src/sim/game";
-import { placeStructure } from "../../src/sim/grid";
+import { applyCommand, createGame, tick } from "../../src/sim/game";
+import { canBuild, placeStructure } from "../../src/sim/grid";
 import { spawnTileOf, spawnUnit } from "../../src/sim/units";
 import type { GameState } from "../../src/sim/types";
 import { buildAt, column, createGameWithoutWaves, ring } from "./helpers";
@@ -198,4 +198,39 @@ describe("PvP siege", () => {
     run(state, 10 * TICK_RATE);
     expect(own.every((s) => state.structures[s.id] && s.hp === s.maxHp)).toBe(true);
   });
+});
+
+describe("performance", () => {
+  // Spec target: a tick under 50 ms, measured standalone. Here: the median within it and the
+  // 95th percentile within a loose bound, since other test files share the CPU.
+  it("keeps a tick quick with 20 offensive buildings (about 60 units) and 200 enemies on XL", () => {
+    const state = createGame(3, { size: "XL" });
+    state.wave.countdown = Infinity;
+    const kinds = ["scoutCamp", "barracks", "archeryRange"] as const;
+    state.fog = false; // so they can go down anywhere; fog comes back on for the run
+    let built = 0;
+    for (let y = 6; y < state.height - 6 && built < 20; y += 8) {
+      for (let x = state.keeps[0].x - 30; x < state.keeps[0].x + 30 && built < 20; x += 10) {
+        const kind = kinds[built % 3];
+        if (!canBuild(state, 1, kind, x, y).ok) continue;
+        placeStructure(state, kind, x, y, "W", 1).buildLeft = 0;
+        built++;
+      }
+    }
+    expect(built).toBe(20);
+    state.fog = true;
+    run(state, 4 * 45 * TICK_RATE); // every building fills up
+    expect(state.units.length).toBeGreaterThanOrEqual(50);
+    applyCommand(state, 1, { type: "debugSpawn", count: 200 });
+    tick(state); // warm-up
+    const times: number[] = [];
+    for (let i = 0; i < 60; i++) {
+      const start = performance.now();
+      tick(state);
+      times.push(performance.now() - start);
+    }
+    times.sort((a, b) => a - b);
+    expect(times[30]).toBeLessThan(50);
+    expect(times[57]).toBeLessThan(250);
+  }, 60_000);
 });

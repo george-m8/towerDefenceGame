@@ -63,7 +63,7 @@ Most kinds come in **variants**, shown by glyph size: a small `g` is a goblin ru
 
 ### Your units
 
-You have people of your own on the map: workers and guards now, with soldiers to come, each spawned free by the building that makes them (one a minute, up to a set number alive). A unit belongs to a player, finds its own way around walls, fights enemies within reach and sees around itself (lifting fog as it goes). Enemies stop to fight a unit that's in their way or right next to them; battering rams ignore units. In PvP your towers shoot a rival's units before their buildings. A unit that dies bursts into pixels in its owner's colour, and nobody is paid for it.
+You have people of your own on the map: workers, guards and field units, each spawned free by the building that makes them (one a minute, up to a set number alive). A unit belongs to a player, finds its own way around walls, fights enemies within reach and sees around itself (lifting fog as it goes). Enemies stop to fight a unit that's in their way or right next to them; battering rams ignore units. In PvP your towers shoot a rival's units before their buildings. A unit that dies bursts into pixels in its owner's colour, and nobody is paid for it.
 
 Gatherer buildings make workers (see [Resources](#resources)). On the dev server you can also press `U` to put a militia (`i`) on the tile under the mouse; hover it to see `Militia (your name's), HP 30 / 30`.
 
@@ -85,7 +85,7 @@ The first time a kind of enemy comes into sight (not while it's hidden in fog), 
 
 ### Structures
 
-Open the build picker with the Build box or `1` / `2` / `3` for the **Defence**, **Civic** and **Offence** tabs, then click a tool. (Offence is greyed out until barracks arrive.)
+Open the build picker with the Build box or `1` / `2` / `3` for the **Defence**, **Civic** and **Offence** tabs, then click a tool.
 
 | Tab | Structure | Glyph | Cost | What it does |
 |---|---|---|---|---|
@@ -101,6 +101,9 @@ Open the build picker with the Build box or `1` / `2` / `3` for the **Defence**,
 | Defence | Guardhouse | `⛨` | 60 | Sends out up to 3 swordsmen, one every 30s, to guard the tiles in front of it. Placed facing a way (`R`). See [Guards](#guards). |
 | Defence | Archery post | `➶` | 70 | Sends out up to 3 archers who shoot from the tiles in front of it. Placed facing a way. |
 | Defence | Paladin hall | `✠` | 90 | Sends out up to 3 paladins who hold the tiles in front of it. Placed facing a way. |
+| Offence | Scout camp | `⚑` | 40 | Sends out up to 2 scouts, one every 45s, to explore the fog. See [Field units](#field-units). |
+| Offence | Barracks | `Ba` | 80 | Sends out up to 4 soldiers, one every 30s, who hunt enemies and (in PvP) attack the rival keep. |
+| Offence | Archery range | `◎` | 90 | Sends out up to 4 rangers, one every 30s, who do the same from range. |
 | Civic | House | `⌂` | 40 | +2 gold every 5s. Blocks movement. |
 | Civic | Shop | `¤` | 70 | +4 gold every 5s. Blocks movement. |
 | Civic | Farmhouse | `Fa` | 50 | +1 gold every 10s for each field joined to it (up to 8). Blocks movement. See [Farms](#farms-and-town). |
@@ -109,6 +112,10 @@ Open the build picker with the Build box or `1` / `2` / `3` for the **Defence**,
 | Civic | Mine | `Mi` | 100 | Sends out up to 5 miners to mine rock (gold-veined rock pays 3x). Blocks movement. |
 | Civic | Forager hut | `Fo` | 40 | Sends out up to 5 foragers to pick berry bushes. Blocks movement. |
 | Every tab (`X`) | Sell | `$` | - | Refunds 50% of cost, less if damaged. Sells the top layer first (a tower before the wall under it). Also clears trees. |
+
+### Doors
+
+Every building that sends out units (gatherers, guard and offensive buildings) has a **door**: the side its units come out of. Press `R` while placing to turn it. While you place one, its door gets a white border (and a guard building's spots a fainter one); once built, a faint `S` marks the door, so you can avoid building in front of it. If the door is blocked, units come out of the next open side clockwise, and the `S` moves there.
 
 ### Guards
 
@@ -121,6 +128,18 @@ Guard buildings (Defence tab) each make one kind of guard, free, up to 3 at a ti
 | Paladin | `]` | 120 | 4 | 5 every 1.2s | 1 | Holds its tile: enemies stop to fight it and its armour takes the edge off every hit |
 
 Armour is taken off each hit a guard takes (at least 1 always gets through). Enemies stop to fight a guard in their way or beside them, so paladins in a gap with archers behind hold it well; battering rams walk straight through guards, and bomber blasts hurt them. Sell or lose a guard building and its guards stay on their spots, but nobody replaces them. Hover a guard to see `guarding`, `fighting`, `chasing` or `returning`. In PvP, guards also fight a rival's units, and rival towers shoot them.
+
+### Field units
+
+Offensive buildings (Offence tab) send units out across the map. They only ever walk on land your side has explored.
+
+| Unit | Glyph | HP | Armour | Hit | Range | What it does |
+|---|---|---|---|---|---|---|
+| Scout | `!` | 20 | 0 | - | - | Runs to the edge of the fog and pushes it back, again and again. Never fights. Waits at its door once there's nothing left to explore |
+| Soldier | `&` | 70 | 2 | 10 every 1s | 1 | Hunts any enemy your side can see; with none, patrols the edge of the fog |
+| Ranger | `}` | 40 | 0 | 7 every 1.2s | 5 | The same, shooting arrows from range |
+
+In **PvP**, once your side has seen the rival's keep, soldiers and rangers march on it. They go round walls when that's quick, and otherwise break through the weakest wall in the way (the wall before any tower on it, earning the same bounty a tower would), then attack the keep. Hover one to see `fighting`, `besieging`, `hunting` or `patrolling` (scouts: `scouting`, or `waiting` at home).
 
 ### Farms and town
 
@@ -387,6 +406,8 @@ src/sim/              Pure, deterministic game simulation (no DOM, seeded RNG)
   resources.ts        Resource amounts on the map, and harvesting them for gold
   farms.ts            Farmhouses, which fields count for them, farm income, trampling
   guards.ts           Guard spots in front of guard buildings
+  fieldUnits.ts       Scouts, soldiers and rangers: the fog's edge, hunting, patrolling, sieges
+  unitPaths.ts        (also) paths over explored land only, and through a rival's weakest wall
   unitPaths.ts        Path search for units (to the nearest of any number of goals)
   towers.ts           Tower targeting and damage
   traps.ts            Spike trap cycles
@@ -426,6 +447,8 @@ The economy, to balance against each other:
 | How hard each enemy tramples | `ENEMY_KINDS.*.weight` | 0 (goblin, zerg) up to 6 (ram) |
 | Guard buildings: cost, quota, spawn interval | `STRUCTURES.guardhouse`, `.archeryPost`, `.paladinHall` | 60 / 70 / 90g; 3 guards; one every 30s |
 | Guard stats (HP, armour, damage, range, speed, how far swordsmen chase) | `UNIT_KINDS.swordsman`, `.archer`, `.paladin` (`chase`) | see [Guards](#guards) |
+| Offensive buildings: cost, quota, spawn interval | `STRUCTURES.scoutCamp`, `.barracks`, `.archeryRange` | 40 / 80 / 90g; 2 / 4 / 4 units; every 45 / 30 / 30s |
+| Field unit stats | `UNIT_KINDS.scout`, `.soldier`, `.ranger` | see [Field units](#field-units) |
 | Gatherer cost, quota, spawn interval | `STRUCTURES.timberYard`, `.mine`, `.foragerHut` (`cost`, `spawner`) | 60 / 100 / 40g; 5 workers; one every 60s |
 | Worker stats (HP, speed, how often gold comes in) | `UNIT_KINDS.lumberjack`, `.miner`, `.forager` (`attackInterval`) | paid every 3s |
 | What each resource tile is worth, and how long one worker takes to clear it | `RESOURCES` (`worth`, `seconds`) | trees 20-40g / 90s, rock 30-60g / 135s, gold-veined 90-180g / 135s, berries 15-30g / 60s |

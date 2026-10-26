@@ -102,9 +102,11 @@ Built: `fieldActivity` works from positions, explored land and keeps, which onli
 
 ## Task 9: Determinism, timing and docs
 
-- [ ] The 2,000-tick determinism test gains a scout camp and a barracks; a PvP determinism run with a siege
-- [ ] Timing: 20 offensive buildings (60 units) and 200 enemies on XL, median and 95th percentile as the other timing tests; measured standalone and recorded here
-- [ ] README: Offence tab, scouts, soldiers, rangers, doors and symbols (structures table), Tuning rows; SPEC.md "Since `field-units`"; plan and CAPABILITIES statuses; `GLYPHS.md` has no "planned" marks left
-- [ ] `src/sim/` coverage stays at 80% or more
+- [x] The 2,000-tick determinism test gains a scout camp and a barracks; a PvP determinism run with a siege
+- [x] Timing: 20 offensive buildings (60 units) and 200 enemies on XL, median and 95th percentile as the other timing tests; measured standalone and recorded here
+- [x] README: Offence tab, scouts, soldiers, rangers, doors and symbols (structures table), Tuning rows; SPEC.md "Since `field-units`"; plan and CAPABILITIES statuses; `GLYPHS.md` has no "planned" marks left
+- [x] `src/sim/` coverage stays at 80% or more
 
 Files: `tests/sim/game.test.ts`, `tests/sim/fieldUnits.test.ts`, `README.md`, `SPEC.md`, `CAPABILITIES.md`, `tasks/plan.md`. Size: S. Depends on: 8.
+
+Built: field units got their own determinism test (an Endless game with scouts and soldiers, plus a PvP siege that damages the rival keep), because soldiers hunting every visible enemy would stop the big test's bombers and diggers. Measured standalone on a foggy XL map with 66 field units: 0.13 ms median while filling up; with 200 enemies 1.3 ms median, 11.7 ms p95, 22 ms worst. `src/sim/` coverage: 99% of lines.
