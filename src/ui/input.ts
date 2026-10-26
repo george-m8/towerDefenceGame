@@ -2,10 +2,11 @@ import { ENEMY_KIND_ORDER } from "../sim/config";
 import type { Command, GameState, Point } from "../sim/types";
 import { screenToTile, zoomAt, zoomBy } from "./camera";
 import { pickTile } from "../render/canvas";
+import { fromView, lastViewOf, turnView } from "../render/rotation";
 import { TOOLS, hasBuildTools, rotateFacing, tabForKey, type UiState } from "./state";
 
 /** Keys that act on a running game, so they do nothing in the map editor. */
-export const GAME_ONLY_KEYS = ["Space", "KeyF", "KeyJ", "KeyE", "KeyU", "KeyM"];
+export const GAME_ONLY_KEYS = ["Space", "KeyF", "KeyJ", "KeyE", "KeyU", "KeyM", "KeyQ"];
 /** Dev-only stress test: M spawns this many enemies at once. */
 const STRESS_TEST_ENEMIES = 200;
 /** Zoom step for the + and - keys (and the panel buttons). */
@@ -42,11 +43,14 @@ export function bindInput(
   let debugKind = 0;
   let lastPainted: Point | null = null;
 
-  /** The tile under the mouse, through the camera's scroll and zoom. */
+  /** The map tile under the mouse, through the camera's scroll and zoom and the view's turn. */
   function tileFromEvent(e: MouseEvent): Point {
     const rect = canvas.getBoundingClientRect();
     const p = screenToTile(ui.camera, e.clientX - rect.left, e.clientY - rect.top);
-    return pickTile(getState(), p.x, p.y);
+    const state = getState();
+    if (!state || ui.rotation === 0) return pickTile(state, p.x, p.y);
+    const picked = pickTile(lastViewOf(state, ui.rotation), p.x, p.y);
+    return fromView(picked, ui.rotation, state.width, state.height);
   }
 
   // Wheel zooms around the cursor, so the tile under it stays put.
@@ -112,6 +116,8 @@ export function bindInput(
       dispatch({ type: "debugUnit", kind: "militia", x: ui.hover.x, y: ui.hover.y });
     } else if (e.code === "KeyM" && import.meta.env.DEV) {
       dispatch({ type: "debugSpawn", count: STRESS_TEST_ENEMIES });
+    } else if (e.code === "KeyQ") {
+      turnView(ui, getState(), 2); // Q flips the view round (180°)
     } else if (e.code === "KeyJ" && keys) {
       keys.journal();
     } else if (e.code === "Escape") {
