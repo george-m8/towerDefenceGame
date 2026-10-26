@@ -35,13 +35,15 @@ Built: patches can grow into each other, so the test bounds the total bushes per
 
 `UNIT_KINDS` rows for lumberjack `j`, miner `p` and forager `f` with `gathers`; `gather` behaviour: work a resource in reach on the interval (the first in N, E, S, W order, or the tile under it for berries), otherwise walk to the nearest tile it can work from, otherwise stand still until the grid changes.
 
-- [ ] A lumberjack walks to the nearest tree and chops on its interval, paying its owner; it ignores rocks and bushes
-- [ ] A forager stands on its bush; a miner works plain and gold-veined rock (gold-veined pays `value` times more)
-- [ ] When its resource is gone it moves to the next nearest
-- [ ] With nothing reachable it stands still, and sets off once something becomes reachable
-- [ ] A worker never attacks an enemy; a goblin stops to kill a lumberjack beside its path
+- [x] A lumberjack walks to the nearest tree and chops on its interval, paying its owner; it ignores rocks and bushes
+- [x] A forager stands on its bush; a miner works plain and gold-veined rock (gold-veined pays `value` times more)
+- [x] When its resource is gone it moves to the next nearest
+- [x] With nothing reachable it stands still, and sets off once something becomes reachable
+- [x] A worker never attacks an enemy; a goblin stops to kill a lumberjack beside its path
 
 Files: `src/sim/config.ts`, `src/sim/units.ts`, `tests/sim/units.test.ts`. Size: M. Depends on: 1.
+
+Built: `workableFrom` says where a worker can work: walkable resources (bushes) from on top, others from a tile beside them. A worker's `damage` is the units it takes per hit.
 
 ## Task 4: Gatherer buildings
 

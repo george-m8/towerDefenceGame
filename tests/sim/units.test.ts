@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ENEMY_KINDS,
+  RESOURCES,
   TICK_RATE,
   UNIT_KINDS,
   STRUCTURES,
@@ -12,6 +13,7 @@ import {
 import { spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand, createGame, tick } from "../../src/sim/game";
 import { blocksAt, placeStructure, removeStructure } from "../../src/sim/grid";
+import { placeResource, resourceAt } from "../../src/sim/resources";
 import { damageUnit, spawnUnit } from "../../src/sim/units";
 import type { Enemy, Facing, GameState } from "../../src/sim/types";
 import { buildAt, createGameWithoutWaves, goldOf, paintTerrain, ring } from "./helpers";
@@ -458,5 +460,80 @@ describe("performance", () => {
       slowest = Math.max(slowest, performance.now() - start);
     }
     expect(slowest).toBeLessThan(250);
+  });
+});
+
+describe("workers", () => {
+  const chopTicks = UNIT_KINDS.lumberjack.attackInterval * TICK_RATE;
+  const perHit = UNIT_KINDS.lumberjack.damage;
+
+  /** Ticks until `done` holds (at most `limit`), so tests don't depend on walking speed. */
+  function until(state: GameState, done: () => boolean, limit = 2000) {
+    for (let i = 0; i < limit && !done(); i++) tick(state);
+    expect(done()).toBe(true);
+  }
+
+  it("a lumberjack walks to the nearest tree and chops it on its interval, paying its owner", () => {
+    const state = createGameWithoutWaves();
+    placeResource(state, 12, 5, "tree", 100);
+    placeResource(state, 8, 5, "rock", 100);
+    placeResource(state, 6, 5, "berries", 100);
+    spawnUnit(state, "lumberjack", 1, 5, 5);
+    const gold = goldOf(state);
+
+    until(state, () => resourceAt(state, 12, 5)!.left < 100);
+    expect(resourceAt(state, 12, 5)!.left).toBe(100 - perHit);
+    expect(goldOf(state)).toBe(gold + perHit * RESOURCES.tree.value);
+    run(state, chopTicks - 1);
+    expect(resourceAt(state, 12, 5)!.left).toBe(100 - perHit);
+    tick(state);
+    expect(resourceAt(state, 12, 5)!.left).toBe(100 - 2 * perHit);
+    expect(resourceAt(state, 8, 5)!.left).toBe(100);
+    expect(resourceAt(state, 6, 5)!.left).toBe(100);
+  });
+
+  it("a forager stands on its bush to forage it", () => {
+    const state = createGameWithoutWaves();
+    placeResource(state, 9, 5, "berries", 100);
+    const forager = spawnUnit(state, "forager", 1, 5, 5)!;
+    until(state, () => resourceAt(state, 9, 5)!.left < 100);
+    expect({ x: forager.x, y: forager.y }).toEqual({ x: 9, y: 5 });
+  });
+
+  it("a miner works plain rock, then moves on to gold-veined rock when it's gone", () => {
+    const state = createGameWithoutWaves();
+    placeResource(state, 12, 5, "rock", UNIT_KINDS.miner.damage);
+    placeResource(state, 16, 5, "goldRock", 50);
+    spawnUnit(state, "miner", 1, 10, 5);
+
+    until(state, () => resourceAt(state, 12, 5) === null);
+    const gold = goldOf(state);
+    until(state, () => resourceAt(state, 16, 5)!.left < 50);
+    expect(goldOf(state)).toBe(gold + UNIT_KINDS.miner.damage * RESOURCES.goldRock.value);
+  });
+
+  it("stands still with nothing it can reach, and sets off once something can be reached", () => {
+    const state = createGameWithoutWaves();
+    buildAt(state, ring(8, 3, 12, 7));
+    const worker = spawnUnit(state, "lumberjack", 1, 10, 5)!;
+    placeResource(state, 20, 5, "tree", 100);
+    run(state, 3 * TICK_RATE);
+    expect({ x: worker.x, y: worker.y }).toEqual({ x: 10, y: 5 });
+
+    sellAt(state, 12, 5);
+    until(state, () => resourceAt(state, 20, 5)!.left < 100);
+  });
+
+  it("never attacks an enemy, and a goblin stops to kill one beside its path", () => {
+    const state = createGameWithoutWaves();
+    const p = { x: state.keeps[0].x - 20, y: state.keeps[0].y + 1 };
+    placeResource(state, p.x + 3, p.y - 2, "tree", 100);
+    const worker = spawnUnit(state, "lumberjack", 1, p.x + 3, p.y - 1)!;
+    const enemy = dummy(state, p.x + 4, p.y - 1);
+    run(state, 2 * chopTicks);
+    expect(enemy.hp).toBe(1000);
+
+    spawnEnemy(state, p.x, p.y);
+    until(state, () => !state.units.includes(worker), 30 * TICK_RATE);
   });
 });

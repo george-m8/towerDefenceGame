@@ -244,7 +244,7 @@ export const BURST_DELAY_TICKS = 6;
 export const BURST_TICKS = 24;
 
 /** What a unit does each tick (see sim/units.ts). */
-export type UnitBehaviourId = "hold";
+export type UnitBehaviourId = "hold" | "gather";
 
 /** A kind of the player's own unit. Units spawn free from their building (see SpawnerStats). */
 export interface UnitKind {
@@ -260,6 +260,8 @@ export interface UnitKind {
   speed: number; // tiles per second
   sight: SightStats;
   behaviour: UnitBehaviourId;
+  /** Workers: the resources it gathers. Its `damage` is the units it takes per hit. */
+  gathers?: ResourceTerrain[];
 }
 
 export const UNIT_KINDS = {
@@ -275,6 +277,47 @@ export const UNIT_KINDS = {
     speed: 1,
     sight: { inner: 3, outer: 5 },
     behaviour: "hold",
+  },
+  // Workers, spawned by gatherer buildings. `damage` is units taken per hit, every
+  // `attackInterval` seconds; RESOURCES says what each unit pays.
+  lumberjack: {
+    glyph: "j",
+    name: "Lumberjack",
+    hp: 15,
+    armour: 0,
+    damage: 1,
+    attackInterval: 3,
+    range: 1,
+    speed: 1.2,
+    sight: { inner: 3, outer: 5 },
+    behaviour: "gather",
+    gathers: ["tree"],
+  },
+  miner: {
+    glyph: "p",
+    name: "Miner",
+    hp: 18,
+    armour: 1,
+    damage: 1,
+    attackInterval: 3,
+    range: 1,
+    speed: 1,
+    sight: { inner: 3, outer: 5 },
+    behaviour: "gather",
+    gathers: ["rock", "goldRock"],
+  },
+  forager: {
+    glyph: "f",
+    name: "Forager",
+    hp: 12,
+    armour: 0,
+    damage: 1,
+    attackInterval: 3,
+    range: 1,
+    speed: 1.4,
+    sight: { inner: 3, outer: 5 },
+    behaviour: "gather",
+    gathers: ["berries"],
   },
 } satisfies Record<string, UnitKind>;
 

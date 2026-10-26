@@ -2,6 +2,7 @@
 // and does what its kind's behaviour says every tick. See SPEC-unit-core.md.
 import {
   STRUCTURES,
+  TERRAIN,
   TICK_RATE,
   UNIT_KINDS,
   UNIT_PATH_SEARCHES_PER_TICK,
@@ -15,15 +16,61 @@ import { blocksAt, inBounds, isBuilt, keepAt } from "./grid";
 import { addBurst } from "./effects";
 import { unitMoved } from "./fog";
 import { atTileCentre, walk } from "./movement";
-import { canCross } from "./pathfinding";
+import { DIRECTIONS, canCross } from "./pathfinding";
+import { harvest, resourceAt } from "./resources";
 import { findPath } from "./unitPaths";
-import type { Enemy, Facing, GameState, PlayerId, Point, Structure, Unit } from "./types";
+import type { Enemy, Facing, GameState, PlayerId, Point, Structure, Terrain, Unit } from "./types";
 
 type Behaviour = (state: GameState, unit: Unit) => void;
 
 const BEHAVIOURS: Record<UnitBehaviourId, Behaviour> = {
   hold,
+  gather,
 };
+
+/**
+ * Workers work a resource in reach on their interval; otherwise they walk to the nearest
+ * tile they can work from, or stand still until the grid changes if there's none.
+ */
+function gather(state: GameState, unit: Unit) {
+  const kind = kindOf(unit);
+  const gathers = kind.gathers ?? [];
+  const target = atTileCentre(unit) ? workableFrom(state, unit.x, unit.y, gathers) : null;
+  if (target) {
+    if (unit.attackCooldown === 0) {
+      harvest(state, target.x, target.y, kind.damage, unit.owner);
+      unit.attackCooldown = kind.attackInterval * TICK_RATE;
+    }
+    return;
+  }
+  walkTowards(
+    state,
+    unit,
+    `gather ${gathers.join("+")}`,
+    (x, y) => !!workableFrom(state, x, y, gathers),
+  );
+}
+
+/**
+ * A resource of these kinds a worker on (x, y) can work: one it stands on if it's walkable
+ * (berry bushes), else one next to it, in N, E, S, W order (trees, rocks).
+ */
+export function workableFrom(
+  state: GameState,
+  x: number,
+  y: number,
+  gathers: readonly Terrain[],
+): Point | null {
+  const under = resourceAt(state, x, y);
+  if (under && gathers.includes(under.terrain)) return { x, y };
+  for (const d of DIRECTIONS) {
+    const resource = resourceAt(state, x + d.x, y + d.y);
+    if (resource && gathers.includes(resource.terrain) && !TERRAIN[resource.terrain].walkable) {
+      return { x: x + d.x, y: y + d.y };
+    }
+  }
+  return null;
+}
 
 /** Fights anything in reach; otherwise walks to its goal, if it has one, and holds there. */
 function hold(state: GameState, unit: Unit) {
