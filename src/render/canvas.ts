@@ -2,6 +2,7 @@ import {
   baseAt,
   blocksAt,
   canBuild,
+  inBounds,
   isBuilt,
   isKeepTile,
   isSpawnTile,
@@ -74,7 +75,7 @@ import { fogImage } from "./fog";
 import { burstPixels, burstWaiting } from "./burst";
 import { textureSpecks, textureVariant, type TextureStyle } from "./textures";
 import { borderColour, borderTrace } from "./buildBorder";
-import { shadowOffset } from "./sun";
+import { CASTERS, castShade, shadowOffset, type Block } from "./sun";
 
 /** Blocks' shadows, on the ground and on lower blocks beside them. */
 const SHADOW = "rgba(0, 0, 0, 0.3)";
@@ -250,32 +251,31 @@ export function createRenderer(canvas: HTMLCanvasElement) {
         drawTileContents(state, x, y, showOwners);
         ctx!.restore();
         drawEnclosureTint(state, x, y, h);
-        const caster = blockHeight(state, x - 1, y);
-        if (caster > h) drawCastShadow(x, y, h, caster);
+        drawCastShadows(state, { x, y, height: h }, { dx, dy });
       }
     }
   }
 
   /**
-   * The shadow a taller block on the left casts over a lower block's front face and top, as it
-   * would on the ground (out to the right by half the caster's height), less the lower block's
-   * own height: e.g. a catapult on a wall shading the wall beside it.
+   * The shadows taller blocks beside and behind cast over a lower block's front face and top:
+   * e.g. a catapult on a wall shading the wall beside it. One fill, so overlaps aren't darker.
    */
-  function drawCastShadow(x: number, y: number, h: number, caster: number) {
-    const left = x * TILE_SIZE;
-    const foot = (y + 1) * TILE_SIZE;
-    const reach = (caster - h) / 2;
-    ctx!.fillStyle = SHADOW;
-    // The face: as wide as the ground shadow at its foot, narrowing to `reach` at its top edge.
+  function drawCastShadows(state: GameState, receiver: Block, offset: { dx: number; dy: number }) {
     ctx!.beginPath();
-    ctx!.moveTo(left, foot);
-    ctx!.lineTo(left + caster / 2, foot);
-    ctx!.lineTo(left + reach, foot - h);
-    ctx!.lineTo(left, foot - h);
-    ctx!.closePath();
+    for (const [dx, dy] of CASTERS) {
+      const x = receiver.x + dx;
+      const y = receiver.y + dy;
+      if (!inBounds(state, x, y)) continue;
+      const { top, face } = castShade(offset, { x, y, height: blockHeight(state, x, y) }, receiver);
+      if (top) ctx!.rect(top.x, top.y, top.width, top.height);
+      if (face) {
+        ctx!.moveTo(...face[0]);
+        for (const point of face.slice(1)) ctx!.lineTo(...point);
+        ctx!.closePath();
+      }
+    }
+    ctx!.fillStyle = SHADOW;
     ctx!.fill();
-    // The top, lifted by h.
-    ctx!.fillRect(left, y * TILE_SIZE - h, reach, TILE_SIZE);
   }
 
   /**

@@ -29,17 +29,19 @@ Files: `src/ui/state.ts`, `src/render/canvas.ts`. Size: S. Depends on: 1.
 
 `drawCastShadow` is generalised from "the block on the left" to whichever of the 8 neighbours the offset reaches. A pure helper (in `sun.ts`) says which neighbours a shadow reaches and how far. The shape stays as today: the shaded part of a face narrows with height, and the top gets the part left after the receiver's own height. A block never shades one as tall or taller.
 
-- [ ] Morning (`sun` 0.1): a tower on a wall shades the wall to its left; evening (0.9): the wall to its right
-- [ ] Noon: a tower on a wall shades the top and face of the wall in front of it (the row below)
-- [ ] No shadow is drawn on a block as tall as its caster or taller (keep corners, trees beside walls)
-- [ ] Unit tests for the helper: neighbours reached at 0, 0.5 and 1; none when the receiver is as tall
+- [x] Morning (`sun` 0.1): a tower on a wall shades the wall to its left; evening (0.9): the wall to its right
+- [x] Noon: a tower on a wall shades the top and face of the wall in front of it (the row below)
+- [x] No shadow is drawn on a block as tall as its caster or taller (keep corners, trees beside walls)
+- [x] Unit tests for the helper: neighbours reached at 0, 0.5 and 1; none when the receiver is as tall
 
 Files: `src/render/sun.ts`, `src/render/canvas.ts`, `tests/render/sun.test.ts`. Size: M. Depends on: 2.
 
+Built: `castShade(offset, caster, receiver)` in `sun.ts` gives the shade on a receiver's top (the caster's footprint moved by the part above the receiver) and face (same row only: a shadow from the row behind would need to reach a whole tile). Each receiver's shade is one fill, and neighbours off the map are skipped (the old left-only check read the row above's last tile at x = 0).
+
 ## Checkpoint A: after Task 3
 
-- [ ] Standard verification passes
-- [ ] Browser: `__ui.sun` at 0, 0.25, 0.5, 0.9 and 1 over walls, towers on walls, trees, rocks and the keep looks right (screenshots for review)
+- [x] Standard verification passes
+- [x] Browser: `__ui.sun` at 0, 0.25, 0.5, 0.9 and 1 over walls, towers on walls, trees, rocks and the keep looks right (screenshots for review)
 - [ ] Review the shadows together before building the UI
 
 ## Task 4: Sun slider in the Debug menu
