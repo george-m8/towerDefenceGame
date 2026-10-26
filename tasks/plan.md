@@ -956,8 +956,8 @@ Spec: [`SPEC-day-night.md`](../SPEC-day-night.md) (approved). Tasks: [`tasks/day
 
 ### Architecture decisions
 
-- **The sun is drawing only.** `ui.sun` (0 sunrise, 0.5 noon, 1 sunset) lives on `UiState`, like `showFlow`. It's not in `GameState`, not sent over the network and not saved. The later automatic cycle can move it into the sim when it needs to be shared.
-- **One pure function holds the maths.** `shadowOffset(sun)` in `src/render/sun.ts` gives the ground offset per pixel of height, tested without a canvas. The `SUN` table in `palette.ts` holds the tuning numbers. The renderer only multiplies by height.
+- **The sun is drawing only.** `ui.sun` (`{ across, arc }`: where it is from the left horizon to the right, and how high its arc rises; spec v1.1) lives on `UiState`, like `showFlow`. It's not in `GameState`, not sent over the network and not saved. The later automatic cycle can move it into the sim when it needs to be shared.
+- **One pure function holds the maths.** `shadowOffset(sun)` in `src/render/sun.ts` gives the ground offset per pixel of height (from the sun on a tilted arc, cut to a maximum length), tested without a canvas. The `SUN` table in `palette.ts` holds the tuning numbers. The renderer only multiplies by height.
 - **One tile at most.** The longest shadow is capped at a tile, so cast shadows only ever reach the 8 neighbours. That keeps `drawCastShadow` local and doesn't need a shadow map.
 - **Ground shadows are filled once.** All ground-shadow shapes go into one path with a single `fill()`, so neighbouring shadows that overlap (now visible, as they lean down) don't double-darken.
 - **Reuse the Debug menu.** The slider is a `ToggleItem` row. The editor shows the same Debug button, with game-only rows hidden through `available`.
