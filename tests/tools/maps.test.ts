@@ -153,7 +153,7 @@ describe("the dev server's endpoint", () => {
       body: serializeMap(sample),
     });
     expect(badName.status).toBe(400);
-    expect((await badName.json()).error).toContain("isn't a map name");
+    expect(((await badName.json()) as { error: string }).error).toContain("isn't a map name");
     const huge = await fetch(`${url}/big`, {
       method: "POST",
       body: " ".repeat(MAP_EDITOR.maxFileBytes + 1),
