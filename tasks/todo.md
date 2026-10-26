@@ -54,11 +54,13 @@ Files: `src/sim/config.ts`, `src/sim/units.ts`, `src/ui/state.ts`, `src/render/p
 
 `src/sim/fieldUnits.ts`: `isFrontier` (explored, standable, next to unexplored, for a team); `scout` behaviour: walk (explored-only) to the nearest frontier tile, then the next; with none, go home and wait; never fight.
 
-- [ ] A scout walks to the nearest frontier and explores past it, again and again
-- [ ] With nothing left to explore it walks home and waits
-- [ ] It never attacks, and never steps on unexplored land
+- [x] A scout walks to the nearest frontier and explores past it, again and again
+- [x] With nothing left to explore it walks home and waits
+- [x] It never attacks, and never steps on unexplored land
 
 Files: `src/sim/fieldUnits.ts` (new), `src/sim/units.ts`, `tests/sim/fieldUnits.test.ts`. Size: M. Depends on: 3, 4.
+
+Built: `state.exploredVersion` goes up only when a team explores a tile new to it, and explored-only paths go stale on that (`Unit.pathExplored`), not on `sightVersion`, which changes whenever any unit steps. So a scout with nothing left doesn't search again every tick. A scout waits at its building's door.
 
 ## Task 6: Hunt and patrol
 

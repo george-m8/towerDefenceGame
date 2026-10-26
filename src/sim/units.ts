@@ -21,6 +21,7 @@ import { teamOf, unitMoved } from "./fog";
 import { atTileCentre, walk } from "./movement";
 import { DIRECTIONS, canCross } from "./pathfinding";
 import { harvest, resourceAt } from "./resources";
+import { scout } from "./fieldUnits";
 import { guardSpotOf } from "./guards";
 import { findPath, type PathOptions } from "./unitPaths";
 import type { Enemy, Facing, GameState, PlayerId, Point, Structure, Terrain, Unit } from "./types";
@@ -31,8 +32,8 @@ const BEHAVIOURS: Record<UnitBehaviourId, Behaviour> = {
   hold,
   gather,
   guard,
-  scout: hold, // until sim/fieldUnits.ts
-  attack: hold,
+  scout,
+  attack: hold, // until sim/fieldUnits.ts hunts and patrols
 };
 
 /**
@@ -177,7 +178,7 @@ export function spawnUnit(
     path: null,
     pathGoal: null,
     pathVersion: -1,
-    pathSight: -1,
+    pathExplored: -1,
     waitingForPath: false,
   };
   state.units.push(unit);
@@ -365,7 +366,8 @@ export function walkTowards(
     // moved (a chased enemy). With no way there at all (null), wait for the grid to change.
     // On explored land only, a unit with no way yet tries again once more land is explored.
     const stale = unit.pathGoal !== goalKey || unit.pathVersion !== state.gridVersion;
-    const moreLand = options.exploredBy !== undefined && unit.pathSight !== state.sightVersion;
+    const moreLand =
+      options.exploredBy !== undefined && unit.pathExplored !== state.exploredVersion;
     if (stale || unit.path?.length === 0 || (unit.path === null && moreLand)) {
       if (!searchPath(state, unit, goalKey, isGoal, options)) return false;
     }
@@ -400,7 +402,7 @@ function searchPath(
   unit.path = findPath(state, { x: unit.x, y: unit.y }, isGoal, options);
   unit.pathGoal = goalKey;
   unit.pathVersion = state.gridVersion;
-  unit.pathSight = state.sightVersion;
+  unit.pathExplored = state.exploredVersion;
   return true;
 }
 

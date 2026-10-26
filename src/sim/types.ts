@@ -117,8 +117,8 @@ export interface Unit {
   path: Point[] | null;
   pathGoal: string | null;
   pathVersion: number;
-  /** The sightVersion of that search (paths over explored land only go stale as land is explored). */
-  pathSight: number;
+  /** The exploredVersion of that search (paths over explored land go stale as more is explored). */
+  pathExplored: number;
   /** It needs a path but the tick's search budget ran out: it goes first next tick. */
   waitingForPath: boolean;
 }
@@ -229,6 +229,8 @@ export interface GameState {
   gridVersion: number;
   /** Incremented whenever a unit spawns, dies or moves to another tile, so sight is redone. */
   sightVersion: number;
+  /** Incremented whenever a team explores a tile it hadn't, so explored-only paths are redone. */
+  exploredVersion: number;
   /** Flow fields per movement profile, built lazily. */
   flows: Partial<Record<MovementProfile, FlowField>>;
   enemies: Enemy[];
