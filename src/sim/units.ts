@@ -21,7 +21,7 @@ import { teamOf, unitMoved } from "./fog";
 import { atTileCentre, walk } from "./movement";
 import { DIRECTIONS, canCross } from "./pathfinding";
 import { harvest, resourceAt } from "./resources";
-import { scout } from "./fieldUnits";
+import { attack, scout } from "./fieldUnits";
 import { guardSpotOf } from "./guards";
 import { findPath, type PathOptions } from "./unitPaths";
 import type { Enemy, Facing, GameState, PlayerId, Point, Structure, Terrain, Unit } from "./types";
@@ -33,7 +33,7 @@ const BEHAVIOURS: Record<UnitBehaviourId, Behaviour> = {
   gather,
   guard,
   scout,
-  attack: hold, // until sim/fieldUnits.ts hunts and patrols
+  attack,
 };
 
 /**
@@ -290,7 +290,7 @@ export function removeDeadUnits(state: GameState): void {
 }
 
 /** Tiles between a tile (a unit's, a spot) and a point, counting diagonals as 1. */
-function reach(from: Point, x: number, y: number): number {
+export function reach(from: Point, x: number, y: number): number {
   return Math.max(
     Math.abs(Math.round(x) - Math.round(from.x)),
     Math.abs(Math.round(y) - Math.round(from.y)),
@@ -301,7 +301,7 @@ function reach(from: Point, x: number, y: number): number {
  * Hits the nearest enemy within range once its attack is ready. True while there's an enemy
  * in reach (even between hits), so the unit stays to fight.
  */
-function attackNearest(state: GameState, unit: Unit): boolean {
+export function attackNearest(state: GameState, unit: Unit): boolean {
   const kind = kindOf(unit);
   const enemy = nearestEnemy(state, unit, kind.range);
   const target = enemy ?? nearestRival(state, unit, kind.range);

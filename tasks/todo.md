@@ -66,9 +66,9 @@ Built: `state.exploredVersion` goes up only when a team explores a tile new to i
 
 `attack` behaviour: fight what's in reach (rangers shoot); else walk (explored-only) to the nearest enemy (or rival unit) the team can see; else patrol to the nearest frontier.
 
-- [ ] A soldier walks to and kills an enemy its side can see; a ranger shoots one from range
-- [ ] With no enemy in sight it patrols to the frontier
-- [ ] It never steps on unexplored land, and in Endless attacks nothing but enemies
+- [x] A soldier walks to and kills an enemy its side can see; a ranger shoots one from range
+- [x] With no enemy in sight it patrols to the frontier
+- [x] It never steps on unexplored land, and in Endless attacks nothing but enemies
 
 Files: `src/sim/fieldUnits.ts`, `tests/sim/fieldUnits.test.ts`. Size: M. Depends on: 5.
 
