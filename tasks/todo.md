@@ -76,10 +76,12 @@ Built: the resource bar only shows on tiles in sight, so PvP rivals can't watch 
 
 `resources` and `resourceStart` in the welcome snapshot; updates carry changed `resources` tiles only.
 
-- [ ] Welcome carries both layers; a hit sends just that tile next update; `resourceStart` is never resent
+- [x] Welcome carries both layers; a hit sends just that tile next update; `resourceStart` is never resent
 - [ ] Browser: a second player sees workers and resources vanish in step (also `unit-core`'s online check)
 
 Files: `src/net/protocol.ts`, `src/net/snapshot.ts`, `src/net/view.ts`, `tests/net/view.test.ts`. Size: S. Depends on: 5.
+
+Built: `resources` is compared every update, since harvesting doesn't change the grid. Also fixed a `unit-core` gap: land a unit explores (which changes `sightVersion` but not the grid) now reaches clients without waiting for a grid change.
 
 ## Task 7: Timing, determinism, docs and tuning table
 

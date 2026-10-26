@@ -75,6 +75,7 @@ export function applyUpdate(view: GameState, update: StateUpdate): Movers {
     for (const [i, id] of tiles.base ?? []) view.base[i] = id;
     for (const [i, id] of tiles.mount ?? []) view.mount[i] = id;
     for (const [i, bits] of tiles.explored ?? []) view.explored[i] = bits;
+    for (const [i, left] of tiles.resources ?? []) view.resources[i] = left;
   }
   if (update.features) view.features = update.features;
   return { enemies, units };

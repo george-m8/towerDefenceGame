@@ -119,6 +119,8 @@ export type StateUpdate = Omit<Pick<ClientState, DynamicFields>, "enemies" | "un
     base?: TileChanges<number>;
     mount?: TileChanges<number>;
     explored?: TileChanges<number>;
+    /** Resource left; checked every update, since harvesting doesn't change the grid. */
+    resources?: TileChanges<number>;
   };
   /** The map features (chests), when one was claimed. */
   features?: ClientState["features"];
