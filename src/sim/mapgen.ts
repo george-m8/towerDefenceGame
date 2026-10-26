@@ -74,6 +74,7 @@ export function generateTerrain(
     if (!isValid(layout, terrain, config)) continue;
     const ruins = placeRuins(layout, rng, config, terrain);
     const chests = placeChests(layout, rng, config, terrain, ruins);
+    addResources(layout, rng, config, terrain, [...ruins, ...chests]);
     return { terrain, ruins, chests, attempts: attempt + 1, fallback: false };
   }
   return {
@@ -404,6 +405,57 @@ function placeChests(
     }
   }
   return chests;
+}
+
+/**
+ * Gold veins in the rock and patches of berry bushes, added last so everything before them
+ * is the map it always was. Bushes are walkable, so they never cut anything off.
+ */
+function addResources(
+  layout: MapLayout,
+  rng: Rng,
+  config: MapGenConfig,
+  terrain: Terrain[],
+  taken: Point[],
+) {
+  terrain.forEach((t, i) => {
+    if (t === "rock" && nextRandom(rng) < config.goldVeinChance) terrain[i] = "goldRock";
+  });
+  keepPlainRock(layout, terrain);
+  const reserved = clearZoneMask(layout, config);
+  const used = new Set(taken.map((p) => p.y * layout.width + p.x));
+  const open = (i: number) => terrain[i] === "ground" && !reserved[i] && !used.has(i);
+  const { berryPatchesPer1000, berryPatchSize } = config;
+  scatterClumps(layout, rng, terrain, open, "berries", berryPatchesPer1000, berryPatchSize);
+}
+
+/** Every rock cluster keeps at least one plain rock, so veins read as flecks in the rock. */
+function keepPlainRock(layout: MapLayout, terrain: Terrain[]) {
+  const { width, height } = layout;
+  const isRock = (i: number) => terrain[i] === "rock" || terrain[i] === "goldRock";
+  const seen = new Set<number>();
+  terrain.forEach((_, start) => {
+    if (!isRock(start) || seen.has(start)) return;
+    const cluster = [start];
+    seen.add(start);
+    for (let k = 0; k < cluster.length; k++) {
+      const x = cluster[k] % width;
+      const y = (cluster[k] - x) / width;
+      for (const [nx, ny] of [
+        [x, y - 1],
+        [x + 1, y],
+        [x, y + 1],
+        [x - 1, y],
+      ]) {
+        const ni = ny * width + nx;
+        if (nx < 0 || ny < 0 || nx >= width || ny >= height || seen.has(ni) || !isRock(ni))
+          continue;
+        seen.add(ni);
+        cluster.push(ni);
+      }
+    }
+    if (!cluster.some((i) => terrain[i] === "rock")) terrain[cluster[0]] = "rock";
+  });
 }
 
 /** Tile offsets for one ruin fragment. */

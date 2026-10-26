@@ -22,12 +22,14 @@ Built: starting amounts are a roll from the map seed and the tile index (not the
 
 `MAP_GEN.goldVeinChance`, `berryPatchesPer1000`, `berryPatchSize`. Veins and patches are placed after everything map-gen already does, using the same generator; patches avoid the keep's clear zone and the spawn strip; every rock cluster keeps a plain rock.
 
-- [ ] Across many seeds every map still passes the existing checks
-- [ ] Veins are roughly `goldVeinChance` of rock tiles; patch counts and sizes fall in their ranges
-- [ ] No bush in the keep's clear zone or on the spawn strip
-- [ ] Apart from veins and bushes, terrain for a seed is exactly what it was before (compared against today's generator)
+- [x] Across many seeds every map still passes the existing checks
+- [x] Veins are roughly `goldVeinChance` of rock tiles; patch counts and sizes fall in their ranges
+- [x] No bush in the keep's clear zone or on the spawn strip
+- [x] Apart from veins and bushes, terrain for a seed is exactly what it was before (compared against today's generator)
 
 Files: `src/sim/config.ts`, `src/sim/mapgen.ts`, `tests/sim/mapgen.test.ts`. Size: M. Depends on: 1.
+
+Built: patches can grow into each other, so the test bounds the total bushes per map rather than each patch. The before/after test compares against the same generator with veins and patches turned off; ruins and chests match too.
 
 ## Task 3: Workers and the gather behaviour
 

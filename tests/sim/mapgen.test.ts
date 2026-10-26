@@ -80,6 +80,36 @@ function coastEdges(layout: MapLayout, terrain: Terrain[]): string[] {
 
 const count = (terrain: Terrain[], kind: Terrain) => terrain.filter((t) => t === kind).length;
 
+/** Groups of 4-connected tiles of the given kinds, as tile indices. */
+function clusters(layout: MapLayout, terrain: Terrain[], kinds: Terrain[]): number[][] {
+  const { width, height } = layout;
+  const seen = new Set<number>();
+  const groups: number[][] = [];
+  terrain.forEach((t, start) => {
+    if (!kinds.includes(t) || seen.has(start)) return;
+    const group = [start];
+    seen.add(start);
+    for (let k = 0; k < group.length; k++) {
+      const x = group[k] % width;
+      const y = (group[k] - x) / width;
+      for (const [nx, ny] of [
+        [x, y - 1],
+        [x + 1, y],
+        [x, y + 1],
+        [x - 1, y],
+      ]) {
+        const ni = ny * width + nx;
+        if (nx < 0 || ny < 0 || nx >= width || ny >= height || seen.has(ni)) continue;
+        if (!kinds.includes(terrain[ni])) continue;
+        seen.add(ni);
+        group.push(ni);
+      }
+    }
+    groups.push(group);
+  });
+  return groups;
+}
+
 /** Connected groups of ford tiles: each group is one crossing. */
 function fordCrossings(layout: MapLayout, terrain: Terrain[]): number {
   const { width } = layout;
@@ -167,6 +197,58 @@ describe("generateTerrain", { timeout: 30_000 }, () => {
       }, 0);
     // 4x the area should give well over twice the rocks and trees.
     expect(features(big)).toBeGreaterThan(2.5 * features(layout));
+  });
+
+  it("flecks rock clusters with gold veins, always keeping some plain rock", () => {
+    let rock = 0;
+    let gold = 0;
+    for (const seed of SEEDS.slice(0, 50)) {
+      const { terrain } = generateTerrain(layout, seed);
+      rock += count(terrain, "rock");
+      gold += count(terrain, "goldRock");
+      for (const cluster of clusters(layout, terrain, ["rock", "goldRock"])) {
+        expect(
+          cluster.some((i) => terrain[i] === "rock"),
+          `seed ${seed}`,
+        ).toBe(true);
+      }
+    }
+    const share = gold / (rock + gold);
+    expect(share).toBeGreaterThan(MAP_GEN.goldVeinChance * 0.6);
+    expect(share).toBeLessThan(MAP_GEN.goldVeinChance * 1.4);
+  });
+
+  it("grows berry patches on reachable open ground, never near the keep or the spawn", () => {
+    const area = (layout.width * layout.height) / 1000;
+    const most = Math.round(MAP_GEN.berryPatchesPer1000[1] * area) * MAP_GEN.berryPatchSize[1];
+    let maps = 0;
+    for (const seed of SEEDS.slice(0, 50)) {
+      const { terrain } = generateTerrain(layout, seed);
+      const bushes = count(terrain, "berries");
+      if (bushes > 0) maps++;
+      expect(bushes).toBeLessThanOrEqual(most);
+      expectGuarantees(layout, terrain); // the keep ring and spawn area are still plain ground
+    }
+    expect(maps).toBeGreaterThan(45);
+  });
+
+  it("only adds veins and bushes: everything else is the map it was before", () => {
+    const without = {
+      ...MAP_GEN,
+      goldVeinChance: 0,
+      berryPatchesPer1000: [0, 0] as [number, number],
+    };
+    for (const seed of SEEDS.slice(0, 50)) {
+      const before = generateTerrain(layout, seed, without);
+      const after = generateTerrain(layout, seed);
+      after.terrain.forEach((t, i) => {
+        if (t === "goldRock") expect(before.terrain[i]).toBe("rock");
+        else if (t === "berries") expect(before.terrain[i]).toBe("ground");
+        else expect(t).toBe(before.terrain[i]);
+      });
+      expect(after.ruins).toEqual(before.ruins);
+      expect(after.chests).toEqual(before.chests);
+    }
   });
 
   it("places damaged ruin fragments on reachable open ground", () => {

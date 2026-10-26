@@ -732,6 +732,10 @@ export const MAP_GEN = {
   ruinHp: [0.4, 0.8] as [number, number], // fraction of full HP each ruin fragment starts with
   chestsPer1000: [2, 4] as [number, number],
   chestGold: [20, 60] as [number, number], // nearest the keep pays the least
+  // Resources (placed last, so the rest of a seed's map never changes).
+  goldVeinChance: 0.12, // share of rock tiles that are gold-veined (RESOURCES.goldRock)
+  berryPatchesPer1000: [1.5, 3] as [number, number],
+  berryPatchSize: [3, 8] as [number, number],
 };
 
 /** Gold of timber for clearing one tree with the sell tool. */
