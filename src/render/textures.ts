@@ -7,11 +7,12 @@ import { TILE_SIZE } from "./palette";
 /**
  * Speckle: grainy dirt, stone or leaves. Pebbles: speckle with a few small stones. Ore: speckle
  * with flecks of gold glinting in it. Ripple: water. Stone: cut stone blocks laid in offset
- * rows, like the keep's walls. Ruined stone: the same blocks, crumbling: some knocked out,
- * mortar worn away, and cracks. Planks: upright wooden boards held by two iron bands (gates).
+ * rows, like the keep's walls. Cracked stone: the same blocks, chipped and cracked (a wall
+ * that's been badly hit). Ruined stone: the same blocks, crumbling: some knocked out, mortar
+ * worn away, and cracks. Planks: upright wooden boards held by two iron bands (gates).
  */
 export type TextureStyle =
-  "speckle" | "pebbles" | "ore" | "ripple" | "stone" | "ruinedStone" | "planks";
+  "speckle" | "pebbles" | "ore" | "ripple" | "stone" | "crackedStone" | "ruinedStone" | "planks";
 
 /** One speck, in pixels within the tile. */
 export interface Speck {
@@ -49,6 +50,7 @@ export function textureSpecks(style: TextureStyle, variant: number): Speck[] {
     specks.push({ x: gx * GRAIN_PX, y: gy * GRAIN_PX, w: w * GRAIN_PX, h: GRAIN_PX, colour });
   };
   if (style === "stone") return stoneSpecks(random);
+  if (style === "crackedStone") return crackedStoneSpecks(random);
   if (style === "ruinedStone") return ruinedStoneSpecks(random);
   if (style === "planks") return plankSpecks(random);
   if (style === "ripple") {
@@ -145,19 +147,37 @@ function ruinedStoneSpecks(random: () => number): Speck[] {
       }
     }
   }
-  // Cracks: a few pixels stepping down and sideways.
-  const cracks = 1 + Math.floor(random() * 2);
-  for (let c = 0; c < cracks; c++) {
+  addCracks(specks, random, 1 + Math.floor(random() * 2), 4);
+  return specks;
+}
+
+/**
+ * Whole stone blocks (stoneSpecks), badly hit: two or three long cracks run down the face and
+ * a few block corners are chipped out. Nothing has fallen out yet, unlike ruined stone.
+ */
+function crackedStoneSpecks(random: () => number): Speck[] {
+  const specks = stoneSpecks(random);
+  for (let i = 0; i < 3; i++) {
+    const row = Math.floor(random() * (TILE_SIZE / STONE_ROW_PX));
+    const x = Math.floor(random() * (TILE_SIZE - 2));
+    specks.push({ x, y: row * STONE_ROW_PX + 1, w: 2, h: 2, colour: HOLE });
+  }
+  addCracks(specks, random, 2 + Math.floor(random() * 2), 6);
+  return specks;
+}
+
+/** Cracks: `count` of them, each at least `length` pixels stepping down and sideways. */
+function addCracks(specks: Speck[], random: () => number, count: number, length: number) {
+  for (let c = 0; c < count; c++) {
     let x = 3 + Math.floor(random() * (TILE_SIZE - 6));
     let y = 2 + Math.floor(random() * (TILE_SIZE / 2));
     const step = random() < 0.5 ? -1 : 1;
-    for (let i = 0; i < 4 + Math.floor(random() * 3) && y < TILE_SIZE; i++) {
+    for (let i = 0; i < length + Math.floor(random() * 3) && y < TILE_SIZE; i++) {
       specks.push({ x, y, w: 1, h: 1, colour: MORTAR });
       y++;
       if (random() < 0.6) x = Math.min(TILE_SIZE - 1, Math.max(0, x + step));
     }
   }
-  return specks;
 }
 
 /** Planks: boards this wide, so they line up across tiles; bands this far from top and bottom. */

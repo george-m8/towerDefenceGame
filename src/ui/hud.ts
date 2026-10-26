@@ -262,9 +262,12 @@ export function createHud(root: HTMLElement, ui: UiState) {
       root.hidden = state === null;
       if (!state) return;
       const hud = hudContent(state, ui);
-      glyph.textContent = hud.tool?.glyph ?? "+";
+      const damaging = ui.debugDamage && ui.tool === null;
+      glyph.textContent = damaging ? "✸" : (hud.tool?.glyph ?? "+");
       const limit = isBuildTool(ui.tool) ? limitLabel(state, ui.playerId, ui.tool) : null;
-      name.textContent = `${hud.tool?.name ?? "Build"}${limit ? ` ${limit}` : ""}`;
+      name.textContent = damaging
+        ? "Damage (debug)"
+        : `${hud.tool?.name ?? "Build"}${limit ? ` ${limit}` : ""}`;
       cost.hidden = hud.cost === null;
       cost.textContent = hud.cost ?? "";
       shownTime = heldTime(shownTime, ui.tool, hud.time);

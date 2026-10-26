@@ -317,6 +317,9 @@ export const STRUCTURE_TEXTURES: Partial<Record<StructureKind, TextureStyle>> = 
   ruin: "ruinedStone",
   gate: "planks",
 };
+/** A wall below this share of its HP looks battered: cracked stone, and a little lower. */
+export const WALL_DAMAGED_BELOW = 0.5;
+export const DAMAGED_WALL_TEXTURE: TextureStyle = "crackedStone";
 /** Below this many screen pixels per tile, textures are too small to see and aren't drawn. */
 export const TEXTURE_MIN_TILE_PX = 10;
 

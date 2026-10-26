@@ -116,7 +116,10 @@ export function bindInput(
       keys.journal();
     } else if (e.code === "Escape") {
       // Closing a window comes first; otherwise Escape drops the current tool.
-      if (!keys?.escape()) ui.tool = null;
+      if (!keys?.escape()) {
+        ui.tool = null;
+        ui.debugDamage = false;
+      }
     } else if (tabForKey(e.code) && hasBuildTools(tabForKey(e.code)!)) {
       // 1, 2, 3 open the build picker on Defence, Civic or Offence.
       ui.tab = tabForKey(e.code)!;
@@ -130,11 +133,17 @@ export function bindInput(
   canvas.addEventListener("contextmenu", (e) => {
     e.preventDefault();
     ui.tool = null;
+    ui.debugDamage = false;
   });
 
   canvas.addEventListener("mousedown", (e) => {
     if (e.button !== 0) return;
     const p = tileFromEvent(e);
+    if (ui.tool !== null) ui.debugDamage = false; // a tool picked since: that's in hand now
+    if (ui.debugDamage && playing()) {
+      dispatch({ type: "debugDamage", x: p.x, y: p.y });
+      return;
+    }
     useToolAt(p);
     painting = TOOLS.some((t) => t.tool === ui.tool && t.paintable);
     lastPainted = p;

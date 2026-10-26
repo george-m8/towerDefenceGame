@@ -179,7 +179,14 @@ createMapButtons(element("#map-buttons"), {
       toggle: () => {
         toggleSun(ui);
         sunSlider.sync();
-      },
+    },
+    { 
+      label: "Damage tool",
+      isOn: () => ui.debugDamage,
+      toggle: () => {
+        ui.debugDamage = !ui.debugDamage;
+        if (ui.debugDamage) ui.tool = null;
+     },
     },
   ],
   settings: element("#settings"),

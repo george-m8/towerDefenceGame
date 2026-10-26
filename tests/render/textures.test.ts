@@ -7,7 +7,15 @@ import {
   type TextureStyle,
 } from "../../src/render/textures";
 
-const STYLES: TextureStyle[] = ["speckle", "pebbles", "ore", "ripple", "stone", "ruinedStone"];
+const STYLES: TextureStyle[] = [
+  "speckle",
+  "pebbles",
+  "ore",
+  "ripple",
+  "stone",
+  "crackedStone",
+  "ruinedStone",
+];
 
 describe("textureSpecks", () => {
   it.each(STYLES)("%s is the same every time, and stays inside the tile", (style) => {

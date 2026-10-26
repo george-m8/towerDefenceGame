@@ -80,6 +80,8 @@ export interface UiState {
   showSun: boolean;
   /** Where the sun is, for shadows (see render/sun.ts). */
   sun: Sun;
+  /** Debug Damage tool: clicks wear down what's on the tile (offline only). Picking a tool ends it. */
+  debugDamage: boolean;
   /** Facing for directional structures, rotated with R. */
   facing: Facing;
   /** The player this screen acts as. Always 1 offline. */
@@ -105,6 +107,7 @@ export function createUiState(): UiState {
     showFlow: false,
     showSun: false,
     sun: { ...DEFAULT_SUN },
+    debugDamage: false,
     facing: "N",
     playerId: 1,
     camera: createCamera(),

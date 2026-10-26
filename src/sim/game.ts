@@ -8,6 +8,7 @@ import {
   type MapSize,
 } from "./config";
 import { buildTicksAt, updateBuilding } from "./building";
+import { debugDamage } from "./debug";
 import { priceAt } from "./enclosures";
 import { spawnEnemy, updateEnemies } from "./enemies";
 import { EMPTY, KEEP_TILE, canBuild, placeStructure } from "./grid";
@@ -254,6 +255,8 @@ export function applyCommand(
     case "debugFog":
       state.fog = command.on;
       return { ok: true };
+    case "debugDamage":
+      return debugDamage(state, command.x, command.y);
     case "debugUnit":
       return spawnUnit(state, command.kind, playerId, command.x, command.y)
         ? { ok: true }

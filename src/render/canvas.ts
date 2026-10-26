@@ -62,6 +62,8 @@ import {
   TERRAIN_TEXTURES,
   KEEP_TEXTURE,
   STRUCTURE_TEXTURES,
+  DAMAGED_WALL_TEXTURE,
+  WALL_DAMAGED_BELOW,
   TEXTURE_MIN_TILE_PX,
   TILE_SIZE,
   OWNER_MARK_PX,
@@ -72,6 +74,7 @@ import {
   KEEP_GLYPH,
 } from "./palette";
 import { fogImage } from "./fog";
+import { createHpBarTracker } from "./hpBars";
 import { burstPixels, burstWaiting } from "./burst";
 import { textureSpecks, textureVariant, type TextureStyle } from "./textures";
 import { borderColour, borderTrace } from "./buildBorder";
@@ -89,6 +92,14 @@ function toCanvasAngle(compassDegrees: number): number {
  * Raised blocks (a visual prototype): solid things are drawn lifted by their height in
  * pixels, with a darker front face below, so walls and towers read as 3D blocks.
  */
+/** A wall that's taken more than half its HP: drawn cracked, and a little lower. */
+export function isDamagedWall(structure: Structure): boolean {
+  return structure.kind === "wall" && structure.hp < structure.maxHp * WALL_DAMAGED_BELOW;
+}
+
+/** How tall untouched rock (and gold rock) stands, in pixels. */
+const ROCK_HEIGHT = 4;
+
 export function blockHeight(state: GameState, x: number, y: number): number {
   if (isKeepTile(state, x, y)) {
     // The corners stand a little taller, like towers, round a low middle.
@@ -103,11 +114,18 @@ export function blockHeight(state: GameState, x: number, y: number): number {
   const built = (s: Structure | undefined) => (s && isBuilt(s) ? s : undefined);
   const base = built(baseAt(state, x, y));
   const mount = built(mountAt(state, x, y));
-  if (mount) return base ? 11 : 8;
-  if (base) return STRUCTURES[base.kind].blocksMovement ? 6 : 0;
+  // A battered wall sinks a little, and a tower on it with it.
+  const sunk = base && isDamagedWall(base) ? 1 : 0;
+  if (mount) return base ? 11 - sunk : 8;
+  if (base) return STRUCTURES[base.kind].blocksMovement ? 6 - sunk : 0;
   const terrain = terrainAt(state, x, y);
   if (terrain === "tree") return 7;
-  if (terrain === "rock" || terrain === "goldRock") return 4;
+  if (terrain === "rock" || terrain === "goldRock") {
+    // Ore sinks as it's mined: full height while untouched, down to a sliver near the end.
+    const ore = resourceAt(state, x, y);
+    if (!ore) return ROCK_HEIGHT;
+    return Math.max(1, Math.round(ROCK_HEIGHT * (ore.goldLeft / ore.worth)));
+  }
   // Bushes stand just off the ground; they're still walked over.
   return terrain === "berries" ? 2 : 0;
 }
@@ -145,6 +163,10 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   let view: VisibleTiles = { x0: 0, y0: 0, x1: -1, y1: -1 };
   /** The player looking: in PvP, sight and enclosures are theirs. */
   let viewer: PlayerId = 1;
+  /** The hovered tile and the time this frame, for when health bars show (hpBars.ts). */
+  let hover: Point | null = null;
+  let now = 0;
+  const hpBars = createHpBarTracker();
   /** Tile textures, drawn once each ("style:variant"). */
   const textureImages = new Map<string, HTMLCanvasElement>();
   /** False when zoomed too far out for textures to show. */
@@ -462,16 +484,16 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     const { x, y } = structure;
     const colours = STRUCTURE_COLOURS[structure.kind];
     if (!isBuilt(structure)) ctx!.globalAlpha = CONSTRUCTION_ALPHA;
-    drawStructureTile(x, y, structure.kind);
+    drawStructureTile(x, y, structure.kind, isDamagedWall(structure));
     drawSymbol(x, y, structure.kind, structure.facing, colours.fg, structure.aim);
     ctx!.globalAlpha = 1;
     drawBars(structure, structure);
   }
 
   /** A structure's tile colour, textured for those that have one (stone walls). */
-  function drawStructureTile(x: number, y: number, kind: StructureKind) {
+  function drawStructureTile(x: number, y: number, kind: StructureKind, damaged = false) {
     drawTile(x, y, STRUCTURE_COLOURS[kind].bg);
-    const texture = STRUCTURE_TEXTURES[kind];
+    const texture = damaged ? DAMAGED_WALL_TEXTURE : STRUCTURE_TEXTURES[kind];
     if (texture) drawTexture(x, y, texture);
   }
 
@@ -480,7 +502,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     const { x, y } = tower;
     const towerColour = STRUCTURE_COLOURS[tower.kind].bg;
     if (!isBuilt(wall)) ctx!.globalAlpha = CONSTRUCTION_ALPHA;
-    drawStructureTile(x, y, wall.kind);
+    drawStructureTile(x, y, wall.kind, isDamagedWall(wall));
     ctx!.globalAlpha = isBuilt(tower) ? 1 : CONSTRUCTION_ALPHA;
     drawSymbol(x, y, tower.kind, tower.facing, towerColour, tower.aim);
     ctx!.fillStyle = towerColour;
@@ -493,7 +515,22 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   function drawBars(building: Structure, hp: Structure) {
     const { x, y } = building;
     if (!isBuilt(building)) drawHpBar(x, y, buildProgress(building), COLOURS.buildFront);
-    else if (hp.hp < hp.maxHp) drawHpBar(x, y, hp.hp / hp.maxHp);
+    else drawHealth(`s${hp.id}`, hp);
+  }
+
+  /**
+   * A health bar for something damaged, while its tile is hovered or for a moment after it was
+   * hit (then fading out).
+   */
+  function drawHealth(key: string, thing: { x: number; y: number; hp: number; maxHp: number }) {
+    const x = Math.round(thing.x);
+    const y = Math.round(thing.y);
+    const hovered = hover !== null && hover.x === x && hover.y === y;
+    const alpha = hpBars.alpha(key, thing.hp, now, hovered);
+    if (alpha <= 0 || thing.hp >= thing.maxHp) return;
+    ctx!.globalAlpha = alpha;
+    drawHpBar(thing.x, thing.y, thing.hp / thing.maxHp);
+    ctx!.globalAlpha = 1;
   }
 
   /** The ghost sits on top of whatever it's placed on (or selling). */
@@ -806,7 +843,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       ctx!.fillStyle = playerColour(unit.owner);
       const glyph = UNIT_KINDS[unit.kind].glyph;
       ctx!.fillText(glyph, (unit.x + 0.5) * TILE_SIZE, (unit.y + 0.5) * TILE_SIZE + 1);
-      if (unit.hp < unit.maxHp) drawHpBar(unit.x, unit.y, unit.hp / unit.maxHp);
+      drawHealth(`u${unit.id}`, unit);
     }
   }
 
@@ -817,7 +854,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       ctx!.font = enemyFont(kind.variants[enemy.variant].size);
       ctx!.fillStyle = ENEMY_COLOURS[enemy.kind];
       ctx!.fillText(kind.glyph, (enemy.x + 0.5) * TILE_SIZE, (enemy.y + 0.5) * TILE_SIZE + 1);
-      if (enemy.hp < enemy.maxHp) drawHpBar(enemy.x, enemy.y, enemy.hp / enemy.maxHp);
+      drawHealth(`e${enemy.id}`, enemy);
     }
   }
 
@@ -844,6 +881,8 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   return {
     render(state: GameState, ui: UiState, pending: readonly PendingBuild[] = []) {
       viewer = ui.playerId;
+      hover = ui.hover;
+      now = performance.now();
       const cam = ui.camera;
       // Clear to the "off the map" colour, then draw the map scrolled and zoomed.
       ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -863,6 +902,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       drawPending(pending);
       drawRange(state, ui);
       drawGhost(state, ui);
+      hpBars.endFrame();
     },
   };
 }
