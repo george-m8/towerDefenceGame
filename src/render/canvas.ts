@@ -75,7 +75,7 @@ import { fogImage } from "./fog";
 import { burstPixels, burstWaiting } from "./burst";
 import { textureSpecks, textureVariant, type TextureStyle } from "./textures";
 import { borderColour, borderTrace } from "./buildBorder";
-import { CASTERS, castShade, shadowOffset, type Block } from "./sun";
+import { CASTERS, castShade, shadowOffset, type Block, type Sun } from "./sun";
 
 /** Blocks' shadows, on the ground and on lower blocks beside them. */
 const SHADOW = "rgba(0, 0, 0, 0.3)";
@@ -195,7 +195,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     drawTile(x, y, (x + y) % 2 === 0 ? COLOURS.ground : COLOURS.groundAlt);
   }
 
-  function drawGrid(state: GameState, sun: number) {
+  function drawGrid(state: GameState, sun: Sun) {
     const { x0, y0, x1, y1 } = view;
     const showOwners = Object.keys(state.players).length > 1;
     // Flat tiles first (ground under raised ones), then raised blocks back to front, so a

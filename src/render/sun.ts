@@ -1,20 +1,35 @@
-// The sun's place in the sky, as one number: 0 at sunrise, 0.5 at noon, 1 at sunset. It crosses
-// the top of the screen from right to left, so shadows swing from left, through straight down, to
-// right, and are longest when it's low.
+// The sun's place in the sky. It crosses from the left horizon to the right on a circle tilted
+// up from the horizon towards the top of the screen, so shadows swing from right, through
+// straight down, to left, and lean down more (and grow longer) the lower its arc.
 import { SUN, TILE_SIZE } from "./palette";
 
-/** The time of day when nobody has set it. */
-export const DEFAULT_SUN = SUN.default;
+/**
+ * Where the sun is: `across` its arc from the left horizon (0) to the right (1), on an arc tilted
+ * `arc` degrees up from the horizon (90: straight overhead).
+ */
+export interface Sun {
+  across: number;
+  arc: number;
+}
+
+/** Where the sun is when nobody has set it. */
+export const DEFAULT_SUN: Readonly<Sun> = { across: SUN.across, arc: SUN.arc };
 
 /**
- * Where a block's shadow lands on the ground, per pixel of its height, for the time of day: in
- * map pixels, +x right and +y down.
+ * Where a block's shadow lands on the ground, per pixel of its height, for where the sun is: in
+ * map pixels, +x right and +y down. Never longer than SUN.maxLength.
  */
-export function shadowOffset(sun: number): { dx: number; dy: number } {
-  const angle = Math.PI * sun;
-  // Low sun (sin near 0) makes long shadows; it grows quickly near the ends, as real ones do.
-  const length = SUN.noonLength + (SUN.edgeLength - SUN.noonLength) * (1 - Math.sin(angle));
-  return { dx: -Math.cos(angle) * length, dy: Math.sin(angle) * length };
+export function shadowOffset(sun: Sun): { dx: number; dy: number } {
+  const along = Math.PI * sun.across;
+  const tilt = (Math.PI / 180) * sun.arc;
+  // Towards the sun: along the screen (left at the start), up it, and up from the ground.
+  const sideways = -Math.cos(along);
+  const back = Math.sin(along) * Math.cos(tilt);
+  const height = Math.sin(along) * Math.sin(tilt);
+  const ground = Math.hypot(sideways, back);
+  // The shadow points away from the sun, ground / height per pixel, cut short near the horizon.
+  const length = height * SUN.maxLength > ground ? ground / height : SUN.maxLength;
+  return { dx: (-sideways / ground) * length, dy: (back / ground) * length };
 }
 
 /** A raised block: its tile and its height in pixels. */

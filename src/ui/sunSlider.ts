@@ -1,37 +1,47 @@
-// The sun slider (Debug menu): sets the time of day that shadows are drawn for, from sunrise to
-// sunset, while it's shown over the map. Only the drawing changes; the game doesn't know.
-import { DEFAULT_SUN } from "../render/sun";
+// The sun sliders (Debug menu): where the sun is across the sky, and how high its arc rises,
+// while they're shown over the map. Only the drawing changes; the game doesn't know.
+import { DEFAULT_SUN, type Sun } from "../render/sun";
+import { SUN } from "../render/palette";
 import type { UiState } from "./state";
 
-/** Shows or hides the slider. Hiding it puts the sun back where it was. */
+/** Shows or hides the sliders. Hiding them puts the sun back where it was. */
 export function toggleSun(ui: UiState) {
   ui.showSun = !ui.showSun;
-  if (!ui.showSun) ui.sun = DEFAULT_SUN;
+  if (!ui.showSun) ui.sun = { ...DEFAULT_SUN };
 }
 
-/** The slider's label: the time of day, 0 (sunrise) to 1 (sunset). */
-export function sunLabel(sun: number): string {
-  return `Sun ${sun.toFixed(2)}`;
+/** The Across slider's label: 0 at the left horizon, 1 at the right. */
+export function acrossLabel(across: number): string {
+  return `Across ${across.toFixed(2)}`;
+}
+
+/** The Arc slider's label: how far the sun's path tilts up from the horizon. */
+export function arcLabel(arc: number): string {
+  return `Arc ${Math.round(arc)}°`;
 }
 
 export function createSunSlider(root: HTMLElement, ui: UiState) {
   root.innerHTML = `
-    <label class="slider"><span data-field="sun"></span><input type="range" min="0" max="1" step="0.01" title="Sunrise to sunset" /></label>
+    <label class="slider"><span data-label="across"></span><input type="range" min="0" max="1" step="0.01" data-sun="across" title="Where the sun is, from the left horizon to the right" /></label>
+    <label class="slider"><span data-label="arc"></span><input type="range" min="${SUN.arcMin}" max="90" step="1" data-sun="arc" title="How high the sun's path rises (90°: straight overhead)" /></label>
   `;
-  const label = root.querySelector<HTMLElement>('[data-field="sun"]')!;
-  const input = root.querySelector<HTMLInputElement>("input")!;
-  /** Shown while it's switched on, at the sun's time of day. */
+  const inputs = [...root.querySelectorAll<HTMLInputElement>("[data-sun]")];
+  const label = (key: keyof Sun) => root.querySelector<HTMLElement>(`[data-label="${key}"]`)!;
+  /** Shown while switched on, at where the sun is. */
   const sync = () => {
     root.hidden = !ui.showSun;
-    input.value = String(ui.sun);
-    label.textContent = sunLabel(ui.sun);
+    for (const input of inputs) input.value = String(ui.sun[input.dataset.sun as keyof Sun]);
+    label("across").textContent = acrossLabel(ui.sun.across);
+    label("arc").textContent = arcLabel(ui.sun.arc);
   };
-  input.addEventListener("input", () => {
-    ui.sun = Number(input.value);
-    sync();
-  });
-  // Hand the arrow keys back to the map once the slider is let go.
-  input.addEventListener("change", () => input.blur());
+  for (const input of inputs) {
+    input.addEventListener("input", () => {
+      ui.sun = { ...ui.sun, [input.dataset.sun as keyof Sun]: Number(input.value) };
+      sync();
+    });
+    // Hand the arrow keys back to the map once the slider is let go.
+    input.addEventListener("change", () => input.blur());
+  }
   sync();
   return { sync };
 }

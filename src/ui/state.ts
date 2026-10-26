@@ -1,7 +1,7 @@
 import type { Facing, PlayerId, Point, StructureKind } from "../sim/types";
 import { createCamera, type Camera } from "./camera";
 import type { StatId } from "./stats";
-import { DEFAULT_SUN } from "../render/sun";
+import { DEFAULT_SUN, type Sun } from "../render/sun";
 
 export type Tool = StructureKind | "sell";
 
@@ -78,8 +78,8 @@ export interface UiState {
   showFlow: boolean;
   /** Debug: the sun slider shown over the map. */
   showSun: boolean;
-  /** The time of day shadows are drawn for: 0 sunrise, 0.5 noon, 1 sunset (see render/sun.ts). */
-  sun: number;
+  /** Where the sun is, for shadows (see render/sun.ts). */
+  sun: Sun;
   /** Facing for directional structures, rotated with R. */
   facing: Facing;
   /** The player this screen acts as. Always 1 offline. */
@@ -104,7 +104,7 @@ export function createUiState(): UiState {
     messageUntil: 0,
     showFlow: false,
     showSun: false,
-    sun: DEFAULT_SUN,
+    sun: { ...DEFAULT_SUN },
     facing: "N",
     playerId: 1,
     camera: createCamera(),

@@ -19,12 +19,13 @@ export const PROJECTILES: Record<ProjectileKind, { glyph: string; arc: number; t
 export const ARC_SEGMENTS = 16;
 
 /**
- * The sun, for blocks' shadows (see sun.ts). A shadow is `length` times its block's height long:
- * `noonLength` at noon, growing to `edgeLength` at sunrise and sunset. `tallestBlock` (the keep's
- * corners, in pixels) times `edgeLength` must stay within a tile, so a shadow only reaches the
- * tiles next to its block. `default` is the time of day when nobody sets it: late afternoon.
+ * The sun, for blocks' shadows (see sun.ts). No shadow is longer than `maxLength` times its
+ * block's height: `tallestBlock` (the keep's corners, in pixels) times it must stay under a tile,
+ * so a shadow only reaches the tiles next to its block. `across` and `arc` are where the sun is
+ * when nobody sets it (high on the left, so shadows fall right); `arcMin` is the Arc slider's
+ * lowest setting.
  */
-export const SUN = { noonLength: 0.15, edgeLength: 0.65, tallestBlock: 15, default: 0.9 };
+export const SUN = { maxLength: 1.25, tallestBlock: 15, across: 0.33, arc: 80, arcMin: 5 };
 
 /** Height of the strip drawn along the top of a wall-mounted tower. */
 export const BATTLEMENT_PX = 3;

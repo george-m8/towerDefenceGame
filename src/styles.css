@@ -709,6 +709,9 @@ a.button {
   left: 50%;
   transform: translateX(-50%);
 }
+.sun-slider .slider {
+  grid-template-columns: 88px 1fr;
+}
 .map-toggle {
   box-shadow:
     0 0 0 1px var(--paper),

@@ -73,11 +73,23 @@ Built: CSS only plus `available: inGame` on the game rows; `mapButtons.ts` neede
 - [ ] Standard verification passes
 - [ ] Browser, by hand: the full flow in a solo game, an online game and the editor
 
-## Task 6: Docs
+## Task 6: Two sun sliders: across the sky, and the arc's height (spec v1.1)
+
+Asked for after Checkpoint B. `ui.sun` becomes `{ across, arc }`. The sun moves on a circle tilted `arc` degrees from the horizon: per pixel of height a shadow lands `cot(180° × across) / sin(arc)` sideways and `cot(arc)` down, cut to `SUN.maxLength` (1.25) near the horizons. Default across 0.33, arc 80°. The slider box gets two sliders, Across and Arc. `castShade` and `CASTERS` stay as they are (shadows still never point up).
+
+- [x] At the arc's top the shadow points straight down, and there's none with a 90° arc; a lower arc gives longer shadows
+- [x] Near either horizon shadows are cut to `SUN.maxLength`, pointing sideways; `dy` is never negative
+- [x] Both sliders move shadows live; turning the row off resets both
+
+Files: `src/render/sun.ts`, `src/render/palette.ts`, `src/ui/state.ts`, `src/ui/sunSlider.ts`, `tests/render/sun.test.ts`, `tests/ui/sunSlider.test.ts`, `tests/ui/state.test.ts`. Size: M. Depends on: 5.
+
+Built: the sun box's label column is wider (88px) so "Across 0.33" fits on one line. A 360° orbit was tried in discussion and dropped: at one height every shadow would be the same length.
+
+## Task 7: Docs
 
 A "Since `day-night`" line in `SPEC.md`, a `day-night` row in `CAPABILITIES.md`, and the Sun slider in the README's Debug menu notes. The spec's "Last updated" says what was built.
 
 - [ ] `SPEC.md`, `CAPABILITIES.md` and README updated and accurate
 - [ ] Each task's "Built:" notes added below it where the build differed from the plan
 
-Files: `SPEC.md`, `CAPABILITIES.md`, `README.md`, `SPEC-day-night.md`. Size: S. Depends on: 5.
+Files: `SPEC.md`, `CAPABILITIES.md`, `README.md`, `SPEC-day-night.md`. Size: S. Depends on: 6.
