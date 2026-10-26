@@ -18,6 +18,7 @@ import { unitMoved } from "./fog";
 import { atTileCentre, walk } from "./movement";
 import { DIRECTIONS, canCross } from "./pathfinding";
 import { harvest, resourceAt } from "./resources";
+import { guardSpotOf } from "./guards";
 import { findPath } from "./unitPaths";
 import type { Enemy, Facing, GameState, PlayerId, Point, Structure, Terrain, Unit } from "./types";
 
@@ -26,8 +27,21 @@ type Behaviour = (state: GameState, unit: Unit) => void;
 const BEHAVIOURS: Record<UnitBehaviourId, Behaviour> = {
   hold,
   gather,
-  guard: hold, // holding their spot comes with sim/guards.ts
+  guard,
 };
+
+/**
+ * Guards fight anything in reach; otherwise they walk to their spot in front of their building
+ * (see sim/guards.ts) and stand there. The spot is kept in `goal`, so a guard that loses its
+ * building goes on guarding it.
+ */
+function guard(state: GameState, unit: Unit) {
+  if (atTileCentre(unit) && attackNearest(state, unit)) return;
+  const spot = guardSpotOf(state, unit);
+  if (!spot) return;
+  unit.goal = spot;
+  walkTowards(state, unit, `spot ${spot.x},${spot.y}`, isAt(spot));
+}
 
 /**
  * Workers work a resource in reach on their interval; otherwise they walk to the nearest
@@ -257,7 +271,10 @@ export function walkTowards(
   if (atTileCentre(unit) && isGoal(unit.x, unit.y)) return true;
   walk(unit, kindOf(unit).speed, () => {
     if (isGoal(unit.x, unit.y)) return false;
-    if (unit.pathGoal !== goalKey || unit.pathVersion !== state.gridVersion) {
+    // Search again for a new goal, a changed grid, or a path that ran out short of a goal that
+    // moved (a chased enemy). With no way there at all (null), wait for the grid to change.
+    const stale = unit.pathGoal !== goalKey || unit.pathVersion !== state.gridVersion;
+    if (stale || unit.path?.length === 0) {
       if (!searchPath(state, unit, goalKey, isGoal)) return false;
     }
     const step = unit.path?.[0];
@@ -287,7 +304,7 @@ function searchPath(
   }
   searchesLeft--;
   unit.waitingForPath = false;
-  unit.path = findPath(state, { x: unit.x, y: unit.y }, isGoal) ?? [];
+  unit.path = findPath(state, { x: unit.x, y: unit.y }, isGoal);
   unit.pathGoal = goalKey;
   unit.pathVersion = state.gridVersion;
   return true;

@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { STRUCTURES, TICK_RATE, type StructureStats } from "../../src/sim/config";
+import {
+  ENEMY_KINDS,
+  STRUCTURES,
+  TICK_RATE,
+  UNIT_KINDS,
+  type StructureStats,
+} from "../../src/sim/config";
+import { spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand, tick } from "../../src/sim/game";
 import { placeStructure } from "../../src/sim/grid";
 import { guardSpotOf, guardSpots } from "../../src/sim/guards";
@@ -134,5 +141,48 @@ describe("guard spots", () => {
       [11, 12].flatMap((x) => [9, 10, 11].map((y) => ({ x, y }))),
     );
     expect(guardSpotOf(boxed, g)).toBeNull();
+  });
+});
+
+describe("holding a spot", () => {
+  /** Ticks until `done` holds (at most `limit`). */
+  function until(state: GameState, done: () => boolean, limit = 60 * TICK_RATE) {
+    for (let i = 0; i < limit && !done(); i++) tick(state);
+    expect(done()).toBe(true);
+  }
+  const at = (u: { x: number; y: number }) => ({ x: u.x, y: u.y });
+
+  it("guards walk out to their spots, oldest first, and stay there", () => {
+    const state = createGameWithoutWaves();
+    const hall = placeStructure(state, "paladinHall", 10, 10, "E", 1);
+    const { quota, intervalSeconds } = STRUCTURES.paladinHall.spawner;
+    run(state, (quota - 1) * intervalSeconds * TICK_RATE + 1);
+    const spots = guardSpots(state, hall);
+    until(state, () => state.units.every((u, i) => u.x === spots[i].x && u.y === spots[i].y));
+    run(state, 5 * TICK_RATE);
+    expect(state.units.map(at)).toEqual(spots.slice(0, quota));
+  });
+
+  it("a paladin holds its spot: a goblin stops there, and armour takes the edge off each hit", () => {
+    const state = createGameWithoutWaves();
+    const lane = { x: state.keeps[0].x - 20, y: state.keeps[0].y + 1 };
+    const hall = placeStructure(state, "paladinHall", lane.x, lane.y - 1, "S", 1);
+    const paladin = spawnUnit(state, "paladin", 1, lane.x, lane.y, hall.id)!;
+    const goblin = spawnEnemy(state, lane.x - 6, lane.y, { hp: 10_000 });
+    const hit = ENEMY_KINDS.goblin.damage - UNIT_KINDS.paladin.armour;
+
+    until(state, () => paladin.hp < paladin.maxHp);
+    expect(paladin.maxHp - paladin.hp).toBe(Math.max(1, hit));
+    run(state, 5 * TICK_RATE);
+    expect(at(paladin)).toEqual({ x: lane.x, y: lane.y });
+    expect(goblin.x).toBeLessThan(lane.x);
+  });
+
+  it("a guard whose spot is built over walks to its new one", () => {
+    const state = createGameWithoutWaves();
+    const hall = placeStructure(state, "paladinHall", 10, 10, "E", 1);
+    const paladin = spawnUnit(state, "paladin", 1, 11, 10, hall.id)!;
+    buildAt(state, [{ x: 11, y: 10 }]);
+    until(state, () => paladin.x === 11 && paladin.y === 9);
   });
 });

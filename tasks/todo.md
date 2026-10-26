@@ -33,11 +33,13 @@ Built: a spot counts as reachable if it's within 12 steps of the building's side
 
 `guard`: fight what's in reach, otherwise walk to its spot and stand. `walkTowards` searches again when a path runs out short of the goal (needed for moving goals in Task 4).
 
-- [ ] Guards walk to their spots in age order and stay there
-- [ ] A paladin never leaves its spot; a goblin stops at it and its armour cuts each hit
-- [ ] A guard knocked off its spot (spot built over) walks to its new one
+- [x] Guards walk to their spots in age order and stay there
+- [x] A paladin never leaves its spot; a goblin stops at it and its armour cuts each hit
+- [x] A guard knocked off its spot (spot built over) walks to its new one
 
 Files: `src/sim/units.ts`, `src/sim/guards.ts`, `tests/sim/guards.test.ts`. Size: M. Depends on: 2.
+
+Built: `Unit.path` now tells "no way there" (null: wait for the grid to change) from "walked it all" (empty: search again if not at the goal yet).
 
 ## Task 4: Swordsmen chase and return
 
