@@ -1,129 +1,83 @@
-# Tasks: unit-core
+# Tasks: resources
 
-Spec: [`SPEC-unit-core.md`](../SPEC-unit-core.md) · Plan: [`plan.md`](plan.md) ("AoE update: unit-core")
+Spec: [`SPEC-resources.md`](../SPEC-resources.md) · Plan: [`plan.md`](plan.md) ("AoE update: resources")
 
-Build time (PR #33) applies: a spawner does nothing while it's a construction site, so its first unit comes when it's finished, and a blocking site waits to finish while a unit stands on it, as it does for enemies.
+Standard verification for every task: `npm run typecheck && npm test && npm run build`, checked by exit code. Tests take their numbers from config (`RESOURCES`, `UNIT_KINDS`, `STRUCTURES`, `MAP_GEN`), never repeat them.
 
-Standard verification for every task: `npm run typecheck && npm test && npm run build`
+## Task 1: Resource layers and harvest
 
-## Task 1: Unit entity, militia and hold
+Terrain rows `goldRock` and `berries`; `RESOURCES` (amount range, value, word) in config; `state.resources` and `state.resourceStart`; `src/sim/resources.ts` with `resourceAt`, `placeResource` and `harvest`. `createGame` fills amounts for every resource tile from the map seed. The sell tool's tree clearing also clears its timber.
 
-`UnitKind`, `UNIT_KINDS` (militia `i`), `UnitKindId` in config; `Unit` and `state.units` in types; `src/sim/units.ts` with `spawnUnit`, `damageUnit` (`max(1, damage - armour)`), `isHostileUnit`, the behaviour table with `hold`, `updateUnits` and `removeDeadUnits`; `debugUnit` command; units step before enemies in `tick`. No movement yet.
+- [ ] `harvest` takes the units, pays `units x value` to the owner, and returns what it paid; the last hit pays only what was left; nothing is paid on an empty tile
+- [ ] At 0 the tile becomes ground and `gridVersion` changes; a used-up rock opens a route enemies then take
+- [ ] Amounts are within each kind's range and the same for the same seed; blank maps have none
+- [ ] Clearing a tree with the sell tool still pays 1 gold and leaves no timber behind
+- [ ] The existing suite passes untouched
 
-- [x] A militia hits an adjacent enemy every `attackInterval` and ignores one 2 tiles away
-- [x] The enemy's bounty goes to the militia's owner
-- [x] Armour reduces damage, never below 1; a unit at 0 HP is gone after the tick, with no bounty paid
-- [x] `debugUnit` spawns for the sending player only on a tile a unit can stand on
-- [x] The existing suite passes untouched
+Files: `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/resources.ts` (new), `src/sim/game.ts`, `src/sim/economy.ts`, `tests/sim/resources.test.ts` (new). Size: M. Depends on: none.
 
-Files: `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/units.ts` (new), `src/sim/game.ts`, `tests/sim/units.test.ts` (new). Size: M. Depends on: none.
+## Task 2: Gold veins and berry patches
 
-Built: `debugUnit` is a debug command, so it's offline only like `debugSpawn` (main made debug commands offline-only). `Unit.path`, `pathVersion` and PvP hostility arrive with the tasks that use them.
+`MAP_GEN.goldVeinChance`, `berryPatchesPer1000`, `berryPatchSize`. Veins and patches are placed after everything map-gen already does, using the same generator; patches avoid the keep's clear zone and the spawn strip; every rock cluster keeps a plain rock.
 
-## Task 2: Enemies fight units
+- [ ] Across many seeds every map still passes the existing checks
+- [ ] Veins are roughly `goldVeinChance` of rock tiles; patch counts and sizes fall in their ranges
+- [ ] No bush in the keep's clear zone or on the spawn strip
+- [ ] Apart from veins and bushes, terrain for a seed is exactly what it was before (compared against today's generator)
 
-Per-tick occupancy index (units by tile) built at the start of `updateUnits`; `unitBlocking`. In `chooseNextTile`, an enemy checks its own tile, its next tile and the four beside it for a hostile unit and attacks it instead of moving (in its way first, then lowest HP, then lowest id). Rams ignore units. Bombers damage units in their blast.
+Files: `src/sim/config.ts`, `src/sim/mapgen.ts`, `tests/sim/mapgen.test.ts`. Size: M. Depends on: 1.
 
-- [x] A goblin whose next tile holds a militia stops and attacks it, and walks on once it dies
-- [x] A goblin walking past a militia on the tile beside it stops and attacks it
-- [x] A militia 2 tiles off the path is ignored
-- [x] With two militia in reach, the one in the way is hit first
-- [x] A ram walks through a militia's tile without stopping
-- [x] A bomber's blast damages a militia
+## Task 3: Workers and the gather behaviour
 
-Files: `src/sim/units.ts`, `src/sim/enemies.ts`, `tests/sim/enemies.test.ts`, `tests/sim/units.test.ts`. Size: M. Depends on: 1.
+`UNIT_KINDS` rows for lumberjack `j`, miner `p` and forager `f` with `gathers`; `gather` behaviour: work a resource in reach on the interval (the first in N, E, S, W order, or the tile under it for berries), otherwise walk to the nearest tile it can work from, otherwise stand still until the grid changes.
 
-Built: the index is `unitsAt(state, x, y)`, cached per state and rebuilt when first asked for after units move, spawn or die (no separate `unitBlocking`). Tests live in `tests/sim/units.test.ts`.
+- [ ] A lumberjack walks to the nearest tree and chops on its interval, paying its owner; it ignores rocks and bushes
+- [ ] A forager stands on its bush; a miner works plain and gold-veined rock (gold-veined pays `value` times more)
+- [ ] When its resource is gone it moves to the next nearest
+- [ ] With nothing reachable it stands still, and sets off once something becomes reachable
+- [ ] A worker never attacks an enemy; a goblin stops to kill a lumberjack beside its path
 
-**Checkpoint A:** a militia and a goblin fight to the death in a test, both ways round; the existing suite passes untouched. Done: the goblin-kills-militia test above, and the militia-kills-goblin bounty test in Task 1.
+Files: `src/sim/config.ts`, `src/sim/units.ts`, `tests/sim/units.test.ts`. Size: M. Depends on: 1.
 
-## Task 3: Paths and movement
+## Task 4: Gatherer buildings
 
-`src/sim/unitPaths.ts` with `findPath(state, from, isGoal)` (breadth-first, multi-goal, capped at the tile count). Units store a path and `pathVersion`, search again when `gridVersion` changes or the next step is blocked, and move tile to tile like enemies. `UNIT_PATH_SEARCHES_PER_TICK` budget, with waiting units first in line next tick. A test-only `walkTo` behaviour.
+`STRUCTURES` rows `timberYard` (`T`), `mine` (`M`) and `foragerHut` (`F`), each a spawner of its worker; build tools on `T`, `G` and `B`.
 
-- [x] Shortest route round a wall; null when the goal is walled off
-- [x] Stops at the nearest of several goal tiles
-- [x] A stored path is searched again after a wall is built across it
-- [x] No more than the budget of searches run in one tick; the rest go first next tick
-- [x] A unit moves at its kind's speed and never stands on water, the keep or a blocking structure
+- [ ] Each spawns its own worker kind, up to its quota, one per interval, once built
+- [ ] Selling one leaves its workers working, with none replaced
+- [ ] The build keys pick the tools; placement follows house rules
 
-- [x] A blocking construction site waits to finish while a unit stands on it
+Files: `src/sim/config.ts`, `src/ui/state.ts`, `tests/sim/units.test.ts` (or `resources.test.ts`). Size: S. Depends on: 3.
 
-Files: `src/sim/unitPaths.ts` (new), `src/sim/units.ts`, `src/sim/building.ts`, `src/sim/config.ts`, `tests/sim/unitPaths.test.ts` (new), `tests/sim/units.test.ts`. Size: M. Depends on: 1.
+**Checkpoint A:** a timber yard fills to 5 lumberjacks who clear trees and earn gold; a goblin kills one and the yard sends another.
 
-Built: instead of a test-only `walkTo` behaviour, every unit has an optional `goal` tile. `hold` fights anything in reach, otherwise walks to its goal and holds there; a unit with no goal stays put. Guard spots can use the same field. Behaviours move with `walkTowards(state, unit, goalKey, isGoal)`, which keeps the path per goal and grid version and spends the per-tick search budget.
+## Task 5: Drawing and hover
 
-## Task 4: Spawners
+Berry bush (green tile, red `b`), gold-veined rock (gold flecks), a thin bar on worked resource tiles, building glyphs and colours. Hover: `Tree - 18 of 30 timber left (18g)` and the like; workers add `chopping` / `mining` / `foraging`, `walking`, or `idle: nothing to gather`.
 
-`SpawnerStats` and `spawner?` on `StructureStats`; `updateSpawners` runs first in `tick`, using `cooldown` as the timer. A test-only spawner kind, injected through test config and not in `STRUCTURES`. Removing a spawner sets its units' `home` to null.
+- [ ] Hover lines for each resource and for a working, walking and idle worker
+- [ ] Browser: every gatherer works, resources shrink and vanish, gold rises (also `unit-core` checkpoint B)
 
-- [x] First unit as soon as it's built (on placement when build time is 0), the next after exactly `intervalSeconds`; nothing while it's a construction site
-- [x] Never more than `quota` alive; at quota, a replacement right after a death
-- [x] Spawns on the facing tile, else the next open neighbour clockwise, else waits
-- [x] Selling the spawner leaves its units alive with no home; none are replaced
-- [x] A new spawner counts from zero even with homeless units nearby
-
-Files: `src/sim/config.ts`, `src/sim/units.ts`, `src/sim/game.ts`, `src/sim/grid.ts` (removal hook), `tests/sim/units.test.ts`. Size: M. Depends on: 3.
-
-Built: the test spawner is `wall` with a `spawner` row added for the length of each test. A spawner kind can't also be a tower, trap or income building, because they share `cooldown`. A dead unit is replaced on the same tick it's cleared away.
-
-## Task 5: Units give fog sight
-
-Units are sight sources for their owner's team, from their tile, with their kind's `sight`. The sight cache is invalidated when a unit changes tile (a `sightVersion` alongside `gridVersion`), not every tick.
-
-- [x] A militia lifts fog around it for its own team, and not for a rival in PvP
-- [x] Sight isn't recomputed on ticks where no unit changed tile
-- [x] Measured: sight rebuild on XL with 200 units, recorded in the PR
-
-Files: `src/sim/fog.ts`, `src/sim/units.ts`, `src/sim/types.ts`, `tests/sim/fog.test.ts`. Size: S. Depends on: 1.
-
-Built: `state.sightVersion` goes up when a unit spawns, dies or changes tile, and units mark what they see as explored as they go. Measured on XL with 200 militia: a sight rebuild takes 1.1 ms (median), 3.7 ms at worst. Clients will need `sightVersion` in updates (Task 8).
-
-## Task 6: PvP towers shoot units
-
-`findSiegeTarget` gains rival units (from the occupancy index) as targets, sorted before structures and keep tiles; splash damages rival units in the blast. Endless `findTarget` is unchanged.
-
-- [x] A rival archer shoots a unit in its arc before a wall in its arc
-- [x] A rival cannon's splash damages units in the blast
-- [x] Same-team units are never targeted; Endless towers never target units
-- [x] The existing tower tests pass unchanged
-
-Files: `src/sim/towers.ts`, `tests/sim/pvp.test.ts`. Size: S. Depends on: 1.
-
-## Task 7: Drawing, hover and the U key
-
-Units drawn as their glyph in the owner's colour, above terrain and below effects, with an HP bar when damaged. Rival units in fog are hidden. Hover shows `Militia (i) - <owner> - HP 24/30`. `U` over a tile sends `debugUnit`.
-
-- [ ] Browser: `U` places a militia; goblins stop for it; fog lifts; HP bars show
-- [x] Hover text: `Militia (Ann's), HP 24 / 30`, in the existing hover style rather than the spec's dashes; a rival's unit in fog isn't listed
-
-Files: `src/render/canvas.ts`, `src/render/palette.ts`, `src/ui/tileInfo.ts`, `src/ui/input.ts`, `src/main.ts`. Size: M. Depends on: 2-6.
-
-Built: units burst into pixels in their owner's colour when they die, like enemies and structures (main's pixel bursts). The browser check is still to do.
+Files: `src/render/canvas.ts`, `src/render/palette.ts`, `src/ui/tileInfo.ts`, `tests/ui/tileInfo.test.ts`. Size: M. Depends on: 4.
 
 **Checkpoint B:** offline browser check with George.
 
-## Task 8: Units over the network
+## Task 6: Network
 
-Units in the welcome snapshot; updates carry position and HP, with kind and owner sent once per unit (as for enemies); clients smooth unit movement; `debugUnit` validated in the protocol, with the owner taken from the sender.
+`resources` and `resourceStart` in the welcome snapshot; updates carry changed `resources` tiles only.
 
-- [x] Snapshot and update tests: new units carry kind and owner, later updates don't
-- [x] ~~A client-supplied owner is ignored~~ Not needed: `debugUnit` is a debug command, refused online, so clients never create units
-- [ ] Browser: a second player sees units and their HP bars move smoothly (needs a real spawner, since `debugUnit` is offline only: checked with `resources`)
+- [ ] Welcome carries both layers; a hit sends just that tile next update; `resourceStart` is never resent
+- [ ] Browser: a second player sees workers and resources vanish in step (also `unit-core`'s online check)
 
-Files: `src/net/protocol.ts`, `src/net/snapshot.ts`, `src/net/view.ts`, `src/net/networkSession.ts`, `tests/server/snapshot.test.ts`. Size: M. Depends on: 7.
+Files: `src/net/protocol.ts`, `src/net/snapshot.ts`, `src/net/view.ts`, `tests/net/view.test.ts`. Size: S. Depends on: 5.
 
-Built: updates also carry `sightVersion`, so clients redo fog when units move. `applyUpdate` returns `{ enemies, units }` for smoothing. Tests in `tests/net/view.test.ts`.
+## Task 7: Timing, determinism, docs and tuning table
 
-## Task 9: Determinism, timing test and docs
+- [ ] Measured standalone: four gatherers at quota on XL, ticks where a tile runs out; recorded here (skip the grid change for berries if it helps)
+- [ ] The 2,000-tick determinism test gains a timber yard and a mine
+- [ ] README: resources, gatherers, keys, and a Tuning table (each number, where it lives, its value, and a full gatherer's rough income per minute); SPEC.md "Since `resources`"; plan and CAPABILITIES statuses
+- [ ] `src/sim/` coverage stays at 80% or more
 
-- [x] Two runs of the same seed and commands (including `debugUnit`) end in identical states
-- [x] 200 units and 200 enemies on XL: one tick under 50 ms
-- [x] README: units, the `U` dev key, hover info; CAPABILITIES and plan statuses updated
-- [x] `src/sim/` coverage stays at 80% or more
-
-Files: `tests/sim/game.test.ts` (determinism block), `tests/sim/units.test.ts`, `README.md`, `CAPABILITIES.md`, `tasks/plan.md`. Size: S. Depends on: 8.
-
-Built: the first measurement missed the target (p95 83 ms, worst 150 ms) because each XL path search took about 11 ms. `findPath` now uses typed arrays and a grid of open tiles cached per `gridVersion`: one corner-to-corner search on XL takes 2.9 ms, and 200 units walking to goals with 200 enemies gives a 0.2 ms median tick, 18.5 ms p95 and 29 ms worst (the first tick, which also builds the enemy flow fields). The unit test guards 250 ms, like the other timing tests. `src/sim/` coverage: 99% of lines.
+Files: `tests/sim/game.test.ts`, `README.md`, `SPEC.md`, `CAPABILITIES.md`, `tasks/plan.md`. Size: S. Depends on: 6.
 
 **Checkpoint C:** online check with two browsers, then review.

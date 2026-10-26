@@ -1,7 +1,7 @@
 # Implementation Plan: Post-MVP Phases
 
 Capability map: [`CAPABILITIES.md`](../CAPABILITIES.md)
-Current module spec: [`SPEC-unit-core.md`](../SPEC-unit-core.md) (AoE update)
+Current module spec: [`SPEC-resources.md`](../SPEC-resources.md) (AoE update)
 Task list (current module only): `tasks/todo.md`, written when the next module's spec is approved
 Finished modules: [`tasks/tile-layers/`](tile-layers/todo.md), [`tasks/tower-aiming/`](tower-aiming/todo.md), [`tasks/audio/`](audio/todo.md), [`tasks/map-gen/`](map-gen/todo.md), [`tasks/players/`](players/todo.md), [`tasks/game-server/`](game-server/todo.md) (awaiting the cross-machine probe and review), [`tasks/net-client/`](net-client/todo.md)
 Previous plan (MVP, complete except a Firefox/Safari smoke test): [`tasks/mvp/`](mvp/plan.md)
@@ -31,8 +31,8 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | | `enemy-pathing` | Built and merged (PR #32); browser checkpoints C and D pending (tasks in [`tasks/enemy-pathing/`](enemy-pathing/todo.md)) |
 | | `enemy-targeting` | Outline (moved after `field-units` by the AoE update) |
 | | `wave-director` | Outline (moved after `field-units` by the AoE update) |
-| 1e. AoE update (see [`CAPABILITIES.md`](../CAPABILITIES.md)) | `unit-core` | **Built (Tasks 1-9); browser checkpoint B pending** (tasks in [`tasks/todo.md`](todo.md)) |
-| | `resources` | Spec needed (gold only) |
+| 1e. AoE update (see [`CAPABILITIES.md`](../CAPABILITIES.md)) | `unit-core` | Built; browser checkpoint B and online check pending, done with `resources` (tasks in [`tasks/unit-core/`](unit-core/todo.md)) |
+| | `resources` | **Spec approved; tasks in [`tasks/todo.md`](todo.md)** (gold only) |
 | | `town-economy` | Spec needed |
 | | `units` | Outline (guard towers only; entity moves to `unit-core`) |
 | | `field-units` | Outline |
@@ -734,6 +734,38 @@ T2, T3, T5 and T6 each depend only on T1. T4 needs T3, because spawned units hav
 ### Risks
 
 See the spec's risk table. The main one is sight recomputation now that sight sources move: T5 measures it on an XL map before moving on.
+
+## AoE update: resources
+
+Spec: [`SPEC-resources.md`](../SPEC-resources.md) (approved). Tasks: [`tasks/todo.md`](todo.md).
+
+### Architecture decisions
+
+- **Amounts are two tile layers** (`resources`, `resourceStart`) beside `terrain`, not a feature list: every tree and rock is a resource, there are thousands, and tile layers already travel over the network as deltas.
+- **One door in:** every hit goes through `harvest`, which pays, lowers the amount and clears the tile through `setTerrain`. Workers, tests and anything later (animals, farms) share it.
+- **Workers are rows plus one behaviour.** `gather` reuses `walkTowards` and the search budget from `unit-core`; gatherer buildings are `STRUCTURES` rows with a `spawner`.
+- **Map-gen adds, never changes.** Veins and berry patches are placed last, so today's maps keep their terrain.
+- **Tuning first-class:** numbers only in config, tests read config, README lists them.
+
+### Dependency graph
+
+```
+T1 Resource layers, harvest, amounts at creation
+ ├─ T2 Map gen: gold veins and berry patches
+ └─ T3 Worker kinds and the gather behaviour
+     └─ T4 Gatherer buildings and build keys
+         └─ T5 Drawing and hover
+             └─ T6 Network
+                 └─ T7 Grid-change timing, determinism, docs and tuning table
+```
+
+T2 and T3 both only need T1.
+
+### Checkpoints
+
+- **A (after T4):** in tests, a timber yard fills to 5 lumberjacks who clear trees and earn gold; a goblin kills one and the yard replaces it.
+- **B (after T5):** offline browser check: build each gatherer, watch workers work and resources go, gold rise. This also covers `unit-core`'s checkpoint B.
+- **C (after T7):** online with two browsers (also `unit-core`'s online check), and the timing measured with four gatherers on XL.
 
 ## Later modules: provisional outlines
 
