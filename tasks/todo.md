@@ -10,13 +10,15 @@ Standard verification for every task: `npm run typecheck && npm test && npm run 
 
 `UnitKind`, `UNIT_KINDS` (militia `i`), `UnitKindId` in config; `Unit` and `state.units` in types; `src/sim/units.ts` with `spawnUnit`, `damageUnit` (`max(1, damage - armour)`), `isHostileUnit`, the behaviour table with `hold`, `updateUnits` and `removeDeadUnits`; `debugUnit` command; units step before enemies in `tick`. No movement yet.
 
-- [ ] A militia hits an adjacent enemy every `attackInterval` and ignores one 2 tiles away
-- [ ] The enemy's bounty goes to the militia's owner
-- [ ] Armour reduces damage, never below 1; a unit at 0 HP is gone after the tick, with no bounty paid
-- [ ] `debugUnit` spawns for the sending player only on a tile a unit can stand on
-- [ ] The existing suite passes untouched
+- [x] A militia hits an adjacent enemy every `attackInterval` and ignores one 2 tiles away
+- [x] The enemy's bounty goes to the militia's owner
+- [x] Armour reduces damage, never below 1; a unit at 0 HP is gone after the tick, with no bounty paid
+- [x] `debugUnit` spawns for the sending player only on a tile a unit can stand on
+- [x] The existing suite passes untouched
 
 Files: `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/units.ts` (new), `src/sim/game.ts`, `tests/sim/units.test.ts` (new). Size: M. Depends on: none.
+
+Built: `debugUnit` is a debug command, so it's offline only like `debugSpawn` (main made debug commands offline-only). `Unit.path`, `pathVersion` and PvP hostility arrive with the tasks that use them.
 
 ## Task 2: Enemies fight units
 

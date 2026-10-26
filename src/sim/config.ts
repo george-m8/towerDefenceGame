@@ -233,6 +233,43 @@ export const HEAL_EFFECT_TICKS = 10;
 export const BURST_DELAY_TICKS = 6;
 export const BURST_TICKS = 24;
 
+/** What a unit does each tick (see sim/units.ts). */
+export type UnitBehaviourId = "hold";
+
+/** A kind of the player's own unit. Units spawn free from their building (see SpawnerStats). */
+export interface UnitKind {
+  glyph: string;
+  name: string;
+  hp: number;
+  /** Taken off every hit it takes, never below 1 damage. */
+  armour: number;
+  damage: number;
+  attackInterval: number; // seconds between hits
+  /** Reach in tiles, counting diagonals as 1 (1 = the 8 tiles around it). */
+  range: number;
+  speed: number; // tiles per second
+  sight: SightStats;
+  behaviour: UnitBehaviourId;
+}
+
+export const UNIT_KINDS = {
+  /** Dev only (the U key): stands where it's put and fights. Numbers are for testing. */
+  militia: {
+    glyph: "i",
+    name: "Militia",
+    hp: 30,
+    armour: 0,
+    damage: 4,
+    attackInterval: 1,
+    range: 1,
+    speed: 1,
+    sight: { inner: 3, outer: 5 },
+    behaviour: "hold",
+  },
+} satisfies Record<string, UnitKind>;
+
+export type UnitKindId = keyof typeof UNIT_KINDS;
+
 export const ENEMY = {
   /** Chance (0-1) at each tile that an enemy steps to a random open neighbour instead of following the path. */
   wanderChance: 0.1,

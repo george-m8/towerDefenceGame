@@ -11,6 +11,7 @@ import { generateTerrain, layoutFor } from "./mapgen";
 import { randomInt } from "./rng";
 import { updateTowers } from "./towers";
 import { updateTraps } from "./traps";
+import { removeDeadUnits, spawnUnit, updateUnits } from "./units";
 import { createWaveState, sendWaveEarly, updateWaves } from "./waves";
 import { addPlayer, updateVotes } from "./players";
 import type { Command, CommandResult, GameMode, GameState, PlayerId, Terrain } from "./types";
@@ -58,6 +59,7 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     gridVersion: 0,
     flows: {},
     enemies: [],
+    units: [],
     features: map.chests.map((c) => ({ kind: "chest" as const, ...c })),
     effects: [],
     cues: [],
@@ -112,11 +114,13 @@ export function tick(state: GameState): void {
   updateEffects(state);
   updateCues(state);
   updateBuilding(state);
+  updateUnits(state); // before enemies, so a unit that steps in the way blocks them this tick
   updateEnemies(state);
   updateWaves(state);
   updateTowers(state);
   updateTraps(state);
   awardBounties(state);
+  removeDeadUnits(state);
   collectIncome(state);
   const fallen = state.keeps.find((keep) => keep.hp <= 0);
   if (fallen && !state.gameOver) {
@@ -176,6 +180,10 @@ export function applyCommand(
     case "debugFog":
       state.fog = command.on;
       return { ok: true };
+    case "debugUnit":
+      return spawnUnit(state, command.kind, playerId, command.x, command.y)
+        ? { ok: true }
+        : { ok: false, reason: "A unit can't stand there" };
     case "debugSpawn":
       for (let i = 0; i < command.count; i++) {
         const p = state.spawnTiles[randomInt(state, 0, state.spawnTiles.length - 1)];

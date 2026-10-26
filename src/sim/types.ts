@@ -1,4 +1,11 @@
-import type { EnemyKindId, MovementProfile, ProjectileKind, STRUCTURES, TERRAIN } from "./config";
+import type {
+  EnemyKindId,
+  MovementProfile,
+  ProjectileKind,
+  STRUCTURES,
+  TERRAIN,
+  UnitKindId,
+} from "./config";
 
 export interface Point {
   x: number;
@@ -82,6 +89,25 @@ export interface Enemy {
   targetId: number | null;
   /** Band members: the leader they follow, until it dies. */
   leaderId: number | null;
+}
+
+/** One of a player's own units (see sim/units.ts). Moves tile to tile like an enemy. */
+export interface Unit {
+  id: number;
+  kind: UnitKindId;
+  owner: PlayerId;
+  /** The building that spawned it; null for dev units or once that building is gone. */
+  home: number | null;
+  /** Position in tile coordinates; fractional while moving between tiles. */
+  x: number;
+  y: number;
+  /** The tile it is moving to. */
+  tx: number;
+  ty: number;
+  hp: number;
+  maxHp: number;
+  /** Ticks until it can hit again. */
+  attackCooldown: number;
 }
 
 /** Short-lived visual events recorded by the simulation for the renderer. */
@@ -184,6 +210,7 @@ export interface GameState {
   /** Flow fields per movement profile, built lazily. */
   flows: Partial<Record<MovementProfile, FlowField>>;
   enemies: Enemy[];
+  units: Unit[];
   features: MapFeature[];
   effects: Effect[];
   /** Audible events for the audio layer; see sim/cues.ts. */
@@ -228,15 +255,23 @@ export type Command =
   | { type: "debugOption"; option: DebugOption; on: boolean }
   /** Dev only (offline): turns fog of war on or off. */
   | { type: "debugFog"; on: boolean }
+  /** Dev only (offline): a unit for the sender on (x, y). */
+  | { type: "debugUnit"; kind: UnitKindId; x: number; y: number }
   | { type: "sendWave" }
   | { type: "sell"; x: number; y: number };
 
 /** Commands for testing: offline only, refused online. */
-export type DebugCommand = Extract<Command, { type: "debugSpawn" | "debugOption" | "debugFog" }>;
+export type DebugCommand = Extract<
+  Command,
+  { type: "debugSpawn" | "debugOption" | "debugFog" | "debugUnit" }
+>;
 
 export function isDebugCommand(command: Command): command is DebugCommand {
   return (
-    command.type === "debugSpawn" || command.type === "debugOption" || command.type === "debugFog"
+    command.type === "debugSpawn" ||
+    command.type === "debugOption" ||
+    command.type === "debugFog" ||
+    command.type === "debugUnit"
   );
 }
 
