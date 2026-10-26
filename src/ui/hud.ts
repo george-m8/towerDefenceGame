@@ -54,6 +54,26 @@ export function hudContent(state: GameState, ui: UiState): HudContent {
   return { tool, cost, time, short: gold < price, gold };
 }
 
+/** The build time the HUD shows, and the tool it was for. */
+export interface ShownTime {
+  tool: UiState["tool"];
+  text: string;
+}
+
+/**
+ * The build time to show: the new one if there is one, else the last one while the same tool
+ * is selected, so the box doesn't vanish (and shift Pause and fast forward along under the
+ * pointer) every time the pointer leaves the map. Null once another tool is picked.
+ */
+export function heldTime(
+  shown: ShownTime | null,
+  tool: UiState["tool"],
+  time: string | null,
+): ShownTime | null {
+  if (time !== null) return { tool, text: time };
+  return shown?.tool === tool ? shown : null;
+}
+
 /**
  * The stats the HUD shows, in the menu's order: the ones turned on that this game has (PvP
  * has no waves), or gold if none of them are.
@@ -104,6 +124,7 @@ export function createHud(root: HTMLElement, ui: UiState) {
   const name = field("name");
   const cost = field("cost");
   const time = field("time");
+  let shownTime: ShownTime | null = null;
   const statBoxes = field("stats");
   const statPicker = field("statPicker");
   /** The stat boxes by id, rebuilt only when the set shown changes. */
@@ -207,8 +228,9 @@ export function createHud(root: HTMLElement, ui: UiState) {
       name.textContent = hud.tool?.name ?? "Build";
       cost.hidden = hud.cost === null;
       cost.textContent = hud.cost ?? "";
-      time.hidden = hud.time === null;
-      time.textContent = hud.time ?? "";
+      shownTime = heldTime(shownTime, ui.tool, hud.time);
+      time.hidden = shownTime === null;
+      time.textContent = shownTime?.text ?? "";
       updateStatBoxes(hudStats(state, ui), hud.short);
       if (!statPicker.hidden) updateStatPicker(state);
       if (picker.hidden) return;

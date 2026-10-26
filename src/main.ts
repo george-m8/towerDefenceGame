@@ -314,7 +314,7 @@ function frame(now: number) {
 }
 requestAnimationFrame(frame);
 
-/** Moves the view while arrow keys are held. */
+/** Moves the view while arrow keys (or WASD) are held. */
 function panWithKeys(seconds: number) {
   const { left, right, up, down } = ui.panKeys;
   const step = (PAN_PIXELS_PER_SECOND * seconds) / tilePixels(ui.camera);

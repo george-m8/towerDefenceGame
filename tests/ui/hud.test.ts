@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { BUILD_TIME, STRUCTURES } from "../../src/sim/config";
 import { createGame } from "../../src/sim/game";
 import { createUiState } from "../../src/ui/state";
-import { hudContent, hudStats, toggleHudStat } from "../../src/ui/hud";
+import { heldTime, hudContent, hudStats, toggleHudStat } from "../../src/ui/hud";
 import { statList } from "../../src/ui/stats";
 import { buildAt, ring } from "../sim/helpers";
 
@@ -140,5 +140,27 @@ describe("infinite money (debug)", () => {
     ui.tool = "catapult";
     expect(hudContent(state, ui).short).toBe(false);
     expect(hudStats(state, ui)[0]).toMatchObject({ id: "gold", value: "∞" });
+  });
+});
+
+describe("heldTime", () => {
+  it("shows a new build time as it comes", () => {
+    expect(heldTime(null, "wall", "2.0s")).toEqual({ tool: "wall", text: "2.0s" });
+    expect(heldTime({ tool: "wall", text: "2.0s" }, "wall", "3.5s")).toEqual({
+      tool: "wall",
+      text: "3.5s",
+    });
+  });
+
+  it("keeps the last time off the map while the same tool is selected", () => {
+    const shown = { tool: "wall" as const, text: "2.0s" };
+    expect(heldTime(shown, "wall", null)).toBe(shown);
+  });
+
+  it("drops it once another tool is picked", () => {
+    const shown = { tool: "wall" as const, text: "2.0s" };
+    expect(heldTime(shown, "cannon", null)).toBeNull();
+    expect(heldTime(shown, "sell", null)).toBeNull();
+    expect(heldTime(shown, null, null)).toBeNull();
   });
 });

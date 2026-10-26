@@ -4,7 +4,7 @@ import { AIM_TOLERANCE_DEGREES, EFFECT_TICKS, STRUCTURES, TICK_RATE } from "../.
 import { spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand } from "../../src/sim/game";
 import { placeStructure, topAt } from "../../src/sim/grid";
-import { canTarget, updateTowers } from "../../src/sim/towers";
+import { blastHitsOwn, canTarget, updateTowers } from "../../src/sim/towers";
 import { createGameWithoutWaves } from "./helpers";
 
 const ARCHER = STRUCTURES.archer.tower;
@@ -133,6 +133,68 @@ describe("cannon and catapult", () => {
     expect(enemy.hp).toBe(TOUGH - tower.damage);
     updateTowers(state);
     expect(enemy.hp).toBe(TOUGH - 2 * tower.damage);
+  });
+});
+
+describe("splash near your own structures", () => {
+  const CANNON = STRUCTURES.cannon.tower;
+  const ME = 1;
+
+  it("holds fire where the blast would catch one of your own structures", () => {
+    const state = createGameWithoutWaves();
+    placeStructure(state, "cannon", 10, 10, "E", ME);
+    const wall = placeStructure(state, "wall", 13, 10, "N", ME);
+    const enemy = spawnEnemy(state, 12, 10, { hp: TOUGH }); // the blast reaches the wall
+    updateTowers(state);
+    expect(enemy.hp).toBe(TOUGH);
+    expect(wall.hp).toBe(wall.maxHp);
+  });
+
+  it("won't fire on an enemy right next to itself (its own tile is in the blast)", () => {
+    const state = createGameWithoutWaves();
+    placeStructure(state, "cannon", 10, 10, "E", ME);
+    const enemy = spawnEnemy(state, 11, 10, { hp: TOUGH });
+    updateTowers(state);
+    expect(enemy.hp).toBe(TOUGH);
+  });
+
+  it("still fires at a target whose blast is clear", () => {
+    const state = createGameWithoutWaves();
+    placeStructure(state, "cannon", 10, 10, "E", ME);
+    placeStructure(state, "wall", 13, 10, "N", ME);
+    const near = spawnEnemy(state, 12, 10, { hp: TOUGH }); // blast reaches the wall
+    const clear = spawnEnemy(state, 12, 13, { hp: TOUGH }); // blast reaches nothing of ours
+    for (let i = 0; i < 3 * TICK_RATE && clear.hp === TOUGH; i++) updateTowers(state);
+    expect(clear.hp).toBe(TOUGH - CANNON.damage);
+    expect(near.hp).toBe(TOUGH);
+  });
+
+  it("ignores other players' builds, neutral ruins, and things that can't be hurt", () => {
+    const state = createGameWithoutWaves();
+    const cannon = placeStructure(state, "cannon", 10, 10, "E", ME);
+    placeStructure(state, "wall", 13, 9, "N", 2);
+    placeStructure(state, "ruin", 13, 11, "N", null);
+    placeStructure(state, "floorSpikes", 12, 10, "N", ME);
+    expect(blastHitsOwn(state, cannon, CANNON, { x: 12, y: 10 })).toBe(false);
+    placeStructure(state, "wall", 13, 10, "N", ME);
+    expect(blastHitsOwn(state, cannon, CANNON, { x: 12, y: 10 })).toBe(true);
+  });
+
+  it("counts your structures still being built", () => {
+    const state = createGameWithoutWaves();
+    const cannon = placeStructure(state, "cannon", 10, 10, "E", ME);
+    const site = placeStructure(state, "wall", 13, 10, "N", ME);
+    site.buildLeft = site.buildTicks = 100;
+    expect(blastHitsOwn(state, cannon, CANNON, { x: 12, y: 10 })).toBe(true);
+  });
+
+  it("never applies to towers without splash", () => {
+    const state = createGameWithoutWaves();
+    placeStructure(state, "archer", 10, 10, "E", ME);
+    placeStructure(state, "wall", 13, 10, "N", ME);
+    const enemy = spawnEnemy(state, 12, 10, { hp: TOUGH });
+    updateTowers(state);
+    expect(enemy.hp).toBe(TOUGH - ARCHER.damage);
   });
 });
 

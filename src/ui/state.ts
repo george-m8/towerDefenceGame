@@ -44,7 +44,7 @@ export interface UiState {
   camera: Camera;
   /** Which stats the HUD shows, a box each (toggled in its menu). Never empty. */
   hudStats: StatId[];
-  /** Arrow keys held down, for smooth panning. */
+  /** Arrow keys (or WASD) held down, for smooth panning. */
   panKeys: { left: boolean; right: boolean; up: boolean; down: boolean };
 }
 
