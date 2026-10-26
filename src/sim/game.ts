@@ -57,6 +57,7 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     structures: {},
     nextId: 1,
     gridVersion: 0,
+    sightVersion: 0,
     flows: {},
     enemies: [],
     units: [],

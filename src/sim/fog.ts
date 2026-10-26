@@ -4,9 +4,16 @@
 // sees only what their own keep and structures see. Fog only affects what's drawn and where
 // players can build: enemies move and fight the same either way.
 import { angleTo, facingAngle, inArc } from "./aiming";
-import { KEEP_SIGHT, SIGHT_CLOSE_RADIUS, STRUCTURES, type StructureStats } from "./config";
+import {
+  KEEP_SIGHT,
+  SIGHT_CLOSE_RADIUS,
+  STRUCTURES,
+  UNIT_KINDS,
+  type SightStats,
+  type StructureStats,
+} from "./config";
 import { inBounds } from "./grid";
-import type { Facing, GameState, Keep, PlayerId, StructureKind } from "./types";
+import type { Facing, GameState, Keep, PlayerId, StructureKind, Unit } from "./types";
 
 export const UNEXPLORED = 0;
 export const SEEN = 1;
@@ -22,8 +29,9 @@ export interface Viewer {
 }
 
 interface Sight {
-  /** gridVersion and fog setting this was worked out for. */
+  /** gridVersion, sightVersion and fog setting this was worked out for. */
   version: number;
+  sightVersion: number;
   fog: boolean;
   /** Per tile (index y * width + x). */
   tier: Uint8Array;
@@ -40,17 +48,28 @@ export function teamOf(state: GameState, player: PlayerId | null | undefined): n
 // Cached per state and team, like enclosures, so it never goes over the wire.
 const cache = new WeakMap<GameState, Map<number, Sight>>();
 
-/** The tier of every tile, as `player` sees it. Recomputed only when the grid changes. */
+/** The tier of every tile, as `player` sees it. Recomputed only when the grid changes or a unit
+ * moves to another tile. */
 export function getSight(state: GameState, player?: PlayerId): Uint8Array {
   const team = teamOf(state, player);
   let byTeam = cache.get(state);
   if (!byTeam) cache.set(state, (byTeam = new Map()));
   const cached = byTeam.get(team);
-  if (cached && cached.version === state.gridVersion && cached.fog === state.fog) {
+  if (
+    cached &&
+    cached.version === state.gridVersion &&
+    cached.sightVersion === state.sightVersion &&
+    cached.fog === state.fog
+  ) {
     return cached.tier;
   }
   const tier = findSight(state, team);
-  byTeam.set(team, { version: state.gridVersion, fog: state.fog, tier });
+  byTeam.set(team, {
+    version: state.gridVersion,
+    sightVersion: state.sightVersion,
+    fog: state.fog,
+    tier,
+  });
   return tier;
 }
 
@@ -91,6 +110,45 @@ export function initialExplored(state: GameState): number[] {
 export function reveal(state: GameState, viewer: Viewer & { owner?: PlayerId | null }): void {
   const bit = 1 << teamOf(state, viewer.owner);
   forEachSightTile(state, viewer, (i) => (state.explored[i] |= bit));
+}
+
+/** A unit has spawned or moved to another tile: sight changes, and what it sees is explored. */
+export function unitMoved(state: GameState, unit: Unit): void {
+  const bit = 1 << teamOf(state, unit.owner);
+  forEachUnitSightTile(state, unit, (i) => (state.explored[i] |= bit));
+  state.sightVersion++;
+}
+
+/** A unit sees all round from the tile it's nearest. */
+function forEachUnitSightTile(
+  state: GameState,
+  unit: Unit,
+  visit: (index: number, tier: Tier) => void,
+) {
+  forEachCircleTile(
+    state,
+    Math.round(unit.x),
+    Math.round(unit.y),
+    UNIT_KINDS[unit.kind].sight,
+    visit,
+  );
+}
+
+function forEachCircleTile(
+  state: GameState,
+  cx: number,
+  cy: number,
+  { inner, outer }: SightStats,
+  visit: (index: number, tier: Tier) => void,
+) {
+  const reach = Math.floor(outer);
+  for (let y = cy - reach; y <= cy + reach; y++) {
+    for (let x = cx - reach; x <= cx + reach; x++) {
+      if (!inBounds(state, x, y)) continue;
+      const distance = Math.hypot(x - cx, y - cy);
+      if (distance <= outer) visit(y * state.width + x, distance <= inner ? IN_SIGHT : SEEN);
+    }
+  }
 }
 
 /** Marks a keep's outer sight as explored by its owner's team. */
@@ -166,6 +224,9 @@ function findSight(state: GameState, team: number): Uint8Array {
   // Ruins have no sight, so only what players built counts.
   for (const structure of Object.values(state.structures)) {
     if (teamOf(state, structure.owner) === team) forEachSightTile(state, structure, see);
+  }
+  for (const unit of state.units) {
+    if (unit.hp > 0 && teamOf(state, unit.owner) === team) forEachUnitSightTile(state, unit, see);
   }
   return tier;
 }

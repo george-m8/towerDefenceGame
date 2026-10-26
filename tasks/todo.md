@@ -71,11 +71,13 @@ Built: the test spawner is `wall` with a `spawner` row added for the length of e
 
 Units are sight sources for their owner's team, from their tile, with their kind's `sight`. The sight cache is invalidated when a unit changes tile (a `sightVersion` alongside `gridVersion`), not every tick.
 
-- [ ] A militia lifts fog around it for its own team, and not for a rival in PvP
-- [ ] Sight isn't recomputed on ticks where no unit changed tile
-- [ ] Measured: sight rebuild on XL with 200 units, recorded in the PR
+- [x] A militia lifts fog around it for its own team, and not for a rival in PvP
+- [x] Sight isn't recomputed on ticks where no unit changed tile
+- [x] Measured: sight rebuild on XL with 200 units, recorded in the PR
 
 Files: `src/sim/fog.ts`, `src/sim/units.ts`, `src/sim/types.ts`, `tests/sim/fog.test.ts`. Size: S. Depends on: 1.
+
+Built: `state.sightVersion` goes up when a unit spawns, dies or changes tile, and units mark what they see as explored as they go. Measured on XL with 200 militia: a sight rebuild takes 1.1 ms (median), 3.7 ms at worst. Clients will need `sightVersion` in updates (Task 8).
 
 ## Task 6: PvP towers shoot units
 

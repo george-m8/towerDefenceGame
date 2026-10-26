@@ -215,6 +215,8 @@ export interface GameState {
   nextId: number;
   /** Incremented whenever tile occupancy changes, so pathfinding can recompute lazily. */
   gridVersion: number;
+  /** Incremented whenever a unit spawns, dies or moves to another tile, so sight is redone. */
+  sightVersion: number;
   /** Flow fields per movement profile, built lazily. */
   flows: Partial<Record<MovementProfile, FlowField>>;
   enemies: Enemy[];

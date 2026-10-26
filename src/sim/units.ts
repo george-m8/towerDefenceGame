@@ -12,6 +12,7 @@ import {
 } from "./config";
 import { damageEnemy } from "./enemies";
 import { blocksAt, inBounds, isBuilt, keepAt } from "./grid";
+import { unitMoved } from "./fog";
 import { atTileCentre, walk } from "./movement";
 import { canCross } from "./pathfinding";
 import { findPath } from "./unitPaths";
@@ -72,6 +73,7 @@ export function spawnUnit(
     waitingForPath: false,
   };
   state.units.push(unit);
+  unitMoved(state, unit);
   return unit;
 }
 
@@ -132,7 +134,9 @@ export function updateUnits(state: GameState): void {
   for (const unit of order) {
     if (unit.hp <= 0) continue;
     unit.attackCooldown = Math.max(0, unit.attackCooldown - 1);
+    const tile = Math.round(unit.y) * state.width + Math.round(unit.x);
     BEHAVIOURS[kindOf(unit).behaviour](state, unit);
+    if (Math.round(unit.y) * state.width + Math.round(unit.x) !== tile) unitMoved(state, unit);
   }
   occupancy.delete(state); // units have moved: rebuilt when next asked
 }
@@ -161,7 +165,10 @@ export function unitsAt(state: GameState, x: number, y: number): Unit[] {
 
 /** Dead units are simply gone: nobody is paid for them. */
 export function removeDeadUnits(state: GameState): void {
-  state.units = state.units.filter((unit) => unit.hp > 0);
+  const alive = state.units.filter((unit) => unit.hp > 0);
+  if (alive.length === state.units.length) return;
+  state.units = alive;
+  state.sightVersion++; // their sight goes with them
 }
 
 /** Tiles between a unit and a point, counting diagonals as 1. */
