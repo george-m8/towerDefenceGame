@@ -75,6 +75,8 @@ export interface UiState {
   messageUntil: number;
   /** Debug overlay: show the flow field direction on every tile. */
   showFlow: boolean;
+  /** Debug Damage tool: clicks wear down what's on the tile (offline only). Picking a tool ends it. */
+  debugDamage: boolean;
   /** Facing for directional structures, rotated with R. */
   facing: Facing;
   /** The player this screen acts as. Always 1 offline. */
@@ -98,6 +100,7 @@ export function createUiState(): UiState {
     message: "",
     messageUntil: 0,
     showFlow: false,
+    debugDamage: false,
     facing: "N",
     playerId: 1,
     camera: createCamera(),

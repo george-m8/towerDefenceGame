@@ -40,6 +40,9 @@ export const STARTING_GOLD = 250;
  * Building takes longer the further from your keep: no time at all right next to it, rising
  * to maxSeconds at fullDistance tiles out (counted from the keep's nearest tile) and beyond.
  */
+/** The debug Damage tool: each click takes this share of the full amount off (never below 1). */
+export const DEBUG_DAMAGE = 0.35;
+
 export const BUILD_TIME = { maxSeconds: 10, fullDistance: 40 };
 
 export interface TowerStats {

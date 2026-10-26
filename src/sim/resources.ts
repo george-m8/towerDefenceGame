@@ -13,7 +13,7 @@ export function isResource(terrain: Terrain): terrain is ResourceTerrain {
 }
 
 /** Ticks of work a fresh tile of this kind takes one worker. */
-function fullWork(terrain: ResourceTerrain): number {
+export function fullWork(terrain: ResourceTerrain): number {
   return Math.max(1, Math.round(RESOURCES[terrain].seconds * TICK_RATE));
 }
 
