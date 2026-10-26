@@ -280,6 +280,9 @@ export const UNIT_KINDS = {
 
 export type UnitKindId = keyof typeof UNIT_KINDS;
 
+/** Unit kinds in order; a unit's index here is its kind on the wire. */
+export const UNIT_KIND_ORDER = Object.keys(UNIT_KINDS) as UnitKindId[];
+
 /** Most unit path searches in one tick; units left waiting go first next tick. */
 export const UNIT_PATH_SEARCHES_PER_TICK = 8;
 

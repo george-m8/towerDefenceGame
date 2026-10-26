@@ -9,8 +9,10 @@ import {
   applyUpdate,
   fromClientState,
   interpolateEnemies,
+  interpolateUnits,
   interpolationFraction,
 } from "../../src/net/view";
+import { spawnUnit } from "../../src/sim/units";
 import { describeTile } from "../../src/ui/tileInfo";
 import type { ClientEnemy } from "../../src/net/protocol";
 
@@ -181,7 +183,7 @@ describe("enemy kinds over updates", () => {
     const sent = sentStateOf(server);
     spawnEnemy(server, 0, 14, { kind: "zerg" });
     tick(server);
-    const enemies = applyUpdate(view, overTheWire(toUpdate(server, sent)));
+    const { enemies } = applyUpdate(view, overTheWire(toUpdate(server, sent)));
     expect(enemies.map((e) => [e.kind, e.variant])).toEqual([
       [ENEMY_KIND_ORDER.indexOf("golem"), 1],
       [ENEMY_KIND_ORDER.indexOf("zerg"), 0],
@@ -191,5 +193,46 @@ describe("enemy kinds over updates", () => {
     tick(server);
     applyUpdate(view, overTheWire(toUpdate(server, sent)));
     expect(view.enemies.map((e) => e.kind)).toEqual(["golem", "zerg"]);
+  });
+});
+
+describe("units over the network", () => {
+  it("sends only what a client draws with, and kind and owner only the first time", () => {
+    const server = createGame(4, { blankMap: true, fog: false });
+    const first = spawnUnit(server, "militia", 1, 5, 5)!;
+    const welcome = overTheWire(toClientState(server));
+    expect(Object.keys(welcome.units[0]).sort()).toEqual([
+      "hp",
+      "id",
+      "kind",
+      "maxHp",
+      "owner",
+      "x",
+      "y",
+    ]);
+
+    const view = fromClientState(welcome);
+    expect(view.units[0]).toMatchObject({ kind: "militia", owner: 1, x: 5, y: 5, hp: 30 });
+    const sent = sentStateOf(server);
+    const second = spawnUnit(server, "militia", 1, 7, 5)!;
+    first.hp = 20;
+    tick(server);
+    const update = overTheWire(toUpdate(server, sent));
+    expect(update.units.find((u) => u.id === first.id)).not.toHaveProperty("kind");
+    expect(update.units.find((u) => u.id === second.id)).toMatchObject({ owner: 1 });
+    expect(update.sightVersion).toBe(server.sightVersion);
+
+    applyUpdate(view, update);
+    expect(view.units.map((u) => [u.kind, u.owner, u.hp])).toEqual([
+      ["militia", 1, 20],
+      ["militia", 1, 30],
+    ]);
+    expect(view.sightVersion).toBe(server.sightVersion);
+  });
+
+  it("are blended between updates like enemies", () => {
+    const before = { id: 1, x: 5, y: 5, hp: 30, maxHp: 30, owner: 1, kind: 0 };
+    const after = { ...before, x: 6 };
+    expect(interpolateUnits([before], [after], 0.25)[0]).toMatchObject({ x: 5.25, y: 5 });
   });
 });

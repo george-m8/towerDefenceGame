@@ -1,21 +1,24 @@
 // Turns the server's GameState into what clients receive. Shared and pure.
-import { ENEMY_KIND_ORDER } from "../sim/config";
+import { ENEMY_KIND_ORDER, UNIT_KIND_ORDER } from "../sim/config";
 import { livingLeader } from "../sim/enemies";
-import type { Enemy, GameState, Structure } from "../sim/types";
+import type { Enemy, GameState, Structure, Unit } from "../sim/types";
 import type {
   ClientEnemy,
   ClientState,
   ClientStructure,
+  ClientUnit,
   StateUpdate,
   UpdateEnemy,
+  UpdateUnit,
 } from "./protocol";
 
 /** The whole game as a client needs it (sent on welcome and restart). */
 export function toClientState(state: GameState): ClientState {
-  const { flows: _flows, rngState: _rng, enemies, structures, ...rest } = state;
+  const { flows: _flows, rngState: _rng, enemies, units, structures, ...rest } = state;
   return {
     ...rest,
     enemies: enemies.map((e) => toClientEnemy(state, e)),
+    units: units.map(toClientUnit),
     structures: toClientStructures(structures),
   };
 }
@@ -35,6 +38,8 @@ export interface SentState {
   structures: Map<number, ClientStructure>;
   /** Enemies whose kind and variant the clients already have. */
   enemies: Set<number>;
+  /** Units whose kind and owner the clients already have. */
+  units: Set<number>;
 }
 
 /** A baseline matching `state` as it is now (what a welcome snapshot carries). */
@@ -50,6 +55,7 @@ export function sentStateOf(state: GameState): SentState {
       Object.values(state.structures).map((s) => [s.id, toClientStructure(s)] as const),
     ),
     enemies: new Set(state.enemies.map((e) => e.id)),
+    units: new Set(state.units.map((u) => u.id)),
   };
 }
 
@@ -61,7 +67,9 @@ export function toUpdate(state: GameState, sent: SentState): StateUpdate {
   const update: StateUpdate = {
     tick: state.tick,
     gridVersion: state.gridVersion,
+    sightVersion: state.sightVersion,
     enemies: state.enemies.map((e) => toUpdateEnemy(state, e, sent.enemies.has(e.id))),
+    units: state.units.map((u) => toUpdateUnit(u, sent.units.has(u.id))),
     effects: state.effects,
     cues: state.cues,
     players: state.players,
@@ -75,6 +83,7 @@ export function toUpdate(state: GameState, sent: SentState): StateUpdate {
   };
 
   sent.enemies = new Set(state.enemies.map((e) => e.id));
+  sent.units = new Set(state.units.map((u) => u.id));
 
   const changed: ClientStructure[] = [];
   for (const structure of Object.values(state.structures)) {
@@ -148,6 +157,25 @@ function toClientEnemy(state: GameState, enemy: Enemy): ClientEnemy {
 function toUpdateEnemy(state: GameState, enemy: Enemy, known: boolean): UpdateEnemy {
   if (!known) return toClientEnemy(state, enemy);
   const { kind: _kind, variant: _variant, ...rest } = toClientEnemy(state, enemy);
+  return rest;
+}
+
+function toClientUnit(unit: Unit): ClientUnit {
+  return {
+    id: unit.id,
+    x: round2(unit.x),
+    y: round2(unit.y),
+    hp: unit.hp,
+    maxHp: unit.maxHp,
+    owner: unit.owner,
+    kind: UNIT_KIND_ORDER.indexOf(unit.kind),
+  };
+}
+
+/** A unit as an update carries it: kind and owner only if the clients don't have them. */
+function toUpdateUnit(unit: Unit, known: boolean): UpdateUnit {
+  if (!known) return toClientUnit(unit);
+  const { kind: _kind, owner: _owner, ...rest } = toClientUnit(unit);
   return rest;
 }
 

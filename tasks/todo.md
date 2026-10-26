@@ -107,11 +107,13 @@ Built: units burst into pixels in their owner's colour when they die, like enemi
 
 Units in the welcome snapshot; updates carry position and HP, with kind and owner sent once per unit (as for enemies); clients smooth unit movement; `debugUnit` validated in the protocol, with the owner taken from the sender.
 
-- [ ] Snapshot and update tests: new units carry kind and owner, later updates don't
-- [ ] A client-supplied owner is ignored
-- [ ] Browser: a second player sees the militia and its HP bar move smoothly
+- [x] Snapshot and update tests: new units carry kind and owner, later updates don't
+- [x] ~~A client-supplied owner is ignored~~ Not needed: `debugUnit` is a debug command, refused online, so clients never create units
+- [ ] Browser: a second player sees units and their HP bars move smoothly (needs a real spawner, since `debugUnit` is offline only: checked with `resources`)
 
 Files: `src/net/protocol.ts`, `src/net/snapshot.ts`, `src/net/view.ts`, `src/net/networkSession.ts`, `tests/server/snapshot.test.ts`. Size: M. Depends on: 7.
+
+Built: updates also carry `sightVersion`, so clients redo fog when units move. `applyUpdate` returns `{ enemies, units }` for smoothing. Tests in `tests/net/view.test.ts`.
 
 ## Task 9: Determinism, timing test and docs
 
