@@ -8,7 +8,15 @@ import { canSeeEnemiesAt, teamOf } from "./fog";
 import { atTileCentre } from "./movement";
 import { DIRECTIONS } from "./pathfinding";
 import { damageRival, siegeTargetAt, type SiegeTarget } from "./towers";
-import { attackNearest, canStand, reach, shoot, spawnTileOf, walkTowards } from "./units";
+import {
+  attackNearest,
+  canStand,
+  foeInReach,
+  reach,
+  shoot,
+  spawnTileOf,
+  walkTowards,
+} from "./units";
 import type { Enemy, GameState, Keep, Point, Unit } from "./types";
 
 function exploredBy(state: GameState, x: number, y: number, team: number): boolean {
@@ -157,4 +165,21 @@ function hit(state: GameState, unit: Unit, target: SiegeTarget) {
   }
   if (kind.projectile) shoot(state, unit, target, kind.projectile);
   unit.attackCooldown = kind.attackInterval * TICK_RATE;
+}
+
+/**
+ * What a field unit is doing, for hover info, from what online clients also have (positions,
+ * explored land, keeps): scouts scouting or waiting at their door; attackers fighting,
+ * besieging, hunting or patrolling.
+ */
+export function fieldActivity(state: GameState, unit: Unit): string {
+  if (UNIT_KINDS[unit.kind].behaviour === "scout") {
+    const door = homeDoor(state, unit);
+    const home = door && unit.x === door.x && unit.y === door.y;
+    return home ? "waiting: nothing left to explore" : "scouting";
+  }
+  if (foeInReach(state, unit)) return "fighting";
+  if (knownRivalKeep(state, unit.owner)) return "besieging";
+  if (nearestVisibleFoe(state, unit)) return "hunting";
+  return "patrolling";
 }

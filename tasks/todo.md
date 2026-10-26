@@ -91,10 +91,12 @@ Built: `towers.ts` exports `siegeTargetAt` and `damageRival`, so units and tower
 
 Scouts: `scouting` / `waiting: nothing left to explore`. Soldiers and rangers: `fighting` / `besieging` / `hunting` / `patrolling`, worked out from what clients can see (like guards).
 
-- [ ] Hover words for each
+- [x] Hover words for each
 - [ ] Browser checkpoint B (with the open `town-economy` and `units` checks)
 
 Files: `src/sim/fieldUnits.ts`, `src/ui/tileInfo.ts`, `tests/ui/tileInfo.test.ts`. Size: S. Depends on: 7.
+
+Built: `fieldActivity` works from positions, explored land and keeps, which online clients also have. Online clients don't know a unit's home, so their scouts always read `scouting`. The browser check is still to do.
 
 **Checkpoint B:** browser check with George, PvP with two browsers.
 

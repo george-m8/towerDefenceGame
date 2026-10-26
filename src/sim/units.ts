@@ -56,6 +56,12 @@ function guard(state: GameState, unit: Unit) {
   }
 }
 
+/** Whether an enemy (or, in PvP, a rival unit) is within the unit's reach. */
+export function foeInReach(state: GameState, unit: Unit): boolean {
+  const { range } = kindOf(unit);
+  return !!(nearestEnemy(state, unit, range) ?? nearestRival(state, unit, range));
+}
+
 /**
  * What a guard is doing, for hover info. Worked out from what online clients also have
  * (positions, not paths): fighting what's in reach, else moving (chasing if an enemy is in
@@ -63,9 +69,7 @@ function guard(state: GameState, unit: Unit) {
  */
 export function guardActivity(state: GameState, unit: Unit): string {
   const kind = kindOf(unit);
-  if (nearestEnemy(state, unit, kind.range) || nearestRival(state, unit, kind.range)) {
-    return "fighting";
-  }
+  if (foeInReach(state, unit)) return "fighting";
   if (Number.isInteger(unit.x) && Number.isInteger(unit.y)) return "guarding";
   const seen = state.enemies.some(
     (e) => e.hp > 0 && Math.hypot(e.x - unit.x, e.y - unit.y) <= kind.sight.inner,

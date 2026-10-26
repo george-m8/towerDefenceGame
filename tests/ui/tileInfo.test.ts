@@ -167,6 +167,33 @@ describe("fog hover info", () => {
     expect(line(31, 5)).toContain("Archer (Ann's), HP 35 / 35, returning");
   });
 
+  it("says what scouts, soldiers and rangers are doing", () => {
+    const state = createGame(1, { blankMap: true, fog: false, players: ["Ann"] });
+    const camp = placeStructure(state, "scoutCamp", 10, 10, "E", 1);
+    spawnUnit(state, "scout", 1, 11, 10, camp.id); // waiting at its door
+    const out = spawnUnit(state, "scout", 1, 20, 10, camp.id)!;
+    out.x = 20.5;
+    spawnUnit(state, "soldier", 1, 30, 10);
+    spawnEnemy(state, 31, 10).speed = 0;
+    spawnUnit(state, "soldier", 1, 30, 20); // the goblin above is in sight: hunting
+    const line = (x: number, y: number) => describeTile(state, { x, y }).join("\n");
+
+    expect(line(11, 10)).toContain("Scout (Ann's), HP 20 / 20, waiting: nothing left to explore");
+    expect(line(21, 10)).toContain("Scout (Ann's), HP 20 / 20, scouting");
+    expect(line(30, 10)).toContain("Soldier (Ann's), HP 70 / 70, fighting");
+    expect(line(30, 20)).toContain("Soldier (Ann's), HP 70 / 70, hunting");
+
+    const pvp = createGame(1, { blankMap: true, fog: false, mode: "pvp", players: ["Ann", "Bo"] });
+    const k = pvp.keeps[1];
+    spawnUnit(pvp, "ranger", 1, k.x - 10, k.y);
+    expect(describeTile(pvp, { x: k.x - 10, y: k.y }, 1).join("\n")).toContain("besieging");
+
+    const fogged = createGame(1, { blankMap: true, players: ["Ann"] });
+    const { x, y } = { x: fogged.keeps[0].x - 2, y: fogged.keeps[0].y };
+    spawnUnit(fogged, "soldier", 1, x, y);
+    expect(describeTile(fogged, { x, y }).join("\n")).toContain("patrolling");
+  });
+
   it("the price line says why you can't build on unexplored land", () => {
     const state = createGame(1, { blankMap: true });
     expect(priceLine(state, "wall", { x: 0, y: 0 })).toBe("Wall: can't build on unexplored land");
