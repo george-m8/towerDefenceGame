@@ -6,7 +6,7 @@ import { createGame, tick } from "../../src/sim/game";
 import { placeStructure } from "../../src/sim/grid";
 import { spawnTileOf, spawnUnit } from "../../src/sim/units";
 import type { GameState } from "../../src/sim/types";
-import { createGameWithoutWaves } from "./helpers";
+import { buildAt, column, createGameWithoutWaves, ring } from "./helpers";
 
 function run(state: GameState, ticks: number) {
   for (let i = 0; i < ticks; i++) tick(state);
@@ -122,5 +122,80 @@ describe("soldiers and rangers", () => {
 
     expect(state.explored.filter((b) => b & 1).length).toBeGreaterThan(before);
     expect(hidden.hp).toBe(hidden.maxHp);
+  });
+});
+
+describe("PvP siege", () => {
+  /** A PvP map with no fog (so Bo's keep is known) and an attacker of Ann's near it. */
+  function siege(kind: "soldier" | "ranger" = "soldier") {
+    const state = createGame(1, {
+      blankMap: true,
+      fog: false,
+      mode: "pvp",
+      players: ["Ann", "Bo"],
+    });
+    const keep = state.keeps[1];
+    const unit = spawnUnit(state, kind, 1, keep.x - 10, keep.y + 1)!;
+    return { state, keep, unit };
+  }
+
+  function until(state: GameState, done: () => boolean, limit = 90 * TICK_RATE) {
+    for (let i = 0; i < limit && !done(); i++) tick(state);
+    expect(done()).toBe(true);
+  }
+
+  /** Bo's walls in a ring two tiles out from her keep, one of them weak. */
+  function ring2(state: GameState, keep: { x: number; y: number; size: number }) {
+    const walls = ring(keep.x - 2, keep.y - 2, keep.x + keep.size + 1, keep.y + keep.size + 1).map(
+      (p) => placeStructure(state, "wall", p.x, p.y, "N", 2),
+    );
+    for (const wall of walls) wall.hp = wall.maxHp = 400;
+    // The middle of the bottom side: off the attacker's straight line, and it opens inwards.
+    const weak = walls.find((w) => w.x === keep.x + 1 && w.y === keep.y + keep.size + 1)!;
+    weak.hp = 5;
+    return { walls, weak };
+  }
+
+  it("soldiers march on a known rival keep and hit it", () => {
+    const { state, keep } = siege();
+    until(state, () => keep.hp < keep.maxHp);
+  });
+
+  it("they break through the weakest wall of a ring and get at the keep", () => {
+    const { state, keep } = siege();
+    const { walls, weak } = ring2(state, keep);
+    until(state, () => keep.hp < keep.maxHp);
+    expect(state.structures[weak.id]).toBeUndefined();
+    expect(walls.filter((w) => w !== weak).every((w) => w.hp === 400)).toBe(true);
+  });
+
+  it("they hit the wall before the tower on it, and wrecking it pays the bounty", () => {
+    const { state, keep, unit } = siege();
+    const wall = placeStructure(state, "wall", unit.x + 1, unit.y, "N", 2);
+    // Neutral walls fill the rest of the column, so the only way on is through Bo's wall.
+    buildAt(state, column(state, unit.x + 1, [unit.y]));
+    const tower = placeStructure(state, "archer", wall.x, wall.y, "W", 2);
+    tower.hp = tower.maxHp = 1000;
+    state.players[2].gold = 0;
+    const gold = state.players[1].gold;
+    until(state, () => !state.structures[wall.id]);
+    expect(state.players[1].gold).toBeGreaterThan(gold);
+    expect(keep.hp).toBe(keep.maxHp);
+  });
+
+  it("never hit their own side's buildings or neutral ruins", () => {
+    const { state, unit } = siege();
+    const own = ring(unit.x - 1, unit.y - 1, unit.x + 1, unit.y + 1).map((p) =>
+      placeStructure(
+        state,
+        p.x === unit.x + 1 ? "ruin" : "wall",
+        p.x,
+        p.y,
+        "N",
+        p.x === unit.x + 1 ? null : 1,
+      ),
+    );
+    run(state, 10 * TICK_RATE);
+    expect(own.every((s) => state.structures[s.id] && s.hp === s.maxHp)).toBe(true);
   });
 });

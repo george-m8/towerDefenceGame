@@ -76,14 +76,16 @@ Files: `src/sim/fieldUnits.ts`, `tests/sim/fieldUnits.test.ts`. Size: M. Depends
 
 `knownRivalKeep(state, owner)`: a rival keep with any tile the owner's team has explored. Attackers walk to it (explored-only, breaching); a rival structure on the next step is hit (the wall before a tower on it) until it falls, paying the tower bounty; next to the keep they hit the keep. Never their own side's buildings or ruins.
 
-- [ ] Once the rival keep is explored, soldiers walk to it and damage it
-- [ ] With a wall ring round it, they break the weakest wall and get in
-- [ ] They hit the wall before the tower on it, and wrecking pays the owner the bounty
-- [ ] They never hit their own side's buildings or ruins
+- [x] Once the rival keep is explored, soldiers walk to it and damage it
+- [x] With a wall ring round it, they break the weakest wall and get in
+- [x] They hit the wall before the tower on it, and wrecking pays the owner the bounty
+- [x] They never hit their own side's buildings or ruins
 
 Files: `src/sim/fieldUnits.ts`, `src/sim/towers.ts` (share the rival-target rule), `tests/sim/fieldUnits.test.ts`. Size: M. Depends on: 6.
 
-**Checkpoint A:** scouts explore; soldiers hunt a visible goblin; in PvP they break the weakest wall of a ringed keep and damage the keep.
+Built: `towers.ts` exports `siegeTargetAt` and `damageRival`, so units and towers share the same target rule and bounty. `walkTowards` stops in front of a breakable rival structure on a breaching path rather than re-routing. A unit with no explored way to the keep patrols instead, and records `Unit.siegeBlockedAt` so it doesn't search again until more land is explored.
+
+**Checkpoint A:** scouts explore; soldiers hunt a visible goblin; in PvP they break the weakest wall of a ringed keep and damage the keep. Done: covered by `tests/sim/fieldUnits.test.ts`.
 
 ## Task 8: Hover words
 

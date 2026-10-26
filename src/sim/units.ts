@@ -23,6 +23,7 @@ import { DIRECTIONS, canCross } from "./pathfinding";
 import { harvest, resourceAt } from "./resources";
 import { attack, scout } from "./fieldUnits";
 import { guardSpotOf } from "./guards";
+import { siegeTargetAt } from "./towers";
 import { findPath, type PathOptions } from "./unitPaths";
 import type { Enemy, Facing, GameState, PlayerId, Point, Structure, Terrain, Unit } from "./types";
 
@@ -179,6 +180,7 @@ export function spawnUnit(
     pathGoal: null,
     pathVersion: -1,
     pathExplored: -1,
+    siegeBlockedAt: -1,
     waitingForPath: false,
   };
   state.units.push(unit);
@@ -316,7 +318,7 @@ export function attackNearest(state: GameState, unit: Unit): boolean {
 }
 
 /** A ranged unit's shot: the hit has already landed, the arrow shows it flying (as for towers). */
-function shoot(state: GameState, unit: Unit, target: Point, projectile: ProjectileKind) {
+export function shoot(state: GameState, unit: Unit, target: Point, projectile: ProjectileKind) {
   state.effects.push({
     kind: "shot",
     fromX: unit.x,
@@ -374,6 +376,9 @@ export function walkTowards(
     const step = unit.path?.[0];
     if (!step) return false; // no way there
     if (!canStand(state, step.x, step.y)) {
+      // A rival's structure a breaching path goes through: stop here for the caller to break it.
+      if (options.breach && siegeTargetAt(state, options.breach.owner, step.x, step.y))
+        return false;
       unit.pathVersion = -1; // something's in the way now: search again
       return false;
     }

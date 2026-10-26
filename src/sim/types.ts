@@ -119,6 +119,8 @@ export interface Unit {
   pathVersion: number;
   /** The exploredVersion of that search (paths over explored land go stale as more is explored). */
   pathExplored: number;
+  /** PvP: the exploredVersion at which no explored way to the rival keep was found (-1: none). */
+  siegeBlockedAt: number;
   /** It needs a path but the tick's search budget ran out: it goes first next tick. */
   waitingForPath: boolean;
 }
