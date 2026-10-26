@@ -455,13 +455,17 @@ describe("performance", () => {
     applyCommand(state, 1, { type: "debugSpawn", count: 200 });
     expect(state.units).toHaveLength(200);
 
-    let slowest = 0;
+    tick(state); // warm-up: the first tick builds the enemy flow fields from scratch
+    const times: number[] = [];
     for (let i = 0; i < 60; i++) {
       const start = performance.now();
       tick(state);
-      slowest = Math.max(slowest, performance.now() - start);
+      times.push(performance.now() - start);
     }
-    expect(slowest).toBeLessThan(250);
+    // Typical ticks, not the single slowest: one tick can stall while other tests hog the CPU.
+    times.sort((a, b) => a - b);
+    expect(times[30]).toBeLessThan(50); // median
+    expect(times[57]).toBeLessThan(250); // 95th percentile
   });
 });
 

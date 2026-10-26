@@ -1,108 +1,89 @@
-# Tasks: resources
+# Tasks: units (guards)
 
-Spec: [`SPEC-resources.md`](../SPEC-resources.md) · Plan: [`plan.md`](plan.md) ("AoE update: resources")
+Spec: [`SPEC-units.md`](../SPEC-units.md) · Plan: [`plan.md`](plan.md) ("AoE update: units (guards)")
 
-Standard verification for every task: `npm run typecheck && npm test && npm run build`, checked by exit code. Tests take their numbers from config (`RESOURCES`, `UNIT_KINDS`, `STRUCTURES`, `MAP_GEN`), never repeat them.
+Standard verification for every task: `npm run typecheck && npm test && npm run build`, checked by exit code. Tests read their numbers from config (`UNIT_KINDS`, `STRUCTURES`), never repeat them.
 
-## Task 1: Resource layers and harvest
+## Task 1: Guard kinds and buildings
 
-Terrain rows `goldRock` and `berries`; `RESOURCES` (amount range, value, word) in config; `state.resources` and `state.resourceStart`; `src/sim/resources.ts` with `resourceAt`, `placeResource` and `harvest`. `createGame` fills amounts for every resource tile from the map seed. The sell tool's tree clearing also clears its timber.
+`UNIT_KINDS` rows swordsman `/`, archer `)` and paladin `]` (behaviour `guard`, `chase` 3 / 0 / 0, archer `projectile: "arrow"`); `STRUCTURES` rows guardhouse `G`, archeryPost `A` and paladinHall `K`: directional spawners, quota 3, every 30 s, blocking, in the Defence tab. Until Task 3, `guard` behaves like `hold`.
 
-- [x] `harvest` takes the units, pays `units x value` to the owner, and returns what it paid; the last hit pays only what was left; nothing is paid on an empty tile
-- [x] At 0 the tile becomes ground and `gridVersion` changes; a used-up rock opens a route enemies then take
-- [x] Amounts are within each kind's range and the same for the same seed; blank maps have none
-- [x] Clearing a tree with the sell tool still pays 1 gold and leaves no timber behind
-- [x] The existing suite passes untouched
+- [x] Each building spawns its own guard kind, up to 3, one every 30 s, once built
+- [x] They're placed facing a direction (like towers) and are in the Defence tab
+- [x] Selling one leaves its guards alive with no home
 
-Files: `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/resources.ts` (new), `src/sim/game.ts`, `src/sim/economy.ts`, `tests/sim/resources.test.ts` (new). Size: M. Depends on: none.
+Files: `src/sim/config.ts`, `src/sim/units.ts`, `src/ui/state.ts`, `src/render/palette.ts`, `tests/sim/guards.test.ts` (new). Size: M. Depends on: none.
 
-Built: starting amounts are a roll from the map seed and the tile index (not the shared generator), so map-gen's rolls are untouched. `clearResource` turns a tile into empty ground for both `harvest` and the sell tool. New terrain got a basic look and hover line now (polished in Task 5), since the palette and hover tables must list every terrain.
+Built: guard buildings show a facing notch like cannons, and the placing preview only highlights a target tile for traps (it had assumed every directional structure was wall spikes).
 
-## Task 2: Gold veins and berry patches
+## Task 2: Guard spots
 
-`MAP_GEN.goldVeinChance`, `berryPatchesPer1000`, `berryPatchSize`. Veins and patches are placed after everything map-gen already does, using the same generator; patches avoid the keep's clear zone and the spawn strip; every rock cluster keeps a plain rock.
+`src/sim/guards.ts`: `guardSpots(state, building)` (the open, reachable tiles of the two rows of three in front, in order: near middle, near sides, far middle, far sides) and `guardSpotOf(state, unit)` (its building's spot by age among its living guards, sharing when short; its `goal` when homeless; beside its building when no spot is open).
 
-- [x] Across many seeds every map still passes the existing checks
-- [x] Veins are roughly `goldVeinChance` of rock tiles; patch counts and sizes fall in their ranges
-- [x] No bush in the keep's clear zone or on the spawn strip
-- [x] Apart from veins and bushes, terrain for a seed is exactly what it was before (compared against today's generator)
+- [x] Facing east, spots run straight ahead, then the sides, then the far row; blocked or unreachable tiles are skipped
+- [x] One open tile in front: every guard shares it
+- [x] Building over a spot moves its guard to the next open spot
+- [x] A homeless guard keeps its last spot
 
-Files: `src/sim/config.ts`, `src/sim/mapgen.ts`, `tests/sim/mapgen.test.ts`. Size: M. Depends on: 1.
+Files: `src/sim/guards.ts` (new), `tests/sim/guards.test.ts`. Size: S. Depends on: 1.
 
-Built: patches can grow into each other, so the test bounds the total bushes per map rather than each patch. The before/after test compares against the same generator with veins and patches turned off; ruins and chests match too.
+Built: a spot counts as reachable if it's within 12 steps of the building's sides; spots are cached per building and grid version. With no open spot, `guardSpotOf` returns null and the guard stays put.
 
-## Task 3: Workers and the gather behaviour
+## Task 3: Guard behaviour: holding a spot
 
-`UNIT_KINDS` rows for lumberjack `j`, miner `p` and forager `f` with `gathers`; `gather` behaviour: work a resource in reach on the interval (the first in N, E, S, W order, or the tile under it for berries), otherwise walk to the nearest tile it can work from, otherwise stand still until the grid changes.
+`guard`: fight what's in reach, otherwise walk to its spot and stand. `walkTowards` searches again when a path runs out short of the goal (needed for moving goals in Task 4).
 
-- [x] A lumberjack walks to the nearest tree and chops on its interval, paying its owner; it ignores rocks and bushes
-- [x] A forager stands on its bush; a miner works plain and gold-veined rock (gold-veined pays `value` times more)
-- [x] When its resource is gone it moves to the next nearest
-- [x] With nothing reachable it stands still, and sets off once something becomes reachable
-- [x] A worker never attacks an enemy; a goblin stops to kill a lumberjack beside its path
+- [x] Guards walk to their spots in age order and stay there
+- [x] A paladin never leaves its spot; a goblin stops at it and its armour cuts each hit
+- [x] A guard knocked off its spot (spot built over) walks to its new one
 
-Files: `src/sim/config.ts`, `src/sim/units.ts`, `tests/sim/units.test.ts`. Size: M. Depends on: 1.
+Files: `src/sim/units.ts`, `src/sim/guards.ts`, `tests/sim/guards.test.ts`. Size: M. Depends on: 2.
 
-Built: `workableFrom` says where a worker can work: walkable resources (bushes) from on top, others from a tile beside them. A worker's `damage` is the units it takes per hit.
+Built: `Unit.path` now tells "no way there" (null: wait for the grid to change) from "walked it all" (empty: search again if not at the goal yet).
 
-## Task 4: Gatherer buildings
+## Task 4: Swordsmen chase and return
 
-`STRUCTURES` rows `timberYard` (`T`), `mine` (`M`) and `foragerHut` (`F`), each a spawner of its worker; build tools on `T`, `G` and `B`.
+With nothing in reach, a guard with `chase` > 0 walks to the tile next to the nearest enemy in its sight that's within `chase` tiles of its spot, then walks back when there's none.
 
-- [x] Each spawns its own worker kind, up to its quota, one per interval, once built
-- [x] Selling one leaves its workers working, with none replaced
-- [x] The build keys pick the tools; placement follows house rules
+- [x] A swordsman chases and kills an enemy within `chase` of its spot, then walks back
+- [x] It ignores an enemy further than `chase` from its spot
+- [x] It follows a moving target
 
-Files: `src/sim/config.ts`, `src/ui/state.ts`, `tests/sim/units.test.ts` (or `resources.test.ts`). Size: S. Depends on: 3.
+Files: `src/sim/units.ts`, `tests/sim/guards.test.ts`. Size: S. Depends on: 3.
 
-Built: the timber yard is drawn `L` (lumber), not `T`, because the watchtower already uses `T`. The mine is `M` and the forager hut `F`; build keys are `T` / `G` / `B` as agreed.
+## Task 5: Archers shoot arrows
 
-**Checkpoint A:** a timber yard fills to 5 lumberjacks who clear trees and earn gold; a goblin kills one and the yard sends another. Done: the checkpoint A test in `tests/sim/resources.test.ts`.
+A unit kind with a `projectile` fires a shot effect (from it to the target, `flight` like the archer tower) with each hit, plus the hit cue; damage lands at once, as for towers.
 
-## Task 5: Drawing and hover
+- [x] An archer hits an enemy within `range` from its spot, with a shot effect and a hit cue
+- [x] It never leaves its spot
 
-Berry bush (green tile, red `b`), gold-veined rock (gold flecks), a thin bar on worked resource tiles, building glyphs and colours. Hover: `Tree - 18 of 30 timber left (18g)` and the like; workers add `chopping` / `mining` / `foraging`, `walking`, or `idle: nothing to gather`.
+Files: `src/sim/units.ts`, `src/sim/config.ts`, `tests/sim/guards.test.ts`. Size: S. Depends on: 3.
 
-- [x] Hover lines for each resource and for a working, walking and idle worker
-- [x] Browser: every gatherer works, resources shrink and vanish, gold rises (also `unit-core` checkpoint B). Checked by George, 2026-10-26: rewards feel low for the time taken
+Built: also filled a gap the spec asked for but no task covered. In PvP, units now attack a rival's units in reach when no enemy is (until now `unit-core` only ever targeted enemies).
 
-Files: `src/render/canvas.ts`, `src/render/palette.ts`, `src/ui/tileInfo.ts`, `tests/ui/tileInfo.test.ts`. Size: M. Depends on: 4.
+**Checkpoint A:** in tests, paladins hold a gap with archers behind and the goblins die there; a swordsman runs out and back. Done: the checkpoint A test and the swordsman tests in `tests/sim/guards.test.ts`.
 
-Built: the resource bar only shows on tiles in sight, so PvP rivals can't watch your workers through fog. A tree's hover keeps the `X to clear` line under the timber line. Online clients don't get unit paths, so "walking" means between tiles (or with a path, offline). The browser check is still to do.
+## Task 6: Hover and drawing
 
-**Checkpoint B:** offline browser check with George.
+Hover adds `guarding` / `fighting` / `chasing` / `returning` for guards. Glyphs and colours for the buildings and guards.
 
-## Task 6: Network
+- [x] Hover words for a guard on its spot, fighting, chasing and returning
+- [ ] Browser: guards walk out and hold a gap; swordsmen chase and return; arrows fly; replacements arrive (with `town-economy` checkpoint B)
 
-`resources` and `resourceStart` in the welcome snapshot; updates carry changed `resources` tiles only.
+Files: `src/ui/tileInfo.ts`, `src/render/palette.ts`, `tests/ui/tileInfo.test.ts`. Size: S. Depends on: 4, 5.
 
-- [x] Welcome carries both layers; a hit sends just that tile next update; `resourceStart` is never resent
-- [x] Browser: a second player sees workers and resources vanish in step (also `unit-core`'s online check). Checked by George with two browsers, 2026-10-26
+Built: the guard word comes from `guardActivity`, which only uses what online clients also have (positions and enemies, not paths): fighting, else chasing or returning while moving, else guarding. Glyphs and colours went in with Task 1. The browser check is still to do.
 
-Files: `src/net/protocol.ts`, `src/net/snapshot.ts`, `src/net/view.ts`, `tests/net/view.test.ts`. Size: S. Depends on: 5.
+**Checkpoint B:** browser check with George.
 
-Built: `resources` is compared every update, since harvesting doesn't change the grid. Also fixed a `unit-core` gap: land a unit explores (which changes `sightVersion` but not the grid) now reaches clients without waiting for a grid change.
+## Task 7: Determinism, timing and docs
 
-## Task 7: Timing, determinism, docs and tuning table
-
-- [x] Measured standalone: four gatherers at quota on XL, ticks where a tile runs out; recorded here (skip the grid change for berries if it helps)
-- [x] The 2,000-tick determinism test gains a timber yard and a mine
-- [x] README: resources, gatherers, keys, and a Tuning table (each number, where it lives, its value, and a full gatherer's rough income per minute); SPEC.md "Since `resources`"; plan and CAPABILITIES statuses
+- [x] The 2,000-tick determinism test gains a paladin hall and an archery post at the keep's gate
+- [x] Measured standalone: 30 guard buildings (90 guards) and 200 enemies on XL, within the tick budget; the unit test guards a loose bound
+- [x] README: guards and their buildings (structures table, a Guards section), Tuning rows; SPEC.md "Since `units`"; plan and CAPABILITIES statuses
 - [x] `src/sim/` coverage stays at 80% or more
 
-Files: `tests/sim/game.test.ts`, `README.md`, `SPEC.md`, `CAPABILITIES.md`, `tasks/plan.md`. Size: S. Depends on: 6.
+Files: `tests/sim/game.test.ts`, `tests/sim/guards.test.ts`, `README.md`, `SPEC.md`, `CAPABILITIES.md`, `tasks/plan.md`. Size: S. Depends on: 6.
 
-Built: measured on XL over 12 game minutes with two timber yards, a mine and a forager hut (115 tiles used up). Ticks with no grid change: 0.08 ms median, 0.18 ms p95. Ticks where a tile ran out: 25 ms median, 35 ms p95, almost all of it rebuilding the three enemy flow fields (6-7 ms each); the rest of such a tick takes 0.1 ms. A few spikes (up to 120 ms) also appeared on quiet ticks (47 ms), so they look like machine noise, not this module. The berry-bush shortcut wasn't needed. `src/sim/` coverage: 99% of lines.
-
-**Checkpoint C:** online check with two browsers, then review.
-
-## Task 8: Resources tuned by worth and time (after play-testing)
-
-George, 2026-10-26: rewards feel low for the time a resource takes, and each resource should be tunable by what it's worth and how long it takes to clear. `RESOURCES` rows become `worth` (gold a tile pays in all, rolled per tile) and `seconds` (how long one worker takes to clear it). Each tile tracks the work left (`resources`, in ticks) and its worth (`resourceWorth`, was `resourceStart`); a hit of `attackInterval` seconds pays the gold earned since the last hit, so a tile pays exactly its worth over exactly its time whatever the numbers. Defaults keep today's averages (tree 20-40g over 90 s, rock 30-60g and gold-veined 90-180g over 135 s, berries 15-30g over 60 s), ready to retune.
-
-- [x] A tile pays exactly its worth over exactly its `seconds` of work, for worths that don't divide evenly
-- [x] Changing `worth` or `seconds` in config changes reward and time and nothing else (tests read config)
-- [x] Workers, hover (`Tree - 18 of 30g of timber left`), network and README tuning table follow the new rows
-
-Files: `src/sim/config.ts`, `src/sim/resources.ts`, `src/sim/units.ts`, `src/sim/types.ts`, `src/net/*`, `src/ui/tileInfo.ts`, `src/render/canvas.ts`, tests, `README.md`, `SPEC-resources.md`. Size: M.
-
+Built: in the determinism test the guards stand on the far side of the keep. On the enemies' side they killed the bombers and diggers before those could sprint and dig, and the test checks every behaviour happens. Measured on XL with 90 guards and 200 enemies over 600 ticks: 0.45 ms median, 1 ms p95, 17 ms worst. `src/sim/` coverage: 99% of lines, `guards.ts` 100%.

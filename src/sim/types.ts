@@ -110,7 +110,10 @@ export interface Unit {
   attackCooldown: number;
   /** A tile it's told to go to and hold (guard spots); null stays where it is. */
   goal: Point | null;
-  /** Steps still to walk, for `pathGoal` and the grid as it was at `pathVersion`. */
+  /**
+   * Steps still to walk, for `pathGoal` and the grid as it was at `pathVersion`. Null: no way
+   * there (wait for the grid to change); empty: walked it all (search again if not there).
+   */
   path: Point[] | null;
   pathGoal: string | null;
   pathVersion: number;

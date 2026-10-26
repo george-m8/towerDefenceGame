@@ -6,6 +6,8 @@ import {
   TICK_RATE,
   UNIT_KINDS,
   UNIT_PATH_SEARCHES_PER_TICK,
+  UNIT_SHOT_FLIGHT_TICKS,
+  type ProjectileKind,
   type StructureStats,
   type UnitBehaviourId,
   type UnitKind,
@@ -14,10 +16,12 @@ import {
 import { damageEnemy } from "./enemies";
 import { blocksAt, inBounds, isBuilt, keepAt } from "./grid";
 import { addBurst } from "./effects";
-import { unitMoved } from "./fog";
+import { addCue } from "./cues";
+import { teamOf, unitMoved } from "./fog";
 import { atTileCentre, walk } from "./movement";
 import { DIRECTIONS, canCross } from "./pathfinding";
 import { harvest, resourceAt } from "./resources";
+import { guardSpotOf } from "./guards";
 import { findPath } from "./unitPaths";
 import type { Enemy, Facing, GameState, PlayerId, Point, Structure, Terrain, Unit } from "./types";
 
@@ -26,7 +30,60 @@ type Behaviour = (state: GameState, unit: Unit) => void;
 const BEHAVIOURS: Record<UnitBehaviourId, Behaviour> = {
   hold,
   gather,
+  guard,
 };
+
+/**
+ * Guards fight anything in reach. Otherwise those that chase go after an enemy near their spot,
+ * and the rest walk back to their spot in front of their building (see sim/guards.ts) and stand
+ * there. The spot is kept in `goal`, so a guard that loses its building goes on guarding it.
+ */
+function guard(state: GameState, unit: Unit) {
+  if (atTileCentre(unit) && attackNearest(state, unit)) return;
+  const kind = kindOf(unit);
+  const spot = guardSpotOf(state, unit);
+  if (spot) unit.goal = spot;
+  const home = spot ?? { x: Math.round(unit.x), y: Math.round(unit.y) };
+  const target = kind.chase ? enemyToChase(state, unit, home, kind.chase) : undefined;
+  if (target) {
+    walkTowards(state, unit, `chase ${target.id}`, (x, y) => reach(target, x, y) <= kind.range);
+  } else if (spot) {
+    walkTowards(state, unit, `spot ${spot.x},${spot.y}`, isAt(spot));
+  }
+}
+
+/**
+ * What a guard is doing, for hover info. Worked out from what online clients also have
+ * (positions, not paths): fighting what's in reach, else moving (chasing if an enemy is in
+ * sight, returning if not), else guarding its spot.
+ */
+export function guardActivity(state: GameState, unit: Unit): string {
+  const kind = kindOf(unit);
+  if (nearestEnemy(state, unit, kind.range) || nearestRival(state, unit, kind.range)) {
+    return "fighting";
+  }
+  if (Number.isInteger(unit.x) && Number.isInteger(unit.y)) return "guarding";
+  const seen = state.enemies.some(
+    (e) => e.hp > 0 && Math.hypot(e.x - unit.x, e.y - unit.y) <= kind.sight.inner,
+  );
+  return seen ? "chasing" : "returning";
+}
+
+/** The enemy in the guard's sight that's nearest its spot, if within `chase` tiles of it. */
+function enemyToChase(state: GameState, unit: Unit, spot: Point, chase: number) {
+  const sight = kindOf(unit).sight.inner;
+  let best: Enemy | undefined;
+  let bestDistance = Infinity;
+  for (const enemy of state.enemies) {
+    if (enemy.hp <= 0 || Math.hypot(enemy.x - unit.x, enemy.y - unit.y) > sight) continue;
+    const fromSpot = reach(spot, enemy.x, enemy.y);
+    if (fromSpot <= chase && fromSpot < bestDistance) {
+      best = enemy;
+      bestDistance = fromSpot;
+    }
+  }
+  return best;
+}
 
 /**
  * Workers work a resource in reach on their interval; otherwise they walk to the nearest
@@ -222,9 +279,12 @@ export function removeDeadUnits(state: GameState): void {
   state.sightVersion++; // their sight goes with them
 }
 
-/** Tiles between a unit and a point, counting diagonals as 1. */
-function reach(unit: Unit, x: number, y: number): number {
-  return Math.max(Math.abs(Math.round(x) - unit.x), Math.abs(Math.round(y) - unit.y));
+/** Tiles between a tile (a unit's, a spot) and a point, counting diagonals as 1. */
+function reach(from: Point, x: number, y: number): number {
+  return Math.max(
+    Math.abs(Math.round(x) - Math.round(from.x)),
+    Math.abs(Math.round(y) - Math.round(from.y)),
+  );
 }
 
 /**
@@ -233,13 +293,48 @@ function reach(unit: Unit, x: number, y: number): number {
  */
 function attackNearest(state: GameState, unit: Unit): boolean {
   const kind = kindOf(unit);
-  const target = nearestEnemy(state, unit, kind.range);
+  const enemy = nearestEnemy(state, unit, kind.range);
+  const target = enemy ?? nearestRival(state, unit, kind.range);
   if (!target) return false;
   if (unit.attackCooldown === 0) {
-    damageEnemy(target, kind.damage, unit.owner);
+    if (enemy) damageEnemy(enemy, kind.damage, unit.owner);
+    else damageUnit(target as Unit, kind.damage);
+    if (kind.projectile) shoot(state, unit, target, kind.projectile);
     unit.attackCooldown = kind.attackInterval * TICK_RATE;
   }
   return true;
+}
+
+/** A ranged unit's shot: the hit has already landed, the arrow shows it flying (as for towers). */
+function shoot(state: GameState, unit: Unit, target: Point, projectile: ProjectileKind) {
+  state.effects.push({
+    kind: "shot",
+    fromX: unit.x,
+    fromY: unit.y,
+    toX: target.x,
+    toY: target.y,
+    ttl: UNIT_SHOT_FLIGHT_TICKS,
+    projectile,
+    flight: UNIT_SHOT_FLIGHT_TICKS,
+  });
+  addCue(state, "enemyHit");
+}
+
+/** PvP: the living rival unit within `range` nearest the unit. Same-team units never count. */
+function nearestRival(state: GameState, unit: Unit, range: number): Unit | undefined {
+  const team = teamOf(state, unit.owner);
+  let best: Unit | undefined;
+  let bestDistance = Infinity;
+  for (const other of state.units) {
+    if (other.hp <= 0 || teamOf(state, other.owner) === team) continue;
+    if (reach(unit, other.x, other.y) > range) continue;
+    const distance = Math.hypot(other.x - unit.x, other.y - unit.y);
+    if (distance < bestDistance) {
+      best = other;
+      bestDistance = distance;
+    }
+  }
+  return best;
 }
 
 /**
@@ -256,7 +351,10 @@ export function walkTowards(
   if (atTileCentre(unit) && isGoal(unit.x, unit.y)) return true;
   walk(unit, kindOf(unit).speed, () => {
     if (isGoal(unit.x, unit.y)) return false;
-    if (unit.pathGoal !== goalKey || unit.pathVersion !== state.gridVersion) {
+    // Search again for a new goal, a changed grid, or a path that ran out short of a goal that
+    // moved (a chased enemy). With no way there at all (null), wait for the grid to change.
+    const stale = unit.pathGoal !== goalKey || unit.pathVersion !== state.gridVersion;
+    if (stale || unit.path?.length === 0) {
       if (!searchPath(state, unit, goalKey, isGoal)) return false;
     }
     const step = unit.path?.[0];
@@ -286,7 +384,7 @@ function searchPath(
   }
   searchesLeft--;
   unit.waitingForPath = false;
-  unit.path = findPath(state, { x: unit.x, y: unit.y }, isGoal) ?? [];
+  unit.path = findPath(state, { x: unit.x, y: unit.y }, isGoal);
   unit.pathGoal = goalKey;
   unit.pathVersion = state.gridVersion;
   return true;

@@ -9,6 +9,7 @@ import {
 } from "./config";
 import { BEHAVIOURS } from "./behaviours";
 import { addCue } from "./cues";
+import { trample } from "./farms";
 import { attackTargetAt, blocksAt, damageKeep, damageStructure, keepAt } from "./grid";
 import { DIRECTIONS, canCross, distanceAt, nextStep } from "./pathfinding";
 import { stepTo, walk } from "./movement";
@@ -105,8 +106,14 @@ export function updateEnemies(state: GameState): void {
 function advance(state: GameState, enemy: Enemy): void {
   if (enemy.hp <= 0) return; // killed since the last tick; removed with the bounties
   enemy.attackCooldown = Math.max(0, enemy.attackCooldown - 1);
-  if (BEHAVIOURS[ENEMY_KINDS[enemy.kind].behaviour](state, enemy)) return;
-  walk(enemy, speedOf(state, enemy), () => chooseNextTile(state, enemy));
+  const from = { x: Math.round(enemy.x), y: Math.round(enemy.y) };
+  if (!BEHAVIOURS[ENEMY_KINDS[enemy.kind].behaviour](state, enemy)) {
+    walk(enemy, speedOf(state, enemy), () => chooseNextTile(state, enemy));
+  }
+  // Stepping onto a new tile tramples farmland there, by the enemy's weight.
+  const x = Math.round(enemy.x);
+  const y = Math.round(enemy.y);
+  if (x !== from.x || y !== from.y) trample(state, x, y, ENEMY_KINDS[enemy.kind].weight);
 }
 
 /** A band member's leader while it lives, else null. */

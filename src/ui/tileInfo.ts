@@ -9,8 +9,9 @@ import {
   type StructureStats,
   type UnitKind,
 } from "../sim/config";
+import { farmFields, farmhouseFor } from "../sim/farms";
 import { resourceAt } from "../sim/resources";
-import { workableFrom } from "../sim/units";
+import { guardActivity, workableFrom } from "../sim/units";
 import { playerName } from "../sim/players";
 import {
   KEEP,
@@ -79,7 +80,8 @@ export function describeTile(state: GameState, p: Point, viewer?: PlayerId): str
         ...describeStructure(mount, base ? "on wall" : "ground"),
         ...builtBy(state, mount),
       );
-    if (base) lines.push(...describeStructure(base), ...builtBy(state, base));
+    if (base)
+      lines.push(...describeStructure(base), ...farmLines(state, base), ...builtBy(state, base));
     lines.push(`Sells for ${refundFor(top)}g`);
   } else if (isSpawnTile(state, p.x, p.y)) {
     lines.push("Spawn zone");
@@ -213,11 +215,31 @@ export function hoverText(state: GameState, ui: UiState): string {
   return lines.join("\n");
 }
 
-/** What a worker is up to: its work ("chopping"), walking, or idle. Other units say nothing. */
+/** What a unit is up to: a guard's activity, a worker's work ("chopping"), walking or idle. */
 function unitDoing(state: GameState, unit: Unit): string | null {
   const kind: UnitKind = UNIT_KINDS[unit.kind];
+  if (kind.behaviour === "guard") return guardActivity(state, unit);
   if (!kind.gathers) return null;
   const between = !Number.isInteger(unit.x) || !Number.isInteger(unit.y);
   if (!between && workableFrom(state, unit.x, unit.y, kind.gathers)) return kind.working ?? null;
   return between || (unit.path?.length ?? 0) > 0 ? "walking" : "idle: nothing to gather";
+}
+
+/** A farmhouse's fields and earnings, or which farmhouse a field counts for. */
+function farmLines(state: GameState, structure: Structure): string[] {
+  const stats: StructureStats = STRUCTURES[structure.kind];
+  if (stats.farm) {
+    const { goldPerField, intervalSeconds, maxFields } = stats.farm;
+    const fields = farmFields(state).get(structure.id)?.length ?? 0;
+    return [
+      `Farmhouse - ${fields} of ${maxFields} fields, +${fields * goldPerField}g every ${intervalSeconds}s`,
+    ];
+  }
+  if (!stats.field) return [];
+  const farmhouse = farmhouseFor(state, structure);
+  return [
+    farmhouse
+      ? `Farmland - counts for the farmhouse at ${farmhouse.x}, ${farmhouse.y}`
+      : "Farmland - not joined to a farmhouse",
+  ];
 }

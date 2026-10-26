@@ -1,7 +1,7 @@
 # Implementation Plan: Post-MVP Phases
 
 Capability map: [`CAPABILITIES.md`](../CAPABILITIES.md)
-Current module spec: [`SPEC-resources.md`](../SPEC-resources.md) (AoE update)
+Current module spec: [`SPEC-units.md`](../SPEC-units.md) (AoE update)
 Task list (current module only): `tasks/todo.md`, written when the next module's spec is approved
 Finished modules: [`tasks/tile-layers/`](tile-layers/todo.md), [`tasks/tower-aiming/`](tower-aiming/todo.md), [`tasks/audio/`](audio/todo.md), [`tasks/map-gen/`](map-gen/todo.md), [`tasks/players/`](players/todo.md), [`tasks/game-server/`](game-server/todo.md) (awaiting the cross-machine probe and review), [`tasks/net-client/`](net-client/todo.md)
 Previous plan (MVP, complete except a Firefox/Safari smoke test): [`tasks/mvp/`](mvp/plan.md)
@@ -32,9 +32,9 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | | `enemy-targeting` | Outline (moved after `field-units` by the AoE update) |
 | | `wave-director` | Outline (moved after `field-units` by the AoE update) |
 | 1e. AoE update (see [`CAPABILITIES.md`](../CAPABILITIES.md)) | `unit-core` | Built; browser checkpoint B and online check pending, done with `resources` (tasks in [`tasks/unit-core/`](unit-core/todo.md)) |
-| | `resources` | **Built (Tasks 1-7); browser checkpoints B and C pending** (tasks in [`tasks/todo.md`](todo.md)) |
-| | `town-economy` | Spec needed |
-| | `units` | Outline (guard towers only; entity moves to `unit-core`) |
+| | `resources` | Done, browser-checked (tasks in [`tasks/resources/`](resources/todo.md)) |
+| | `town-economy` | Built; browser checkpoint B pending (tasks in [`tasks/town-economy/`](town-economy/todo.md)) |
+| | `units` | **Built (Tasks 1-7); browser checkpoint B pending** (tasks in [`tasks/todo.md`](todo.md)) |
 | | `field-units` | Outline |
 | | `game-setup` | Spec drafted; deferred until `food` |
 | | `food` | Deferred |
@@ -766,6 +766,64 @@ T2 and T3 both only need T1.
 - **A (after T4):** in tests, a timber yard fills to 5 lumberjacks who clear trees and earn gold; a goblin kills one and the yard replaces it.
 - **B (after T5):** offline browser check: build each gatherer, watch workers work and resources go, gold rise. This also covers `unit-core`'s checkpoint B.
 - **C (after T7):** online with two browsers (also `unit-core`'s online check), and the timing measured with four gatherers on XL.
+
+## AoE update: town-economy
+
+Spec: [`SPEC-town-economy.md`](../SPEC-town-economy.md) (approved). Tasks: [`tasks/todo.md`](todo.md).
+
+### Architecture decisions
+
+- **Farms follow income.** A `farm` row on the farmhouse, its timer in `cooldown`, paid from `tick` beside `collectIncome`; `incomePerMinute` counts farms at their current fields.
+- **Which fields count is one function** (`farmFields`): a breadth-first search from every farmhouse at once over joined, built, same-owner farmland, so each field goes to the nearest farmhouse (ties to the older) and the cap takes the nearest ones. Worked out when paying and for hover, not stored, so selling or trampling a field needs no bookkeeping.
+- **Trampling hooks movement once:** when an enemy's tile changes, the new tile is trampled by the enemy's `weight`. That covers walking, wandering, sprinting and bands alike.
+- **Tabs are UI only:** `TOOLS` rows gain a `tab`; the sim doesn't change.
+
+### Dependency graph
+
+```
+T1 Enemy weight
+ └─ T3 Trampling
+T2 Farmhouse, farmland, joined fields, farm income ─┘
+T4 Shop
+T5 Build tabs, 1/2/3, tool keys removed
+ └─ T6 Drawing and hover (needs T2, T4)
+     └─ T7 Docs, tuning table, determinism
+```
+
+T1, T2, T4 and T5 can go in any order.
+
+### Checkpoints
+
+- **A (after T3):** in tests, a full farm earns 8 fields' worth; a golem walking a field row wears fields away and the far ones come loose; goblins leave them alone.
+- **B (after T6):** browser: tabs on buttons and `1`/`2`/`3`, farms built and painted, gold arriving, a heavy enemy trampling a field.
+
+## AoE update: units (guards)
+
+Spec: [`SPEC-units.md`](../SPEC-units.md) (approved). Tasks: [`tasks/todo.md`](todo.md). Replaces the older `units` outline in the Armies section.
+
+### Architecture decisions
+
+- **Rows plus one behaviour.** Guard kinds are `UNIT_KINDS` rows with `chase` (and `projectile` for archers); guard buildings are directional `STRUCTURES` spawners. One `guard` behaviour covers all three kinds.
+- **Spots are worked out, not stored.** `guardSpots` lists a building's open front tiles in order; a guard's spot is its building's spot by age. Recomputed per grid version, so building over a spot just moves the guard. Only a homeless guard keeps its last spot (in `goal`).
+- **Reuse `unit-core`:** attacks through `attackNearest`, moves through `walkTowards` and its budget; archers add a shot effect like towers. One fix in `walkTowards`: a unit whose path ran out short of a goal that moves (a chased enemy) searches again.
+
+### Dependency graph
+
+```
+T1 Guard kinds and buildings
+ └─ T2 Guard spots
+     └─ T3 Guard behaviour: holding a spot (paladins)
+         ├─ T4 Swordsmen chase and return
+         └─ T5 Archers shoot arrows
+             (T4, T5 done)
+              └─ T6 Hover and drawing
+                  └─ T7 Determinism, timing, docs
+```
+
+### Checkpoints
+
+- **A (after T5):** in tests, paladins hold a gap with archers behind and goblins die there; a swordsman runs out and back.
+- **B (after T6):** browser check, with `town-economy`'s still-open checkpoint B alongside.
 
 ## Later modules: provisional outlines
 

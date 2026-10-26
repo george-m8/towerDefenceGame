@@ -97,7 +97,7 @@ export function blockHeight(state: GameState, x: number, y: number): number {
   if (mount) return base ? 11 : 8;
   if (base) return STRUCTURES[base.kind].blocksMovement ? 6 : 0;
   const terrain = terrainAt(state, x, y);
-  return terrain === "tree" ? 7 : terrain === "rock" ? 4 : 0;
+  return terrain === "tree" ? 7 : terrain === "rock" || terrain === "goldRock" ? 4 : 0;
 }
 
 /**
@@ -394,8 +394,10 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   }
 
   /** Towers drawn as an arrow already show their facing; the rest get the edge notch. */
+  /** Faced things drawn without an arrow (cannons, guard buildings) show a notch instead. */
   function needsNotch(kind: StructureKind): boolean {
-    return isTower(kind) && !ARROW_SYMBOLS[kind];
+    const stats: StructureStats = STRUCTURES[kind];
+    return (isTower(kind) || stats.directional === true) && !ARROW_SYMBOLS[kind];
   }
 
   /** A structure still being built is see-through (the caller draws what's under it). */
@@ -464,7 +466,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     const stats: StructureStats = STRUCTURES[ui.tool];
     drawSymbol(x, y, ui.tool, ui.facing, "#ffffff");
     if (needsNotch(ui.tool)) drawFacingNotch(x, y, ui.facing);
-    if (stats.directional) {
+    if (stats.directional && stats.trap) {
       const facing = ui.facing;
       const target = hitTile({ x, y, facing });
       ctx!.fillStyle = COLOURS.trapTarget;

@@ -240,7 +240,11 @@ export function placeStructure(
 
 /** Traps and income start their cycle when built; towers can fire straight away. */
 function initialCooldown(stats: StructureStats): number {
-  const seconds = stats.trap?.fireIntervalSeconds ?? stats.income?.intervalSeconds ?? 0;
+  const seconds =
+    stats.trap?.fireIntervalSeconds ??
+    stats.income?.intervalSeconds ??
+    stats.farm?.intervalSeconds ??
+    0;
   return seconds * TICK_RATE;
 }
 

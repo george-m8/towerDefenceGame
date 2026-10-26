@@ -2,7 +2,7 @@ import { ENEMY_KIND_ORDER } from "../sim/config";
 import type { Command, GameState, Point } from "../sim/types";
 import { screenToTile, zoomAt, zoomBy } from "./camera";
 import { pickTile } from "../render/canvas";
-import { TOOLS, rotateFacing, type UiState } from "./state";
+import { TOOLS, hasBuildTools, rotateFacing, tabForKey, type UiState } from "./state";
 
 /** Dev-only stress test: M spawns this many enemies at once. */
 const STRESS_TEST_ENEMIES = 200;
@@ -108,8 +108,12 @@ export function bindInput(
     } else if (e.code === "Escape") {
       // Closing a window comes first; otherwise Escape drops the current tool.
       if (!keys?.escape()) ui.tool = null;
+    } else if (tabForKey(e.code) && hasBuildTools(tabForKey(e.code)!)) {
+      // 1, 2, 3 open the build picker on Defence, Civic or Offence.
+      ui.tab = tabForKey(e.code)!;
+      ui.openPicker = true;
     } else {
-      const def = TOOLS.find((t) => t.key === e.code);
+      const def = TOOLS.find((t) => t.key && t.key === e.code);
       if (def) ui.tool = def.tool;
     }
   });

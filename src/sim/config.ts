@@ -95,9 +95,22 @@ export interface StructureStats {
   enclosing?: boolean;
   /** How far it lets players see (fog of war). Towers see in the shape of their arc. */
   sight?: SightStats;
+  /** Farmhouses (see sim/farms.ts). Its timer is the structure's `cooldown`, like income. */
+  farm?: FarmStats;
+  /** Farmland: counts for a farmhouse it's joined to; enemies trample it by their weight. */
+  field?: true;
   /** Spawns units (see sim/units.ts). Its timer is the structure's `cooldown`, so a spawner
    * can't also be a tower, a trap or earn income. */
   spawner?: SpawnerStats;
+}
+
+/** A farmhouse earns for each field joined to it (touching it, or through other fields). */
+export interface FarmStats {
+  /** Gold per counted field, paid every intervalSeconds. */
+  goldPerField: number;
+  intervalSeconds: number;
+  /** Most fields one farmhouse counts. */
+  maxFields: number;
 }
 
 /** A building that makes units: free, one every interval, while fewer than `quota` are alive. */
@@ -213,6 +226,33 @@ export const STRUCTURES = {
     income: { gold: 2, intervalSeconds: 5 },
     sight: { inner: 3, outer: 6 },
   },
+  shop: {
+    name: "Shop",
+    layer: "base",
+    cost: 70,
+    maxHp: 30,
+    blocksMovement: true,
+    income: { gold: 4, intervalSeconds: 5 },
+    sight: { inner: 3, outer: 6 },
+  },
+  // Farms: a farmhouse earns for each farmland tile joined to it (see sim/farms.ts).
+  farmhouse: {
+    name: "Farmhouse",
+    layer: "base",
+    cost: 50,
+    maxHp: 30,
+    blocksMovement: true,
+    sight: { inner: 3, outer: 6 },
+    farm: { goldPerField: 1, intervalSeconds: 10, maxFields: 8 },
+  },
+  farmland: {
+    name: "Farmland",
+    layer: "base",
+    cost: 3,
+    maxHp: 10,
+    blocksMovement: false,
+    field: true,
+  },
   // Gatherer buildings: free workers up to `quota`, one every `intervalSeconds` (see UNIT_KINDS).
   timberYard: {
     name: "Timber yard",
@@ -267,6 +307,38 @@ export const STRUCTURES = {
     enclosing: true,
     sight: { inner: 2, outer: 3 }, // a little further than a wall: you can look out through it
   },
+  // Guard buildings: free guards up to `quota`, one every `intervalSeconds`, holding the tiles
+  // in front of the building (its facing, set with R). See sim/guards.ts.
+  guardhouse: {
+    name: "Guardhouse",
+    layer: "base",
+    cost: 60,
+    maxHp: 60,
+    blocksMovement: true,
+    directional: true,
+    sight: { inner: 4, outer: 6 },
+    spawner: { unit: "swordsman", quota: 3, intervalSeconds: 30 },
+  },
+  archeryPost: {
+    name: "Archery post",
+    layer: "base",
+    cost: 70,
+    maxHp: 50,
+    blocksMovement: true,
+    directional: true,
+    sight: { inner: 4, outer: 6 },
+    spawner: { unit: "archer", quota: 3, intervalSeconds: 30 },
+  },
+  paladinHall: {
+    name: "Paladin hall",
+    layer: "base",
+    cost: 90,
+    maxHp: 80,
+    blocksMovement: true,
+    directional: true,
+    sight: { inner: 4, outer: 6 },
+    spawner: { unit: "paladin", quota: 3, intervalSeconds: 30 },
+  },
   ruin: {
     name: "Ruin",
     layer: "base",
@@ -291,7 +363,7 @@ export const BURST_DELAY_TICKS = 6;
 export const BURST_TICKS = 24;
 
 /** What a unit does each tick (see sim/units.ts). */
-export type UnitBehaviourId = "hold" | "gather";
+export type UnitBehaviourId = "hold" | "gather" | "guard";
 
 /** A kind of the player's own unit. Units spawn free from their building (see SpawnerStats). */
 export interface UnitKind {
@@ -311,6 +383,10 @@ export interface UnitKind {
   gathers?: ResourceTerrain[];
   /** Workers: what hover info says while it works ("chopping"). */
   working?: string;
+  /** Guards: tiles from its spot it will chase an enemy (0 = never leaves its spot). */
+  chase?: number;
+  /** Ranged units: the projectile drawn for each shot (melee units have none). */
+  projectile?: ProjectileKind;
 }
 
 export const UNIT_KINDS = {
@@ -326,6 +402,47 @@ export const UNIT_KINDS = {
     speed: 1,
     sight: { inner: 3, outer: 5 },
     behaviour: "hold",
+  },
+  // Guards, spawned by guard buildings: they hold the tiles in front of it (see sim/guards.ts).
+  swordsman: {
+    glyph: "/",
+    name: "Swordsman",
+    hp: 60,
+    armour: 1,
+    damage: 8,
+    attackInterval: 1,
+    range: 1,
+    speed: 1.3,
+    sight: { inner: 4, outer: 6 },
+    behaviour: "guard",
+    chase: 3,
+  },
+  archer: {
+    glyph: ")",
+    name: "Archer",
+    hp: 35,
+    armour: 0,
+    damage: 6,
+    attackInterval: 1.2,
+    range: 4,
+    speed: 1,
+    sight: { inner: 5, outer: 7 },
+    behaviour: "guard",
+    chase: 0,
+    projectile: "arrow",
+  },
+  paladin: {
+    glyph: "]",
+    name: "Paladin",
+    hp: 120,
+    armour: 4,
+    damage: 5,
+    attackInterval: 1.2,
+    range: 1,
+    speed: 0.8,
+    sight: { inner: 3, outer: 5 },
+    behaviour: "guard",
+    chase: 0,
   },
   // Workers, spawned by gatherer buildings. They work a resource every `attackInterval`
   // seconds (how often gold comes in); RESOURCES says what a tile pays and how long it takes.
@@ -378,6 +495,9 @@ export type UnitKindId = keyof typeof UNIT_KINDS;
 
 /** Unit kinds in order; a unit's index here is its kind on the wire. */
 export const UNIT_KIND_ORDER = Object.keys(UNIT_KINDS) as UnitKindId[];
+
+/** How long a ranged unit's shot is seen flying (an archer tower's arrow takes as long). */
+export const UNIT_SHOT_FLIGHT_TICKS = 4;
 
 /** Most unit path searches in one tick; units left waiting go first next tick. */
 export const UNIT_PATH_SEARCHES_PER_TICK = 8;
@@ -448,6 +568,8 @@ export interface EnemyKind {
   /** Which tiles it can cross and what walls cost it (see BREACH). */
   profile: MovementProfile;
   behaviour: BehaviourId;
+  /** How heavy it is: tramples farmland by this much a step (0 = light, harmless); knockback later. */
+  weight: number;
   ability?: EnemyAbility;
   /** Band members: the kind they follow. Kind ids are strings here (an EnemyKindId would be a
    * circular type); tests/sim/config.test.ts checks they name real kinds. */
@@ -476,6 +598,7 @@ export const ENEMY_KINDS = {
     description: "Weak all round, but cheap and plentiful.",
     profile: "follower",
     behaviour: "follower",
+    weight: 0,
     hp: 20,
     speed: 1.5,
     damage: 5,
@@ -496,6 +619,7 @@ export const ENEMY_KINDS = {
     description: "Tiny and cheap, comes in numbers.",
     profile: "follower",
     behaviour: "follower",
+    weight: 0,
     hp: 6,
     speed: 1.8,
     damage: 2,
@@ -512,6 +636,7 @@ export const ENEMY_KINDS = {
     description: "Fast and fragile.",
     profile: "follower",
     behaviour: "follower",
+    weight: 1,
     hp: 14,
     speed: 3,
     damage: 4,
@@ -531,6 +656,7 @@ export const ENEMY_KINDS = {
     description: "Quick hits, tougher than a goblin. Follows its chief.",
     profile: "follower",
     behaviour: "follower",
+    weight: 1,
     leader: "barbarianChief",
     hp: 30,
     speed: 1.8,
@@ -551,6 +677,7 @@ export const ENEMY_KINDS = {
     description: "Slow, with solid hits. Follows its thane.",
     profile: "breacher",
     behaviour: "follower",
+    weight: 1,
     leader: "dwarfThane",
     hp: 45,
     speed: 1,
@@ -572,6 +699,7 @@ export const ENEMY_KINDS = {
     description: "Leads barbarians. Slow, but hits very fast.",
     profile: "follower",
     behaviour: "follower",
+    weight: 2,
     band: { kind: "barbarian", min: 2, max: 4 },
     hp: 90,
     speed: 1.2,
@@ -589,6 +717,7 @@ export const ENEMY_KINDS = {
     description: "Leads dwarves. A stronger dwarf.",
     profile: "breacher",
     behaviour: "follower",
+    weight: 2,
     band: { kind: "dwarf", min: 2, max: 3 },
     hp: 120,
     speed: 0.9,
@@ -606,6 +735,7 @@ export const ENEMY_KINDS = {
     description: "Rare, slow and huge, with slow crushing hits.",
     profile: "breacher",
     behaviour: "follower",
+    weight: 4,
     hp: 250,
     speed: 0.6,
     damage: 40,
@@ -625,6 +755,7 @@ export const ENEMY_KINDS = {
     description: "Swims rivers and the sea when that's the quicker way in.",
     profile: "marine",
     behaviour: "follower",
+    weight: 1,
     hp: 25,
     speed: 1.4,
     damage: 5,
@@ -641,6 +772,7 @@ export const ENEMY_KINDS = {
     description: "A tougher marine, just as happy in the water.",
     profile: "marine",
     behaviour: "follower",
+    weight: 2,
     hp: 60,
     speed: 1.2,
     damage: 10,
@@ -657,6 +789,7 @@ export const ENEMY_KINDS = {
     description: "Heals the enemies around it.",
     profile: "follower",
     behaviour: "healer",
+    weight: 1,
     ability: { radius: 2.5, amount: 6, interval: 2 },
     hp: 30,
     speed: 1.2,
@@ -674,6 +807,7 @@ export const ENEMY_KINDS = {
     description: "Spots a wall, tower or house, runs at it and blows it up.",
     profile: "follower",
     behaviour: "bomber",
+    weight: 1,
     ability: { sight: 3, radius: 1, amount: 60, sprint: 2.5, search: 6 },
     hp: 18,
     speed: 1,
@@ -691,6 +825,7 @@ export const ENEMY_KINDS = {
     description: "A bigger bomber with a bigger bang.",
     profile: "follower",
     behaviour: "bomber",
+    weight: 2,
     ability: { sight: 3, radius: 1, amount: 120, sprint: 2.5, search: 6 },
     hp: 40,
     speed: 0.9,
@@ -708,6 +843,7 @@ export const ENEMY_KINDS = {
     description: "Digs under a nearby wall until it falls, then walks on.",
     profile: "follower",
     behaviour: "digger",
+    weight: 1,
     ability: { sight: 4, search: 8 },
     hp: 20,
     speed: 1.2,
@@ -725,6 +861,7 @@ export const ENEMY_KINDS = {
     description: "Huge and slow. Smashes straight through walls.",
     profile: "breacher",
     behaviour: "siege",
+    weight: 6,
     hp: 400,
     speed: 0.5,
     damage: 60,

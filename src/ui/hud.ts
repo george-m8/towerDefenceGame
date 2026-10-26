@@ -10,7 +10,14 @@ import { refundFor } from "../sim/economy";
 import { topAt } from "../sim/grid";
 import type { GameState } from "../sim/types";
 import { ARROW_SYMBOLS, GLYPHS, glyphFor } from "../render/palette";
-import { TOOLS, isBuildTool, type UiState } from "./state";
+import {
+  BUILD_TABS,
+  TOOLS,
+  hasBuildTools,
+  isBuildTool,
+  type BuildTab,
+  type UiState,
+} from "./state";
 import { statList, type Stat, type StatId } from "./stats";
 
 export interface HudContent {
@@ -94,13 +101,22 @@ export function createHud(root: HTMLElement, ui: UiState) {
   root.innerHTML = `
     <div class="hud-left">
       <div class="hud-picker tools" data-field="picker" hidden>
+        <div class="build-tabs" role="tablist">
+          ${BUILD_TABS.map(
+            (t) => `
+            <button class="build-tab" role="tab" data-tab="${t.tab}"
+              ${hasBuildTools(t.tab) ? "" : 'disabled title="Barracks coming"'}>
+              ${t.name} <kbd>${t.label}</kbd>
+            </button>`,
+          ).join("")}
+        </div>
         ${TOOLS.map(
           (t) => `
-          <button class="tool" data-tool="${t.tool}">
+          <button class="tool" data-tool="${t.tool}" data-tab="${t.tab}">
             <span class="glyph">${isBuildTool(t.tool) ? GLYPHS[t.tool] : "$"}</span>
             <span class="name">${isBuildTool(t.tool) ? STRUCTURES[t.tool].name : "Sell"}</span>
             <span class="cost">${isBuildTool(t.tool) ? `${STRUCTURES[t.tool].cost}g` : `${SELL_REFUND * 100}%`}</span>
-            <kbd>${t.label}</kbd>
+            ${t.label ? `<kbd>${t.label}</kbd>` : "<span></span>"}
           </button>`,
         ).join("")}
       </div>
@@ -132,6 +148,13 @@ export function createHud(root: HTMLElement, ui: UiState) {
   /** The stat menu's rows by id, rebuilt only when the set of stats changes (PvP differs). */
   let statRows = new Map<string, HTMLButtonElement>();
   const toolButtons = [...picker.querySelectorAll<HTMLButtonElement>("[data-tool]")];
+  const tabButtons = [...picker.querySelectorAll<HTMLButtonElement>(".build-tab")];
+  for (const button of tabButtons) {
+    button.addEventListener("click", () => {
+      ui.tab = button.dataset.tab as BuildTab;
+      button.blur();
+    });
+  }
 
   // Each box opens and closes its menu (and closes the other one); picking something, or
   // clicking anywhere else, closes it.
@@ -233,7 +256,16 @@ export function createHud(root: HTMLElement, ui: UiState) {
       time.textContent = shownTime?.text ?? "";
       updateStatBoxes(hudStats(state, ui), hud.short);
       if (!statPicker.hidden) updateStatPicker(state);
+      if (ui.openPicker) {
+        // 1, 2 or 3 was pressed: open the picker on that tab.
+        ui.openPicker = false;
+        picker.hidden = false;
+        statPicker.hidden = true;
+      }
       if (picker.hidden) return;
+      for (const button of tabButtons) {
+        button.setAttribute("aria-selected", String(button.dataset.tab === ui.tab));
+      }
       for (const button of toolButtons) {
         const tool = button.dataset.tool as UiState["tool"];
         // Arrow-drawn tools (wall spikes, archers) show the way they'll face (R rotates).
@@ -245,6 +277,8 @@ export function createHud(root: HTMLElement, ui: UiState) {
         // Anything can be picked: what it costs depends on where it goes (an enclosure may
         // make it cheaper), and placing it checks the price there.
         button.classList.toggle("selected", tool === ui.tool);
+        const tab = button.dataset.tab;
+        button.hidden = tab !== "all" && tab !== ui.tab;
       }
     },
   };
