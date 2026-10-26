@@ -48,11 +48,13 @@ Built: `castShade(offset, caster, receiver)` in `sun.ts` gives the shade on a re
 
 A **Sun slider** row in the Debug menu (beside Show paths) toggles `ui.showSun`. Turning it off resets `ui.sun` to the default. `src/ui/sunSlider.ts` shows a floating `label.slider` with an `input type="range"` over the map while it's on, labelled "Sun 0.90", moving `ui.sun` live. It hands the arrow keys back to the map on `change`, like the sound sliders.
 
-- [ ] The row turns the slider on and off; off resets the sun; a reload starts off at the default
+- [x] The row turns the slider on and off; off resets the sun; a reload starts off at the default
 - [ ] Dragging moves shadows live, including while paused, in solo and online games
-- [ ] Arrow keys pan the map again after letting go of the slider
+- [x] Arrow keys pan the map again after letting go of the slider
 
 Files: `src/ui/sunSlider.ts` (new), `src/main.ts`, `src/styles.css`, `index.html` (if it needs a mount point). Size: M. Depends on: 3.
+
+Built: `toggleSun` and `sunLabel` are pure (tested); `createSunSlider` mounts on a new `#sun` box at the bottom middle of the map. Online is checked at Checkpoint B.
 
 ## Task 5: Debug button and slider in the map editor
 

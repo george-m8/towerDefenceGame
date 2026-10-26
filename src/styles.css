@@ -701,6 +701,14 @@ a.button {
 .status-line[hidden] {
   display: none;
 }
+
+/* The sun slider (Debug menu), along the bottom middle of the map */
+.sun-slider {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+}
 .map-toggle {
   box-shadow:
     0 0 0 1px var(--paper),

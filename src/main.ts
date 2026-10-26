@@ -10,6 +10,7 @@ import { createLocalSession, type Session } from "./net/session";
 import { createPanel } from "./ui/panel";
 import { createHud } from "./ui/hud";
 import { createMapButtons, panelToggle } from "./ui/mapButtons";
+import { createSunSlider, toggleSun } from "./ui/sunSlider";
 import { hoverText } from "./ui/tileInfo";
 import { bindInput } from "./ui/input";
 import { createUiState, showMessage } from "./ui/state";
@@ -150,6 +151,7 @@ const debugToggle = (label: string, option: DebugOption) => ({
   toggle: () =>
     dispatch({ type: "debugOption", option, on: session?.state?.debug[option] !== true }),
 });
+const sunSlider = createSunSlider(element("#sun"), ui);
 createMapButtons(element("#map-buttons"), {
   view: [
     panelToggle("Map", element("#minimap-box")),
@@ -167,6 +169,14 @@ createMapButtons(element("#map-buttons"), {
       toggle: () => dispatch({ type: "debugFog", on: session?.state?.fog !== true }),
     },
     { label: "Show paths", isOn: () => ui.showFlow, toggle: () => (ui.showFlow = !ui.showFlow) },
+    {
+      label: "Sun slider",
+      isOn: () => ui.showSun,
+      toggle: () => {
+        toggleSun(ui);
+        sunSlider.sync();
+      },
+    },
   ],
   settings: element("#settings"),
   journal: () => journalView.toggle(),
