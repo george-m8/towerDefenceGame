@@ -84,6 +84,7 @@ The first time a kind of enemy comes into sight (not while it's hidden in fog), 
 | `7` | House | `h` | 40 | +2 gold every 5s. Blocks movement. |
 | `8` | Bridge | `=` | 10 | Only on river tiles. Makes the river walkable there (for enemies too). |
 | `9` | Watchtower | `T` | 20 | Doesn't attack. Sees all round, as far as a cannon (see [Fog of war](#fog-of-war)). Stands on open ground or a wall, like a tower. |
+| `0` | Gate | `∩` | 15 | Part of a wall that enemies walk straight through. Still closes a ring of walls, so the area inside counts as enclosed (and keeps its discount). |
 | `X` | Sell | `$` | - | Refunds 50% of cost, less if damaged. Sells the top layer first (a tower before the wall under it). Also clears trees. |
 
 ### The map
@@ -130,7 +131,9 @@ Walls barely see past themselves, so build watchtowers to explore. Hover a struc
 
 ### Enclosures
 
-Close off an area and building there gets cheaper. An area is enclosed when enemies can't walk to it from their spawn. Walls, towers, houses, ruins, rock, water, trees and the map edge can all form the barrier, but at least one piece of it must be something you built (ruins alone don't count).
+Close off an area and building there gets cheaper. An area is enclosed when enemies can't walk to it from their spawn. Walls, gates (which enemies still walk through), towers, houses, ruins, rock, water, trees and the map edge can all form the barrier, but at least one piece of it must be something you built (ruins alone don't count).
+
+The keep starts walled in: a ring of walls one tile out from it, with a gate in the side facing the enemy (towards the spawn, or the middle of the map in PvP). The courtyard inside is the keep's enclosure from the start. The starting walls were free, so selling them pays nothing; in PvP each player owns the walls round their own keep.
 
 - **Inside the keep's walls: 50% off.** This covers an enclosure that touches the keep, including walls hugging the keep and pockets walled off against its side.
 - **Any other enclosure: 25% off.**

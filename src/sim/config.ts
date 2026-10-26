@@ -18,6 +18,11 @@ export const FAST_FORWARD_SPEED = 2; // game-speed multiplier while fast-forward
 
 export const KEEP_SIZE = 3;
 export const KEEP_HP = 300;
+/**
+ * Every keep starts walled in, this many tiles of courtyard out, with a gate facing the enemy
+ * (see sim/keepWalls.ts). Only on generated maps; the blank test map starts bare.
+ */
+export const KEEP_WALLS = { courtyard: 1 };
 
 // Spawn zone: a strip on the left edge of the map, centred vertically.
 export const SPAWN_ZONE = { x: 0, width: 2, height: 12 };
@@ -83,6 +88,11 @@ export interface StructureStats {
   buildable?: boolean;
   /** Gold when sold at full HP, instead of the usual share of cost. */
   salvageGold?: number;
+  /**
+   * Closes a ring of walls when enclosures are worked out, though enemies walk through it
+   * (gates): a walled area with a gate in it still gets its discount.
+   */
+  enclosing?: boolean;
   /** How far it lets players see (fog of war). Towers see in the shape of their arc. */
   sight?: SightStats;
   /** Spawns units (see sim/units.ts). Its timer is the structure's `cooldown`, so a spawner
@@ -219,6 +229,15 @@ export const STRUCTURES = {
     maxHp: 30,
     blocksMovement: true,
     sight: { inner: 5, outer: 9 }, // as far as a cannon, all round; never fires
+  },
+  gate: {
+    name: "Gate",
+    layer: "base",
+    cost: 15,
+    maxHp: 50, // enemies walk through rather than attack it; rival towers can still hit it
+    blocksMovement: false,
+    enclosing: true,
+    sight: { inner: 2, outer: 3 }, // a little further than a wall: you can look out through it
   },
   ruin: {
     name: "Ruin",

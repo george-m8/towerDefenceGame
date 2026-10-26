@@ -1,5 +1,6 @@
 import type { EnemyKindId, EnemyVariant, ProjectileKind } from "../sim/config";
 import type { Facing, StructureKind, Terrain } from "../sim/types";
+import type { TextureStyle } from "./textures";
 
 export const TILE_SIZE = 20;
 /** Facing notch on a tower tile edge, and the hovered turning tower's aim line. */
@@ -152,6 +153,7 @@ export const GLYPHS: Record<StructureKind, string> = {
   house: "h",
   bridge: "=",
   watchtower: "T",
+  gate: "∩",
   ruin: "#",
 };
 
@@ -224,6 +226,7 @@ export const STRUCTURE_COLOURS: Record<StructureKind, { bg: string; fg: string }
   house: { bg: "#7a3b2e", fg: "#ffd28a" },
   bridge: { bg: "#6b4f2a", fg: "#d9b77a" },
   watchtower: { bg: "#4a5a6b", fg: "#e0ecff" },
+  gate: { bg: "#7a5a32", fg: "#2a1d10" },
   ruin: { bg: "#55524c", fg: "#2e2c28" },
 };
 
@@ -238,6 +241,27 @@ export const TERRAIN_STYLES: Record<
   rock: { bg: "#4a4a4a", glyph: "o", fg: "#9a9a9a" },
   tree: { bg: "#1f3d1f", glyph: "♣", fg: "#5fae5f" },
 };
+
+/** The texture over each kind of terrain (see render/textures.ts). */
+export const TERRAIN_TEXTURES: Record<Terrain, TextureStyle> = {
+  ground: "pebbles",
+  ford: "speckle",
+  river: "ripple",
+  sea: "ripple",
+  rock: "ore",
+  tree: "speckle",
+};
+/** The keep's stone walls. */
+export const KEEP_TEXTURE: TextureStyle = "stone";
+/** Structures drawn textured; the rest are flat colour. */
+export const STRUCTURE_TEXTURES: Partial<Record<StructureKind, TextureStyle>> = {
+  wall: "stone",
+  wallSpikes: "stone",
+  ruin: "ruinedStone",
+  gate: "planks",
+};
+/** Below this many screen pixels per tile, textures are too small to see and aren't drawn. */
+export const TEXTURE_MIN_TILE_PX = 10;
 
 export const OWNER_MARK_PX = 6;
 

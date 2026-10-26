@@ -7,6 +7,7 @@ import { awardBounties, claimChest, collectIncome, sellStructure } from "./econo
 import { addCue, updateCues } from "./cues";
 import { updateEffects } from "./effects";
 import { initialExplored, revealKeep } from "./fog";
+import { claimKeepWalls, placeKeepWalls } from "./keepWalls";
 import { generateTerrain, layoutFor } from "./mapgen";
 import { randomInt } from "./rng";
 import { updateTowers } from "./towers";
@@ -91,6 +92,7 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     const ruin = placeStructure(state, "ruin", spot.x, spot.y, "N", null);
     ruin.hp = Math.round(ruin.maxHp * spot.hpFraction);
   }
+  if (!options.blankMap) placeKeepWalls(state);
   return state;
 }
 
@@ -105,6 +107,7 @@ export function assignKeeps(state: GameState): void {
   state.keeps.forEach((keep, i) => {
     keep.owner = ids[i] ?? null;
     if (keep.owner !== null) revealKeep(state, keep);
+    claimKeepWalls(state, keep);
   });
   state.gridVersion++; // sight and enclosures depend on who owns the keeps
 }
