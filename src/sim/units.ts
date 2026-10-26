@@ -22,7 +22,7 @@ import { atTileCentre, walk } from "./movement";
 import { DIRECTIONS, canCross } from "./pathfinding";
 import { harvest, resourceAt } from "./resources";
 import { guardSpotOf } from "./guards";
-import { findPath } from "./unitPaths";
+import { findPath, type PathOptions } from "./unitPaths";
 import type { Enemy, Facing, GameState, PlayerId, Point, Structure, Terrain, Unit } from "./types";
 
 type Behaviour = (state: GameState, unit: Unit) => void;
@@ -175,6 +175,7 @@ export function spawnUnit(
     path: null,
     pathGoal: null,
     pathVersion: -1,
+    pathSight: -1,
     waitingForPath: false,
   };
   state.units.push(unit);
@@ -353,15 +354,18 @@ export function walkTowards(
   unit: Unit,
   goalKey: string,
   isGoal: (x: number, y: number) => boolean,
+  options: PathOptions = {},
 ): boolean {
   if (atTileCentre(unit) && isGoal(unit.x, unit.y)) return true;
   walk(unit, kindOf(unit).speed, () => {
     if (isGoal(unit.x, unit.y)) return false;
     // Search again for a new goal, a changed grid, or a path that ran out short of a goal that
     // moved (a chased enemy). With no way there at all (null), wait for the grid to change.
+    // On explored land only, a unit with no way yet tries again once more land is explored.
     const stale = unit.pathGoal !== goalKey || unit.pathVersion !== state.gridVersion;
-    if (stale || unit.path?.length === 0) {
-      if (!searchPath(state, unit, goalKey, isGoal)) return false;
+    const moreLand = options.exploredBy !== undefined && unit.pathSight !== state.sightVersion;
+    if (stale || unit.path?.length === 0 || (unit.path === null && moreLand)) {
+      if (!searchPath(state, unit, goalKey, isGoal, options)) return false;
     }
     const step = unit.path?.[0];
     if (!step) return false; // no way there
@@ -383,6 +387,7 @@ function searchPath(
   unit: Unit,
   goalKey: string,
   isGoal: (x: number, y: number) => boolean,
+  options: PathOptions,
 ): boolean {
   if (searchesLeft <= 0) {
     unit.waitingForPath = true;
@@ -390,9 +395,10 @@ function searchPath(
   }
   searchesLeft--;
   unit.waitingForPath = false;
-  unit.path = findPath(state, { x: unit.x, y: unit.y }, isGoal);
+  unit.path = findPath(state, { x: unit.x, y: unit.y }, isGoal, options);
   unit.pathGoal = goalKey;
   unit.pathVersion = state.gridVersion;
+  unit.pathSight = state.sightVersion;
   return true;
 }
 

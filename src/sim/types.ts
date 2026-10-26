@@ -117,6 +117,8 @@ export interface Unit {
   path: Point[] | null;
   pathGoal: string | null;
   pathVersion: number;
+  /** The sightVersion of that search (paths over explored land only go stale as land is explored). */
+  pathSight: number;
   /** It needs a path but the tick's search budget ran out: it goes first next tick. */
   waitingForPath: boolean;
 }

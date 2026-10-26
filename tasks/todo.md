@@ -33,11 +33,13 @@ Built: the emoji check is Unicode's `Emoji` property, which every symbol to avoi
 
 `findPath(state, from, isGoal, { exploredBy, breach })`: `exploredBy` keeps to tiles that team has explored; `breach: { owner, dps }` lets the search cross that owner's rivals' structures at `1 + ceil(HP / dps)` extra tiles each (Dijkstra, typed-array heap). `walkTowards` passes the options through and keys its cache by them.
 
-- [ ] An explored-only search never crosses an unexplored tile, and is null when the goal lies beyond one
-- [ ] A breaching search goes round when that's cheaper, through the weakest wall when it isn't
-- [ ] Without options, searches are exactly as before (existing tests untouched)
+- [x] An explored-only search never crosses an unexplored tile, and is null when the goal lies beyond one
+- [x] A breaching search goes round when that's cheaper, through the weakest wall when it isn't
+- [x] Without options, searches are exactly as before (existing tests untouched)
 
 Files: `src/sim/unitPaths.ts`, `src/sim/units.ts`, `tests/sim/unitPaths.test.ts`. Size: M. Depends on: none.
+
+Built: `Unit.pathSight` records the `sightVersion` of the last search, so a unit limited to explored land with no way yet searches again once more land is explored (explored land changes sight, not the grid). The breaching search reuses the path buffers plus one reusable typed-array heap.
 
 ## Task 4: Buildings, unit kinds and the Offence tab
 

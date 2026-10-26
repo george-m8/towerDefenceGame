@@ -104,6 +104,7 @@ function toUnit(u: ClientUnit): Unit {
     path: null,
     pathGoal: null,
     pathVersion: -1,
+    pathSight: -1,
     waitingForPath: false,
   };
 }
