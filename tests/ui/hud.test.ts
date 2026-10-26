@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { BUILD_TIME, STRUCTURES } from "../../src/sim/config";
 import { createGame } from "../../src/sim/game";
-import { createUiState } from "../../src/ui/state";
+import {
+  TOOLS,
+  createUiState,
+  hasBuildTools,
+  tabForKey,
+  toolsInTab,
+  type BuildTab,
+} from "../../src/ui/state";
 import { heldTime, hudContent, hudStats, toggleHudStat } from "../../src/ui/hud";
 import { statList } from "../../src/ui/stats";
 import { buildAt, ring } from "../sim/helpers";
@@ -162,5 +169,55 @@ describe("heldTime", () => {
     expect(heldTime(shown, "cannon", null)).toBeNull();
     expect(heldTime(shown, "sell", null)).toBeNull();
     expect(heldTime(shown, null, null)).toBeNull();
+  });
+});
+
+describe("build tabs", () => {
+  const tools = (tab: BuildTab) => toolsInTab(tab).map((t) => t.tool);
+
+  it("put each tool in its tab, with sell on every tab", () => {
+    expect(tools("defence")).toEqual([
+      "wall",
+      "archer",
+      "cannon",
+      "catapult",
+      "floorSpikes",
+      "wallSpikes",
+      "bridge",
+      "watchtower",
+      "gate",
+      "sell",
+    ]);
+    expect(tools("civic")).toEqual([
+      "house",
+      "shop",
+      "farmhouse",
+      "farmland",
+      "timberYard",
+      "mine",
+      "foragerHut",
+      "sell",
+    ]);
+    expect(tools("offence")).toEqual(["sell"]);
+  });
+
+  it("open on 1, 2 and 3; Offence has nothing to build yet", () => {
+    expect(["Digit1", "Digit2", "Digit3"].map(tabForKey)).toEqual(["defence", "civic", "offence"]);
+    expect(hasBuildTools("defence")).toBe(true);
+    expect(hasBuildTools("civic")).toBe(true);
+    expect(hasBuildTools("offence")).toBe(false);
+  });
+
+  it("only sell keeps a key; the old tool keys pick nothing", () => {
+    expect(TOOLS.filter((t) => t.key).map((t) => [t.tool, t.key])).toEqual([["sell", "KeyX"]]);
+    for (const code of ["Digit4", "Digit7", "Digit0", "KeyT", "KeyG", "KeyB"]) {
+      expect(TOOLS.find((t) => t.key === code)).toBeUndefined();
+    }
+  });
+
+  it("farmland and walls paint along a drag", () => {
+    const paint = TOOLS.filter((t) => t.paintable).map((t) => t.tool);
+    expect(paint).toContain("farmland");
+    expect(paint).toContain("wall");
   });
 });

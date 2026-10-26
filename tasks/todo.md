@@ -48,11 +48,13 @@ Files: `src/sim/config.ts`, `tests/sim/economy.test.ts`. Size: XS. Depends on: n
 
 `TOOLS` rows gain `tab` (`defence`, `civic`, `offence`, or `all` for sell); the picker shows tab buttons Defence / Civic / Offence (Offence greyed out while it has no tools); `1` / `2` / `3` open the picker on that tab; per-tool keys removed except `X` for sell.
 
-- [ ] Each tool is in its spec tab; sell is on every tab
-- [ ] `1` / `2` / `3` open their tab; digits no longer pick tools, nor do `T` / `G` / `B`; `X` still picks sell
-- [ ] Offence is greyed out with no tools
+- [x] Each tool is in its spec tab; sell is on every tab
+- [x] `1` / `2` / `3` open their tab; digits no longer pick tools, nor do `T` / `G` / `B`; `X` still picks sell
+- [x] Offence is greyed out with no tools
 
 Files: `src/ui/state.ts`, `src/ui/hud.ts`, `src/ui/input.ts`, `src/styles.css`, `tests/ui/hud.test.ts`, `tests/sim/resources.test.ts` (its key test). Size: M. Depends on: none.
+
+Built: the tab rules are pure functions in `state.ts` (`toolsInTab`, `hasBuildTools`, `tabForKey`). Keys ask the HUD to open the picker through `ui.openPicker`, which the HUD clears each frame. Farmland and shop got their tool rows here (farmland paints). The tab buttons and filtering are checked in the browser at checkpoint B.
 
 ## Task 6: Drawing and hover
 

@@ -8,30 +8,59 @@ export function isBuildTool(tool: Tool | null): tool is StructureKind {
   return tool !== null && tool !== "sell";
 }
 
+/** The build picker's tabs, opened by clicking or with 1, 2, 3. */
+export type BuildTab = "defence" | "civic" | "offence";
+
+export const BUILD_TABS: { tab: BuildTab; name: string; key: string; label: string }[] = [
+  { tab: "defence", name: "Defence", key: "Digit1", label: "1" },
+  { tab: "civic", name: "Civic", key: "Digit2", label: "2" },
+  { tab: "offence", name: "Offence", key: "Digit3", label: "3" },
+];
+
 export interface ToolDef {
   tool: Tool;
-  key: string; // KeyboardEvent.code
-  label: string;
+  /** Which tab it's in; "all" shows on every tab (sell). */
+  tab: BuildTab | "all";
+  /** A key that picks it (KeyboardEvent.code). Only sell has one: tools are picked by click. */
+  key?: string;
+  label?: string;
   /** Click-and-drag places along the dragged tiles. */
   paintable: boolean;
 }
 
 export const TOOLS: ToolDef[] = [
-  { tool: "wall", key: "Digit1", label: "1", paintable: true },
-  { tool: "archer", key: "Digit2", label: "2", paintable: false },
-  { tool: "cannon", key: "Digit3", label: "3", paintable: false },
-  { tool: "catapult", key: "Digit4", label: "4", paintable: false },
-  { tool: "floorSpikes", key: "Digit5", label: "5", paintable: true },
-  { tool: "wallSpikes", key: "Digit6", label: "6", paintable: true },
-  { tool: "house", key: "Digit7", label: "7", paintable: false },
-  { tool: "timberYard", key: "KeyT", label: "T", paintable: false },
-  { tool: "mine", key: "KeyG", label: "G", paintable: false },
-  { tool: "foragerHut", key: "KeyB", label: "B", paintable: false },
-  { tool: "bridge", key: "Digit8", label: "8", paintable: true },
-  { tool: "watchtower", key: "Digit9", label: "9", paintable: false },
-  { tool: "gate", key: "Digit0", label: "0", paintable: true },
-  { tool: "sell", key: "KeyX", label: "X", paintable: true },
+  { tool: "wall", tab: "defence", paintable: true },
+  { tool: "archer", tab: "defence", paintable: false },
+  { tool: "cannon", tab: "defence", paintable: false },
+  { tool: "catapult", tab: "defence", paintable: false },
+  { tool: "floorSpikes", tab: "defence", paintable: true },
+  { tool: "wallSpikes", tab: "defence", paintable: true },
+  { tool: "bridge", tab: "defence", paintable: true },
+  { tool: "watchtower", tab: "defence", paintable: false },
+  { tool: "gate", tab: "defence", paintable: true },
+  { tool: "house", tab: "civic", paintable: false },
+  { tool: "shop", tab: "civic", paintable: false },
+  { tool: "farmhouse", tab: "civic", paintable: false },
+  { tool: "farmland", tab: "civic", paintable: true },
+  { tool: "timberYard", tab: "civic", paintable: false },
+  { tool: "mine", tab: "civic", paintable: false },
+  { tool: "foragerHut", tab: "civic", paintable: false },
+  { tool: "sell", tab: "all", key: "KeyX", label: "X", paintable: true },
 ];
+
+/** The tools shown on a tab, in order (sell last, on every tab). */
+export function toolsInTab(tab: BuildTab): ToolDef[] {
+  return TOOLS.filter((t) => t.tab === tab || t.tab === "all");
+}
+
+/** Whether a tab has anything to build (Offence is empty until barracks exist). */
+export function hasBuildTools(tab: BuildTab): boolean {
+  return TOOLS.some((t) => t.tab === tab);
+}
+
+export function tabForKey(code: string): BuildTab | undefined {
+  return BUILD_TABS.find((t) => t.key === code)?.tab;
+}
 
 export interface UiState {
   tool: Tool | null;
@@ -48,6 +77,10 @@ export interface UiState {
   camera: Camera;
   /** Which stats the HUD shows, a box each (toggled in its menu). Never empty. */
   hudStats: StatId[];
+  /** The build picker tab showing. */
+  tab: BuildTab;
+  /** Set by 1/2/3 to ask the HUD to open the picker on `tab`; the HUD clears it. */
+  openPicker: boolean;
   /** Arrow keys (or WASD) held down, for smooth panning. */
   panKeys: { left: boolean; right: boolean; up: boolean; down: boolean };
 }
@@ -63,6 +96,8 @@ export function createUiState(): UiState {
     playerId: 1,
     camera: createCamera(),
     hudStats: ["gold"],
+    tab: "defence",
+    openPicker: false,
     panKeys: { left: false, right: false, up: false, down: false },
   };
 }

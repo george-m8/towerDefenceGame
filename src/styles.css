@@ -105,6 +105,43 @@ body {
   background: var(--ink);
 }
 
+.tool[hidden] {
+  display: none;
+}
+
+.build-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.build-tab {
+  flex: 1;
+  padding: 2px 6px;
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.build-tab[aria-selected="true"] {
+  color: var(--paper);
+  background: var(--ink);
+}
+
+.build-tab:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.build-tab kbd {
+  font: inherit;
+  padding: 0 3px;
+  border: 1px solid currentColor;
+}
+
 .tool kbd {
   font: inherit;
   text-align: center;

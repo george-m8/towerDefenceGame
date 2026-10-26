@@ -13,7 +13,7 @@ import { applyCommand, createGame, tick } from "../../src/sim/game";
 import { canBuild, placeStructure, terrainAt } from "../../src/sim/grid";
 import { distanceAt } from "../../src/sim/pathfinding";
 import { harvest, placeResource, resourceAt } from "../../src/sim/resources";
-import { TOOLS } from "../../src/ui/state";
+import { toolsInTab } from "../../src/ui/state";
 import type { GameState } from "../../src/sim/types";
 import { column, createGameWithoutWaves, goldOf, paintTerrain } from "./helpers";
 
@@ -142,9 +142,9 @@ describe("the sell tool on a tree", () => {
 
 describe("gatherer buildings", () => {
   const gatherers = [
-    ["timberYard", "lumberjack", "KeyT"],
-    ["mine", "miner", "KeyG"],
-    ["foragerHut", "forager", "KeyB"],
+    ["timberYard", "lumberjack"],
+    ["mine", "miner"],
+    ["foragerHut", "forager"],
   ] as const;
 
   it("each spawns its own workers, one per interval, up to its quota", () => {
@@ -193,11 +193,11 @@ describe("gatherer buildings", () => {
     expect(state.units.some((u) => !before.has(u.id))).toBe(true);
   });
 
-  it("are built like a house, from their own keys", () => {
+  it("are built like a house, from the Civic tab", () => {
     const state = createGameWithoutWaves();
     placeResource(state, 12, 10, "berries", 10);
-    for (const [kind, , key] of gatherers) {
-      expect(TOOLS.find((t) => t.key === key)?.tool).toBe(kind);
+    for (const [kind] of gatherers) {
+      expect(toolsInTab("civic").map((t) => t.tool)).toContain(kind);
       expect(canBuild(state, 1, kind, 10, 10)).toEqual(canBuild(state, 1, "house", 10, 10));
       expect(canBuild(state, 1, kind, 12, 10).ok).toBe(false); // not on a bush
     }
