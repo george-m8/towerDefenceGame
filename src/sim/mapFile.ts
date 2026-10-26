@@ -417,8 +417,14 @@ export function validateMap(map: MapFile): MapProblems {
   const width = mapWidth(map);
   const height = mapHeight(map);
   const inBounds = (x: number, y: number) => x >= 0 && y >= 0 && x < width && y < height;
-  const walkable = (x: number, y: number) =>
-    inBounds(x, y) && TERRAIN[terrainOf(map, x, y)].walkable;
+  // Per tile, worked out once: the route search below looks at every tile.
+  const walk = new Uint8Array(width * height);
+  map.terrain.forEach((row, y) => {
+    for (let x = 0; x < width; x++) {
+      walk[y * width + x] = TERRAIN[TERRAIN_BY_CHAR.get(row[x])!].walkable ? 1 : 0;
+    }
+  });
+  const walkable = (x: number, y: number) => inBounds(x, y) && walk[y * width + x] === 1;
   const at = (p: Point) => `${p.x},${p.y}`;
 
   // Keeps.
@@ -494,11 +500,17 @@ export function validateMap(map: MapFile): MapProblems {
   }
 
   // Routes, on terrain alone (structures can be knocked down), to a tile beside a keep.
-  const open = (x: number, y: number) => walkable(x, y) && !keepTile.has(`${x},${y}`);
-  const besideKeep = (k: number) => {
-    const goal = new Set(sides(map.keeps[k]).map(at));
-    return (x: number, y: number) => goal.has(`${x},${y}`);
-  };
+  const blocked = new Uint8Array(width * height);
+  for (const keep of map.keeps) {
+    for (const t of keepTiles(keep)) if (inBounds(t.x, t.y)) blocked[t.y * width + t.x] = 1;
+  }
+  const open = (x: number, y: number) => walkable(x, y) && blocked[y * width + x] === 0;
+  const besideKeep = (k: number) =>
+    new Set(
+      sides(map.keeps[k])
+        .filter((t) => inBounds(t.x, t.y))
+        .map((t) => t.y * width + t.x),
+    );
   if (errors.length === 0) {
     if (map.mode === "endless") {
       if (!reaches(spawns, open, besideKeep(0), width, height)) {
@@ -527,7 +539,7 @@ export function validateMap(map: MapFile): MapProblems {
   if (map.keeps.length > 0 && map.chests.length > 0) {
     const reached = reachable(sides(map.keeps[0]), open, width, height);
     for (const chest of map.chests) {
-      if (inBounds(chest.x, chest.y) && !reached.has(chest.y * width + chest.x)) {
+      if (inBounds(chest.x, chest.y) && !reached[chest.y * width + chest.x]) {
         warnings.push(`The chest at ${at(chest)} can't be reached from the keep`);
       }
     }
@@ -586,53 +598,57 @@ function sides(keep: Point): Point[] {
   return tiles;
 }
 
-/** Tile indexes reachable from `start`, stepping up, down, left and right over `open` tiles. */
+/** Which tiles (1 per index) can be reached from `start`, stepping up, down, left and right. */
 function reachable(
   start: Point[],
   open: (x: number, y: number) => boolean,
   width: number,
   height: number,
-): Set<number> {
-  const seen = new Set<number>();
-  const queue: number[] = [];
+): Uint8Array {
+  const seen = new Uint8Array(width * height);
+  const queue = new Int32Array(width * height);
+  let tail = 0;
   for (const p of start) {
     if (!open(p.x, p.y)) continue;
     const i = p.y * width + p.x;
-    if (!seen.has(i)) {
-      seen.add(i);
-      queue.push(i);
+    if (!seen[i]) {
+      seen[i] = 1;
+      queue[tail++] = i;
     }
   }
-  for (let head = 0; head < queue.length; head++) {
+  for (let head = 0; head < tail; head++) {
     const i = queue[head];
     const x = i % width;
     const y = (i - x) / width;
-    for (const [nx, ny] of [
-      [x + 1, y],
-      [x - 1, y],
-      [x, y + 1],
-      [x, y - 1],
-    ]) {
-      if (nx < 0 || ny < 0 || nx >= width || ny >= height || !open(nx, ny)) continue;
-      const n = ny * width + nx;
-      if (seen.has(n)) continue;
-      seen.add(n);
-      queue.push(n);
+    if (x + 1 < width && !seen[i + 1] && open(x + 1, y)) {
+      seen[i + 1] = 1;
+      queue[tail++] = i + 1;
+    }
+    if (x > 0 && !seen[i - 1] && open(x - 1, y)) {
+      seen[i - 1] = 1;
+      queue[tail++] = i - 1;
+    }
+    if (y + 1 < height && !seen[i + width] && open(x, y + 1)) {
+      seen[i + width] = 1;
+      queue[tail++] = i + width;
+    }
+    if (y > 0 && !seen[i - width] && open(x, y - 1)) {
+      seen[i - width] = 1;
+      queue[tail++] = i - width;
     }
   }
   return seen;
 }
 
+/** Whether any tile index in `goal` is reachable from `start`. */
 function reaches(
   start: Point[],
   open: (x: number, y: number) => boolean,
-  goal: (x: number, y: number) => boolean,
+  goal: Set<number>,
   width: number,
   height: number,
 ): boolean {
-  for (const i of reachable(start, open, width, height)) {
-    const x = i % width;
-    if (goal(x, (i - x) / width)) return true;
-  }
+  const reached = reachable(start, open, width, height);
+  for (const i of goal) if (reached[i]) return true;
   return false;
 }
