@@ -1,11 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { ENEMY_KINDS, TICK_RATE, UNIT_KINDS, type UnitKind } from "../../src/sim/config";
+import {
+  ENEMY_KINDS,
+  TICK_RATE,
+  UNIT_KINDS,
+  UNIT_PATH_SEARCHES_PER_TICK,
+  type UnitKind,
+} from "../../src/sim/config";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand, tick } from "../../src/sim/game";
-import { placeStructure } from "../../src/sim/grid";
+import { blocksAt, placeStructure } from "../../src/sim/grid";
 import { damageUnit, spawnUnit } from "../../src/sim/units";
 import type { Enemy, GameState } from "../../src/sim/types";
-import { createGameWithoutWaves, goldOf, paintTerrain } from "./helpers";
+import { buildAt, createGameWithoutWaves, goldOf, paintTerrain, ring } from "./helpers";
 
 const militia = UNIT_KINDS.militia;
 const hitTicks = militia.attackInterval * TICK_RATE;
@@ -217,5 +223,81 @@ describe("enemies fight units", () => {
     expect(wall.hp).toBeLessThan(1000);
     expect(caught.hp).toBe(1000 - ENEMY_KINDS.dwarfBomber.ability.amount);
     expect(clear.hp).toBe(1000);
+  });
+});
+
+describe("unit movement", () => {
+  const ticksPerTile = TICK_RATE / militia.speed;
+
+  it("walks to its goal at its kind's speed, then holds there", () => {
+    const state = createGameWithoutWaves();
+    const unit = spawnUnit(state, "militia", 1, 5, 5)!;
+    unit.goal = { x: 9, y: 5 };
+
+    run(state, 3 * ticksPerTile);
+    expect(unit.x).toBeCloseTo(8);
+    run(state, ticksPerTile);
+    expect({ x: unit.x, y: unit.y }).toEqual({ x: 9, y: 5 });
+    run(state, 2 * ticksPerTile);
+    expect({ x: unit.x, y: unit.y }).toEqual({ x: 9, y: 5 });
+  });
+
+  it("finds a new way when a wall goes up across its path, never standing on it", () => {
+    const state = createGameWithoutWaves();
+    const unit = spawnUnit(state, "militia", 1, 5, 10)!;
+    unit.goal = { x: 15, y: 10 };
+    run(state, ticksPerTile);
+    buildAt(
+      state,
+      [7, 8, 9, 10, 11, 12].map((y) => ({ x: 10, y })),
+    );
+
+    for (let i = 0; i < 30 * ticksPerTile && unit.x !== 15; i++) {
+      tick(state);
+      expect(blocksAt(state, Math.round(unit.x), Math.round(unit.y))).toBe(false);
+    }
+    expect({ x: unit.x, y: unit.y }).toEqual({ x: 15, y: 10 });
+  });
+
+  it("stands still when there's no way to its goal", () => {
+    const state = createGameWithoutWaves();
+    const unit = spawnUnit(state, "militia", 1, 5, 5)!;
+    buildAt(state, ring(8, 3, 12, 7));
+    unit.goal = { x: 10, y: 5 };
+    run(state, 2 * ticksPerTile);
+    expect({ x: unit.x, y: unit.y }).toEqual({ x: 5, y: 5 });
+  });
+
+  it("searches for at most the budget of paths a tick; those left waiting go first next tick", () => {
+    const state = createGameWithoutWaves();
+    const units = Array.from({ length: 10 }, (_, i) => {
+      const unit = spawnUnit(state, "militia", 1, 5, 5 + i)!;
+      unit.goal = { x: 40, y: 5 + i };
+      return unit;
+    });
+
+    tick(state);
+    expect(units.filter((u) => u.path !== null)).toHaveLength(UNIT_PATH_SEARCHES_PER_TICK);
+    const waiting = units.filter((u) => u.path === null);
+    expect(waiting.every((u) => u.waitingForPath)).toBe(true);
+
+    placeStructure(state, "wall", 30, 40); // every stored path is now out of date
+    tick(state);
+    for (const unit of waiting) expect(unit.path).not.toBeNull();
+  });
+
+  it("a blocking construction site waits to finish while a unit stands on it", () => {
+    const state = createGameWithoutWaves();
+    const unit = spawnUnit(state, "militia", 1, 5, 5)!;
+    const wall = placeStructure(state, "wall", 5, 5, "N", 1);
+    wall.buildLeft = 1;
+    wall.buildTicks = 10;
+
+    run(state, 5);
+    expect(wall.buildLeft).toBe(1);
+
+    unit.goal = { x: 8, y: 5 };
+    run(state, ticksPerTile + 1); // building moves on before units do, so one tick after it steps off
+    expect(wall.buildLeft).toBe(0);
   });
 });

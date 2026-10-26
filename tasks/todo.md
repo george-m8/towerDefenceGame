@@ -41,15 +41,17 @@ Built: the index is `unitsAt(state, x, y)`, cached per state and rebuilt when fi
 
 `src/sim/unitPaths.ts` with `findPath(state, from, isGoal)` (breadth-first, multi-goal, capped at the tile count). Units store a path and `pathVersion`, search again when `gridVersion` changes or the next step is blocked, and move tile to tile like enemies. `UNIT_PATH_SEARCHES_PER_TICK` budget, with waiting units first in line next tick. A test-only `walkTo` behaviour.
 
-- [ ] Shortest route round a wall; null when the goal is walled off
-- [ ] Stops at the nearest of several goal tiles
-- [ ] A stored path is searched again after a wall is built across it
-- [ ] No more than the budget of searches run in one tick; the rest go first next tick
-- [ ] A unit moves at its kind's speed and never stands on water, the keep or a blocking structure
+- [x] Shortest route round a wall; null when the goal is walled off
+- [x] Stops at the nearest of several goal tiles
+- [x] A stored path is searched again after a wall is built across it
+- [x] No more than the budget of searches run in one tick; the rest go first next tick
+- [x] A unit moves at its kind's speed and never stands on water, the keep or a blocking structure
 
-- [ ] A blocking construction site waits to finish while a unit stands on it
+- [x] A blocking construction site waits to finish while a unit stands on it
 
 Files: `src/sim/unitPaths.ts` (new), `src/sim/units.ts`, `src/sim/building.ts`, `src/sim/config.ts`, `tests/sim/unitPaths.test.ts` (new), `tests/sim/units.test.ts`. Size: M. Depends on: 1.
+
+Built: instead of a test-only `walkTo` behaviour, every unit has an optional `goal` tile. `hold` fights anything in reach, otherwise walks to its goal and holds there; a unit with no goal stays put. Guard spots can use the same field. Behaviours move with `walkTowards(state, unit, goalKey, isGoal)`, which keeps the path per goal and grid version and spends the per-tick search budget.
 
 ## Task 4: Spawners
 

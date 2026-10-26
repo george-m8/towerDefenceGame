@@ -3,20 +3,31 @@
 import {
   TICK_RATE,
   UNIT_KINDS,
+  UNIT_PATH_SEARCHES_PER_TICK,
   type UnitBehaviourId,
   type UnitKind,
   type UnitKindId,
 } from "./config";
 import { damageEnemy } from "./enemies";
 import { blocksAt, inBounds, keepAt } from "./grid";
+import { atTileCentre, walk } from "./movement";
 import { canCross } from "./pathfinding";
-import type { Enemy, GameState, PlayerId, Unit } from "./types";
+import { findPath } from "./unitPaths";
+import type { Enemy, GameState, PlayerId, Point, Unit } from "./types";
 
 type Behaviour = (state: GameState, unit: Unit) => void;
 
 const BEHAVIOURS: Record<UnitBehaviourId, Behaviour> = {
-  hold: (state, unit) => attackNearest(state, unit),
+  hold,
 };
+
+/** Fights anything in reach; otherwise walks to its goal, if it has one, and holds there. */
+function hold(state: GameState, unit: Unit) {
+  if (atTileCentre(unit) && attackNearest(state, unit)) return;
+  if (unit.goal) walkTowards(state, unit, `tile ${unit.goal.x},${unit.goal.y}`, isAt(unit.goal));
+}
+
+const isAt = (goal: Point) => (x: number, y: number) => x === goal.x && y === goal.y;
 
 export function kindOf(unit: Unit): UnitKind {
   return UNIT_KINDS[unit.kind];
@@ -52,6 +63,11 @@ export function spawnUnit(
     hp,
     maxHp: hp,
     attackCooldown: 0,
+    goal: null,
+    path: null,
+    pathGoal: null,
+    pathVersion: -1,
+    waitingForPath: false,
   };
   state.units.push(unit);
   return unit;
@@ -62,8 +78,17 @@ export function damageUnit(unit: Unit, amount: number): void {
   unit.hp -= Math.max(1, amount - kindOf(unit).armour);
 }
 
+/** Path searches left this tick (see UNIT_PATH_SEARCHES_PER_TICK). */
+let searchesLeft = 0;
+
 export function updateUnits(state: GameState): void {
-  for (const unit of state.units) {
+  searchesLeft = UNIT_PATH_SEARCHES_PER_TICK;
+  // Units left waiting for a path last tick go first.
+  const order = [
+    ...state.units.filter((u) => u.waitingForPath),
+    ...state.units.filter((u) => !u.waitingForPath),
+  ];
+  for (const unit of order) {
     if (unit.hp <= 0) continue;
     unit.attackCooldown = Math.max(0, unit.attackCooldown - 1);
     BEHAVIOURS[kindOf(unit).behaviour](state, unit);
@@ -103,14 +128,69 @@ function reach(unit: Unit, x: number, y: number): number {
   return Math.max(Math.abs(Math.round(x) - unit.x), Math.abs(Math.round(y) - unit.y));
 }
 
-/** Hits the nearest enemy within range, once its attack is ready. */
-function attackNearest(state: GameState, unit: Unit) {
-  if (unit.attackCooldown > 0) return;
+/**
+ * Hits the nearest enemy within range once its attack is ready. True while there's an enemy
+ * in reach (even between hits), so the unit stays to fight.
+ */
+function attackNearest(state: GameState, unit: Unit): boolean {
   const kind = kindOf(unit);
   const target = nearestEnemy(state, unit, kind.range);
-  if (!target) return;
-  damageEnemy(target, kind.damage, unit.owner);
-  unit.attackCooldown = kind.attackInterval * TICK_RATE;
+  if (!target) return false;
+  if (unit.attackCooldown === 0) {
+    damageEnemy(target, kind.damage, unit.owner);
+    unit.attackCooldown = kind.attackInterval * TICK_RATE;
+  }
+  return true;
+}
+
+/**
+ * Walks the unit a tick's worth towards the nearest tile where `isGoal` holds, searching for a
+ * path when it has none for this goal (`goalKey`) or the grid has changed. A unit with no way
+ * there stands still until the grid changes. Returns true once it's there.
+ */
+export function walkTowards(
+  state: GameState,
+  unit: Unit,
+  goalKey: string,
+  isGoal: (x: number, y: number) => boolean,
+): boolean {
+  if (atTileCentre(unit) && isGoal(unit.x, unit.y)) return true;
+  walk(unit, kindOf(unit).speed, () => {
+    if (isGoal(unit.x, unit.y)) return false;
+    if (unit.pathGoal !== goalKey || unit.pathVersion !== state.gridVersion) {
+      if (!searchPath(state, unit, goalKey, isGoal)) return false;
+    }
+    const step = unit.path?.[0];
+    if (!step) return false; // no way there
+    if (!canStand(state, step.x, step.y)) {
+      unit.pathVersion = -1; // something's in the way now: search again
+      return false;
+    }
+    unit.path!.shift();
+    unit.tx = step.x;
+    unit.ty = step.y;
+    return true;
+  });
+  return false;
+}
+
+/** Searches if the tick's budget allows; otherwise the unit waits, first in line next tick. */
+function searchPath(
+  state: GameState,
+  unit: Unit,
+  goalKey: string,
+  isGoal: (x: number, y: number) => boolean,
+): boolean {
+  if (searchesLeft <= 0) {
+    unit.waitingForPath = true;
+    return false;
+  }
+  searchesLeft--;
+  unit.waitingForPath = false;
+  unit.path = findPath(state, { x: unit.x, y: unit.y }, isGoal) ?? [];
+  unit.pathGoal = goalKey;
+  unit.pathVersion = state.gridVersion;
+  return true;
 }
 
 /** The living enemy within `range` nearest the unit (straight-line), then the lowest id. */

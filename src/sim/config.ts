@@ -270,6 +270,9 @@ export const UNIT_KINDS = {
 
 export type UnitKindId = keyof typeof UNIT_KINDS;
 
+/** Most unit path searches in one tick; units left waiting go first next tick. */
+export const UNIT_PATH_SEARCHES_PER_TICK = 8;
+
 export const ENEMY = {
   /** Chance (0-1) at each tile that an enemy steps to a random open neighbour instead of following the path. */
   wanderChance: 0.1,

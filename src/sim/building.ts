@@ -39,13 +39,15 @@ export function buildProgress(structure: Structure): number {
 
 /**
  * Moves every construction site on by a tick. One that will block can't finish while an
- * enemy is standing on it: it waits on its last tick until the way is clear.
+ * enemy or unit is standing on it: it waits on its last tick until the way is clear.
  */
 export function updateBuilding(state: GameState): void {
   for (const structure of Object.values(state.structures)) {
     if (isBuilt(structure)) continue;
     const blocks = STRUCTURES[structure.kind].blocksMovement;
-    const inTheWay = state.enemies.some((e) => enemyOccupies(e, structure.x, structure.y));
+    const inTheWay = [...state.enemies, ...state.units].some((e) =>
+      enemyOccupies(e, structure.x, structure.y),
+    );
     if (structure.buildLeft === 1 && blocks && inTheWay) continue;
     structure.buildLeft!--;
     if (isBuilt(structure)) state.gridVersion++; // it blocks (or bridges) now

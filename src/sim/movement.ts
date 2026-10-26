@@ -1,6 +1,9 @@
-// Tile-to-tile stepping, shared by every way an enemy moves (walking its field, sprinting).
+// Tile-to-tile stepping, shared by every way enemies and units move.
 import { TICK_RATE } from "./config";
 import type { Enemy } from "./types";
+
+/** Anything that walks tile to tile: at (x, y), heading for (tx, ty). */
+type Mover = Pick<Enemy, "x" | "y" | "tx" | "ty">;
 
 const EPSILON = 1e-9;
 
@@ -9,7 +12,7 @@ const EPSILON = 1e-9;
  * across tile centres so speed stays constant. At each tile centre `chooseNext` either sets
  * the next tile (`tx`, `ty`) and returns true, or returns false to stop for this tick.
  */
-export function walk(enemy: Enemy, speed: number, chooseNext: () => boolean): void {
+export function walk(enemy: Mover, speed: number, chooseNext: () => boolean): void {
   let budget = speed / TICK_RATE;
   while (budget > EPSILON) {
     if (atTileCentre(enemy) && !chooseNext()) return;
@@ -17,7 +20,7 @@ export function walk(enemy: Enemy, speed: number, chooseNext: () => boolean): vo
   }
 }
 
-export function atTileCentre(enemy: Enemy): boolean {
+export function atTileCentre(enemy: Mover): boolean {
   return enemy.x === enemy.tx && enemy.y === enemy.ty;
 }
 
@@ -30,7 +33,7 @@ export function stepTo(enemy: Enemy, x: number, y: number): void {
 }
 
 /** Moves up to `budget` tiles towards the target and returns the distance moved. */
-function moveTowardsTarget(enemy: Enemy, budget: number): number {
+function moveTowardsTarget(enemy: Mover, budget: number): number {
   // Movement is always along one axis between adjacent tile centres.
   const dx = enemy.tx - enemy.x;
   const dy = enemy.ty - enemy.y;

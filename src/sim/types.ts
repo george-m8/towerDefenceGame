@@ -108,6 +108,14 @@ export interface Unit {
   maxHp: number;
   /** Ticks until it can hit again. */
   attackCooldown: number;
+  /** A tile it's told to go to and hold (guard spots); null stays where it is. */
+  goal: Point | null;
+  /** Steps still to walk, for `pathGoal` and the grid as it was at `pathVersion`. */
+  path: Point[] | null;
+  pathGoal: string | null;
+  pathVersion: number;
+  /** It needs a path but the tick's search budget ran out: it goes first next tick. */
+  waitingForPath: boolean;
 }
 
 /** Short-lived visual events recorded by the simulation for the renderer. */
