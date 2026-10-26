@@ -1,5 +1,6 @@
 import type { EnemyKindId, EnemyVariant, ProjectileKind } from "../sim/config";
 import type { Facing, StructureKind, Terrain } from "../sim/types";
+import type { TextureStyle } from "./textures";
 
 export const TILE_SIZE = 20;
 /** Facing notch on a tower tile edge, and the hovered turning tower's aim line. */
@@ -238,6 +239,26 @@ export const TERRAIN_STYLES: Record<
   rock: { bg: "#4a4a4a", glyph: "o", fg: "#9a9a9a" },
   tree: { bg: "#1f3d1f", glyph: "♣", fg: "#5fae5f" },
 };
+
+/** The texture over each kind of terrain (see render/textures.ts). */
+export const TERRAIN_TEXTURES: Record<Terrain, TextureStyle> = {
+  ground: "pebbles",
+  ford: "speckle",
+  river: "ripple",
+  sea: "ripple",
+  rock: "ore",
+  tree: "speckle",
+};
+/** The keep's stone walls. */
+export const KEEP_TEXTURE: TextureStyle = "stone";
+/** Structures drawn textured; the rest are flat colour. */
+export const STRUCTURE_TEXTURES: Partial<Record<StructureKind, TextureStyle>> = {
+  wall: "stone",
+  wallSpikes: "stone",
+  ruin: "ruinedStone",
+};
+/** Below this many screen pixels per tile, textures are too small to see and aren't drawn. */
+export const TEXTURE_MIN_TILE_PX = 10;
 
 export const OWNER_MARK_PX = 6;
 
