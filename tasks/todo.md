@@ -95,9 +95,11 @@ Files: `src/sim/towers.ts`, `tests/sim/pvp.test.ts`. Size: S. Depends on: 1.
 Units drawn as their glyph in the owner's colour, above terrain and below effects, with an HP bar when damaged. Rival units in fog are hidden. Hover shows `Militia (i) - <owner> - HP 24/30`. `U` over a tile sends `debugUnit`.
 
 - [ ] Browser: `U` places a militia; goblins stop for it; fog lifts; HP bars show
-- [ ] Hover text matches the spec
+- [x] Hover text: `Militia (Ann's), HP 24 / 30`, in the existing hover style rather than the spec's dashes; a rival's unit in fog isn't listed
 
 Files: `src/render/canvas.ts`, `src/render/palette.ts`, `src/ui/tileInfo.ts`, `src/ui/input.ts`, `src/main.ts`. Size: M. Depends on: 2-6.
+
+Built: units burst into pixels in their owner's colour when they die, like enemies and structures (main's pixel bursts). The browser check is still to do.
 
 **Checkpoint B:** offline browser check with George.
 

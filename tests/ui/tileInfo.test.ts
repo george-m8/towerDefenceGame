@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { spawnEnemy } from "../../src/sim/enemies";
+import { spawnUnit } from "../../src/sim/units";
 import { createGame } from "../../src/sim/game";
 import type { Enemy } from "../../src/sim/types";
 import { describeTile, hoverText, priceLine } from "../../src/ui/tileInfo";
@@ -81,6 +82,20 @@ describe("fog hover info", () => {
     expect(describeTile(state, { x: 10, y: 5 }).join("\n")).toMatch(
       /Dwarf warrior, HP \d+ \/ \d+, with its thane/,
     );
+  });
+
+  it("names a unit, its owner and its HP, but only in sight", () => {
+    const state = createGame(1, { blankMap: true, fog: false, players: ["Ann"] });
+    const unit = spawnUnit(state, "militia", 1, 5, 5)!;
+    unit.hp = 24;
+    expect(describeTile(state, { x: 5, y: 5 })).toContain("Militia (Ann's), HP 24 / 30");
+
+    // In PvP a rival's unit is only shown to its own side (it's in fog for the other).
+    const pvp = createGame(1, { blankMap: true, mode: "pvp", players: ["Ann", "Bo"] });
+    const p = { x: pvp.keeps[1].x - 2, y: pvp.keeps[1].y };
+    spawnUnit(pvp, "militia", 2, p.x, p.y);
+    expect(describeTile(pvp, p, 2)).toContain("Militia (Bo's), HP 30 / 30");
+    expect(describeTile(pvp, p, 1).join("\n")).not.toContain("Militia");
   });
 
   it("the price line says why you can't build on unexplored land", () => {

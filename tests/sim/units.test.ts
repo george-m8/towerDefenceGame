@@ -94,6 +94,16 @@ describe("units", () => {
     expect(goldOf(state)).toBe(gold);
   });
 
+  it("bursts apart in its owner's colour when it dies", () => {
+    const state = createGameWithoutWaves();
+    const unit = spawnUnit(state, "militia", 1, 5, 5)!;
+    damageUnit(unit, 100);
+    tick(state);
+    expect(state.effects).toContainEqual(
+      expect.objectContaining({ kind: "burst", x: 5, y: 5, unit: "militia", owner: 1 }),
+    );
+  });
+
   it("a holding militia hits an adjacent enemy every interval, paying the bounty to its owner", () => {
     const state = createGameWithoutWaves();
     const unit = spawnUnit(state, "militia", 1, 5, 5)!;

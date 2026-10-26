@@ -12,6 +12,7 @@ import {
 } from "./config";
 import { damageEnemy } from "./enemies";
 import { blocksAt, inBounds, isBuilt, keepAt } from "./grid";
+import { addBurst } from "./effects";
 import { unitMoved } from "./fog";
 import { atTileCentre, walk } from "./movement";
 import { canCross } from "./pathfinding";
@@ -167,6 +168,9 @@ export function unitsAt(state: GameState, x: number, y: number): Unit[] {
 export function removeDeadUnits(state: GameState): void {
   const alive = state.units.filter((unit) => unit.hp > 0);
   if (alive.length === state.units.length) return;
+  for (const unit of state.units) {
+    if (unit.hp <= 0) addBurst(state, unit.x, unit.y, { unit: unit.kind, owner: unit.owner });
+  }
   state.units = alive;
   state.sightVersion++; // their sight goes with them
 }

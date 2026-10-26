@@ -138,7 +138,7 @@ export type Effect =
   | { kind: "spikes"; x: number; y: number; ttl: number }
   | { kind: "heal"; x: number; y: number; ttl: number }
   /**
-   * Something destroyed: an enemy killed, or a structure broken. Drawn still there for
+   * Something destroyed: an enemy or unit killed, or a structure broken. Drawn still there for
    * BURST_DELAY_TICKS, then as its pixels flying apart and fading for BURST_TICKS.
    */
   | {
@@ -148,6 +148,9 @@ export type Effect =
       ttl: number;
       enemy?: EnemyKindId;
       structure?: StructureKind;
+      /** A unit, drawn in its owner's colour. */
+      unit?: UnitKindId;
+      owner?: PlayerId;
     };
 
 /** Things lying on the map that aren't terrain or structures. `resources` adds deposits and animals. */

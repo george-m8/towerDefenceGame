@@ -3,6 +3,7 @@ import {
   ENEMY_KINDS,
   STRUCTURES,
   TREE_CLEAR_GOLD,
+  UNIT_KINDS,
   type StructureStats,
 } from "../sim/config";
 import { playerName } from "../sim/players";
@@ -97,6 +98,16 @@ export function describeTile(state: GameState, p: Point, viewer?: PlayerId): str
     lines.push(`${name}, HP ${Math.ceil(enemy.hp)} / ${enemy.maxHp}${doing ? `, ${doing}` : ""}`);
   }
   if (enemies.length > 3) lines.push(`...and ${enemies.length - 3} more`);
+  // Units in sight: your own always are (they see), a rival's only where you can see.
+  if (tier === IN_SIGHT) {
+    for (const unit of state.units) {
+      if (Math.round(unit.x) !== p.x || Math.round(unit.y) !== p.y) continue;
+      const whose = playerName(state, unit.owner);
+      lines.push(
+        `${UNIT_KINDS[unit.kind].name} (${whose}'s), HP ${Math.ceil(unit.hp)} / ${unit.maxHp}`,
+      );
+    }
+  }
   const enclosure = enclosureLine(state, p, viewer);
   if (enclosure) lines.push(enclosure);
   if (tier !== IN_SIGHT) lines.push("Out of sight: enemies here aren't shown");
