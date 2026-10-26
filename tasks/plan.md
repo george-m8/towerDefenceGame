@@ -42,7 +42,7 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | 1c. Presentation | `audio` | Done |
 | | `music-packs` | Done (tasks in [`tasks/music-packs/`](music-packs/todo.md)) |
 | | `music-director` | Outline only (see below); intro hand-over now part of `music-packs` |
-| 1f. Editors and levels (see below) | `map-editor` | **Spec approved; tasks in [`tasks/todo.md`](todo.md)** |
+| 1f. Editors and levels (see below) | `map-editor` | **Built; browser-checked headless, hand checks pending (tasks in [`tasks/todo.md`](todo.md))** |
 | | `wave-editor` | Next: `.wave` files |
 | | `loadout-editor` | After: `.loadout` files |
 | | `levels` | A level = a `.map`, a `.wave` and a `.loadout`; the level picker and online play |

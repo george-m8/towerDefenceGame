@@ -91,7 +91,9 @@ Built: Play makes a local session from the map (`createLocalSession` takes `map`
 
 ## Task 8: Docs and coverage
 
-- [ ] README: the editor, its keys, where `.map` files go; SPEC.md "Since `map-editor`"; CAPABILITIES and plan statuses
-- [ ] Coverage for `src/sim/` and `tools/` stays at 80% or more
+- [x] README: the editor, its keys, where `.map` files go; SPEC.md "Since `map-editor`"; CAPABILITIES and plan statuses
+- [x] Coverage for `src/sim/` and `tools/` stays at 80% or more
 
 Files: `README.md`, `SPEC.md`, `CAPABILITIES.md`, `tasks/plan.md`. Size: S. Depends on: all.
+
+Built: lines covered 98% overall, `src/sim/mapFile.ts` 98%, `tools/` 80% (`tools/maps.ts` 85%; the rest is the dev server's file watcher, checked against a live server). Under `npm run coverage` the XL timing tests in `guards` and `units` fail on `main` too (coverage slows the code they time); they pass under `npm test`. The README's terrain table now shows the tree and berry glyphs from the Unifont change.

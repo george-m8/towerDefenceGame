@@ -84,13 +84,16 @@ export function maps(dir = "maps"): Plugin {
       };
       server.watcher.add(folder);
       for (const event of ["add", "change", "unlink"]) server.watcher.on(event, changed);
-      server.middlewares.use(MAPS_ENDPOINT, (req, res) => void handle(dir, req, res));
+      server.middlewares.use(MAPS_ENDPOINT, (req, res) => void serveMaps(dir, req, res));
     },
   };
 }
 
-/** GET /__maps lists the maps now on disk; POST /__maps/<name> saves one. */
-async function handle(dir: string, req: IncomingMessage, res: ServerResponse) {
+/**
+ * The dev server's endpoint, mounted at MAPS_ENDPOINT (so `req.url` is what follows it):
+ * GET lists the maps now on disk; POST /<name> saves one.
+ */
+export async function serveMaps(dir: string, req: IncomingMessage, res: ServerResponse) {
   const reply = (status: number, body: unknown) => {
     res.statusCode = status;
     res.setHeader("Content-Type", "application/json");

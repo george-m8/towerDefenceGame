@@ -1,14 +1,20 @@
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { MAP_EDITOR } from "../../src/sim/config";
 import { mapFromGenerated } from "../../src/sim/game";
 import { mapName, parseMap, serializeMap, validateMap } from "../../src/sim/mapFile";
-import { saveMap, scanMaps } from "../../tools/maps";
+import { maps as mapsPlugin, saveMap, scanMaps, serveMaps } from "../../tools/maps";
 
 let root = "";
-afterEach(() => root && rmSync(root, { recursive: true, force: true }));
+let server: Server | null = null;
+afterEach(() => {
+  server?.close();
+  server = null;
+  if (root) rmSync(root, { recursive: true, force: true });
+});
 
 function folder(): string {
   root = mkdtempSync(join(tmpdir(), "maps-"));
@@ -96,5 +102,63 @@ describe("the maps in the repo", () => {
       expect(parseMap(JSON.parse(serializeMap(map))), name).toEqual({ map });
       expect(validateMap(map).errors, name).toEqual([]);
     }
+  });
+});
+
+describe("the plugin", () => {
+  it("serves the maps as virtual:maps", () => {
+    const dir = folder();
+    writeFileSync(join(dir, "alpha.map"), serializeMap(sample));
+    const plugin = mapsPlugin(dir);
+    const resolve = plugin.resolveId as (id: string) => string | undefined;
+    const load = plugin.load as (id: string) => string | undefined;
+    const id = resolve("virtual:maps")!;
+    expect(resolve("something-else")).toBeUndefined();
+    const code = load(id)!;
+    expect(JSON.parse(code.replace(/^export default /, "").replace(/;$/, ""))).toEqual({
+      alpha: sample,
+    });
+    expect(load("something-else")).toBeUndefined();
+  });
+});
+
+describe("the dev server's endpoint", () => {
+  /** A real HTTP server with the endpoint mounted at its root, as Vite mounts it at /__maps. */
+  async function serve(dir: string): Promise<string> {
+    server = createServer((req, res) => void serveMaps(dir, req, res));
+    await new Promise<void>((done) => server!.listen(0, "127.0.0.1", done));
+    const address = server.address() as { port: number };
+    return `http://127.0.0.1:${address.port}`;
+  }
+
+  it("lists the maps on disk, and saves one", async () => {
+    const dir = folder();
+    const url = await serve(dir);
+    expect(await (await fetch(`${url}/`)).json()).toEqual({});
+    const saved = await fetch(`${url}/river-crossing`, {
+      method: "POST",
+      body: serializeMap(sample),
+    });
+    expect(saved.status).toBe(200);
+    expect(await saved.json()).toEqual({ saved: "river-crossing.map" });
+    expect(await (await fetch(`${url}/`)).json()).toEqual({ "river-crossing": sample });
+  });
+
+  it("refuses other methods, bad names and oversize bodies, writing nothing", async () => {
+    const dir = folder();
+    const url = await serve(dir);
+    expect((await fetch(`${url}/x`, { method: "PUT", body: "{}" })).status).toBe(405);
+    const badName = await fetch(`${url}/Bad%20Name`, {
+      method: "POST",
+      body: serializeMap(sample),
+    });
+    expect(badName.status).toBe(400);
+    expect((await badName.json()).error).toContain("isn't a map name");
+    const huge = await fetch(`${url}/big`, {
+      method: "POST",
+      body: " ".repeat(MAP_EDITOR.maxFileBytes + 1),
+    });
+    expect(huge.status).toBe(413);
+    expect(readdirSync(dir)).toEqual([]);
   });
 });
