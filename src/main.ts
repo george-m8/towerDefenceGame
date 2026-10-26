@@ -179,14 +179,17 @@ createMapButtons(element("#map-buttons"), {
       toggle: () => {
         toggleSun(ui);
         sunSlider.sync();
+      },
     },
-    { 
+    {
+      // Clicks take 35% off whatever's on the tile (never destroying it).
       label: "Damage tool",
       isOn: () => ui.debugDamage,
       toggle: () => {
         ui.debugDamage = !ui.debugDamage;
         if (ui.debugDamage) ui.tool = null;
-     },
+      },
+      available: inGame,
     },
   ],
   settings: element("#settings"),
