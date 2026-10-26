@@ -29,10 +29,12 @@ export function toClientState(state: GameState): ClientState {
  */
 export interface SentState {
   gridVersion: number;
+  sightVersion: number;
   terrain: GameState["terrain"];
   base: number[];
   mount: number[];
   explored: number[];
+  resources: number[];
   /** The chest list as sent; claiming a chest replaces the list, so a new list means a change. */
   features: GameState["features"];
   structures: Map<number, ClientStructure>;
@@ -46,10 +48,12 @@ export interface SentState {
 export function sentStateOf(state: GameState): SentState {
   return {
     gridVersion: state.gridVersion,
+    sightVersion: state.sightVersion,
     terrain: [...state.terrain],
     base: [...state.base],
     mount: [...state.mount],
     explored: [...state.explored],
+    resources: [...state.resources],
     features: state.features,
     structures: new Map(
       Object.values(state.structures).map((s) => [s.id, toClientStructure(s)] as const),
@@ -102,8 +106,13 @@ export function toUpdate(state: GameState, sent: SentState): StateUpdate {
   if (changed.length > 0) update.structures = changed;
   if (removed.length > 0) update.removed = removed;
 
-  if (state.gridVersion !== sent.gridVersion) {
-    const tiles: NonNullable<StateUpdate["tiles"]> = {};
+  // Harvesting changes resources without changing the grid, so they're checked every time.
+  const resources = changedTiles(state.resources, sent.resources);
+  if (resources.length > 0) update.tiles = { resources };
+
+  // Units explore as they walk, which changes sight but not the grid.
+  if (state.gridVersion !== sent.gridVersion || state.sightVersion !== sent.sightVersion) {
+    const tiles: NonNullable<StateUpdate["tiles"]> = update.tiles ?? {};
     const terrain = changedTiles(state.terrain, sent.terrain);
     const base = changedTiles(state.base, sent.base);
     const mount = changedTiles(state.mount, sent.mount);
@@ -112,8 +121,9 @@ export function toUpdate(state: GameState, sent: SentState): StateUpdate {
     if (base.length > 0) tiles.base = base;
     if (mount.length > 0) tiles.mount = mount;
     if (explored.length > 0) tiles.explored = explored;
-    update.tiles = tiles;
+    if (Object.keys(tiles).length > 0) update.tiles = tiles;
     sent.gridVersion = state.gridVersion;
+    sent.sightVersion = state.sightVersion;
   }
   if (state.features !== sent.features) {
     update.features = state.features;

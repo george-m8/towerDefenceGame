@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ENEMY_KIND_ORDER } from "../../src/sim/config";
+import { ENEMY_KIND_ORDER, RESOURCES, TICK_RATE } from "../../src/sim/config";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand, createGame, tick } from "../../src/sim/game";
 import { canBuild, topAt } from "../../src/sim/grid";
@@ -13,6 +13,7 @@ import {
   interpolationFraction,
 } from "../../src/net/view";
 import { spawnUnit } from "../../src/sim/units";
+import { harvest, placeResource, resourceAt } from "../../src/sim/resources";
 import { describeTile } from "../../src/ui/tileInfo";
 import type { ClientEnemy } from "../../src/net/protocol";
 
@@ -234,5 +235,53 @@ describe("units over the network", () => {
     const before = { id: 1, x: 5, y: 5, hp: 30, maxHp: 30, owner: 1, kind: 0 };
     const after = { ...before, x: 6 };
     expect(interpolateUnits([before], [after], 0.25)[0]).toMatchObject({ x: 5.25, y: 5 });
+  });
+});
+
+describe("exploring over the network", () => {
+  it("sends land a unit explored even when the grid hasn't changed", () => {
+    const server = createGame(4, { blankMap: true });
+    server.wave.countdown = Infinity;
+    const view = fromClientState(overTheWire(toClientState(server)));
+    const sent = sentStateOf(server);
+    spawnUnit(server, "militia", 1, 5, 5); // far from the keep: new land
+    const i = 5 * server.width + 5;
+    expect(server.explored[i]).not.toBe(0);
+    applyUpdate(view, overTheWire(toUpdate(server, sent)));
+    expect(view.explored[i]).toBe(server.explored[i]);
+  });
+});
+
+describe("resources over the network", () => {
+  it("arrive in the welcome, and a hit sends just that tile", () => {
+    const server = createGame(4, { blankMap: true, fog: false });
+    placeResource(server, 5, 5, "tree", 30);
+    placeResource(server, 9, 9, "rock", 40);
+    const view = fromClientState(overTheWire(toClientState(server)));
+    expect(resourceAt(view, 5, 5)).toMatchObject({ terrain: "tree", worth: 30, goldLeft: 30 });
+
+    const sent = sentStateOf(server);
+    harvest(server, 5, 5, RESOURCES.tree.seconds / 3, 1);
+    tick(server);
+    const update = overTheWire(toUpdate(server, sent));
+    const workLeft = (RESOURCES.tree.seconds * TICK_RATE * 2) / 3;
+    expect(update.tiles?.resources).toEqual([[5 * server.width + 5, workLeft]]);
+    expect(update).not.toHaveProperty("resourceWorth");
+    applyUpdate(view, update);
+    expect(resourceAt(view, 5, 5)).toMatchObject({ worth: 30, goldLeft: 20, workLeft });
+
+    tick(server);
+    expect(toUpdate(server, sent).tiles?.resources).toBeUndefined(); // nothing changed
+  });
+
+  it("a used-up tile turns to ground for the client too", () => {
+    const server = createGame(4, { blankMap: true, fog: false });
+    placeResource(server, 5, 5, "berries", 1);
+    const view = fromClientState(overTheWire(toClientState(server)));
+    const sent = sentStateOf(server);
+    harvest(server, 5, 5, RESOURCES.berries.seconds, 1);
+    applyUpdate(view, overTheWire(toUpdate(server, sent)));
+    expect(resourceAt(view, 5, 5)).toBeNull();
+    expect(view.terrain[5 * view.width + 5]).toBe("ground");
   });
 });

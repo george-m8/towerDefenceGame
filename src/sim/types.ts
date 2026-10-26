@@ -210,6 +210,10 @@ export interface GameState {
   height: number;
   // Per-tile layers, index = y * width + x. Read them through the grid.ts helpers only.
   terrain: Terrain[];
+  /** Ticks of work left on each tile's resource (0 = none); see sim/resources.ts. */
+  resources: number[];
+  /** Gold each tile's resource pays in all. */
+  resourceWorth: number[];
   /** What the tile is: EMPTY, KEEP_TILE, or a base structure id. */
   base: number[];
   /** A tower standing on the tile: EMPTY or a mount structure id. */

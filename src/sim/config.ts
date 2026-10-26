@@ -213,6 +213,34 @@ export const STRUCTURES = {
     income: { gold: 2, intervalSeconds: 5 },
     sight: { inner: 3, outer: 6 },
   },
+  // Gatherer buildings: free workers up to `quota`, one every `intervalSeconds` (see UNIT_KINDS).
+  timberYard: {
+    name: "Timber yard",
+    layer: "base",
+    cost: 60,
+    maxHp: 40,
+    blocksMovement: true,
+    sight: { inner: 3, outer: 6 },
+    spawner: { unit: "lumberjack", quota: 5, intervalSeconds: 60 },
+  },
+  mine: {
+    name: "Mine",
+    layer: "base",
+    cost: 100,
+    maxHp: 40,
+    blocksMovement: true,
+    sight: { inner: 3, outer: 6 },
+    spawner: { unit: "miner", quota: 5, intervalSeconds: 60 },
+  },
+  foragerHut: {
+    name: "Forager hut",
+    layer: "base",
+    cost: 40,
+    maxHp: 30,
+    blocksMovement: true,
+    sight: { inner: 3, outer: 6 },
+    spawner: { unit: "forager", quota: 5, intervalSeconds: 60 },
+  },
   bridge: {
     name: "Bridge",
     layer: "base",
@@ -263,7 +291,7 @@ export const BURST_DELAY_TICKS = 6;
 export const BURST_TICKS = 24;
 
 /** What a unit does each tick (see sim/units.ts). */
-export type UnitBehaviourId = "hold";
+export type UnitBehaviourId = "hold" | "gather";
 
 /** A kind of the player's own unit. Units spawn free from their building (see SpawnerStats). */
 export interface UnitKind {
@@ -279,6 +307,10 @@ export interface UnitKind {
   speed: number; // tiles per second
   sight: SightStats;
   behaviour: UnitBehaviourId;
+  /** Workers: the resources it gathers, one `attackInterval` of work per hit. */
+  gathers?: ResourceTerrain[];
+  /** Workers: what hover info says while it works ("chopping"). */
+  working?: string;
 }
 
 export const UNIT_KINDS = {
@@ -294,6 +326,51 @@ export const UNIT_KINDS = {
     speed: 1,
     sight: { inner: 3, outer: 5 },
     behaviour: "hold",
+  },
+  // Workers, spawned by gatherer buildings. They work a resource every `attackInterval`
+  // seconds (how often gold comes in); RESOURCES says what a tile pays and how long it takes.
+  // `damage` is unused: workers never fight.
+  lumberjack: {
+    glyph: "j",
+    name: "Lumberjack",
+    hp: 15,
+    armour: 0,
+    damage: 1,
+    attackInterval: 3,
+    range: 1,
+    speed: 1.2,
+    sight: { inner: 3, outer: 5 },
+    behaviour: "gather",
+    gathers: ["tree"],
+    working: "chopping",
+  },
+  miner: {
+    glyph: "p",
+    name: "Miner",
+    hp: 18,
+    armour: 1,
+    damage: 1,
+    attackInterval: 3,
+    range: 1,
+    speed: 1,
+    sight: { inner: 3, outer: 5 },
+    behaviour: "gather",
+    gathers: ["rock", "goldRock"],
+    working: "mining",
+  },
+  forager: {
+    glyph: "f",
+    name: "Forager",
+    hp: 12,
+    armour: 0,
+    damage: 1,
+    attackInterval: 3,
+    range: 1,
+    speed: 1.4,
+    sight: { inner: 3, outer: 5 },
+    behaviour: "gather",
+    gathers: ["berries"],
+    working: "foraging",
   },
 } satisfies Record<string, UnitKind>;
 
@@ -711,7 +788,33 @@ export const TERRAIN = {
   sea: { name: "Sea", walkable: false, buildable: "none" },
   rock: { name: "Rock", walkable: false, buildable: "none" },
   tree: { name: "Tree", walkable: false, buildable: "none" },
+  goldRock: { name: "Gold-veined rock", walkable: false, buildable: "none" },
+  berries: { name: "Berry bush", walkable: true, buildable: "none" },
 } satisfies Record<string, TerrainStats>;
+
+/**
+ * What a resource tile pays and how long it takes (see sim/resources.ts). Each worker hit pays
+ * the share of `worth` its work earned, so a tile pays exactly its worth over exactly `seconds`
+ * of one worker's work. Tune freely: tests read these.
+ */
+export interface ResourceStats {
+  /** Gold a tile pays in all, rolled per tile from the map seed: [least, most]. */
+  worth: [number, number];
+  /** Seconds one worker takes to clear a tile (more workers share it). */
+  seconds: number;
+  /** What it's called, for hover info. */
+  word: string;
+}
+
+export const RESOURCES = {
+  tree: { worth: [20, 40], seconds: 90, word: "timber" },
+  rock: { worth: [30, 60], seconds: 135, word: "ore" },
+  goldRock: { worth: [90, 180], seconds: 135, word: "ore" },
+  berries: { worth: [15, 30], seconds: 60, word: "berries" },
+} satisfies Record<string, ResourceStats>;
+
+/** Terrain that holds a resource. */
+export type ResourceTerrain = keyof typeof RESOURCES;
 
 export const MAP_GEN = {
   maxAttempts: 20, // regenerate (deterministically) this many times before falling back to open ground
@@ -729,6 +832,10 @@ export const MAP_GEN = {
   ruinHp: [0.4, 0.8] as [number, number], // fraction of full HP each ruin fragment starts with
   chestsPer1000: [2, 4] as [number, number],
   chestGold: [20, 60] as [number, number], // nearest the keep pays the least
+  // Resources (placed last, so the rest of a seed's map never changes).
+  goldVeinChance: 0.12, // share of rock tiles that are gold-veined (RESOURCES.goldRock)
+  berryPatchesPer1000: [1.5, 3] as [number, number],
+  berryPatchSize: [3, 8] as [number, number],
 };
 
 /** Gold of timber for clearing one tree with the sell tool. */

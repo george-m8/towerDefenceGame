@@ -98,7 +98,7 @@ describe("determinism", () => {
     expect(run()).toBe(run());
   });
 
-  it("stays identical over 2,000 ticks with every kind of enemy, walls and units", () => {
+  it("stays identical over 2,000 ticks with every kind of enemy, walls, units and gatherers", () => {
     const run = () => {
       const s = createGame(42);
       const keep = s.keeps[0];
@@ -120,6 +120,16 @@ describe("determinism", () => {
         applyCommand(s, 1, { type: "debugUnit", kind: "militia", x: keep.x - 6, y: keep.y + i });
       }
       for (const unit of s.units.slice(0, 3)) unit.goal = { x: keep.x - 20, y: unit.y };
+      // Gatherers sending workers out across the map.
+      for (const [kind, dx] of [
+        ["timberYard", 6],
+        ["mine", -6],
+      ] as const) {
+        const x = keep.x + (dx > 0 ? keep.size + dx : dx);
+        if (canBuild(s, 1, kind, x, keep.y).ok) placeStructure(s, kind, x, keep.y, "N", 1);
+      }
+      const total = () => s.resources.reduce((sum, n) => sum + n, 0);
+      const resourcesBefore = total();
       const modes = new Set<string>();
       let unitsFought = false;
       for (let i = 0; i < 2000; i++) {
@@ -127,12 +137,14 @@ describe("determinism", () => {
         for (const e of s.enemies) modes.add(e.mode);
         unitsFought ||= s.units.some((u) => u.hp < u.maxHp);
       }
-      return { json: JSON.stringify(s), modes, unitsFought };
+      const harvested = total() < resourcesBefore;
+      return { json: JSON.stringify(s), modes, unitsFought, harvested };
     };
     const first = run();
     expect(first.json).toBe(run().json);
     expect(first.modes).toEqual(new Set(["walking", "sprinting", "digging"]));
     expect(first.unitsFought).toBe(true);
+    expect(first.harvested).toBe(true);
   }, 20_000); // two long runs; slow under coverage instrumentation
 });
 

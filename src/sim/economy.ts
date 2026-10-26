@@ -1,17 +1,10 @@
 import { SELL_REFUND, STRUCTURES, TICK_RATE, TREE_CLEAR_GOLD, type StructureStats } from "./config";
-import {
-  enemyOccupies,
-  isBuilt,
-  isKeepTile,
-  removeStructure,
-  setTerrain,
-  terrainAt,
-  topAt,
-} from "./grid";
+import { enemyOccupies, isBuilt, isKeepTile, removeStructure, terrainAt, topAt } from "./grid";
 import { addCue } from "./cues";
 import { addBurst } from "./effects";
 import { isExplored } from "./fog";
 import { addGold, playerName } from "./players";
+import { clearResource } from "./resources";
 import type { CommandResult, GameState, PlayerId, Structure } from "./types";
 
 /** Removes dead enemies and pays each bounty to the player who struck the killing blow. */
@@ -82,7 +75,7 @@ export function refundFor(structure: Structure): number {
 function clearTerrain(state: GameState, player: PlayerId, x: number, y: number): CommandResult {
   const terrain = terrainAt(state, x, y);
   if (terrain === "tree") {
-    setTerrain(state, x, y, "ground");
+    clearResource(state, x, y);
     addGold(state, player, TREE_CLEAR_GOLD);
     return { ok: true };
   }

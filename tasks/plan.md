@@ -32,7 +32,7 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | | `enemy-targeting` | Outline (moved after `field-units` by the AoE update) |
 | | `wave-director` | Outline (moved after `field-units` by the AoE update) |
 | 1e. AoE update (see [`CAPABILITIES.md`](../CAPABILITIES.md)) | `unit-core` | Built; browser checkpoint B and online check pending, done with `resources` (tasks in [`tasks/unit-core/`](unit-core/todo.md)) |
-| | `resources` | **Spec approved; tasks in [`tasks/todo.md`](todo.md)** (gold only) |
+| | `resources` | **Built (Tasks 1-7); browser checkpoints B and C pending** (tasks in [`tasks/todo.md`](todo.md)) |
 | | `town-economy` | Spec needed |
 | | `units` | Outline (guard towers only; entity moves to `unit-core`) |
 | | `field-units` | Outline |

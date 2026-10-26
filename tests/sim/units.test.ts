@@ -1,17 +1,21 @@
 import { describe, expect, it } from "vitest";
 import {
   ENEMY_KINDS,
+  RESOURCES,
   TICK_RATE,
   UNIT_KINDS,
   STRUCTURES,
   UNIT_PATH_SEARCHES_PER_TICK,
+  type ResourceTerrain,
   type SpawnerStats,
   type StructureStats,
   type UnitKind,
+  type UnitKindId,
 } from "../../src/sim/config";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand, createGame, tick } from "../../src/sim/game";
 import { blocksAt, placeStructure, removeStructure } from "../../src/sim/grid";
+import { placeResource, resourceAt } from "../../src/sim/resources";
 import { damageUnit, spawnUnit } from "../../src/sim/units";
 import type { Enemy, Facing, GameState } from "../../src/sim/types";
 import { buildAt, createGameWithoutWaves, goldOf, paintTerrain, ring } from "./helpers";
@@ -458,5 +462,86 @@ describe("performance", () => {
       slowest = Math.max(slowest, performance.now() - start);
     }
     expect(slowest).toBeLessThan(250);
+  });
+});
+
+describe("workers", () => {
+  const chopTicks = UNIT_KINDS.lumberjack.attackInterval * TICK_RATE;
+  /** Hits one worker needs to clear a fresh tile of this kind. */
+  const hitsFor = (terrain: ResourceTerrain, worker: UnitKindId) =>
+    RESOURCES[terrain].seconds / UNIT_KINDS[worker].attackInterval;
+  const work = (terrain: ResourceTerrain) => RESOURCES[terrain].seconds * TICK_RATE;
+
+  /** Ticks until `done` holds (at most `limit`), so tests don't depend on walking speed. */
+  function until(state: GameState, done: () => boolean, limit = 2000) {
+    for (let i = 0; i < limit && !done(); i++) tick(state);
+    expect(done()).toBe(true);
+  }
+
+  it("a lumberjack walks to the nearest tree and chops it on its interval, paying its owner", () => {
+    const state = createGameWithoutWaves();
+    const perHit = 2;
+    placeResource(state, 12, 5, "tree", perHit * hitsFor("tree", "lumberjack"));
+    placeResource(state, 8, 5, "rock", 100);
+    placeResource(state, 6, 5, "berries", 100);
+    spawnUnit(state, "lumberjack", 1, 5, 5);
+    const gold = goldOf(state);
+    const left = () => resourceAt(state, 12, 5)!.goldLeft;
+    const full = left();
+
+    until(state, () => left() < full);
+    expect(goldOf(state)).toBe(gold + perHit);
+    run(state, chopTicks - 1);
+    expect(left()).toBe(full - perHit);
+    tick(state);
+    expect(left()).toBe(full - 2 * perHit);
+    expect(resourceAt(state, 8, 5)!.workLeft).toBe(work("rock"));
+    expect(resourceAt(state, 6, 5)!.workLeft).toBe(work("berries"));
+  });
+
+  it("a forager stands on its bush to forage it", () => {
+    const state = createGameWithoutWaves();
+    placeResource(state, 9, 5, "berries", 100);
+    const forager = spawnUnit(state, "forager", 1, 5, 5)!;
+    until(state, () => resourceAt(state, 9, 5)!.workLeft < work("berries"));
+    expect({ x: forager.x, y: forager.y }).toEqual({ x: 9, y: 5 });
+  });
+
+  it("a miner works plain rock, then moves on to gold-veined rock when it's gone", () => {
+    const state = createGameWithoutWaves();
+    placeResource(state, 12, 5, "rock", 1);
+    const perHit = 3;
+    placeResource(state, 16, 5, "goldRock", perHit * hitsFor("goldRock", "miner"));
+    spawnUnit(state, "miner", 1, 10, 5);
+
+    until(state, () => resourceAt(state, 12, 5) === null, work("rock") + 20 * TICK_RATE);
+    const gold = goldOf(state);
+    until(state, () => resourceAt(state, 16, 5)!.workLeft < work("goldRock"));
+    expect(goldOf(state)).toBe(gold + perHit);
+  });
+
+  it("stands still with nothing it can reach, and sets off once something can be reached", () => {
+    const state = createGameWithoutWaves();
+    buildAt(state, ring(8, 3, 12, 7));
+    const worker = spawnUnit(state, "lumberjack", 1, 10, 5)!;
+    placeResource(state, 20, 5, "tree", 100);
+    run(state, 3 * TICK_RATE);
+    expect({ x: worker.x, y: worker.y }).toEqual({ x: 10, y: 5 });
+
+    sellAt(state, 12, 5);
+    until(state, () => resourceAt(state, 20, 5)!.workLeft < work("tree"));
+  });
+
+  it("never attacks an enemy, and a goblin stops to kill one beside its path", () => {
+    const state = createGameWithoutWaves();
+    const p = { x: state.keeps[0].x - 20, y: state.keeps[0].y + 1 };
+    placeResource(state, p.x + 3, p.y - 2, "tree", 100);
+    const worker = spawnUnit(state, "lumberjack", 1, p.x + 3, p.y - 1)!;
+    const enemy = dummy(state, p.x + 4, p.y - 1);
+    run(state, 2 * chopTicks);
+    expect(enemy.hp).toBe(1000);
+
+    spawnEnemy(state, p.x, p.y);
+    until(state, () => !state.units.includes(worker), 30 * TICK_RATE);
   });
 });

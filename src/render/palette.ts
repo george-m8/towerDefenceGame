@@ -97,6 +97,7 @@ export const COLOURS = {
   buildTrack: "rgba(0, 0, 0, 0.45)",
   /** The sliver left on a destroyed thing's emptied health bar. */
   hpEmpty: "#d22020",
+  resourceLeft: "#e3c04d",
   flowArrow: "rgba(120, 200, 255, 0.55)",
   flowAttack: "rgba(255, 90, 90, 0.9)",
   range: "rgba(255, 255, 160, 0.12)",
@@ -151,6 +152,9 @@ export const GLYPHS: Record<StructureKind, string> = {
   floorSpikes: "^",
   wallSpikes: "↑",
   house: "h",
+  timberYard: "L",
+  mine: "M",
+  foragerHut: "F",
   bridge: "=",
   watchtower: "T",
   gate: "∩",
@@ -224,6 +228,9 @@ export const STRUCTURE_COLOURS: Record<StructureKind, { bg: string; fg: string }
   floorSpikes: { bg: "#3a3122", fg: "#a89878" },
   wallSpikes: { bg: "#8a7a5c", fg: "#e8e8e8" },
   house: { bg: "#7a3b2e", fg: "#ffd28a" },
+  timberYard: { bg: "#5a4325", fg: "#9fd88a" },
+  mine: { bg: "#4b4b55", fg: "#f0d27a" },
+  foragerHut: { bg: "#3f5a2e", fg: "#ff8a80" },
   bridge: { bg: "#6b4f2a", fg: "#d9b77a" },
   watchtower: { bg: "#4a5a6b", fg: "#e0ecff" },
   gate: { bg: "#7a5a32", fg: "#2a1d10" },
@@ -240,6 +247,8 @@ export const TERRAIN_STYLES: Record<
   sea: { bg: "#1a3550", glyph: "≈", fg: "#4f7fae" },
   rock: { bg: "#4a4a4a", glyph: "o", fg: "#9a9a9a" },
   tree: { bg: "#1f3d1f", glyph: "♣", fg: "#5fae5f" },
+  goldRock: { bg: "#4a4a4a", glyph: "o", fg: "#e3c04d" },
+  berries: { bg: "#2f5a2a", glyph: "b", fg: "#e2453c" },
 };
 
 /** The texture over each kind of terrain (see render/textures.ts). */
@@ -248,8 +257,11 @@ export const TERRAIN_TEXTURES: Record<Terrain, TextureStyle> = {
   ford: "speckle",
   river: "ripple",
   sea: "ripple",
-  rock: "ore",
+  // Gold flecks mark gold-veined rock only, so it stands out from plain rock.
+  rock: "speckle",
   tree: "speckle",
+  goldRock: "ore",
+  berries: "speckle",
 };
 /** The keep's stone walls. */
 export const KEEP_TEXTURE: TextureStyle = "stone";

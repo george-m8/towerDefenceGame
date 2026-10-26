@@ -83,6 +83,10 @@ Prices and rates will be rebalanced soon, so every number here is meant to be ea
 - **Tests read config.** Tests compute expected gold, timings and counts from the config rows (e.g. `RESOURCES.goldRock.value * hit`) instead of repeating numbers, so changing a number never breaks a test that isn't about that number.
 - **README Tuning section** gains a table: what each number does, where it lives, and what it is now, with the rough income a full gatherer earns per minute worked out from them.
 
+### Worth and time (2026-10-26, after play-testing)
+
+Rewards felt low for the time taken, and each resource should be tunable by what it's worth and how long it takes. So a `RESOURCES` row is now `worth` (gold a tile pays in all, rolled per tile) and `seconds` (how long one worker takes to clear it), replacing amount x value. Each tile tracks the work left (`state.resources`, in ticks) and its worth (`state.resourceWorth`). A hit of `attackInterval` seconds pays the gold its work earned, so a tile pays exactly its worth over exactly its time. Hover reads `Tree - 18 of 30g of timber left`. Defaults keep the first averages: trees 20-40g over 90 s, rock 30-60g and gold-veined 90-180g over 135 s, berries 15-30g over 60 s.
+
 ## Out of scope
 
 - Food as a currency, the economy toggle, food costs: `food` (with `game-setup`)

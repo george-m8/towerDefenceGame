@@ -63,9 +63,21 @@ Most kinds come in **variants**, shown by glyph size: a small `g` is a goblin ru
 
 ### Your units
 
-You'll soon have people of your own on the map: workers, guards and soldiers, each spawned free by the building that makes them (one a minute, up to a set number alive). The groundwork is in: a unit belongs to a player, finds its own way around walls, fights enemies within reach and sees around itself (lifting fog as it goes). Enemies stop to fight a unit that's in their way or right next to them; battering rams ignore units. In PvP your towers shoot a rival's units before their buildings. A unit that dies bursts into pixels in its owner's colour, and nobody is paid for it.
+You have people of your own on the map: workers now, with guards and soldiers to come, each spawned free by the building that makes them (one a minute, up to a set number alive). A unit belongs to a player, finds its own way around walls, fights enemies within reach and sees around itself (lifting fog as it goes). Enemies stop to fight a unit that's in their way or right next to them; battering rams ignore units. In PvP your towers shoot a rival's units before their buildings. A unit that dies bursts into pixels in its owner's colour, and nobody is paid for it.
 
-No building makes units yet (the timber yard comes with `resources`). To try them, press `U` on the dev server to put a militia (`i`) on the tile under the mouse; hover it to see `Militia (your name's), HP 30 / 30`.
+Gatherer buildings make workers (see [Resources](#resources)). On the dev server you can also press `U` to put a militia (`i`) on the tile under the mouse; hover it to see `Militia (your name's), HP 30 / 30`.
+
+### Resources
+
+Trees, rocks and berry bushes hold resources, and workers turn them into gold. Build a gatherer and it sends out a worker straight away, then another every minute, up to 5:
+
+- **Timber yard** (`T`, 60g, drawn `L`): lumberjacks `j` chop trees.
+- **Mine** (`G`, 100g, drawn `M`): miners `p` mine rock. Gold-veined rock (`o` in gold) pays three times as much.
+- **Forager hut** (`B`, 40g, drawn `F`): foragers `f` pick berry bushes (green, red `b`). Berries are food in the story; for now they pay gold too.
+
+Each worker walks to the nearest resource it gathers (even into fog, lighting it up) and works it. Every resource tile is worth some gold and takes a set time to clear: every 3 seconds a worker pays you the share of its worth that work earned, and two workers on one tile clear it twice as fast. A tile that's used up disappears: a tree or rock becomes open ground, which can open a new route for enemies. Hover a resource to see what's left (`Tree - 18 of 30g of timber left`) or a worker to see what it's doing (`chopping`, `walking`, `idle: nothing to gather`).
+
+Workers never fight. Enemies kill them like any unit, and in PvP your rival's towers shoot them, but their building sends a replacement as soon as it can. Sell or lose the building and its workers carry on, but nobody replaces them.
 
 ### Monster journal
 
@@ -82,6 +94,9 @@ The first time a kind of enemy comes into sight (not while it's hidden in fog), 
 | `5` | Floor spikes | `^` | 15 | Walkable. Every 1.5s spikes come up and deal 15 damage to every enemy on the tile. |
 | `6` | Wall spikes | arrow `↑→↓←` | 20 | A wall section that fires every 2s, dealing 20 damage to the one tile it faces. Press `R` to rotate before placing. |
 | `7` | House | `h` | 40 | +2 gold every 5s. Blocks movement. |
+| `T` | Timber yard | `L` | 60 | Sends out up to 5 lumberjacks, one a minute, to chop trees for gold. Blocks movement. |
+| `G` | Mine | `M` | 100 | Sends out up to 5 miners to mine rock (gold-veined rock pays 3x). Blocks movement. |
+| `B` | Forager hut | `F` | 40 | Sends out up to 5 foragers to pick berry bushes. Blocks movement. |
 | `8` | Bridge | `=` | 10 | Only on river tiles. Makes the river walkable there (for enemies too). |
 | `9` | Watchtower | `T` | 20 | Doesn't attack. Sees all round, as far as a cannon (see [Fog of war](#fog-of-war)). Stands on open ground or a wall, like a tower. |
 | `0` | Gate | `∩` | 15 | Part of a wall that enemies walk straight through. Still closes a ring of walls, so the area inside counts as enclosed (and keeps its discount). |
@@ -97,8 +112,10 @@ Every game starts on a new, randomly generated map (the seed is shown in the pan
 | Ford | sandy | yes | yes | A shallow crossing of the river |
 | River | `~` light blue | no | bridges only | Build a bridge (`8`) to cross it anywhere else |
 | Sea | `≈` dark blue | no | no | Coastline along one edge |
-| Rock | `o` grey | no | no | Can't be cleared |
-| Tree | `♣` green | no | no | Clear with `X` for 1 gold of timber |
+| Rock | `o` grey | no | no | Miners mine it (worth 30-60g, 135s of work); open ground once used up |
+| Gold-veined rock | `o` gold | no | no | About 1 rock in 8. Miners mine it (worth 90-180g, 135s) |
+| Tree | `♣` green | no | no | Lumberjacks chop it (worth 20-40g, 90s). Or clear it with `X` for 1 gold |
+| Berry bush | `b` red on green | yes | no | Foragers pick it (worth 15-30g, 60s) |
 
 - **Ruins** (`#` in dark stone) are old, damaged walls. They block enemies, can hold a tower, and sell for a little salvage. You can't build new ones.
 - **Treasure chests** (`$` in gold) are piles of gold lying on the map (20-60, more the further from the keep). Build anything on one to claim it.
@@ -335,7 +352,8 @@ src/sim/              Pure, deterministic game simulation (no DOM, seeded RNG)
   enemies.ts          Spawning, walking, bands and attacking
   behaviours.ts       Bombers, shamans and diggers
   movement.ts         Tile-to-tile stepping shared by enemies and units
-  units.ts            Player units: spawning, spawner buildings, behaviours, fighting
+  units.ts            Player units: spawning, spawner buildings, behaviours (hold, gather), fighting
+  resources.ts        Resource amounts on the map, and harvesting them for gold
   unitPaths.ts        Path search for units (to the nearest of any number of goals)
   towers.ts           Tower targeting and damage
   traps.ts            Spike trap cycles
@@ -361,4 +379,18 @@ The simulation already supports several players on one map (see [`SPEC-players.m
 
 ## Tuning
 
-Every gameplay number lives in `src/sim/config.ts`. The current values are first-pass guesses and haven't been balanced yet.
+Every gameplay number lives in `src/sim/config.ts`. The current values are first-pass guesses and haven't been balanced yet. Tests read their numbers from config, so changing one never breaks a test that isn't about it.
+
+The economy, to balance against each other:
+
+| What | Where (`config.ts`) | Now |
+|---|---|---|
+| Starting gold | `STARTING_GOLD` | 250 |
+| House cost and income | `STRUCTURES.house` | 40g; 2g every 5s (24g a minute) |
+| Gatherer cost, quota, spawn interval | `STRUCTURES.timberYard`, `.mine`, `.foragerHut` (`cost`, `spawner`) | 60 / 100 / 40g; 5 workers; one every 60s |
+| Worker stats (HP, speed, how often gold comes in) | `UNIT_KINDS.lumberjack`, `.miner`, `.forager` (`attackInterval`) | paid every 3s |
+| What each resource tile is worth, and how long one worker takes to clear it | `RESOURCES` (`worth`, `seconds`) | trees 20-40g / 90s, rock 30-60g / 135s, gold-veined 90-180g / 135s, berries 15-30g / 60s |
+| How much is on the map | `MAP_GEN` (`forestsPer1000`, `rockClustersPer1000`, `goldVeinChance`, `berryPatchesPer1000`, ...) | gold veins 12% of rock |
+| Clearing a tree with `X` | `TREE_CLEAR_GOLD` | 1g |
+
+A worker earns about `average worth / seconds` gold a second while working (walking between tiles not counted): 0.33g/s on trees, berries and plain rock, 1g/s on gold veins. So a full gatherer (5 workers) earns about 100g a minute (a mine up to 300g on gold veins), against a house's 24g. To make a resource pay more for the time, raise its `worth` or lower its `seconds`.

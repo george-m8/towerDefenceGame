@@ -1,11 +1,16 @@
 import {
   ENCLOSURE_DISCOUNT,
   ENEMY_KINDS,
+  RESOURCES,
   STRUCTURES,
+  TERRAIN,
   TREE_CLEAR_GOLD,
   UNIT_KINDS,
   type StructureStats,
+  type UnitKind,
 } from "../sim/config";
+import { resourceAt } from "../sim/resources";
+import { workableFrom } from "../sim/units";
 import { playerName } from "../sim/players";
 import {
   KEEP,
@@ -30,6 +35,7 @@ import {
 } from "../sim/grid";
 import { livingLeader } from "../sim/enemies";
 import type {
+  Unit,
   Enemy,
   GameState,
   PlayerId,
@@ -49,6 +55,8 @@ const TERRAIN_DESCRIPTIONS: Record<Terrain, string> = {
   sea: "Sea",
   rock: "Rock - impassable",
   tree: `Tree - X to clear for ${TREE_CLEAR_GOLD}g`,
+  goldRock: "Gold-veined rock - impassable",
+  berries: "Berry bush",
 };
 
 /** Human-readable lines describing what is on a tile, for the hover info box. */
@@ -76,7 +84,15 @@ export function describeTile(state: GameState, p: Point, viewer?: PlayerId): str
   } else if (isSpawnTile(state, p.x, p.y)) {
     lines.push("Spawn zone");
   } else {
-    lines.push(TERRAIN_DESCRIPTIONS[terrainAt(state, p.x, p.y)]);
+    const resource = resourceAt(state, p.x, p.y);
+    if (resource) {
+      const { word } = RESOURCES[resource.terrain];
+      const name = TERRAIN[resource.terrain].name;
+      lines.push(`${name} - ${resource.goldLeft} of ${resource.worth}g of ${word} left`);
+      if (resource.terrain === "tree") lines.push(`X to clear for ${TREE_CLEAR_GOLD}g`);
+    } else {
+      lines.push(TERRAIN_DESCRIPTIONS[terrainAt(state, p.x, p.y)]);
+    }
   }
 
   for (const feature of state.features) {
@@ -103,8 +119,10 @@ export function describeTile(state: GameState, p: Point, viewer?: PlayerId): str
     for (const unit of state.units) {
       if (Math.round(unit.x) !== p.x || Math.round(unit.y) !== p.y) continue;
       const whose = playerName(state, unit.owner);
+      const doing = unitDoing(state, unit);
       lines.push(
-        `${UNIT_KINDS[unit.kind].name} (${whose}'s), HP ${Math.ceil(unit.hp)} / ${unit.maxHp}`,
+        `${UNIT_KINDS[unit.kind].name} (${whose}'s), HP ${Math.ceil(unit.hp)} / ${unit.maxHp}` +
+          (doing ? `, ${doing}` : ""),
       );
     }
   }
@@ -193,4 +211,13 @@ export function hoverText(state: GameState, ui: UiState): string {
   const lines = describeTile(state, ui.hover, ui.playerId);
   if (isBuildTool(ui.tool)) lines.unshift(priceLine(state, ui.tool, ui.hover, ui.playerId));
   return lines.join("\n");
+}
+
+/** What a worker is up to: its work ("chopping"), walking, or idle. Other units say nothing. */
+function unitDoing(state: GameState, unit: Unit): string | null {
+  const kind: UnitKind = UNIT_KINDS[unit.kind];
+  if (!kind.gathers) return null;
+  const between = !Number.isInteger(unit.x) || !Number.isInteger(unit.y);
+  if (!between && workableFrom(state, unit.x, unit.y, kind.gathers)) return kind.working ?? null;
+  return between || (unit.path?.length ?? 0) > 0 ? "walking" : "idle: nothing to gather";
 }
