@@ -20,12 +20,14 @@ Built: guard buildings show a facing notch like cannons, and the placing preview
 
 `src/sim/guards.ts`: `guardSpots(state, building)` (the open, reachable tiles of the two rows of three in front, in order: near middle, near sides, far middle, far sides) and `guardSpotOf(state, unit)` (its building's spot by age among its living guards, sharing when short; its `goal` when homeless; beside its building when no spot is open).
 
-- [ ] Facing east, spots run straight ahead, then the sides, then the far row; blocked or unreachable tiles are skipped
-- [ ] One open tile in front: every guard shares it
-- [ ] Building over a spot moves its guard to the next open spot
-- [ ] A homeless guard keeps its last spot
+- [x] Facing east, spots run straight ahead, then the sides, then the far row; blocked or unreachable tiles are skipped
+- [x] One open tile in front: every guard shares it
+- [x] Building over a spot moves its guard to the next open spot
+- [x] A homeless guard keeps its last spot
 
 Files: `src/sim/guards.ts` (new), `tests/sim/guards.test.ts`. Size: S. Depends on: 1.
+
+Built: a spot counts as reachable if it's within 12 steps of the building's sides; spots are cached per building and grid version. With no open spot, `guardSpotOf` returns null and the guard stays put.
 
 ## Task 3: Guard behaviour: holding a spot
 
