@@ -167,6 +167,15 @@ createMapButtons(element("#map-buttons"), {
       toggle: () => dispatch({ type: "debugFog", on: session?.state?.fog !== true }),
     },
     { label: "Show paths", isOn: () => ui.showFlow, toggle: () => (ui.showFlow = !ui.showFlow) },
+    {
+      // Clicks take 35% off whatever's on the tile (never destroying it).
+      label: "Damage tool",
+      isOn: () => ui.debugDamage,
+      toggle: () => {
+        ui.debugDamage = !ui.debugDamage;
+        if (ui.debugDamage) ui.tool = null;
+      },
+    },
   ],
   settings: element("#settings"),
   journal: () => journalView.toggle(),

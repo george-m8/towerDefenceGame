@@ -293,13 +293,15 @@ export type Command =
   | { type: "debugFog"; on: boolean }
   /** Dev only (offline): a unit for the sender on (x, y). */
   | { type: "debugUnit"; kind: UnitKindId; x: number; y: number }
+  /** Dev only (offline): knocks DEBUG_DAMAGE of its full amount off the top thing on (x, y). */
+  | { type: "debugDamage"; x: number; y: number }
   | { type: "sendWave" }
   | { type: "sell"; x: number; y: number };
 
 /** Commands for testing: offline only, refused online. */
 export type DebugCommand = Extract<
   Command,
-  { type: "debugSpawn" | "debugOption" | "debugFog" | "debugUnit" }
+  { type: "debugSpawn" | "debugOption" | "debugFog" | "debugUnit" | "debugDamage" }
 >;
 
 export function isDebugCommand(command: Command): command is DebugCommand {
@@ -307,7 +309,8 @@ export function isDebugCommand(command: Command): command is DebugCommand {
     command.type === "debugSpawn" ||
     command.type === "debugOption" ||
     command.type === "debugFog" ||
-    command.type === "debugUnit"
+    command.type === "debugUnit" ||
+    command.type === "debugDamage"
   );
 }
 

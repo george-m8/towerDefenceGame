@@ -61,6 +61,8 @@ import {
   TERRAIN_TEXTURES,
   KEEP_TEXTURE,
   STRUCTURE_TEXTURES,
+  DAMAGED_WALL_TEXTURE,
+  WALL_DAMAGED_BELOW,
   TEXTURE_MIN_TILE_PX,
   TILE_SIZE,
   OWNER_MARK_PX,
@@ -88,6 +90,14 @@ function toCanvasAngle(compassDegrees: number): number {
  * Raised blocks (a visual prototype): solid things are drawn lifted by their height in
  * pixels, with a darker front face below, so walls and towers read as 3D blocks.
  */
+/** A wall that's taken more than half its HP: drawn cracked, and a little lower. */
+export function isDamagedWall(structure: Structure): boolean {
+  return structure.kind === "wall" && structure.hp < structure.maxHp * WALL_DAMAGED_BELOW;
+}
+
+/** How tall untouched rock (and gold rock) stands, in pixels. */
+const ROCK_HEIGHT = 4;
+
 export function blockHeight(state: GameState, x: number, y: number): number {
   if (isKeepTile(state, x, y)) {
     // The corners stand a little taller, like towers, round a low middle.
@@ -102,11 +112,18 @@ export function blockHeight(state: GameState, x: number, y: number): number {
   const built = (s: Structure | undefined) => (s && isBuilt(s) ? s : undefined);
   const base = built(baseAt(state, x, y));
   const mount = built(mountAt(state, x, y));
-  if (mount) return base ? 11 : 8;
-  if (base) return STRUCTURES[base.kind].blocksMovement ? 6 : 0;
+  // A battered wall sinks a little, and a tower on it with it.
+  const sunk = base && isDamagedWall(base) ? 1 : 0;
+  if (mount) return base ? 11 - sunk : 8;
+  if (base) return STRUCTURES[base.kind].blocksMovement ? 6 - sunk : 0;
   const terrain = terrainAt(state, x, y);
   if (terrain === "tree") return 7;
-  if (terrain === "rock" || terrain === "goldRock") return 4;
+  if (terrain === "rock" || terrain === "goldRock") {
+    // Ore sinks as it's mined: full height while untouched, down to a sliver near the end.
+    const ore = resourceAt(state, x, y);
+    if (!ore) return ROCK_HEIGHT;
+    return Math.max(1, Math.round(ROCK_HEIGHT * (ore.goldLeft / ore.worth)));
+  }
   // Bushes stand just off the ground; they're still walked over.
   return terrain === "berries" ? 2 : 0;
 }
@@ -459,16 +476,16 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     const { x, y } = structure;
     const colours = STRUCTURE_COLOURS[structure.kind];
     if (!isBuilt(structure)) ctx!.globalAlpha = CONSTRUCTION_ALPHA;
-    drawStructureTile(x, y, structure.kind);
+    drawStructureTile(x, y, structure.kind, isDamagedWall(structure));
     drawSymbol(x, y, structure.kind, structure.facing, colours.fg, structure.aim);
     ctx!.globalAlpha = 1;
     drawBars(structure, structure);
   }
 
   /** A structure's tile colour, textured for those that have one (stone walls). */
-  function drawStructureTile(x: number, y: number, kind: StructureKind) {
+  function drawStructureTile(x: number, y: number, kind: StructureKind, damaged = false) {
     drawTile(x, y, STRUCTURE_COLOURS[kind].bg);
-    const texture = STRUCTURE_TEXTURES[kind];
+    const texture = damaged ? DAMAGED_WALL_TEXTURE : STRUCTURE_TEXTURES[kind];
     if (texture) drawTexture(x, y, texture);
   }
 
@@ -477,7 +494,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     const { x, y } = tower;
     const towerColour = STRUCTURE_COLOURS[tower.kind].bg;
     if (!isBuilt(wall)) ctx!.globalAlpha = CONSTRUCTION_ALPHA;
-    drawStructureTile(x, y, wall.kind);
+    drawStructureTile(x, y, wall.kind, isDamagedWall(wall));
     ctx!.globalAlpha = isBuilt(tower) ? 1 : CONSTRUCTION_ALPHA;
     drawSymbol(x, y, tower.kind, tower.facing, towerColour, tower.aim);
     ctx!.fillStyle = towerColour;
