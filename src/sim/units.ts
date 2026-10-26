@@ -31,16 +31,38 @@ const BEHAVIOURS: Record<UnitBehaviourId, Behaviour> = {
 };
 
 /**
- * Guards fight anything in reach; otherwise they walk to their spot in front of their building
- * (see sim/guards.ts) and stand there. The spot is kept in `goal`, so a guard that loses its
- * building goes on guarding it.
+ * Guards fight anything in reach. Otherwise those that chase go after an enemy near their spot,
+ * and the rest walk back to their spot in front of their building (see sim/guards.ts) and stand
+ * there. The spot is kept in `goal`, so a guard that loses its building goes on guarding it.
  */
 function guard(state: GameState, unit: Unit) {
   if (atTileCentre(unit) && attackNearest(state, unit)) return;
+  const kind = kindOf(unit);
   const spot = guardSpotOf(state, unit);
-  if (!spot) return;
-  unit.goal = spot;
-  walkTowards(state, unit, `spot ${spot.x},${spot.y}`, isAt(spot));
+  if (spot) unit.goal = spot;
+  const home = spot ?? { x: Math.round(unit.x), y: Math.round(unit.y) };
+  const target = kind.chase ? enemyToChase(state, unit, home, kind.chase) : undefined;
+  if (target) {
+    walkTowards(state, unit, `chase ${target.id}`, (x, y) => reach(target, x, y) <= kind.range);
+  } else if (spot) {
+    walkTowards(state, unit, `spot ${spot.x},${spot.y}`, isAt(spot));
+  }
+}
+
+/** The enemy in the guard's sight that's nearest its spot, if within `chase` tiles of it. */
+function enemyToChase(state: GameState, unit: Unit, spot: Point, chase: number) {
+  const sight = kindOf(unit).sight.inner;
+  let best: Enemy | undefined;
+  let bestDistance = Infinity;
+  for (const enemy of state.enemies) {
+    if (enemy.hp <= 0 || Math.hypot(enemy.x - unit.x, enemy.y - unit.y) > sight) continue;
+    const fromSpot = reach(spot, enemy.x, enemy.y);
+    if (fromSpot <= chase && fromSpot < bestDistance) {
+      best = enemy;
+      bestDistance = fromSpot;
+    }
+  }
+  return best;
 }
 
 /**
@@ -237,9 +259,12 @@ export function removeDeadUnits(state: GameState): void {
   state.sightVersion++; // their sight goes with them
 }
 
-/** Tiles between a unit and a point, counting diagonals as 1. */
-function reach(unit: Unit, x: number, y: number): number {
-  return Math.max(Math.abs(Math.round(x) - unit.x), Math.abs(Math.round(y) - unit.y));
+/** Tiles between a tile (a unit's, a spot) and a point, counting diagonals as 1. */
+function reach(from: Point, x: number, y: number): number {
+  return Math.max(
+    Math.abs(Math.round(x) - Math.round(from.x)),
+    Math.abs(Math.round(y) - Math.round(from.y)),
+  );
 }
 
 /**

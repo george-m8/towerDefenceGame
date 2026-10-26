@@ -45,9 +45,9 @@ Built: `Unit.path` now tells "no way there" (null: wait for the grid to change) 
 
 With nothing in reach, a guard with `chase` > 0 walks to the tile next to the nearest enemy in its sight that's within `chase` tiles of its spot, then walks back when there's none.
 
-- [ ] A swordsman chases and kills an enemy within `chase` of its spot, then walks back
-- [ ] It ignores an enemy further than `chase` from its spot
-- [ ] It follows a moving target
+- [x] A swordsman chases and kills an enemy within `chase` of its spot, then walks back
+- [x] It ignores an enemy further than `chase` from its spot
+- [x] It follows a moving target
 
 Files: `src/sim/units.ts`, `tests/sim/guards.test.ts`. Size: S. Depends on: 3.
 

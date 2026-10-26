@@ -186,3 +186,55 @@ describe("holding a spot", () => {
     until(state, () => paladin.x === 11 && paladin.y === 9);
   });
 });
+
+describe("swordsmen", () => {
+  const chase = UNIT_KINDS.swordsman.chase;
+
+  function until(state: GameState, done: () => boolean, limit = 60 * TICK_RATE) {
+    for (let i = 0; i < limit && !done(); i++) tick(state);
+    expect(done()).toBe(true);
+  }
+
+  /** A guardhouse at (10, 10) facing east, with one swordsman already on its spot (11, 10). */
+  function post(state: GameState) {
+    const house = placeStructure(state, "guardhouse", 10, 10, "E", 1);
+    return spawnUnit(state, "swordsman", 1, 11, 10, house.id)!;
+  }
+
+  /** An enemy that stands still and doesn't hit back. */
+  function dummy(state: GameState, x: number, y: number) {
+    const enemy = spawnEnemy(state, x, y);
+    enemy.speed = 0;
+    enemy.damage = 0;
+    return enemy;
+  }
+
+  it("chase an enemy that comes within range of their spot, kill it, and walk back", () => {
+    const state = createGameWithoutWaves();
+    const swordsman = post(state);
+    const enemy = dummy(state, 11 + chase, 10);
+
+    until(state, () => !state.enemies.includes(enemy));
+    until(state, () => swordsman.x === 11 && swordsman.y === 10);
+  });
+
+  it("ignore an enemy further than that from their spot", () => {
+    const state = createGameWithoutWaves();
+    const swordsman = post(state);
+    const enemy = dummy(state, 11 + chase + 1, 10);
+    run(state, 5 * TICK_RATE);
+    expect({ x: swordsman.x, y: swordsman.y }).toEqual({ x: 11, y: 10 });
+    expect(enemy.hp).toBe(enemy.maxHp);
+  });
+
+  it("follow an enemy on the move", () => {
+    const state = createGameWithoutWaves();
+    const lane = { x: state.keeps[0].x - 20, y: state.keeps[0].y + 1 };
+    const house = placeStructure(state, "guardhouse", lane.x, lane.y - 3, "S", 1);
+    const swordsman = spawnUnit(state, "swordsman", 1, lane.x, lane.y - 2, house.id)!;
+    const goblin = spawnEnemy(state, lane.x - 6, lane.y);
+
+    until(state, () => !state.enemies.includes(goblin));
+    until(state, () => swordsman.x === lane.x && swordsman.y === lane.y - 2);
+  });
+});
