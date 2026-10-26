@@ -1,108 +1,74 @@
-# Tasks: resources
+# Tasks: town-economy
 
-Spec: [`SPEC-resources.md`](../SPEC-resources.md) · Plan: [`plan.md`](plan.md) ("AoE update: resources")
+Spec: [`SPEC-town-economy.md`](../SPEC-town-economy.md) · Plan: [`plan.md`](plan.md) ("AoE update: town-economy")
 
-Standard verification for every task: `npm run typecheck && npm test && npm run build`, checked by exit code. Tests take their numbers from config (`RESOURCES`, `UNIT_KINDS`, `STRUCTURES`, `MAP_GEN`), never repeat them.
+Standard verification for every task: `npm run typecheck && npm test && npm run build`, checked by exit code. Tests take their numbers from config (`STRUCTURES`, `ENEMY_KINDS`), never repeat them.
 
-## Task 1: Resource layers and harvest
+## Task 1: Enemy weight
 
-Terrain rows `goldRock` and `berries`; `RESOURCES` (amount range, value, word) in config; `state.resources` and `state.resourceStart`; `src/sim/resources.ts` with `resourceAt`, `placeResource` and `harvest`. `createGame` fills amounts for every resource tile from the map seed. The sell tool's tree clearing also clears its timber.
+`weight` on every enemy kind (0 goblin, zerg; 1 wolf rider, barbarian, dwarf, marine, shaman, digger, dwarf bomber; 2 chief, thane, marine captain, demolisher; 4 golem; 6 ram), documented as trampling now, knockback later.
 
-- [x] `harvest` takes the units, pays `units x value` to the owner, and returns what it paid; the last hit pays only what was left; nothing is paid on an empty tile
-- [x] At 0 the tile becomes ground and `gridVersion` changes; a used-up rock opens a route enemies then take
-- [x] Amounts are within each kind's range and the same for the same seed; blank maps have none
-- [x] Clearing a tree with the sell tool still pays 1 gold and leaves no timber behind
-- [x] The existing suite passes untouched
+- [ ] Every kind has a whole-number weight of 0 or more, matching the spec's table
+- [ ] The existing suite passes untouched
 
-Files: `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/resources.ts` (new), `src/sim/game.ts`, `src/sim/economy.ts`, `tests/sim/resources.test.ts` (new). Size: M. Depends on: none.
+Files: `src/sim/config.ts`, `tests/sim/enemies.test.ts`. Size: XS. Depends on: none.
 
-Built: starting amounts are a roll from the map seed and the tile index (not the shared generator), so map-gen's rolls are untouched. `clearResource` turns a tile into empty ground for both `harvest` and the sell tool. New terrain got a basic look and hover line now (polished in Task 5), since the palette and hover tables must list every terrain.
+## Task 2: Farmhouse, farmland and farm income
 
-## Task 2: Gold veins and berry patches
+`STRUCTURES` rows `farmhouse` (`farm`) and `farmland` (`field`); `src/sim/farms.ts` with `farmFields` (fields per farmhouse: joined through built same-owner farmland, nearest farmhouse first, older on ties, capped at `maxFields`) and `collectFarmIncome`; `incomePerMinute` counts farms.
 
-`MAP_GEN.goldVeinChance`, `berryPatchesPer1000`, `berryPatchSize`. Veins and patches are placed after everything map-gen already does, using the same generator; patches avoid the keep's clear zone and the spawn strip; every rock cluster keeps a plain rock.
+- [ ] No fields, no pay; N joined fields pay `N x goldPerField` per interval; a loose field doesn't count; a chain of fields does
+- [ ] At most `maxFields` count; another player's fields don't join; a field joined to two farmhouses counts once, for the nearer; unfinished fields neither count nor join
+- [ ] Farmland is walkable, doesn't close an enclosure, only goes on open ground, can't hold a tower, and is paintable
+- [ ] The income stat includes farms at their current field count
 
-- [x] Across many seeds every map still passes the existing checks
-- [x] Veins are roughly `goldVeinChance` of rock tiles; patch counts and sizes fall in their ranges
-- [x] No bush in the keep's clear zone or on the spawn strip
-- [x] Apart from veins and bushes, terrain for a seed is exactly what it was before (compared against today's generator)
+Files: `src/sim/config.ts`, `src/sim/farms.ts` (new), `src/sim/economy.ts`, `src/sim/game.ts`, `tests/sim/farms.test.ts` (new). Size: M. Depends on: none.
 
-Files: `src/sim/config.ts`, `src/sim/mapgen.ts`, `tests/sim/mapgen.test.ts`. Size: M. Depends on: 1.
+## Task 3: Trampling
 
-Built: patches can grow into each other, so the test bounds the total bushes per map rather than each patch. The before/after test compares against the same generator with veins and patches turned off; ruins and chests match too.
+When an enemy moves onto a new tile, farmland there takes damage equal to the enemy's weight (broken fields burst like other structures). Units don't trample.
 
-## Task 3: Workers and the gather behaviour
+- [ ] A weight-0 enemy crossing a field leaves it whole; a heavier one takes its weight off per step and enough steps remove it
+- [ ] A unit walking over a field leaves it whole
+- [ ] A trampled-away field stops counting, and fields joined only through it come loose
 
-`UNIT_KINDS` rows for lumberjack `j`, miner `p` and forager `f` with `gathers`; `gather` behaviour: work a resource in reach on the interval (the first in N, E, S, W order, or the tile under it for berries), otherwise walk to the nearest tile it can work from, otherwise stand still until the grid changes.
+Files: `src/sim/enemies.ts`, `src/sim/farms.ts`, `tests/sim/farms.test.ts`. Size: S. Depends on: 1, 2.
 
-- [x] A lumberjack walks to the nearest tree and chops on its interval, paying its owner; it ignores rocks and bushes
-- [x] A forager stands on its bush; a miner works plain and gold-veined rock (gold-veined pays `value` times more)
-- [x] When its resource is gone it moves to the next nearest
-- [x] With nothing reachable it stands still, and sets off once something becomes reachable
-- [x] A worker never attacks an enemy; a goblin stops to kill a lumberjack beside its path
+**Checkpoint A:** a full farm earns 8 fields' worth; a golem wears a field row away and the far fields come loose; goblins leave them alone.
 
-Files: `src/sim/config.ts`, `src/sim/units.ts`, `tests/sim/units.test.ts`. Size: M. Depends on: 1.
+## Task 4: Shop
 
-Built: `workableFrom` says where a worker can work: walkable resources (bushes) from on top, others from a tile beside them. A worker's `damage` is the units it takes per hit.
+`STRUCTURES.shop`: a flat income building (70g, +4g every 5 s), built like a house.
 
-## Task 4: Gatherer buildings
+- [ ] Pays `income.gold` every `income.intervalSeconds`, and counts in the income stat
 
-`STRUCTURES` rows `timberYard` (`T`), `mine` (`M`) and `foragerHut` (`F`), each a spawner of its worker; build tools on `T`, `G` and `B`.
+Files: `src/sim/config.ts`, `tests/sim/economy.test.ts`. Size: XS. Depends on: none.
 
-- [x] Each spawns its own worker kind, up to its quota, one per interval, once built
-- [x] Selling one leaves its workers working, with none replaced
-- [x] The build keys pick the tools; placement follows house rules
+## Task 5: Build tabs
 
-Files: `src/sim/config.ts`, `src/ui/state.ts`, `tests/sim/units.test.ts` (or `resources.test.ts`). Size: S. Depends on: 3.
+`TOOLS` rows gain `tab` (`defence`, `civic`, `offence`, or `all` for sell); the picker shows tab buttons Defence / Civic / Offence (Offence greyed out while it has no tools); `1` / `2` / `3` open the picker on that tab; per-tool keys removed except `X` for sell.
 
-Built: the timber yard is drawn `L` (lumber), not `T`, because the watchtower already uses `T`. The mine is `M` and the forager hut `F`; build keys are `T` / `G` / `B` as agreed.
+- [ ] Each tool is in its spec tab; sell is on every tab
+- [ ] `1` / `2` / `3` open their tab; digits no longer pick tools, nor do `T` / `G` / `B`; `X` still picks sell
+- [ ] Offence is greyed out with no tools
 
-**Checkpoint A:** a timber yard fills to 5 lumberjacks who clear trees and earn gold; a goblin kills one and the yard sends another. Done: the checkpoint A test in `tests/sim/resources.test.ts`.
+Files: `src/ui/state.ts`, `src/ui/hud.ts`, `src/ui/input.ts`, `src/styles.css`, `tests/ui/hud.test.ts`, `tests/sim/resources.test.ts` (its key test). Size: M. Depends on: none.
 
-## Task 5: Drawing and hover
+## Task 6: Drawing and hover
 
-Berry bush (green tile, red `b`), gold-veined rock (gold flecks), a thin bar on worked resource tiles, building glyphs and colours. Hover: `Tree - 18 of 30 timber left (18g)` and the like; workers add `chopping` / `mining` / `foraging`, `walking`, or `idle: nothing to gather`.
+Glyphs and colours: farmhouse `H`, farmland `"` (flat, walkable look), shop `S`. Hover: `Farmhouse - 6 of 8 fields, +6g every 10s`; `Farmland - counts for the farmhouse at x, y` or `Farmland - not joined to a farmhouse`.
 
-- [x] Hover lines for each resource and for a working, walking and idle worker
-- [x] Browser: every gatherer works, resources shrink and vanish, gold rises (also `unit-core` checkpoint B). Checked by George, 2026-10-26: rewards feel low for the time taken
+- [ ] Hover lines for a farmhouse, a joined field and a loose field
+- [ ] Browser: tabs, farms built and painted, gold arriving, a heavy enemy trampling a field
 
-Files: `src/render/canvas.ts`, `src/render/palette.ts`, `src/ui/tileInfo.ts`, `tests/ui/tileInfo.test.ts`. Size: M. Depends on: 4.
+Files: `src/render/palette.ts`, `src/ui/tileInfo.ts`, `tests/ui/tileInfo.test.ts`. Size: S. Depends on: 2, 4, 5.
 
-Built: the resource bar only shows on tiles in sight, so PvP rivals can't watch your workers through fog. A tree's hover keeps the `X to clear` line under the timber line. Online clients don't get unit paths, so "walking" means between tiles (or with a path, offline). The browser check is still to do.
+**Checkpoint B:** browser check with George.
 
-**Checkpoint B:** offline browser check with George.
+## Task 7: Docs, tuning table and determinism
 
-## Task 6: Network
-
-`resources` and `resourceStart` in the welcome snapshot; updates carry changed `resources` tiles only.
-
-- [x] Welcome carries both layers; a hit sends just that tile next update; `resourceStart` is never resent
-- [x] Browser: a second player sees workers and resources vanish in step (also `unit-core`'s online check). Checked by George with two browsers, 2026-10-26
-
-Files: `src/net/protocol.ts`, `src/net/snapshot.ts`, `src/net/view.ts`, `tests/net/view.test.ts`. Size: S. Depends on: 5.
-
-Built: `resources` is compared every update, since harvesting doesn't change the grid. Also fixed a `unit-core` gap: land a unit explores (which changes `sightVersion` but not the grid) now reaches clients without waiting for a grid change.
-
-## Task 7: Timing, determinism, docs and tuning table
-
-- [x] Measured standalone: four gatherers at quota on XL, ticks where a tile runs out; recorded here (skip the grid change for berries if it helps)
-- [x] The 2,000-tick determinism test gains a timber yard and a mine
-- [x] README: resources, gatherers, keys, and a Tuning table (each number, where it lives, its value, and a full gatherer's rough income per minute); SPEC.md "Since `resources`"; plan and CAPABILITIES statuses
-- [x] `src/sim/` coverage stays at 80% or more
+- [ ] The 2,000-tick determinism test gains a farm with fields that a heavy enemy can trample
+- [ ] README: farms, shops, tabs and the new keys (controls table), enemy weight, and the Tuning table (farm and shop rows, income per minute next to houses and gatherers); SPEC.md "Since `town-economy`"; plan and CAPABILITIES statuses
+- [ ] `src/sim/` coverage stays at 80% or more
 
 Files: `tests/sim/game.test.ts`, `README.md`, `SPEC.md`, `CAPABILITIES.md`, `tasks/plan.md`. Size: S. Depends on: 6.
-
-Built: measured on XL over 12 game minutes with two timber yards, a mine and a forager hut (115 tiles used up). Ticks with no grid change: 0.08 ms median, 0.18 ms p95. Ticks where a tile ran out: 25 ms median, 35 ms p95, almost all of it rebuilding the three enemy flow fields (6-7 ms each); the rest of such a tick takes 0.1 ms. A few spikes (up to 120 ms) also appeared on quiet ticks (47 ms), so they look like machine noise, not this module. The berry-bush shortcut wasn't needed. `src/sim/` coverage: 99% of lines.
-
-**Checkpoint C:** online check with two browsers, then review.
-
-## Task 8: Resources tuned by worth and time (after play-testing)
-
-George, 2026-10-26: rewards feel low for the time a resource takes, and each resource should be tunable by what it's worth and how long it takes to clear. `RESOURCES` rows become `worth` (gold a tile pays in all, rolled per tile) and `seconds` (how long one worker takes to clear it). Each tile tracks the work left (`resources`, in ticks) and its worth (`resourceWorth`, was `resourceStart`); a hit of `attackInterval` seconds pays the gold earned since the last hit, so a tile pays exactly its worth over exactly its time whatever the numbers. Defaults keep today's averages (tree 20-40g over 90 s, rock 30-60g and gold-veined 90-180g over 135 s, berries 15-30g over 60 s), ready to retune.
-
-- [x] A tile pays exactly its worth over exactly its `seconds` of work, for worths that don't divide evenly
-- [x] Changing `worth` or `seconds` in config changes reward and time and nothing else (tests read config)
-- [x] Workers, hover (`Tree - 18 of 30g of timber left`), network and README tuning table follow the new rows
-
-Files: `src/sim/config.ts`, `src/sim/resources.ts`, `src/sim/units.ts`, `src/sim/types.ts`, `src/net/*`, `src/ui/tileInfo.ts`, `src/render/canvas.ts`, tests, `README.md`, `SPEC-resources.md`. Size: M.
-
