@@ -11,3 +11,9 @@ declare module "virtual:maps" {
   const maps: Record<string, import("./sim/mapFile").MapFile>;
   export default maps;
 }
+
+declare module "virtual:items" {
+  /** The `.items` files in items/, parsed, by name (tools/items.ts). */
+  const items: Record<string, import("./sim/itemsFile").ItemsFile>;
+  export default items;
+}

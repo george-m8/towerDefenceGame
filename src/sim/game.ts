@@ -17,6 +17,7 @@ import { updateEffects } from "./effects";
 import { initialExplored, revealKeep } from "./fog";
 import { claimKeepWalls, placeKeepWalls } from "./keepWalls";
 import { generateTerrain, layoutFor } from "./mapgen";
+import type { ItemsFile } from "./itemsFile";
 import { mapFromGame, spawnTiles, terrainGrid, type MapFile } from "./mapFile";
 import { randomInt } from "./rng";
 import { startingWork, startingWorth } from "./resources";
@@ -44,6 +45,8 @@ export interface GameOptions {
    * ruins, chests and structures replace the generated ones, and no starter walls are added.
    */
   map?: MapFile;
+  /** An `.items` file: how many of each structure a player can have at once (default: no limits). */
+  items?: ItemsFile;
 }
 
 export function createGame(seed: number, options: GameOptions = {}): GameState {
@@ -116,6 +119,7 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     wanderChance: ENEMY.wanderChance,
     gameOver: false,
     debug: { infiniteKeep: false, infiniteGold: false },
+    limits: { ...options.items?.limits },
     rngState: seed,
     fog: options.fog ?? true,
     explored: [],

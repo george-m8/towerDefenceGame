@@ -225,6 +225,7 @@ Status: `map-editor` built (2026-10-26). Hand-made content for the game: a **lev
 |---|---|---|
 | `map-editor` | `.map` files (terrain, keeps, spawns, ruins, chests, starting structures) and an editor page (`?editor`) using the game's renderer and keys, with test-play. Spec: [`SPEC-map-editor.md`](SPEC-map-editor.md). | map-gen, tile-layers |
 | `wave-editor` | `.wave` files: what attacks, when. | map-editor |
-| `loadout-editor` | `.loadout` files: starting gold and settings, what can be built. | map-editor |
+| `items-editor` | Built (2026-10-26). `.items` files: what can be built, and how many of each at once, with an editor page (`?items-editor`). Spec: [`SPEC-items-editor.md`](SPEC-items-editor.md). | map-editor |
+| `loadout-editor` | `.loadout` files: starting gold and settings (what can be built is now `items-editor`). | map-editor |
 | `levels` | A level = a `.map`, a `.wave` and a `.loadout`. The level picker, and playing levels online (rooms send the level's name; client and server read the same bundled files). | the three editors |
 

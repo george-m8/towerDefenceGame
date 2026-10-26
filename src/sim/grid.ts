@@ -121,6 +121,15 @@ export function enemyOccupies(enemy: Point, x: number, y: number): boolean {
   );
 }
 
+/** How many `kind` the player has standing, built or still going up. */
+export function ownedCount(state: GameState, player: PlayerId, kind: StructureKind): number {
+  let count = 0;
+  for (const s of Object.values(state.structures)) {
+    if (s.kind === kind && s.owner === player) count++;
+  }
+  return count;
+}
+
 export function canBuild(
   state: GameState,
   player: PlayerId,
@@ -131,6 +140,11 @@ export function canBuild(
   if (state.gameOver) return { ok: false, reason: "Game over" };
   const stats: StructureStats = STRUCTURES[kind];
   if (stats.buildable === false) return { ok: false, reason: `${stats.name}s can't be built` };
+  const limit = state.limits[kind];
+  if (limit === 0) return { ok: false, reason: `${stats.name}: not allowed in this game` };
+  if (limit !== undefined && ownedCount(state, player, kind) >= limit) {
+    return { ok: false, reason: `${stats.name} limit reached (${limit} at a time)` };
+  }
   if (!inBounds(state, x, y)) return { ok: false, reason: "Out of bounds" };
   if (!isExplored(state, x, y, player)) {
     return { ok: false, reason: "Can't build on unexplored land" };

@@ -15,7 +15,8 @@ import {
 } from "./view";
 
 export type JoinIntent =
-  | { mode: "create"; name: string; game?: GameMode; size?: MapSize }
+  /** `fog: false`: the host starts the game without fog of war (picked in the game's settings). */
+  | { mode: "create"; name: string; game?: GameMode; size?: MapSize; fog?: false }
   | { mode: "join"; room: string; name: string };
 
 /** The parts of the browser WebSocket API we use (the `ws` package matches it in tests). */

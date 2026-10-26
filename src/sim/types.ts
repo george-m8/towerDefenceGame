@@ -16,6 +16,9 @@ export type StructureKind = keyof typeof STRUCTURES;
 
 export type Facing = "N" | "E" | "S" | "W";
 
+/** Per kind, the most of it a player can have at once; a missing kind has no limit. */
+export type BuildLimits = Partial<Record<StructureKind, number>>;
+
 export type PlayerId = number;
 
 /** Natural ground type under any structures. */
@@ -269,6 +272,8 @@ export interface GameState {
   fog: boolean;
   /** Debug options (offline only), all off to start with. */
   debug: Record<DebugOption, boolean>;
+  /** From an `.items` file: the most of each kind a player can have at once (none: no limit). */
+  limits: BuildLimits;
   /**
    * Per tile, one bit per team that has seen it (it stays seen). Endless has one team (bit 0,
    * value 1); in PvP each player is their own team. See sim/fog.ts.

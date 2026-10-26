@@ -153,7 +153,7 @@ When the trees and rocks nearby are gone, farms and a town keep the gold coming.
 
 Every game starts on a new, randomly generated map (the seed is shown in the panel and on the game-over screen). Hand-made maps come from the [map editor](#map-editor).
 
-Maps come in six sizes, picked on the mode screen: XXS (42 x 28), XS (66 x 44), S (108 x 72), M (153 x 102, the default), L (216 x 144) and XL (270 x 180). On XXS the keep stands at the far right, its walls along the edge, so the enemies from the left have the whole map to cross.
+Maps come in six sizes, picked in the mode's settings (choose a mode, set it up, then **Start**): XXS (42 x 28), XS (66 x 44), S (108 x 72), M (153 x 102, the default), L (216 x 144) and XL (270 x 180). On XXS the keep stands at the far right, its walls along the edge, so the enemies from the left have the whole map to cross.
 
 | Terrain | Look | Walk | Build | Notes |
 |---|---|---|---|---|
@@ -193,7 +193,7 @@ How far each building sees (in sight / seen, in tiles):
 | Spikes, bridge | 2 | 4 | |
 | Wall | 1 | 1.5 | enough to see what's attacking it |
 
-Walls barely see past themselves, so build watchtowers to explore. Hover a structure to see its sight, and hover a watchtower (or place one) to see the area it covers. Every tower sees at least as far as it shoots. For testing, add `fog=off` to the address (e.g. `?solo&fog=off`) to play with the whole map visible; online, the host's switch applies to the room.
+Walls barely see past themselves, so build watchtowers to explore. Hover a structure to see its sight, and hover a watchtower (or place one) to see the area it covers. Every tower sees at least as far as it shoots. Fog of war is on by default; turn it off in the game's settings (after picking a mode) to play with the whole map visible, and in a room the host's choice applies to everyone. For testing, adding `fog=off` to the address (e.g. `?solo&fog=off`) turns it off whatever the settings say.
 
 ### Enclosures
 
@@ -258,7 +258,7 @@ Open http://localhost:5173/?editor (or `?editor=example` to open `maps/example.m
 - **Open** lists the maps in `maps/`, or opens a `.map` file from your computer. **Save** writes `maps/<name>.map` (with `npm run dev` only); **Download** saves a copy anywhere. Leaving with unsaved changes asks first (the title shows a dot).
 - **Play** (`P`) plays the map as a single-player game with today's waves and starting gold; **Back to editor** returns to it, undo history and all. Play is off while the map has errors (no spawn, no way from the spawn to the keep, a keep on rock...), listed in the status line; warnings (a spawn close to the keep, a chest you can't reach) don't stop it.
 - **Keep walls** rebuilds the ring of walls and the gate round each keep, as a new game has.
-- **Playing a map:** solo, the Endless card on the mode screen has a map dropdown listing the Endless maps in `maps/` (those with no errors), or open `?solo&map=<name>`. Online rooms still play generated maps for now.
+- **Playing a map:** solo, Endless's settings (after picking Endless on the mode screen) have a **Map** dropdown listing the Endless maps in `maps/` (those with no errors), or open `?solo&map=<name>`. Online rooms still play generated maps for now.
 
 | Input | Action |
 |---|---|
@@ -274,6 +274,26 @@ Open http://localhost:5173/?editor (or `?editor=example` to open `maps/example.m
 | `W` `A` `S` `D`, arrows, wheel, `+` / `-`, minimap | Move and zoom, as in game |
 
 Painting terrain under something that can't stand on it removes that thing, and the status line says so. A `.map` file is JSON: the terrain is one line per row (`.` ground, `,` ford, `~` river, `=` sea, `o` rock, `$` gold rock, `T` tree, `b` berries), then the keeps, spawn zones, ruins, chests and structures. Tell your editor to open `*.map` as JSON (it isn't a source map). The format is in [`SPEC-map-editor.md`](SPEC-map-editor.md).
+
+## Items editor
+
+Open http://localhost:5173/?items-editor (or `?items-editor=example` to open `items/example.items`), or press **Items** in the map editor's toolbar (**Maps** goes back), to choose what players may build and how many of each they can have **at a time**. There's a row per structure, grouped like the build picker (Defence, Civic, Offence):
+
+- **Allowed:** untick it and the structure can't be built at all; it isn't offered in the build picker.
+- **Max at once:** blank (the default) means no limit. With a number, a player can have that many standing (built or still going up); selling one frees a place. The build picker shows `2/5` beside a limited structure, and nothing beside an unlimited one.
+
+**New**, **Open**, **Save** (into `items/`, with `npm run dev` only) and **Download** work as in the map editor. **Play** tries the limits out in a solo Endless game, on a generated map or a map from `maps/`; **Back to editor** returns. To play with an items file, pick it under **Build Setup** in solo Endless's settings, or use `?solo&items=<name>` (online rooms have no limits yet).
+
+An `.items` file is JSON, and a structure that isn't listed has no limit:
+
+```json
+{
+  "format": "keep-defence-items",
+  "version": 1,
+  "title": "Example",
+  "limits": { "archer": 6, "cannon": 3, "paladinHall": 0 }
+}
+```
 
 ## Sound and music
 
@@ -442,15 +462,17 @@ src/sim/              Pure, deterministic game simulation (no DOM, seeded RNG)
   economy.ts          Bounties, house income, selling
   players.ts          Players, per-player gold, pause/fast-forward votes
   mapFile.ts          .map files: parse, write, validate
+  itemsFile.ts        .items files: what can be built, and how many at once
 src/net/              Message types and state snapshots, shared by browser and server
 src/render/           Canvas drawing (reads state, never changes it)
 src/ui/               Side panel, input, hover info, game-over dialog
 src/audio/            Synth, sound effects, MIDI reader, music player, playlist and song list
 public/music/         MIDI files for the songs listed in src/audio/songs.ts
 public/music/music-packs/  Your music packs (git-ignored)
-tools/                Vite plugins: the music packs, and the .map files in maps/ (and saving them)
+tools/                Vite plugins: the music packs, and the .map and .items files (and saving them)
 src/editor/           The map editor (?editor): edits, undo, tools, toolbar, files
 maps/                 Hand-made maps (.map files), made in the map editor
+items/                Build limits (.items files), made in the items editor (?items-editor)
 src/styles.css        System 6/7 style window chrome
 server/               Multiplayer game server (Node): rooms, connections, static files, probe
 tests/sim/            Unit tests for the simulation

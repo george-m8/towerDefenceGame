@@ -6,14 +6,18 @@ import type { JoinIntent } from "./networkSession";
 
 export type PageIntent =
   | { mode: "menu"; room?: string }
-  /** `map`: a map in maps/ to play (by name), instead of a generated one. */
-  | { mode: "offline"; size?: MapSize; map?: string }
+  /**
+   * `map`: a map in maps/ to play (by name), instead of a generated one. `items`: an items file
+   * in items/ (by name) limiting what can be built.
+   */
+  | { mode: "offline"; size?: MapSize; map?: string; items?: string; fog?: false }
   | JoinIntent;
 
 /**
  * `?create&name=Ann` creates a room (`&game=pvp` for PvP) and `?room=ABCD&name=Bo` joins one;
  * `?solo` plays offline. `&size=L` picks the map size when playing solo or creating a room;
- * `&map=river-crossing` plays maps/river-crossing.map solo.
+ * `&map=river-crossing` plays maps/river-crossing.map solo, and `&items=towers-only` plays solo
+ * with the limits in items/towers-only.items.
  * Anything else, or a missing name, opens the start screen (with the room code filled in).
  */
 export function readJoinIntent(search: string): PageIntent {
@@ -21,11 +25,13 @@ export function readJoinIntent(search: string): PageIntent {
   const sizeParam = params.get("size")?.toUpperCase();
   const size = sizeParam && Object.hasOwn(MAP_SIZES, sizeParam) ? (sizeParam as MapSize) : null;
   const map = params.get("map");
+  const items = params.get("items");
   if (params.has("solo")) {
     return {
       mode: "offline",
       ...(size ? { size } : {}),
       ...(map && MAP_NAME_PATTERN.test(map) ? { map } : {}),
+      ...(items && MAP_NAME_PATTERN.test(items) ? { items } : {}),
     };
   }
   const room = params.get("room")?.toUpperCase();

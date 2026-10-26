@@ -87,7 +87,7 @@ body {
 
 .tool {
   display: grid;
-  grid-template-columns: 20px 1fr auto 20px;
+  grid-template-columns: 20px 1fr auto minmax(20px, auto);
   gap: 8px;
   align-items: center;
   padding: 2px 6px;
@@ -483,6 +483,10 @@ a.button {
   align-items: end;
   justify-content: space-between;
 }
+/* Back and Start side by side, at the end. */
+.choices.together {
+  justify-content: flex-end;
+}
 .join-form .field {
   flex: 1;
 }
@@ -490,6 +494,9 @@ a.button {
   width: 100%;
   letter-spacing: 0.2em;
   text-transform: uppercase;
+}
+.map-sizes[hidden] {
+  display: none;
 }
 .map-sizes {
   display: flex;
@@ -534,10 +541,7 @@ a.button {
 .mode-card:focus-visible {
   outline: 2px solid var(--ink);
 }
-.map-choice {
-  margin: -2px 0 4px 12px;
-}
-.map-choice select {
+.start-window select {
   padding: 2px 6px;
   font: inherit;
   color: var(--ink);
@@ -1137,4 +1141,72 @@ body.editing .pointer-label {
   display: block;
   font-size: 16px;
   opacity: 0.7;
+}
+
+/* The items editor (?items-editor; SPEC-items-editor.md): a window over an empty map, a row per
+   structure. The game's map controls stay hidden until Play. */
+body.items-editing .map-left,
+body.items-editing .map-side {
+  display: none !important;
+}
+.items-window {
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+.items-where {
+  margin: 0;
+  font-size: 16px;
+  opacity: 0.7;
+}
+.items-list {
+  display: grid;
+  gap: 2px;
+}
+.items-tab {
+  margin: 8px 0 2px;
+  font-weight: bold;
+}
+.items-row {
+  display: grid;
+  grid-template-columns: 20px 1fr auto auto auto;
+  gap: 12px;
+  align-items: center;
+}
+.items-row .glyph {
+  font-family: "Unifont", "VT323", monospace;
+  text-align: center;
+}
+.items-row .cost {
+  opacity: 0.7;
+}
+.items-row.banned .glyph,
+.items-row.banned .name,
+.items-row.banned .cost {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+.items-allowed,
+.items-max {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.items-max input {
+  width: 64px;
+  padding: 2px 6px;
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--ink);
+}
+.items-max input:disabled {
+  opacity: 0.4;
+}
+.items-status {
+  margin: 0;
+}
+/* The links between the editors look like the buttons beside them. */
+a.hud-action,
+a.button {
+  text-decoration: none;
 }

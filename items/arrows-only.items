@@ -1,0 +1,27 @@
+{
+  "format": "keep-defence-items",
+  "version": 1,
+  "title": "arrows-only",
+  "limits": {
+    "cannon": 0,
+    "catapult": 0,
+    "floorSpikes": 0,
+    "wallSpikes": 0,
+    "house": 2,
+    "shop": 0,
+    "farmhouse": 0,
+    "farmland": 0,
+    "timberYard": 0,
+    "mine": 0,
+    "foragerHut": 0,
+    "bridge": 0,
+    "watchtower": 0,
+    "gate": 0,
+    "guardhouse": 0,
+    "archeryPost": 0,
+    "paladinHall": 0,
+    "scoutCamp": 0,
+    "barracks": 0,
+    "archeryRange": 0
+  }
+}

@@ -9,7 +9,15 @@ import {
   toolsInTab,
   type BuildTab,
 } from "../../src/ui/state";
-import { heldTime, hudContent, hudStats, toggleHudStat } from "../../src/ui/hud";
+import {
+  allowed,
+  heldTime,
+  hudContent,
+  hudStats,
+  limitLabel,
+  toggleHudStat,
+} from "../../src/ui/hud";
+import { newItems, withLimit } from "../../src/sim/itemsFile";
 import { statList } from "../../src/ui/stats";
 import { buildAt, ring } from "../sim/helpers";
 
@@ -222,5 +230,20 @@ describe("build tabs", () => {
     const paint = TOOLS.filter((t) => t.paintable).map((t) => t.tool);
     expect(paint).toContain("farmland");
     expect(paint).toContain("wall");
+  });
+});
+
+describe("build limits in the picker", () => {
+  it("shows nothing for an unlimited kind, and how many of the most for a limited one", () => {
+    const items = withLimit(withLimit(newItems("x"), "archer", 3), "house", 0);
+    const state = createGame(1, { blankMap: true, fog: false, items });
+    expect(limitLabel(state, 1, "wall")).toBeNull();
+    expect(limitLabel(state, 1, "archer")).toBe("0/3");
+    buildAt(state, [{ x: 5, y: 5 }], "archer");
+    state.structures[state.nextId - 1].owner = 1;
+    expect(limitLabel(state, 1, "archer")).toBe("1/3");
+    expect(limitLabel(state, 1, "house")).toBeNull();
+    expect(allowed(state, "house")).toBe(false);
+    expect(allowed(state, "archer")).toBe(true);
   });
 });
