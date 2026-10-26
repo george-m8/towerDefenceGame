@@ -2,7 +2,7 @@
 
 Status: APPROVED (2026-10-26)
 Module: `day-night`. This spec covers **step 1, the sun angle**: shadows follow a sun that crosses the sky on an arc, set by two sliders switched on from the Debug menu. Later steps (an automatic cycle, night darkness, lights) get their own sections once this one is built. Builds on the raised blocks and their shadows in `src/render/canvas.ts`. Not on the capability map yet.
-Last updated: 2026-10-26 (v1.1 - two sliders: where the sun is across the sky, and how high its arc rises)
+Last updated: 2026-10-26 (v1.1 - two sliders: where the sun is across the sky, and how high its arc rises; built)
 
 ## Objective
 
@@ -114,13 +114,13 @@ export function shadowOffset(sun: Sun): { dx: number; dy: number } {
 ## Success criteria
 
 - [x] The Debug menu has a Sun slider row. Turning it on shows the sliders over the map, and turning it off hides them and resets the sun.
-- [ ] Across moves every shadow live, from long and right (sun low on the left), through straight down at the arc's top, to long and left. Arc makes the path higher or lower, with no noon shadow at 90°.
-- [ ] Shadows fall on the ground in front of blocks and on the faces and tops of lower neighbouring blocks (left, right, in front, diagonal), never on taller or equal blocks.
-- [ ] No shadow is ever longer than `SUN.maxLength` times its block's height (under a tile), or points up the screen.
-- [ ] With the switch off, or after a reload, shadows are at the default: mostly sideways to the right, close to today's look.
+- [x] Across moves every shadow live, from long and right (sun low on the left), through straight down at the arc's top, to long and left. Arc makes the path higher or lower, with no noon shadow at 90°.
+- [x] Shadows fall on the ground in front of blocks and on the faces and tops of lower neighbouring blocks (left, right, in front, diagonal), never on taller or equal blocks.
+- [x] No shadow is ever longer than `SUN.maxLength` times its block's height (under a tile), or points up the screen.
+- [x] With the switch off, or after a reload, shadows are at the default: mostly sideways to the right, close to today's look.
 - [x] The map editor shows a Debug button with the Sun slider row, and the sliders move the editor's shadows.
-- [ ] Unit tests pass. All existing tests, the typecheck and the build pass.
-- [ ] `SPEC.md`, `CAPABILITIES.md` and the README are updated.
+- [x] Unit tests pass. All existing tests, the typecheck and the build pass.
+- [x] `SPEC.md`, `CAPABILITIES.md` and the README are updated.
 
 ## Open questions
 

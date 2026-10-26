@@ -89,7 +89,7 @@ Built: the sun box's label column is wider (88px) so "Across 0.33" fits on one l
 
 A "Since `day-night`" line in `SPEC.md`, a `day-night` row in `CAPABILITIES.md`, and the Sun slider in the README's Debug menu notes. The spec's "Last updated" says what was built.
 
-- [ ] `SPEC.md`, `CAPABILITIES.md` and README updated and accurate
-- [ ] Each task's "Built:" notes added below it where the build differed from the plan
+- [x] `SPEC.md`, `CAPABILITIES.md` and README updated and accurate
+- [x] Each task's "Built:" notes added below it where the build differed from the plan
 
 Files: `SPEC.md`, `CAPABILITIES.md`, `README.md`, `SPEC-day-night.md`. Size: S. Depends on: 6.
