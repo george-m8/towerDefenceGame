@@ -71,6 +71,7 @@ import {
   KEEP_GLYPH,
 } from "./palette";
 import { fogImage } from "./fog";
+import { createHpBarTracker } from "./hpBars";
 import { burstPixels, burstWaiting } from "./burst";
 import { textureSpecks, textureVariant, type TextureStyle } from "./textures";
 import { borderColour, borderTrace } from "./buildBorder";
@@ -143,6 +144,10 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   let view: VisibleTiles = { x0: 0, y0: 0, x1: -1, y1: -1 };
   /** The player looking: in PvP, sight and enclosures are theirs. */
   let viewer: PlayerId = 1;
+  /** The hovered tile and the time this frame, for when health bars show (hpBars.ts). */
+  let hover: Point | null = null;
+  let now = 0;
+  const hpBars = createHpBarTracker();
   /** Tile textures, drawn once each ("style:variant"). */
   const textureImages = new Map<string, HTMLCanvasElement>();
   /** False when zoomed too far out for textures to show. */
@@ -485,7 +490,22 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   function drawBars(building: Structure, hp: Structure) {
     const { x, y } = building;
     if (!isBuilt(building)) drawHpBar(x, y, buildProgress(building), COLOURS.buildFront);
-    else if (hp.hp < hp.maxHp) drawHpBar(x, y, hp.hp / hp.maxHp);
+    else drawHealth(`s${hp.id}`, hp);
+  }
+
+  /**
+   * A health bar for something damaged, while its tile is hovered or for a moment after it was
+   * hit (then fading out).
+   */
+  function drawHealth(key: string, thing: { x: number; y: number; hp: number; maxHp: number }) {
+    const x = Math.round(thing.x);
+    const y = Math.round(thing.y);
+    const hovered = hover !== null && hover.x === x && hover.y === y;
+    const alpha = hpBars.alpha(key, thing.hp, now, hovered);
+    if (alpha <= 0 || thing.hp >= thing.maxHp) return;
+    ctx!.globalAlpha = alpha;
+    drawHpBar(thing.x, thing.y, thing.hp / thing.maxHp);
+    ctx!.globalAlpha = 1;
   }
 
   /** The ghost sits on top of whatever it's placed on (or selling). */
@@ -798,7 +818,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       ctx!.fillStyle = playerColour(unit.owner);
       const glyph = UNIT_KINDS[unit.kind].glyph;
       ctx!.fillText(glyph, (unit.x + 0.5) * TILE_SIZE, (unit.y + 0.5) * TILE_SIZE + 1);
-      if (unit.hp < unit.maxHp) drawHpBar(unit.x, unit.y, unit.hp / unit.maxHp);
+      drawHealth(`u${unit.id}`, unit);
     }
   }
 
@@ -809,7 +829,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       ctx!.font = enemyFont(kind.variants[enemy.variant].size);
       ctx!.fillStyle = ENEMY_COLOURS[enemy.kind];
       ctx!.fillText(kind.glyph, (enemy.x + 0.5) * TILE_SIZE, (enemy.y + 0.5) * TILE_SIZE + 1);
-      if (enemy.hp < enemy.maxHp) drawHpBar(enemy.x, enemy.y, enemy.hp / enemy.maxHp);
+      drawHealth(`e${enemy.id}`, enemy);
     }
   }
 
@@ -836,6 +856,8 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   return {
     render(state: GameState, ui: UiState, pending: readonly PendingBuild[] = []) {
       viewer = ui.playerId;
+      hover = ui.hover;
+      now = performance.now();
       const cam = ui.camera;
       // Clear to the "off the map" colour, then draw the map scrolled and zoomed.
       ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -855,6 +877,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       drawPending(pending);
       drawRange(state, ui);
       drawGhost(state, ui);
+      hpBars.endFrame();
     },
   };
 }
