@@ -240,7 +240,7 @@ Towers always shoot the enemy closest to the keep. Traps fire on a fixed timer f
 | `Space` or Pause button | Pause / resume (you can still build while paused) |
 | `F` or `>>` button | Toggle fast forward (2x game speed) |
 | Send wave button | Start the next wave now, for +1 gold per second skipped |
-| `` ` `` or Debug button | Open the Debug menu: test options, Show paths (arrows show where enemies will walk; red means "will attack this"), Sun slider (two sliders over the map: **Across** moves the sun from the left horizon to the right, **Arc** sets how its path leans: up to 90° over the top of the sky (90° straight overhead), past 90° over the bottom, so shadows fall behind blocks; shadows follow. Off puts the sun back), and the Damage tool (offline: each click takes 35% of its full amount off the top thing on the tile, an enemy, unit, tower, structure, the keep or a tree/rock/bush, and at 0 it's destroyed or used up as in play, paying nobody; right-click or `Esc` ends it) |
+| `` ` `` or Debug button | Open the Debug menu: test options, Show paths (arrows show where enemies will walk; red means "will attack this"), Sun slider (two sliders over the map: **Across** moves the sun from the left horizon to the right, **Arc** sets how its path leans: up to 90° over the top of the sky (90° straight overhead), past 90° over the bottom, so shadows fall behind blocks; shadows follow. Off puts the sun back), Day/night (a **Time** slider and **Play**: the sun rises on a shallow arc, is overhead at noon and leans back for long evening shadows, then night darkens the map and morning comes round again, a whole day in 96 seconds; off puts the daylight back), and the Damage tool (offline: each click takes 35% of its full amount off the top thing on the tile, an enemy, unit, tower, structure, the keep or a tree/rock/bush, and at 0 it's destroyed or used up as in play, paying nobody; right-click or `Esc` ends it) |
 | `J` | Open or close the monster journal (`Esc` also closes it) |
 | Hover a tile | Show its details in the Info box, and a tower's range |
 | `W` `A` `S` `D` or arrow keys | Move the view around the map |
@@ -258,7 +258,7 @@ Open http://localhost:5173/?editor (or `?editor=example` to open `maps/example.m
 - **Open** lists the maps in `maps/`, or opens a `.map` file from your computer. **Save** writes `maps/<name>.map` (with `npm run dev` only); **Download** saves a copy anywhere. Leaving with unsaved changes asks first (the title shows a dot).
 - **Play** (`P`) plays the map as a single-player game with today's waves and starting gold; **Back to editor** returns to it, undo history and all. Play is off while the map has errors (no spawn, no way from the spawn to the keep, a keep on rock...), listed in the status line; warnings (a spawn close to the keep, a chest you can't reach) don't stop it.
 - **Keep walls** rebuilds the ring of walls and the gate round each keep, as a new game has.
-- **Debug** (`` ` ``, under the title) has **Show paths** and the **Sun slider**, as in the game.
+- **Debug** (`` ` ``, under the title) has **Show paths**, the **Sun slider** and **Day/night**, as in the game.
 - **Playing a map:** solo, Endless's settings (after picking Endless on the mode screen) have a **Map** dropdown listing the Endless maps in `maps/` (those with no errors), or open `?solo&map=<name>`. Online rooms still play generated maps for now.
 
 | Input | Action |

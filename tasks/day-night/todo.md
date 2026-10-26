@@ -146,6 +146,6 @@ Built: turning the Sun sliders off while the clock is on puts the sun back where
 
 `SPEC.md`, `CAPABILITIES.md`, README (Debug menu row).
 
-- [ ] Docs updated
+- [x] Docs updated
 
 Files: `SPEC.md`, `CAPABILITIES.md`, `README.md`. Size: S. Depends on: 11.

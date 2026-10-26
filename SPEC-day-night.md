@@ -189,4 +189,4 @@ A full day and night, for now in the Debug menu: a clock you can set or play. Th
 - [ ] Through a played day the sun rises shallow, is about overhead at noon, leans well past 90° at sunset, then night falls and the sun comes back up.
 - [ ] Night darkens the map (fog too) but everything stays visible; previews stay clear.
 - [ ] Shadows fade out through dusk and back in at dawn.
-- [ ] Unit tests, the typecheck and the build pass; docs updated.
+- [x] Unit tests, the typecheck and the build pass; docs updated.
