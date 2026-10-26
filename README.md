@@ -20,7 +20,7 @@ Then open http://localhost:5173, click (or press any key) past the title screen,
 
 ## How to play
 
-Enemies spawn from the red strip on the left edge and walk to your keep (`K`, 300 HP). An enemy that reaches the keep stays there and keeps hitting it until it's killed; at 0 HP the keep falls and the game ends. Waves never stop, and each one is bigger and tougher than the last.
+Enemies spawn from the red strip on the left edge and walk to your keep (`⛫`, 300 HP). An enemy that reaches the keep stays there and keeps hitting it until it's killed; at 0 HP the keep falls and the game ends. Waves never stop, and each one is bigger and tougher than the last.
 
 - Kill enemies with towers and traps to earn gold.
 - Build houses for steady income.
@@ -43,7 +43,7 @@ Waves 1 and 2 are all goblins. Later waves mix in other kinds from the wave show
 | `m` | Marine | 25 | 1.4 | 5 every 1s | 3 | 7 |
 | `x` | Dwarf bomber | 18 | 1.0 | 3 every 1s; blast 60 | 4 | 8 |
 | `s` | Shaman | 30 | 1.2 | 3 every 1s | 6 | 8 |
-| `n` | Digger | 20 | 1.2 | 6 every 1s | 4 | 9 |
+| `t` | Digger | 20 | 1.2 | 6 every 1s | 4 | 9 |
 | `G` | Golem | 250 | 0.6 | 40 every 3s | 20 | 10 |
 | `M` | Marine captain | 60 | 1.2 | 10 every 1s | 8 | 11 |
 | `X` | Dwarf demolisher | 40 | 0.9 | 5 every 1s; blast 120 | 9 | 11 |
@@ -54,7 +54,7 @@ What some of them do on top of walking:
 - **Bands:** a barbarian chief arrives with 2-4 barbarians, a dwarf thane with 2-3 dwarves. They follow their leader's route (through the wall it breaks, if it's a breacher), never get more than a tile ahead, hurry to catch up, and attack whatever it attacks. When the leader dies they carry on alone.
 - **Bombers** (`x`, `X`) spot a wall, tower, house or wall spikes you built within 3 tiles, sprint at it and explode, damaging everything in the 3x3 around them (the keep too, if it's in the blast, but never other enemies). They drop no bounty. Kill them before they arrive and nothing happens.
 - **Shamans** (`s`) heal every other enemy within 2.5 tiles by 6 HP every 2 seconds (a green `+`).
-- **Diggers** (`n`) walk to a wall or wall spikes you built within 4 tiles and dig under it until it falls, taking any tower on it down too. Towers and traps can still hit them while they dig.
+- **Diggers** (`t`) walk to a wall or wall spikes you built within 4 tiles and dig under it until it falls, taking any tower on it down too. Towers and traps can still hit them while they dig.
 - **Battering rams** (`R`) are slow breachers with huge hits.
 
 Hover an enemy to see what it's doing, e.g. `Dwarf bomber, HP 18 / 18, sprinting` or `Barbarian raider, HP 30 / 30, with its chief`.
@@ -71,9 +71,9 @@ Gatherer buildings make workers (see [Resources](#resources)). On the dev server
 
 Trees, rocks and berry bushes hold resources, and workers turn them into gold. Build a gatherer (Civic tab) and it sends out a worker straight away, then another every minute, up to 5:
 
-- **Timber yard** (60g, drawn `L`): lumberjacks `j` chop trees.
-- **Mine** (100g, drawn `M`): miners `p` mine rock. Gold-veined rock (`o` in gold) pays three times as much.
-- **Forager hut** (40g, drawn `F`): foragers `f` pick berry bushes (green, red `b`). Berries are food in the story; for now they pay gold too.
+- **Timber yard** (60g, drawn `Ti`): lumberjacks `j` chop trees.
+- **Mine** (100g, drawn `Mi`): miners `p` mine rock. Gold-veined rock (`o` in gold) pays three times as much.
+- **Forager hut** (40g, drawn `Fo`): foragers `f` pick berry bushes (green, red `b`). Berries are food in the story; for now they pay gold too.
 
 Each worker walks to the nearest resource it gathers (even into fog, lighting it up) and works it. Every resource tile is worth some gold and takes a set time to clear: every 3 seconds a worker pays you the share of its worth that work earned, and two workers on one tile clear it twice as fast. A tile that's used up disappears: a tree or rock becomes open ground, which can open a new route for enemies. Hover a resource to see what's left (`Tree - 18 of 30g of timber left`) or a worker to see what it's doing (`chopping`, `walking`, `idle: nothing to gather`).
 
@@ -98,16 +98,16 @@ Open the build picker with the Build box or `1` / `2` / `3` for the **Defence**,
 | Defence | Bridge | `=` | 10 | Only on river tiles. Makes the river walkable there (for enemies too). |
 | Defence | Watchtower | `T` | 20 | Doesn't attack. Sees all round, as far as a cannon (see [Fog of war](#fog-of-war)). Stands on open ground or a wall, like a tower. |
 | Defence | Gate | `∩` | 15 | Part of a wall that enemies walk straight through. Still closes a ring of walls, so the area inside counts as enclosed (and keeps its discount). |
-| Defence | Guardhouse | `G` | 60 | Sends out up to 3 swordsmen, one every 30s, to guard the tiles in front of it. Placed facing a way (`R`). See [Guards](#guards). |
-| Defence | Archery post | `A` | 70 | Sends out up to 3 archers who shoot from the tiles in front of it. Placed facing a way. |
-| Defence | Paladin hall | `K` | 90 | Sends out up to 3 paladins who hold the tiles in front of it. Placed facing a way. |
-| Civic | House | `h` | 40 | +2 gold every 5s. Blocks movement. |
-| Civic | Shop | `S` | 70 | +4 gold every 5s. Blocks movement. |
-| Civic | Farmhouse | `H` | 50 | +1 gold every 10s for each field joined to it (up to 8). Blocks movement. See [Farms](#farms-and-town). |
-| Civic | Farmland | `"` | 3 | A field: walkable, 10 HP. Counts for a farmhouse it's joined to. Heavy enemies trample it. |
-| Civic | Timber yard | `L` | 60 | Sends out up to 5 lumberjacks, one a minute, to chop trees for gold. Blocks movement. |
-| Civic | Mine | `M` | 100 | Sends out up to 5 miners to mine rock (gold-veined rock pays 3x). Blocks movement. |
-| Civic | Forager hut | `F` | 40 | Sends out up to 5 foragers to pick berry bushes. Blocks movement. |
+| Defence | Guardhouse | `⛨` | 60 | Sends out up to 3 swordsmen, one every 30s, to guard the tiles in front of it. Placed facing a way (`R`). See [Guards](#guards). |
+| Defence | Archery post | `➶` | 70 | Sends out up to 3 archers who shoot from the tiles in front of it. Placed facing a way. |
+| Defence | Paladin hall | `✠` | 90 | Sends out up to 3 paladins who hold the tiles in front of it. Placed facing a way. |
+| Civic | House | `⌂` | 40 | +2 gold every 5s. Blocks movement. |
+| Civic | Shop | `¤` | 70 | +4 gold every 5s. Blocks movement. |
+| Civic | Farmhouse | `Fa` | 50 | +1 gold every 10s for each field joined to it (up to 8). Blocks movement. See [Farms](#farms-and-town). |
+| Civic | Farmland | `𐤄` | 3 | A field: walkable, 10 HP. Counts for a farmhouse it's joined to. Heavy enemies trample it. |
+| Civic | Timber yard | `Ti` | 60 | Sends out up to 5 lumberjacks, one a minute, to chop trees for gold. Blocks movement. |
+| Civic | Mine | `Mi` | 100 | Sends out up to 5 miners to mine rock (gold-veined rock pays 3x). Blocks movement. |
+| Civic | Forager hut | `Fo` | 40 | Sends out up to 5 foragers to pick berry bushes. Blocks movement. |
 | Every tab (`X`) | Sell | `$` | - | Refunds 50% of cost, less if damaged. Sells the top layer first (a tower before the wall under it). Also clears trees. |
 
 ### Guards

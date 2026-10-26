@@ -841,7 +841,7 @@ export const ENEMY_KINDS = {
     variants: [{ name: "demolisher", weight: 1, hp: 1, speed: 1, damage: 1, size: "normal" }],
   },
   digger: {
-    glyph: "n",
+    glyph: "t", // for tunneller
     name: "Digger",
     description: "Digs under a nearby wall until it falls, then walks on.",
     profile: "follower",

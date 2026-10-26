@@ -68,7 +68,9 @@ import {
   enemyFont,
   glyphFor,
   playerColour,
+  CODE_FONT,
   DOOR_ALPHA,
+  KEEP_GLYPH,
 } from "./palette";
 import { fogImage } from "./fog";
 import { burstPixels, burstWaiting } from "./burst";
@@ -143,7 +145,8 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   }
 
   function drawGlyph(x: number, y: number, glyph: string, fg: string) {
-    ctx!.font = GLYPH_FONT;
+    // Two-letter codes (Ti, Mi) go smaller to fit; count code points, as 𐤄 is two UTF-16 units.
+    ctx!.font = [...glyph].length > 1 ? CODE_FONT : GLYPH_FONT;
     ctx!.fillStyle = fg;
     ctx!.fillText(glyph, (x + 0.5) * TILE_SIZE, (y + 0.5) * TILE_SIZE + 1);
   }
@@ -231,7 +234,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   }
 
   /**
-   * Keep tiles show "K", except the centre, which shows the keep's HP. A PvP keep is drawn in
+   * Keep tiles show a castle (KEEP_GLYPH), except the centre, which shows the keep's HP. A PvP keep is drawn in
    * its owner's colour.
    */
   function drawKeepTile(state: GameState, x: number, y: number) {
@@ -241,7 +244,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     drawTile(x, y, bg);
     drawTexture(x, y, KEEP_TEXTURE);
     if (x !== keep.x + centre || y !== keep.y + centre) {
-      drawGlyph(x, y, "K", COLOURS.keepGlyph);
+      drawGlyph(x, y, KEEP_GLYPH, COLOURS.keepGlyph);
       return;
     }
     ctx!.font = KEEP_HP_FONT;

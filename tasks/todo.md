@@ -20,12 +20,14 @@ Built: the notch code is gone (`needsNotch`, `drawFacingNotch`, its constants an
 
 Per the spec's table: the keep's tiles draw `⛫` (the middle still shows HP), houses `⌂`, farmland `𐤄`, shop `¤`, guardhouse `⛨`, paladin hall `✠`, archery post `➶`, scout camp `⚑`, archery range `◎`; two-letter codes as the last resort (`Fa`, `Ti`, `Mi`, `Fo`, `Ba`), drawn smaller. The digger enemy's glyph changes from `n` to `t` (README enemy table and journal follow, since they read config). The glyph font list gains symbol-font fallbacks. The build picker uses the same.
 
-- [ ] The digger is `t`, and no two enemy kinds share a glyph
-- [ ] Every structure's glyph is one symbol or a two-letter code, matching the spec's table and [`GLYPHS.md`](../GLYPHS.md) (planned marks there become current)
-- [ ] None of the symbols is an emoji-capable code point (a test lists the ones to avoid)
+- [x] The digger is `t`, and no two enemy kinds share a glyph
+- [x] Every structure's glyph is one symbol or a two-letter code, matching the spec's table and [`GLYPHS.md`](../GLYPHS.md) (planned marks there become current)
+- [x] None of the symbols is an emoji-capable code point (a test lists the ones to avoid)
 - [ ] Browser: every symbol draws as a plain glyph (no boxes, no colour emoji) on this Mac; any that doesn't falls back to its code, recorded here
 
 Files: `src/render/palette.ts`, `src/render/canvas.ts`, `src/ui/hud.ts`, `src/sim/config.ts` (digger), `tests/render/` (glyphs test), `tests/sim/behaviours.test.ts`, `README.md`, `GLYPHS.md`. Size: S. Depends on: none.
+
+Built: the emoji check is Unicode's `Emoji` property, which every symbol to avoid (⚔ ⚒ ⛏ ⚖ ⛺) has and none of the picks do. Two-letter codes draw in a smaller `CODE_FONT`, counting code points since 𐤄 is two UTF-16 units. The scout camp, barracks and archery range symbols arrive with their buildings in Task 4. The tree's `♣` is emoji-capable too, but it has always drawn as plain text, so it's worth a glance in the browser check. The browser check of the symbols is still to do.
 
 ## Task 3: Explored-only and breaching paths
 

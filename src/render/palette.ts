@@ -26,7 +26,16 @@ export const CONSTRUCTION_ALPHA = 0.45;
 export const BUILD_BORDER_PX = 3;
 /** From this much of the longest build time on, the build-time border turns orange. */
 export const BUILD_BORDER_LONG = 0.75;
-export const GLYPH_FONT = `bold ${TILE_SIZE - 4}px Menlo, Consolas, monospace`;
+/**
+ * Glyphs: monospace for letters, then the usual symbol fonts for building symbols such as ⛫ ⌂ 𐤄
+ * (see GLYPHS.md), so they draw as plain glyphs on macOS and Windows.
+ */
+const GLYPH_FONTS = `Menlo, Consolas, "Apple Symbols", "Segoe UI Symbol", "Segoe UI Historic", "Noto Sans Symbols 2", monospace`;
+export const GLYPH_FONT = `bold ${TILE_SIZE - 4}px ${GLYPH_FONTS}`;
+/** Smaller, so a two-letter code (like Ti) fits a tile. */
+export const CODE_FONT = `bold ${TILE_SIZE - 9}px ${GLYPH_FONTS}`;
+/** Every keep tile but the middle one (which shows its HP). */
+export const KEEP_GLYPH = "⛫";
 /** Slightly smaller font so a two-digit HP fits inside one tile. */
 export const KEEP_HP_FONT = `bold ${TILE_SIZE - 6}px Menlo, Consolas, monospace`;
 
@@ -152,16 +161,17 @@ export const GLYPHS: Record<StructureKind, string> = {
   catapult: "P",
   floorSpikes: "^",
   wallSpikes: "↑",
-  house: "h",
-  timberYard: "L",
-  mine: "M",
-  foragerHut: "F",
-  shop: "S",
-  guardhouse: "G",
-  archeryPost: "A",
-  paladinHall: "K",
-  farmhouse: "H",
-  farmland: '"',
+  // A symbol where a clear one exists, else a two-letter code (see GLYPHS.md for why each).
+  house: "⌂",
+  timberYard: "Ti",
+  mine: "Mi",
+  foragerHut: "Fo",
+  shop: "¤",
+  guardhouse: "⛨",
+  archeryPost: "➶",
+  paladinHall: "✠",
+  farmhouse: "Fa",
+  farmland: "𐤄",
   bridge: "=",
   watchtower: "T",
   gate: "∩",
