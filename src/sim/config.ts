@@ -1047,6 +1047,17 @@ export const MAP_GEN = {
   berryPatchSize: [3, 8] as [number, number],
 };
 
+/** The map editor (SPEC-map-editor.md) and `.map` files. */
+export const MAP_EDITOR = {
+  brushSizes: [1, 3, 5],
+  ruinHpSteps: [0.2, 0.4, 0.6, 0.8, 1], // a placed ruin's starting HP, as a fraction of full
+  defaultRuinHp: 0.6,
+  chestGold: { min: 25, max: 200, step: 25, default: 75 },
+  undoSteps: 100,
+  keepNearSpawnTiles: 10, // warn when a spawn tile is this close to a keep
+  maxFileBytes: 2_000_000,
+};
+
 /** Gold of timber for clearing one tree with the sell tool. */
 export const TREE_CLEAR_GOLD = 1;
 

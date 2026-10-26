@@ -8,9 +8,9 @@ Standard verification for every task: `npm run typecheck && npm test && npm run 
 
 `src/sim/mapFile.ts`: `MapFile`, `parseMap`, `serializeMap`, `validateMap`. Editor numbers (brush sizes, ruin HP and chest gold steps, size limit) in `MAP_EDITOR` in config.
 
-- [ ] Serialize then parse gives back the same map, extra fields included
-- [ ] Bad files are refused with a message naming the problem: wrong format, newer version, wrong row count or length, unknown terrain character, unknown structure kind, bad size or mode
-- [ ] One test per validation error and warning in the spec
+- [x] Serialize then parse gives back the same map, extra fields included
+- [x] Bad files are refused with a message naming the problem: wrong format, newer version, wrong row count or length, unknown terrain character, unknown structure kind, bad size or mode
+- [x] One test per validation error and warning in the spec
 
 Files: `src/sim/mapFile.ts`, `src/sim/config.ts`, `tests/sim/mapFile.test.ts`. Size: M. Depends on: none.
 
