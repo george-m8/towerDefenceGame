@@ -48,7 +48,11 @@ export interface GameOptions {
 
 export function createGame(seed: number, options: GameOptions = {}): GameState {
   const file = options.map;
-  const { width, height } = MAP_SIZES[file?.size ?? options.size ?? DEFAULT_MAP_SIZE];
+  const {
+    width,
+    height,
+    keep: keepSide,
+  } = MAP_SIZES[file?.size ?? options.size ?? DEFAULT_MAP_SIZE];
   const mode = file?.mode ?? options.mode ?? "endless";
   const layout = file
     ? {
@@ -57,7 +61,7 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
         keeps: file.keeps.map((k) => ({ ...k, size: KEEP_SIZE })),
         spawnTiles: spawnTiles(file),
       }
-    : layoutFor(width, height, mode);
+    : layoutFor(width, height, mode, keepSide);
   const { spawnTiles: spawns } = layout;
   const keepHp = mode === "pvp" ? PVP.keepHp : KEEP_HP;
 

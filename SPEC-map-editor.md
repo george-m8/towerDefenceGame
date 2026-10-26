@@ -35,7 +35,7 @@ Today every map is generated from a seed, with the keep and spawn in fixed place
 - **Layout:** the map fills the window, drawn by the game's renderer, with the same tiles, heights, textures and glyphs. The editor's toolbar sits where the game's HUD is, and a status line shows the hovered tile, the current tool and any validation problems.
 - **Camera:** the same as in game: wheel, WASD or arrow keys, `+` / `-`, the minimap and Fit. Fog is off.
 - **File actions:**
-  - **New:** name, size XS to XL, Endless or PvP, blank or generated from a seed.
+  - **New:** name, size XXS to XL, Endless or PvP, blank or generated from a seed.
   - **Open:** maps from the folder, or a file from disk.
   - **Save:** into `maps/`, under the dev server only.
   - **Download:** a `.map` file; works anywhere.
@@ -148,7 +148,7 @@ Checked live and shown in the status line. Problems are **errors** or **warnings
 - The `.wave` and `.loadout` editors, and how a level combines the three files.
 - Choosing a map or level from the start screen, or playing one online or in a room.
 - Real PvP play on a map (two players), and maps for more than two players.
-- Map sizes other than XS to XL, keeps that aren't 3x3, and new terrain kinds.
+- Map sizes other than XXS to XL, keeps that aren't 3x3, and new terrain kinds.
 - Editing a map inside a running game.
 - Copy and paste of regions, mirroring, or symmetry tools.
 

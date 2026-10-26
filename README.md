@@ -153,6 +153,8 @@ When the trees and rocks nearby are gone, farms and a town keep the gold coming.
 
 Every game starts on a new, randomly generated map (the seed is shown in the panel and on the game-over screen). Hand-made maps come from the [map editor](#map-editor).
 
+Maps come in six sizes, picked on the mode screen: XXS (42 x 28), XS (66 x 44), S (108 x 72), M (153 x 102, the default), L (216 x 144) and XL (270 x 180). On XXS the keep stands at the far right, its walls along the edge, so the enemies from the left have the whole map to cross.
+
 | Terrain | Look | Walk | Build | Notes |
 |---|---|---|---|---|
 | Ground | dark checker | yes | yes | |

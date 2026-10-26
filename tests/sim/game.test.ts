@@ -8,6 +8,7 @@ import {
   FAST_FORWARD_SPEED,
   GRID_HEIGHT,
   GRID_WIDTH,
+  KEEP_WALLS,
   MAP_SIZES,
   type MapSize,
   KEEP_HP,
@@ -227,6 +228,18 @@ describe("ownership", () => {
 });
 
 describe("map sizes", () => {
+  it("XXS puts the Endless keep at the far right, its wall ring along the edge", () => {
+    const state = createGame(1, { size: "XXS" });
+    const [keep] = state.keeps;
+    const ringEdge = keep.x + keep.size + KEEP_WALLS.courtyard;
+    expect(ringEdge).toBe(state.width - 1);
+    const walls = Object.values(state.structures).filter((s) => s.kind === "wall");
+    expect(walls.some((w) => w.x === state.width - 1)).toBe(true);
+    // Enemies still come from the left, so the gate faces them.
+    const gate = Object.values(state.structures).find((s) => s.kind === "gate")!;
+    expect(gate.x).toBeLessThan(keep.x);
+  });
+
   it("every size makes a map of that size, M by default, in both modes", () => {
     expect(createGame(1, { blankMap: true }).width).toBe(MAP_SIZES.M.width);
     for (const size of Object.keys(MAP_SIZES) as MapSize[]) {

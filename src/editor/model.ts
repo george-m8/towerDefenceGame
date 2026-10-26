@@ -35,8 +35,8 @@ import type { Facing, GameMode, Point, StructureKind, Terrain } from "../sim/typ
  * new game is.
  */
 export function newMap(title: string, mode: GameMode, size: MapSize, seed: number): MapFile {
-  const { width, height } = MAP_SIZES[size];
-  const layout = layoutFor(width, height, mode);
+  const { width, height, keep } = MAP_SIZES[size];
+  const layout = layoutFor(width, height, mode, keep);
   const blank: MapFile = {
     format: MAP_FORMAT,
     version: MAP_VERSION,
