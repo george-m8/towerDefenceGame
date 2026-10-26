@@ -6,6 +6,8 @@ import {
   TICK_RATE,
   UNIT_KINDS,
   UNIT_PATH_SEARCHES_PER_TICK,
+  UNIT_SHOT_FLIGHT_TICKS,
+  type ProjectileKind,
   type StructureStats,
   type UnitBehaviourId,
   type UnitKind,
@@ -14,7 +16,8 @@ import {
 import { damageEnemy } from "./enemies";
 import { blocksAt, inBounds, isBuilt, keepAt } from "./grid";
 import { addBurst } from "./effects";
-import { unitMoved } from "./fog";
+import { addCue } from "./cues";
+import { teamOf, unitMoved } from "./fog";
 import { atTileCentre, walk } from "./movement";
 import { DIRECTIONS, canCross } from "./pathfinding";
 import { harvest, resourceAt } from "./resources";
@@ -273,13 +276,48 @@ function reach(from: Point, x: number, y: number): number {
  */
 function attackNearest(state: GameState, unit: Unit): boolean {
   const kind = kindOf(unit);
-  const target = nearestEnemy(state, unit, kind.range);
+  const enemy = nearestEnemy(state, unit, kind.range);
+  const target = enemy ?? nearestRival(state, unit, kind.range);
   if (!target) return false;
   if (unit.attackCooldown === 0) {
-    damageEnemy(target, kind.damage, unit.owner);
+    if (enemy) damageEnemy(enemy, kind.damage, unit.owner);
+    else damageUnit(target as Unit, kind.damage);
+    if (kind.projectile) shoot(state, unit, target, kind.projectile);
     unit.attackCooldown = kind.attackInterval * TICK_RATE;
   }
   return true;
+}
+
+/** A ranged unit's shot: the hit has already landed, the arrow shows it flying (as for towers). */
+function shoot(state: GameState, unit: Unit, target: Point, projectile: ProjectileKind) {
+  state.effects.push({
+    kind: "shot",
+    fromX: unit.x,
+    fromY: unit.y,
+    toX: target.x,
+    toY: target.y,
+    ttl: UNIT_SHOT_FLIGHT_TICKS,
+    projectile,
+    flight: UNIT_SHOT_FLIGHT_TICKS,
+  });
+  addCue(state, "enemyHit");
+}
+
+/** PvP: the living rival unit within `range` nearest the unit. Same-team units never count. */
+function nearestRival(state: GameState, unit: Unit, range: number): Unit | undefined {
+  const team = teamOf(state, unit.owner);
+  let best: Unit | undefined;
+  let bestDistance = Infinity;
+  for (const other of state.units) {
+    if (other.hp <= 0 || teamOf(state, other.owner) === team) continue;
+    if (reach(unit, other.x, other.y) > range) continue;
+    const distance = Math.hypot(other.x - unit.x, other.y - unit.y);
+    if (distance < bestDistance) {
+      best = other;
+      bestDistance = distance;
+    }
+  }
+  return best;
 }
 
 /**

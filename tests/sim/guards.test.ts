@@ -7,13 +7,13 @@ import {
   type StructureStats,
 } from "../../src/sim/config";
 import { spawnEnemy } from "../../src/sim/enemies";
-import { applyCommand, tick } from "../../src/sim/game";
+import { applyCommand, createGame, tick } from "../../src/sim/game";
 import { placeStructure } from "../../src/sim/grid";
 import { guardSpotOf, guardSpots } from "../../src/sim/guards";
 import { spawnUnit } from "../../src/sim/units";
 import { toolsInTab } from "../../src/ui/state";
 import type { GameState } from "../../src/sim/types";
-import { buildAt, createGameWithoutWaves } from "./helpers";
+import { buildAt, column, createGameWithoutWaves } from "./helpers";
 
 function run(state: GameState, ticks: number) {
   for (let i = 0; i < ticks; i++) tick(state);
@@ -236,5 +236,82 @@ describe("swordsmen", () => {
 
     until(state, () => !state.enemies.includes(goblin));
     until(state, () => swordsman.x === lane.x && swordsman.y === lane.y - 2);
+  });
+});
+
+describe("archers", () => {
+  const archer = UNIT_KINDS.archer;
+
+  function post(state: GameState) {
+    const building = placeStructure(state, "archeryPost", 10, 10, "E", 1);
+    building.cooldown = Infinity; // no more archers of its own: just the one placed here
+    return spawnUnit(state, "archer", 1, 11, 10, building.id)!;
+  }
+
+  it("shoot an enemy in range from their spot, with an arrow and a hit sound", () => {
+    const state = createGameWithoutWaves();
+    const unit = post(state);
+    const enemy = spawnEnemy(state, 11 + archer.range, 10, { hp: 1000 });
+    enemy.speed = 0;
+
+    tick(state);
+
+    expect(enemy.hp).toBe(1000 - archer.damage);
+    expect(state.effects).toContainEqual(
+      expect.objectContaining({
+        kind: "shot",
+        fromX: 11,
+        fromY: 10,
+        toX: enemy.x,
+        toY: enemy.y,
+        projectile: archer.projectile,
+      }),
+    );
+    expect(state.cues.some((c) => c.kind === "enemyHit")).toBe(true);
+    expect({ x: unit.x, y: unit.y }).toEqual({ x: 11, y: 10 });
+  });
+
+  it("never leave their spot, even for an enemy just out of range", () => {
+    const state = createGameWithoutWaves();
+    const unit = post(state);
+    const enemy = spawnEnemy(state, 11 + archer.range + 2, 10);
+    enemy.speed = 0;
+    run(state, 5 * TICK_RATE);
+    expect({ x: unit.x, y: unit.y }).toEqual({ x: 11, y: 10 });
+    expect(enemy.hp).toBe(enemy.maxHp);
+  });
+
+  it("in PvP, shoot a rival's units in range but never their own side's", () => {
+    const state = createGame(1, { blankMap: true, mode: "pvp", players: ["Ann", "Bo"] });
+    const p = { x: Math.floor(state.width / 2), y: 5 };
+    spawnUnit(state, "archer", 1, p.x, p.y);
+    const rival = spawnUnit(state, "militia", 2, p.x + 3, p.y)!;
+    const friend = spawnUnit(state, "militia", 1, p.x - 2, p.y)!;
+    tick(state);
+    expect(rival.hp).toBe(rival.maxHp - archer.damage);
+    expect(friend.hp).toBe(friend.maxHp);
+  });
+});
+
+describe("checkpoint A", () => {
+  it("paladins hold a gap in the wall with archers behind them, and the goblins die there", () => {
+    const state = createGameWithoutWaves();
+    const keep = state.keeps[0];
+    const gap = { x: keep.x - 12, y: keep.y + 1 };
+    buildAt(state, column(state, gap.x, [gap.y]));
+    placeStructure(state, "paladinHall", gap.x + 2, gap.y, "W", 1);
+    placeStructure(state, "archeryPost", gap.x + 4, gap.y - 2, "W", 1);
+    const { quota, intervalSeconds } = STRUCTURES.paladinHall.spawner;
+    run(state, quota * intervalSeconds * TICK_RATE); // both buildings fill up and take their spots
+
+    const goblins = Array.from({ length: 6 }, (_, i) => spawnEnemy(state, gap.x - 8 - i, gap.y));
+    for (let i = 0; i < 90 * TICK_RATE && goblins.some((g) => state.enemies.includes(g)); i++) {
+      tick(state);
+    }
+
+    expect(goblins.filter((g) => state.enemies.includes(g))).toEqual([]);
+    expect(keep.hp).toBe(keep.maxHp);
+    expect(state.units.filter((u) => u.kind === "paladin")).toHaveLength(quota);
+    expect(state.units.every((u) => u.x > gap.x - 2)).toBe(true); // nobody wandered off
   });
 });

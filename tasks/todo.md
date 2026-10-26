@@ -55,12 +55,14 @@ Files: `src/sim/units.ts`, `tests/sim/guards.test.ts`. Size: S. Depends on: 3.
 
 A unit kind with a `projectile` fires a shot effect (from it to the target, `flight` like the archer tower) with each hit, plus the hit cue; damage lands at once, as for towers.
 
-- [ ] An archer hits an enemy within `range` from its spot, with a shot effect and a hit cue
-- [ ] It never leaves its spot
+- [x] An archer hits an enemy within `range` from its spot, with a shot effect and a hit cue
+- [x] It never leaves its spot
 
 Files: `src/sim/units.ts`, `src/sim/config.ts`, `tests/sim/guards.test.ts`. Size: S. Depends on: 3.
 
-**Checkpoint A:** in tests, paladins hold a gap with archers behind and the goblins die there; a swordsman runs out and back.
+Built: also filled a gap the spec asked for but no task covered. In PvP, units now attack a rival's units in reach when no enemy is (until now `unit-core` only ever targeted enemies).
+
+**Checkpoint A:** in tests, paladins hold a gap with archers behind and the goblins die there; a swordsman runs out and back. Done: the checkpoint A test and the swordsman tests in `tests/sim/guards.test.ts`.
 
 ## Task 6: Hover and drawing
 
