@@ -7,8 +7,8 @@ import { SELL_REFUND, STRUCTURES, TICK_RATE, type StructureStats } from "../sim/
 import { buildTicksAt } from "../sim/building";
 import { discountAt, priceAt } from "../sim/enclosures";
 import { refundFor } from "../sim/economy";
-import { topAt } from "../sim/grid";
-import type { GameState } from "../sim/types";
+import { ownedCount, topAt } from "../sim/grid";
+import type { GameState, PlayerId, StructureKind } from "../sim/types";
 import { ARROW_SYMBOLS, GLYPHS, glyphFor } from "../render/palette";
 import {
   BUILD_TABS,
@@ -59,6 +59,21 @@ export function hudContent(state: GameState, ui: UiState): HudContent {
   const cost = discount > 0 ? `${price}g (${Math.round(discount * 100)}% off)` : `${price}g`;
   const time = `${(buildTicksAt(state, x, y, ui.playerId) / TICK_RATE).toFixed(1)}s`;
   return { tool, cost, time, short: gold < price, gold };
+}
+
+/**
+ * How many of a limited kind the player has, out of the most they can: "2/5". Null when it has
+ * no limit (nothing is shown then), or can't be built at all (it isn't offered).
+ */
+export function limitLabel(state: GameState, player: PlayerId, kind: StructureKind): string | null {
+  const limit = state.limits[kind];
+  if (limit === undefined || limit === 0) return null;
+  return `${ownedCount(state, player, kind)}/${limit}`;
+}
+
+/** Whether the game lets this kind be built at all (an items file can rule it out). */
+export function allowed(state: GameState, kind: StructureKind): boolean {
+  return state.limits[kind] !== 0;
 }
 
 /** The build time the HUD shows, and the tool it was for. */
@@ -116,7 +131,7 @@ export function createHud(root: HTMLElement, ui: UiState) {
             <span class="glyph">${isBuildTool(t.tool) ? GLYPHS[t.tool] : "$"}</span>
             <span class="name">${isBuildTool(t.tool) ? STRUCTURES[t.tool].name : "Sell"}</span>
             <span class="cost">${isBuildTool(t.tool) ? `${STRUCTURES[t.tool].cost}g` : `${SELL_REFUND * 100}%`}</span>
-            ${t.label ? `<kbd>${t.label}</kbd>` : "<span></span>"}
+            ${t.label ? `<kbd>${t.label}</kbd>` : '<span class="limit"></span>'}
           </button>`,
         ).join("")}
       </div>
@@ -248,7 +263,8 @@ export function createHud(root: HTMLElement, ui: UiState) {
       if (!state) return;
       const hud = hudContent(state, ui);
       glyph.textContent = hud.tool?.glyph ?? "+";
-      name.textContent = hud.tool?.name ?? "Build";
+      const limit = isBuildTool(ui.tool) ? limitLabel(state, ui.playerId, ui.tool) : null;
+      name.textContent = `${hud.tool?.name ?? "Build"}${limit ? ` ${limit}` : ""}`;
       cost.hidden = hud.cost === null;
       cost.textContent = hud.cost ?? "";
       shownTime = heldTime(shownTime, ui.tool, hud.time);
@@ -278,7 +294,14 @@ export function createHud(root: HTMLElement, ui: UiState) {
         // make it cheaper), and placing it checks the price there.
         button.classList.toggle("selected", tool === ui.tool);
         const tab = button.dataset.tab;
-        button.hidden = tab !== "all" && tab !== ui.tab;
+        // An items file can rule a kind out (not offered) or cap it (shows "2/5").
+        const offered = !isBuildTool(tool) || allowed(state, tool);
+        button.hidden = !offered || (tab !== "all" && tab !== ui.tab);
+        if (isBuildTool(tool)) {
+          const count = button.querySelector<HTMLElement>(".limit")!;
+          const text = limitLabel(state, ui.playerId, tool) ?? "";
+          if (count.textContent !== text) count.textContent = text;
+        }
       }
     },
   };

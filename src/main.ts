@@ -1,4 +1,4 @@
-import { GRID_HEIGHT, GRID_WIDTH } from "./sim/config";
+import { GRID_HEIGHT, GRID_WIDTH, type MapSize } from "./sim/config";
 import { createRenderer } from "./render/canvas";
 import { GLYPH_FONT, TERRAIN_STYLES } from "./render/palette";
 import { centerOn, panBy, setViewport, tilePixels, zoomBy } from "./ui/camera";
@@ -19,7 +19,12 @@ import { loadPointerSettings, pointerCursor, savePointerSettings } from "./ui/po
 import { createGameOverDialog } from "./ui/gameOver";
 import { createOnlinePanel } from "./ui/players";
 import { createWaitingRoom } from "./ui/waitingRoom";
-import { rememberedName, showStartScreen, type MapChoice } from "./ui/startScreen";
+import {
+  rememberedName,
+  showStartScreen,
+  type ItemsChoice,
+  type MapChoice,
+} from "./ui/startScreen";
 import { showIntro } from "./ui/intro";
 import { createWebAudioEngine, unlockOnFirstGesture } from "./audio/engine";
 import { loadAudioSettings, saveAudioSettings } from "./audio/settings";
@@ -43,10 +48,13 @@ import musicPacks from "virtual:music-packs";
 import { liveVoiceCount } from "./audio/synth";
 import { showNotice } from "./ui/notice";
 import bundledMaps from "virtual:maps";
+import bundledItems from "virtual:items";
 import { createEditor, keepWalls, type Editor } from "./editor/editor";
 import { createFileActions } from "./editor/files";
+import { createItemsEditor } from "./editor/itemsEditor";
+import { newItems, type ItemsFile } from "./sim/itemsFile";
 import { newMap } from "./editor/model";
-import { validateMap } from "./sim/mapFile";
+import { validateMap, type MapFile } from "./sim/mapFile";
 import { createToolbar } from "./editor/toolbar";
 import type { Command, DebugOption, GameState, PlayerId } from "./sim/types";
 
@@ -250,9 +258,8 @@ function followMusic() {
 function startSession(intent: Exclude<PageIntent, { mode: "menu" }>) {
   if (intent.mode === "offline") {
     const map = intent.map ? bundledMaps[intent.map] : undefined;
-    session = map
-      ? createLocalSession(map.seed, () => map.seed, { fog, map }) // Restart replays the map
-      : createLocalSession(Date.now() >>> 0, undefined, { fog, size: intent.size });
+    const items = intent.items ? bundledItems[intent.items] : undefined;
+    session = soloSession(map, items, intent.size, fog && intent.fog !== false);
   } else {
     network = createNetworkSession(
       serverUrl(location),
@@ -262,7 +269,7 @@ function startSession(intent: Exclude<PageIntent, { mode: "menu" }>) {
         storage,
         now: () => performance.now(),
       },
-      { fog },
+      { fog: fog && !(intent.mode === "create" && intent.fog === false) },
     );
     // Keep the address shareable and reloadable: ?room=CODE (reloading rejoins with the token).
     network.onWelcome = (room) => history.replaceState(null, "", `?room=${room}`);
@@ -274,6 +281,26 @@ function startSession(intent: Exclude<PageIntent, { mode: "menu" }>) {
     session = network;
   }
   listen(session);
+}
+
+/**
+ * A solo game: on a hand-made map (Restart replays it) or a generated one, with any limits.
+ * Fog of war is as set up (and always off with the ?fog=off dev switch).
+ */
+function soloSession(
+  map: MapFile | undefined,
+  items: ItemsFile | undefined,
+  size?: MapSize,
+  withFog = fog,
+): Session {
+  return map
+    ? createLocalSession(map.seed, () => map.seed, { fog: withFog, map, items })
+    : createLocalSession(Date.now() >>> 0, undefined, { fog: withFog, size, items });
+}
+
+/** The items files in items/, for the mode screen. */
+function itemsChoices(): ItemsChoice[] {
+  return Object.entries(bundledItems).map(([name, items]) => ({ name, title: items.title }));
 }
 
 /** The hand-made Endless maps in maps/ with nothing wrong with them, for the mode screen. */
@@ -324,6 +351,37 @@ function startEditor() {
   editing = { editor, toolbar };
 }
 
+/** The items editor: ?items-editor for a new file, ?items-editor=<name> to open items/<name>.items. */
+function startItemsEditor() {
+  const asked = new URLSearchParams(location.search).get("items-editor");
+  const name = asked && bundledItems[asked] ? asked : null;
+  const root = element("#items-editor");
+  document.body.classList.add("items-editing");
+  root.hidden = false;
+  createItemsEditor(
+    root,
+    element("#editor-dialog"),
+    { name, items: name ? bundledItems[name] : newItems("Untitled") },
+    {
+      maps: playableMaps(),
+      // Tries the limits out: a solo Endless game, with "Back to editor" to return.
+      play: (items, mapName) => {
+        root.hidden = true;
+        document.body.classList.replace("items-editing", "testing");
+        session = soloSession(mapName ? bundledMaps[mapName] : undefined, items);
+        listen(session);
+        centredFor = "";
+      },
+    },
+  );
+  element("#editor-back").addEventListener("click", () => {
+    session = null;
+    ui.tool = null;
+    root.hidden = false;
+    document.body.classList.replace("testing", "items-editing");
+  });
+}
+
 /** Plays the map being edited: a normal single-player game, with today's waves and gold. */
 function playMap() {
   if (!editing || !editorActive) return;
@@ -355,6 +413,8 @@ function backToEditor() {
 const intent = readJoinIntent(location.search);
 if (new URLSearchParams(location.search).has("editor")) {
   startEditor();
+} else if (new URLSearchParams(location.search).has("items-editor")) {
+  startItemsEditor();
 } else if (import.meta.env.DEV && new URLSearchParams(location.search).has("soundtest")) {
   showSoundTest(element("#intro"), audio);
 } else if (intent.mode !== "menu") {
@@ -370,6 +430,7 @@ if (new URLSearchParams(location.search).has("editor")) {
     showStartScreen(element("#start"), {
       room: intent.room,
       maps: playableMaps(),
+      items: itemsChoices(),
       onChoose: startSession,
     });
   });

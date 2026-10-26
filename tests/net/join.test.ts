@@ -13,6 +13,11 @@ describe("readJoinIntent", () => {
       map: "river-crossing",
     });
     expect(readJoinIntent("?solo&map=../secret")).toEqual({ mode: "offline" });
+    expect(readJoinIntent("?solo&items=towers-only")).toEqual({
+      mode: "offline",
+      items: "towers-only",
+    });
+    expect(readJoinIntent("?solo&items=../secret")).toEqual({ mode: "offline" });
     expect(readJoinIntent("?create&name=Ann&size=S")).toEqual({
       mode: "create",
       name: "Ann",

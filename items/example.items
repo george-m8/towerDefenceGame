@@ -1,0 +1,13 @@
+{
+  "format": "keep-defence-items",
+  "version": 1,
+  "title": "Example",
+  "limits": {
+    "archer": 6,
+    "cannon": 3,
+    "catapult": 1,
+    "watchtower": 2,
+    "paladinHall": 0,
+    "archeryRange": 0
+  }
+}

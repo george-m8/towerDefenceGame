@@ -51,6 +51,12 @@ export interface MapChoice {
   size: MapSize;
 }
 
+/** An items file Endless can be played with (from items/), as the mode screen lists it. */
+export interface ItemsChoice {
+  name: string;
+  title: string;
+}
+
 /** Shows the start screen in `root` and calls `onChoose` once with the player's choice. */
 export function showStartScreen(
   root: HTMLElement,
@@ -58,6 +64,8 @@ export function showStartScreen(
     room?: string;
     /** Hand-made Endless maps to offer solo, besides a generated one. */
     maps?: MapChoice[];
+    /** Items files (build limits) to offer solo, besides none. */
+    items?: ItemsChoice[];
     onChoose: (intent: Exclude<PageIntent, { mode: "menu" }>) => void;
   },
 ) {
@@ -121,13 +129,23 @@ export function showStartScreen(
     showModeScreen(root, {
       online,
       maps: options.maps ?? [],
+      items: options.items ?? [],
       onBack: () => showStartScreen(root, { ...options, room: room() }),
-      onChoose: (game, size, map) => {
-        if (!online) return choose(map ? { mode: "offline", map } : { mode: "offline", size });
+      onChoose: (game, size, map, items, fog) => {
+        // Only "off" is sent: fog of war is on unless asked otherwise.
+        const fogOff = fog ? {} : { fog: false as const };
+        if (!online) {
+          return choose({
+            mode: "offline",
+            ...(map ? { map } : { size }),
+            ...(items ? { items } : {}),
+            ...fogOff,
+          });
+        }
         choose(
           game === "endless"
-            ? { mode: "create", name: chosen, size }
-            : { mode: "create", name: chosen, game, size },
+            ? { mode: "create", name: chosen, size, ...fogOff }
+            : { mode: "create", name: chosen, game, size, ...fogOff },
         );
       },
     });
@@ -145,37 +163,96 @@ export function showStartScreen(
   (options.room && name() ? join : nameInput).focus();
 }
 
+/** What the settings screen has chosen so far (kept when going back to the modes). */
+interface ModeSettings {
+  size: MapSize;
+  /** A hand-made map in maps/ (Endless solo), or "" for a generated one. */
+  map: string;
+  /** An items file in items/ (Endless solo), or "" for no limits. */
+  items: string;
+  /** Fog of war (on to start with). */
+  fog: boolean;
+}
+
 /**
- * Picks a map size and a game mode, each mode with a short description. Online-only modes are
- * greyed out solo. Solo, Endless can be played on a hand-made map instead of a generated one
- * (online rooms can't load them yet), which brings its own size.
+ * The game mode screen: a card per mode, each with a short description. Online-only modes are
+ * greyed out solo. Picking one goes on to that mode's settings.
  */
 function showModeScreen(
   root: HTMLElement,
   options: {
     online: boolean;
     maps: MapChoice[];
+    items: ItemsChoice[];
     onBack: () => void;
-    onChoose: (mode: GameMode, size: MapSize, map?: string) => void;
+    onChoose: (
+      mode: GameMode,
+      size: MapSize,
+      map: string | undefined,
+      items: string | undefined,
+      fog: boolean,
+    ) => void;
   },
+  settings: ModeSettings = { size: DEFAULT_MAP_SIZE, map: "", items: "", fog: true },
 ) {
-  let size: MapSize = DEFAULT_MAP_SIZE;
-  const offerMaps = !options.online && options.maps.length > 0;
-  const mapChoice = offerMaps
-    ? `
-      <label class="field map-choice">
-        <span>Endless map</span>
-        <select name="map">
-          <option value="">A new generated map</option>
-          ${options.maps
-            .map((m) => `<option value="${m.name}">${escapeHtml(m.title)} (${m.size})</option>`)
-            .join("")}
-        </select>
-      </label>`
-    : "";
   root.innerHTML = `
     <div class="window dialog-window start-window">
       <p class="dialog-title">Game mode</p>
+      <div class="modes">
+        ${GAME_MODES.map(
+          (m) => `
+          <button class="mode-card" data-mode="${m.mode}" ${m.online && !options.online ? "disabled" : ""}>
+            <strong>${m.name}</strong>
+            <span>${m.description}</span>
+            ${m.online && !options.online ? "<em>Needs two players: create a room.</em>" : ""}
+          </button>`,
+        ).join("")}
+      </div>
+      <div class="choices">
+        <button class="button" data-action="back">Back</button>
+      </div>
+    </div>
+  `;
+  for (const card of root.querySelectorAll<HTMLButtonElement>("[data-mode]")) {
+    card.addEventListener("click", () =>
+      showSettingsScreen(root, card.dataset.mode as GameMode, options, settings),
+    );
+  }
+  root.querySelector('[data-action="back"]')!.addEventListener("click", options.onBack);
+  root.querySelector<HTMLButtonElement>("[data-mode]:not([disabled])")?.focus();
+}
+
+/**
+ * One mode's settings, and Start. Every mode has a map size. Solo, Endless can also be played on
+ * a hand-made map instead of a generated one (online rooms can't load them yet), which brings
+ * its own size, and with an items file's build limits.
+ */
+function showSettingsScreen(
+  root: HTMLElement,
+  mode: GameMode,
+  options: Parameters<typeof showModeScreen>[1],
+  settings: ModeSettings,
+) {
+  const solo = !options.online && mode === "endless";
+  const offerMaps = solo && options.maps.length > 0;
+  const offerItems = solo && options.items.length > 0;
+  const name = GAME_MODES.find((m) => m.mode === mode)!.name;
+  const option = (value: string, text: string, chosen: string) =>
+    `<option value="${escapeHtml(value)}" ${value === chosen ? "selected" : ""}>${escapeHtml(text)}</option>`;
+  root.innerHTML = `
+    <div class="window dialog-window start-window">
+      <p class="dialog-title">${name}</p>
+      ${
+        offerMaps
+          ? `<label class="field">
+        <span>Map</span>
+        <select name="map">
+          ${option("", "Random", settings.map)}
+          ${options.maps.map((m) => option(m.name, `${m.title} (${m.size})`, settings.map)).join("")}
+        </select>
+      </label>`
+          : ""
+      }
       <div class="map-sizes" role="radiogroup" aria-label="Map size">
         <span>Map size</span>
         ${(Object.keys(MAP_SIZES) as MapSize[])
@@ -185,44 +262,75 @@ function showModeScreen(
           )
           .join("")}
       </div>
-      <div class="modes">
-        ${GAME_MODES.map(
-          (m) => `
-          <button class="mode-card" data-mode="${m.mode}" ${m.online && !options.online ? "disabled" : ""}>
-            <strong>${m.name}</strong>
-            <span>${m.description}</span>
-            ${m.online && !options.online ? "<em>Needs two players: create a room.</em>" : ""}
-          </button>${m.mode === "endless" ? mapChoice : ""}`,
-        ).join("")}
+      ${
+        offerItems
+          ? `<label class="field">
+        <span>Build Setup</span>
+        <select name="items">
+          ${option("", "Everything, no limits", settings.items)}
+          ${options.items.map((i) => option(i.name, i.title, settings.items)).join("")}
+        </select>
+      </label>`
+          : ""
+      }
+      <div class="map-sizes" role="radiogroup" aria-label="Fog of war">
+        <span title="Off: the whole map is in sight from the start">Fog of war</span>
+        <button class="size-choice" role="radio" data-fog="on">On</button>
+        <button class="size-choice" role="radio" data-fog="off">Off</button>
       </div>
-      <button class="button" data-action="back">Back</button>
+      <div class="choices together">
+        <button class="button" data-action="back">Back</button>
+        <button class="button" data-action="start">Start</button>
+      </div>
     </div>
   `;
-  const sizeButtons = [...root.querySelectorAll<HTMLButtonElement>("[data-size]")];
-  const showSize = () => {
-    for (const b of sizeButtons) b.setAttribute("aria-checked", String(b.dataset.size === size));
+  const sizes = root.querySelector<HTMLElement>('[aria-label="Map size"]')!;
+  const fogButtons = [...root.querySelectorAll<HTMLButtonElement>("[data-fog]")];
+  const sizeButtons = [...sizes.querySelectorAll<HTMLButtonElement>("[data-size]")];
+  const mapSelect = root.querySelector<HTMLSelectElement>('select[name="map"]');
+  const itemsSelect = root.querySelector<HTMLSelectElement>('select[name="items"]');
+  const show = () => {
+    for (const b of sizeButtons) {
+      b.setAttribute("aria-checked", String(b.dataset.size === settings.size));
+    }
+    for (const b of fogButtons) {
+      b.setAttribute("aria-checked", String((b.dataset.fog === "on") === settings.fog));
+    }
+    // A hand-made map has its own size, so the size only matters for a generated one.
+    sizes.hidden = settings.map !== "";
   };
   for (const b of sizeButtons) {
     b.addEventListener("click", () => {
-      size = b.dataset.size as MapSize;
-      showSize();
+      settings.size = b.dataset.size as MapSize;
+      show();
     });
   }
-  showSize();
-  const mapSelect = root.querySelector<HTMLSelectElement>('select[name="map"]');
-  // A hand-made map has its own size, so the size buttons only matter for a generated one.
+  for (const b of fogButtons) {
+    b.addEventListener("click", () => {
+      settings.fog = b.dataset.fog === "on";
+      show();
+    });
+  }
   mapSelect?.addEventListener("change", () => {
-    for (const b of sizeButtons) b.disabled = mapSelect.value !== "";
+    settings.map = mapSelect.value;
+    show();
   });
-  for (const card of root.querySelectorAll<HTMLButtonElement>("[data-mode]")) {
-    card.addEventListener("click", () => {
-      const mode = card.dataset.mode as GameMode;
-      const map = mode === "endless" ? mapSelect?.value || undefined : undefined;
-      options.onChoose(mode, size, map);
-    });
-  }
-  root.querySelector('[data-action="back"]')!.addEventListener("click", options.onBack);
-  root.querySelector<HTMLButtonElement>("[data-mode]:not([disabled])")?.focus();
+  itemsSelect?.addEventListener("change", () => (settings.items = itemsSelect.value));
+  show();
+  root
+    .querySelector('[data-action="back"]')!
+    .addEventListener("click", () => showModeScreen(root, options, settings));
+  const start = root.querySelector<HTMLButtonElement>('[data-action="start"]')!;
+  start.addEventListener("click", () =>
+    options.onChoose(
+      mode,
+      settings.size,
+      offerMaps ? settings.map || undefined : undefined,
+      offerItems ? settings.items || undefined : undefined,
+      settings.fog,
+    ),
+  );
+  start.focus();
 }
 
 const escapeHtml = (text: string) => text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);

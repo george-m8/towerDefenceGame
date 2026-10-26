@@ -68,7 +68,7 @@ export function createFileActions(
     },
     open() {
       if (!discardOk()) return;
-      void listMaps().then((maps) => {
+      void listFiles(ENDPOINT, bundledMaps).then((maps) => {
         showDialog(root, openDialog(maps), (_form, button) => {
           const chosen = button?.dataset.map;
           if (!chosen || !maps[chosen]) return;
@@ -97,7 +97,7 @@ export function createFileActions(
     save(map) {
       if (!CAN_SAVE) return;
       const write = (target: string) =>
-        void saveToServer(target, map).then((error) => {
+        void saveToServer(ENDPOINT, target, serializeMap(map)).then((error) => {
           if (error) return callbacks.say(`Not saved: ${error}`);
           name = target;
           saved = map;
@@ -114,12 +114,7 @@ export function createFileActions(
       });
     },
     download(map) {
-      const blob = new Blob([serializeMap(map)], { type: "application/json" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = `${name ?? mapName(map.title)}.map`;
-      link.click();
-      URL.revokeObjectURL(link.href);
+      downloadText(serializeMap(map), `${name ?? mapName(map.title)}.map`);
     },
     close: () => close(root),
   };
@@ -140,25 +135,32 @@ export function readMapText(text: string): { map: MapFile } | { error: string } 
   }
 }
 
-/** The maps in maps/: fresh from the dev server, else the ones bundled with the game. */
-async function listMaps(): Promise<Record<string, MapFile>> {
-  if (!CAN_SAVE) return bundledMaps;
+/** The files in a folder: fresh from the dev server, else the ones bundled with the game. */
+export async function listFiles<T>(
+  endpoint: string,
+  bundled: Record<string, T>,
+): Promise<Record<string, T>> {
+  if (!CAN_SAVE) return bundled;
   try {
-    const response = await fetch(ENDPOINT);
-    if (response.ok) return (await response.json()) as Record<string, MapFile>;
+    const response = await fetch(endpoint);
+    if (response.ok) return (await response.json()) as Record<string, T>;
   } catch {
     // fall back to the list from when the page loaded
   }
-  return bundledMaps;
+  return bundled;
 }
 
-/** Sends a map to the dev server; resolves with an error message, or null once it's saved. */
-async function saveToServer(name: string, map: MapFile): Promise<string | null> {
+/** Sends a file to the dev server; resolves with an error message, or null once it's saved. */
+export async function saveToServer(
+  endpoint: string,
+  name: string,
+  text: string,
+): Promise<string | null> {
   try {
-    const response = await fetch(`${ENDPOINT}/${name}`, {
+    const response = await fetch(`${endpoint}/${name}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: serializeMap(map),
+      body: text,
     });
     if (response.ok) return null;
     const body = (await response.json().catch(() => ({}))) as { error?: string };
@@ -168,7 +170,18 @@ async function saveToServer(name: string, map: MapFile): Promise<string | null> 
   }
 }
 
-const escapeHtml = (text: string) => text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+/** Hands the browser a file to save. */
+export function downloadText(text: string, fileName: string) {
+  const blob = new Blob([text], { type: "application/json" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+export const escapeHtml = (text: string) =>
+  text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 function newDialog(): string {
   const sizes = Object.keys(MAP_SIZES)
@@ -234,7 +247,7 @@ function saveDialog(suggested: string): string {
     </form>`;
 }
 
-function field(form: HTMLFormElement, name: string): string {
+export function field(form: HTMLFormElement, name: string): string {
   return String(new FormData(form).get(name) ?? "");
 }
 
@@ -242,7 +255,7 @@ function field(form: HTMLFormElement, name: string): string {
  * Shows a dialog; submitting calls `onSubmit` (with the button pressed) and closes it, unless
  * that returns false. Cancel and Escape close it.
  */
-function showDialog(
+export function showDialog(
   root: HTMLElement,
   html: string,
   onSubmit: (form: HTMLFormElement, button: HTMLElement | null) => void | false,
@@ -265,7 +278,7 @@ function showDialog(
   form.querySelector<HTMLInputElement>("input:not([type=radio])")?.focus();
 }
 
-function close(root: HTMLElement): boolean {
+export function close(root: HTMLElement): boolean {
   if (root.hidden) return false;
   root.hidden = true;
   root.innerHTML = "";

@@ -100,6 +100,7 @@ export function createToolbar(
           ${CAN_SAVE ? '<button class="hud-action" data-action="save" title="Save into maps/">Save</button>' : ""}
           <button class="hud-action" data-action="download" title="Download a .map file">Download</button>
         </div>
+        <a class="hud-box hud-action" href="?items-editor" title="What can be built, and how many (.items files)">Items</a>
         <button class="hud-box hud-action" data-action="play" title="Play this map (P)">Play</button>
       </div>
     </div>
