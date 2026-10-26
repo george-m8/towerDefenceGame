@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { STRUCTURES } from "../../src/sim/config";
-import { discountAt, getEnclosures, priceAt } from "../../src/sim/enclosures";
+import { KEEP_WALLS, STRUCTURES } from "../../src/sim/config";
+import { KEEP, NONE, discountAt, getEnclosures, priceAt } from "../../src/sim/enclosures";
 import { applyCommand, createGame } from "../../src/sim/game";
 import { placeStructure, topAt } from "../../src/sim/grid";
 import { addPlayer } from "../../src/sim/players";
@@ -126,11 +126,24 @@ describe("finding enclosures", () => {
     expect(discountAt(state, 12, 7)).toBe(0.25);
   });
 
-  it("a freshly generated map has no enclosures", () => {
+  it("a freshly generated map's only enclosure is the keep's walled courtyard", () => {
     for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
       const state = createGame(seed);
-      const enclosed = getEnclosures(state).kind.filter((k) => k !== 0).length;
-      expect(enclosed, `seed ${seed}`).toBe(0);
+      const keep = state.keeps[0];
+      const reach = KEEP_WALLS.courtyard + 1; // the courtyard, then its walls
+      const { kind } = getEnclosures(state);
+      kind.forEach((k, i) => {
+        if (k === NONE) return;
+        const x = i % state.width;
+        const y = Math.floor(i / state.width);
+        expect(k, `seed ${seed} (${x}, ${y})`).toBe(KEEP);
+        expect(x).toBeGreaterThanOrEqual(keep.x - reach);
+        expect(x).toBeLessThan(keep.x + keep.size + reach);
+        expect(y).toBeGreaterThanOrEqual(keep.y - reach);
+        expect(y).toBeLessThan(keep.y + keep.size + reach);
+      });
+      const side = keep.size + 2 * reach;
+      expect(kind.filter((k) => k !== NONE).length).toBe(side * side - keep.size * keep.size);
     }
   });
 

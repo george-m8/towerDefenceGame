@@ -18,6 +18,11 @@ export const FAST_FORWARD_SPEED = 2; // game-speed multiplier while fast-forward
 
 export const KEEP_SIZE = 3;
 export const KEEP_HP = 300;
+/**
+ * Every keep starts walled in, this many tiles of courtyard out, with a gate facing the enemy
+ * (see sim/keepWalls.ts). Only on generated maps; the blank test map starts bare.
+ */
+export const KEEP_WALLS = { courtyard: 1 };
 
 // Spawn zone: a strip on the left edge of the map, centred vertically.
 export const SPAWN_ZONE = { x: 0, width: 2, height: 12 };

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { STARTING_GOLD, STRUCTURES, TICK_RATE } from "../../src/sim/config";
+import { STARTING_GOLD, TICK_RATE } from "../../src/sim/config";
 import type { ServerMessage } from "../../src/net/protocol";
+import { priceAt } from "../../src/sim/enclosures";
+import { topAt } from "../../src/sim/grid";
 import {
   advanceRoom,
   applyRoomCommand,
@@ -30,8 +32,9 @@ function testRoom({ waiting = false } = {}) {
 }
 
 /** Open ground beside the keep: in sight, so it can be built on through the fog. */
+/** Open ground in the keep's courtyard, inside its starting walls. */
 function nearKeep(room: Room) {
-  return { x: room.state.keeps[0].x - 2, y: room.state.keeps[0].y };
+  return { x: room.state.keeps[0].x - 1, y: room.state.keeps[0].y };
 }
 
 function join(room: Room, name: string) {
@@ -85,7 +88,9 @@ describe("joining", () => {
     expect(rejoinRoom(room, ann.token)).toEqual({ ok: true, playerId: 1 });
     expect(room.state.players[1].connected).toBe(true);
     expect(ofType(1, "welcome").at(-1)).toMatchObject({ playerId: 1, token: ann.token });
-    expect(room.state.players[1].gold).toBe(STARTING_GOLD - STRUCTURES.wall.cost);
+    // Inside the keep's walls, so at the courtyard's discount.
+    const { x, y } = nearKeep(room);
+    expect(room.state.players[1].gold).toBe(STARTING_GOLD - priceAt(room.state, "wall", x, y, 1));
   });
 
   it("rejects an unknown token", () => {
@@ -102,8 +107,8 @@ describe("commands", () => {
     const bo = join(room, "Bo");
     applyRoomCommand(room, bo.playerId, 42, { type: "build", kind: "wall", ...nearKeep(room) });
     expect(ofType(2, "result").at(-1)).toEqual({ type: "result", seq: 42, result: { ok: true } });
-    const wall = Object.values(room.state.structures).find((s) => s.kind === "wall");
-    expect(wall?.owner).toBe(2);
+    const { x, y } = nearKeep(room);
+    expect(topAt(room.state, x, y)?.owner).toBe(2);
     // Everyone gets an update straight away, with the changed grid.
     expect(ofType(1, "update").at(-1)?.update.tiles?.base).toBeDefined();
   });

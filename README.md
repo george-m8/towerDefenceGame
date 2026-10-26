@@ -133,6 +133,8 @@ Walls barely see past themselves, so build watchtowers to explore. Hover a struc
 
 Close off an area and building there gets cheaper. An area is enclosed when enemies can't walk to it from their spawn. Walls, gates (which enemies still walk through), towers, houses, ruins, rock, water, trees and the map edge can all form the barrier, but at least one piece of it must be something you built (ruins alone don't count).
 
+The keep starts walled in: a ring of walls one tile out from it, with a gate in the side facing the enemy (towards the spawn, or the middle of the map in PvP). The courtyard inside is the keep's enclosure from the start. The starting walls were free, so selling them pays nothing; in PvP each player owns the walls round their own keep.
+
 - **Inside the keep's walls: 50% off.** This covers an enclosure that touches the keep, including walls hugging the keep and pockets walled off against its side.
 - **Any other enclosure: 25% off.**
 - The discount covers everything inside and the walls around it, so towers mounted on those walls are cheaper too. The wall that closes the ring pays full price.
