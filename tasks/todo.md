@@ -85,11 +85,13 @@ Built: `resources` is compared every update, since harvesting doesn't change the
 
 ## Task 7: Timing, determinism, docs and tuning table
 
-- [ ] Measured standalone: four gatherers at quota on XL, ticks where a tile runs out; recorded here (skip the grid change for berries if it helps)
-- [ ] The 2,000-tick determinism test gains a timber yard and a mine
-- [ ] README: resources, gatherers, keys, and a Tuning table (each number, where it lives, its value, and a full gatherer's rough income per minute); SPEC.md "Since `resources`"; plan and CAPABILITIES statuses
-- [ ] `src/sim/` coverage stays at 80% or more
+- [x] Measured standalone: four gatherers at quota on XL, ticks where a tile runs out; recorded here (skip the grid change for berries if it helps)
+- [x] The 2,000-tick determinism test gains a timber yard and a mine
+- [x] README: resources, gatherers, keys, and a Tuning table (each number, where it lives, its value, and a full gatherer's rough income per minute); SPEC.md "Since `resources`"; plan and CAPABILITIES statuses
+- [x] `src/sim/` coverage stays at 80% or more
 
 Files: `tests/sim/game.test.ts`, `README.md`, `SPEC.md`, `CAPABILITIES.md`, `tasks/plan.md`. Size: S. Depends on: 6.
+
+Built: measured on XL over 12 game minutes with two timber yards, a mine and a forager hut (115 tiles used up). Ticks with no grid change: 0.08 ms median, 0.18 ms p95. Ticks where a tile ran out: 25 ms median, 35 ms p95, almost all of it rebuilding the three enemy flow fields (6-7 ms each); the rest of such a tick takes 0.1 ms. A few spikes (up to 120 ms) also appeared on quiet ticks (47 ms), so they look like machine noise, not this module. The berry-bush shortcut wasn't needed. `src/sim/` coverage: 99% of lines.
 
 **Checkpoint C:** online check with two browsers, then review.
