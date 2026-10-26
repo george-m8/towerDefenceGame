@@ -1059,8 +1059,17 @@ body.editing .editor {
 body.testing .editor-back {
   display: block;
 }
+/* Of the game's buttons, the editor keeps only Debug (for the sun slider), under its title;
+   the sun slider sits above the editor's bottom bar. */
+body.editing .map-left {
+  top: 54px;
+}
+body.editing .sun-slider {
+  bottom: 60px;
+}
 body.editing #hud,
-body.editing .map-left,
+body.editing #panel,
+body.editing .map-buttons > :not([data-menu="debug"]),
 body.editing #status,
 body.editing #info-box,
 body.editing #toast,

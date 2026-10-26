@@ -60,11 +60,13 @@ Built: `toggleSun` and `sunLabel` are pure (tested); `createSunSlider` mounts on
 
 In `body.editing`, `.map-left` shows with only its Debug button (View, Journal, Settings and the panel stay hidden). Rows that only apply in a game (infinite keep health, infinite money, fog of war) get `available: () => !editorActive`, leaving Sun slider and Show paths. The slider shows over the editor's map and moves its shadows.
 
-- [ ] The editor shows a Debug button (and `` ` `` opens it) with just Sun slider and Show paths
-- [ ] The slider moves the editor's shadows; Play and back keep the sun as set
-- [ ] The game's Debug menu still lists every row
+- [x] The editor shows a Debug button (and `` ` `` opens it) with just Sun slider and Show paths
+- [x] The slider moves the editor's shadows; Play and back keep the sun as set
+- [x] The game's Debug menu still lists every row
 
 Files: `src/main.ts`, `src/styles.css`, `src/ui/mapButtons.ts` (only if `available` needs a refresh on open). Size: S. Depends on: 4.
+
+Built: CSS only plus `available: inGame` on the game rows; `mapButtons.ts` needed no change (rows are re-checked each time the menu opens). The Debug button sits under the editor's title, and the slider rises above the editor's bottom bar.
 
 ## Checkpoint B: after Task 5
 

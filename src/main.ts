@@ -144,12 +144,15 @@ const panel = createPanel(
   dispatch,
 );
 const infoBox = element("#info-box");
+/** In a game, not the editor: the Debug rows that change the game. */
+const inGame = () => !editorActive;
 /** A Debug menu row for a game debug option (offline only; online refuses it). */
 const debugToggle = (label: string, option: DebugOption) => ({
   label,
   isOn: () => session?.state?.debug[option] === true,
   toggle: () =>
     dispatch({ type: "debugOption", option, on: session?.state?.debug[option] !== true }),
+  available: inGame,
 });
 const sunSlider = createSunSlider(element("#sun"), ui);
 createMapButtons(element("#map-buttons"), {
@@ -167,6 +170,7 @@ createMapButtons(element("#map-buttons"), {
       label: "Fog of war",
       isOn: () => session?.state?.fog === true,
       toggle: () => dispatch({ type: "debugFog", on: session?.state?.fog !== true }),
+      available: inGame,
     },
     { label: "Show paths", isOn: () => ui.showFlow, toggle: () => (ui.showFlow = !ui.showFlow) },
     {
