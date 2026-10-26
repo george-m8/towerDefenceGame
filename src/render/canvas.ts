@@ -97,7 +97,7 @@ export function blockHeight(state: GameState, x: number, y: number): number {
   if (mount) return base ? 11 : 8;
   if (base) return STRUCTURES[base.kind].blocksMovement ? 6 : 0;
   const terrain = terrainAt(state, x, y);
-  return terrain === "tree" ? 7 : terrain === "rock" ? 4 : 0;
+  return terrain === "tree" ? 7 : terrain === "rock" || terrain === "goldRock" ? 4 : 0;
 }
 
 /**

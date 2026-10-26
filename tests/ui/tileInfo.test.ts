@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { spawnUnit } from "../../src/sim/units";
 import { harvest, placeResource } from "../../src/sim/resources";
-import { RESOURCES } from "../../src/sim/config";
+import { RESOURCES, STRUCTURES } from "../../src/sim/config";
 import { createGame } from "../../src/sim/game";
+import { placeStructure } from "../../src/sim/grid";
 import type { Enemy } from "../../src/sim/types";
 import { describeTile, hoverText, priceLine } from "../../src/ui/tileInfo";
 import { createUiState } from "../../src/ui/state";
@@ -130,6 +131,22 @@ describe("fog hover info", () => {
     expect(describeTile(state, { x: 5, y: 11 })).toContain(
       "Forager (Ann's), HP 12 / 12, idle: nothing to gather",
     );
+  });
+
+  it("says how many fields a farmhouse counts and what it earns, and which farmhouse a field is for", () => {
+    const state = createGame(1, { blankMap: true, fog: false });
+    const { goldPerField, intervalSeconds, maxFields } = STRUCTURES.farmhouse.farm;
+    placeStructure(state, "farmhouse", 10, 10, "N", 1);
+    for (const x of [11, 12, 13]) placeStructure(state, "farmland", x, 10, "N", 1);
+    placeStructure(state, "farmland", 20, 10, "N", 1);
+
+    expect(describeTile(state, { x: 10, y: 10 })).toContain(
+      `Farmhouse - 3 of ${maxFields} fields, +${3 * goldPerField}g every ${intervalSeconds}s`,
+    );
+    expect(describeTile(state, { x: 12, y: 10 })).toContain(
+      "Farmland - counts for the farmhouse at 10, 10",
+    );
+    expect(describeTile(state, { x: 20, y: 10 })).toContain("Farmland - not joined to a farmhouse");
   });
 
   it("the price line says why you can't build on unexplored land", () => {

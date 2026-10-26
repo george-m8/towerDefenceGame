@@ -60,10 +60,12 @@ Built: the tab rules are pure functions in `state.ts` (`toolsInTab`, `hasBuildTo
 
 Glyphs and colours: farmhouse `H`, farmland `"` (flat, walkable look), shop `S`. Hover: `Farmhouse - 6 of 8 fields, +6g every 10s`; `Farmland - counts for the farmhouse at x, y` or `Farmland - not joined to a farmhouse`.
 
-- [ ] Hover lines for a farmhouse, a joined field and a loose field
+- [x] Hover lines for a farmhouse, a joined field and a loose field
 - [ ] Browser: tabs, farms built and painted, gold arriving, a heavy enemy trampling a field
 
 Files: `src/render/palette.ts`, `src/ui/tileInfo.ts`, `tests/ui/tileInfo.test.ts`. Size: S. Depends on: 2, 4, 5.
+
+Built: glyphs and colours went in with Tasks 2 and 4. Farmland draws flat like other walkable structures. Also fixed a `resources` miss: gold-veined rock now draws raised like plain rock. The browser check is still to do.
 
 **Checkpoint B:** browser check with George.
 
