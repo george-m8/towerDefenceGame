@@ -4,7 +4,7 @@ import { GLYPHS, KEEP_GLYPH } from "../../src/render/palette";
 
 describe("building symbols", () => {
   it("match the field-units spec (and GLYPHS.md)", () => {
-    expect(KEEP_GLYPH).toBe("⛫");
+    expect(KEEP_GLYPH).toBe("♜");
     expect(GLYPHS).toMatchObject({
       house: "⌂",
       shop: "¤",

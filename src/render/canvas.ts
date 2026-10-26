@@ -51,7 +51,6 @@ import {
   COLOURS,
   ARC_SEGMENTS,
   PROJECTILES,
-  KEEP_HP_FONT,
   BATTLEMENT_PX,
   BUILD_BORDER_PX,
   CONSTRUCTION_ALPHA,
@@ -68,7 +67,6 @@ import {
   enemyFont,
   glyphFor,
   playerColour,
-  CODE_FONT,
   DOOR_ALPHA,
   KEEP_GLYPH,
 } from "./palette";
@@ -76,6 +74,9 @@ import { fogImage } from "./fog";
 import { burstPixels, burstWaiting } from "./burst";
 import { textureSpecks, textureVariant, type TextureStyle } from "./textures";
 import { borderColour, borderTrace } from "./buildBorder";
+
+/** Blocks' shadows, on the ground and on lower blocks beside them. */
+const SHADOW = "rgba(0, 0, 0, 0.3)";
 
 /** Compass degrees (0 = north, clockwise) to canvas radians (0 = east, clockwise). */
 function toCanvasAngle(compassDegrees: number): number {
@@ -87,7 +88,15 @@ function toCanvasAngle(compassDegrees: number): number {
  * pixels, with a darker front face below, so walls and towers read as 3D blocks.
  */
 export function blockHeight(state: GameState, x: number, y: number): number {
-  if (isKeepTile(state, x, y)) return 12;
+  if (isKeepTile(state, x, y)) {
+    // The corners stand a little taller, like towers, round a low middle.
+    const keep = keepAt(state, x, y)!;
+    const last = keep.size - 1;
+    const corner = (x - keep.x) % last === 0 && (y - keep.y) % last === 0;
+    const centre = Math.floor(keep.size / 2);
+    if (x - keep.x === centre && y - keep.y === centre) return 4;
+    return corner ? 15 : 12;
+  }
   // Anything still being built lies flat until it's finished.
   const built = (s: Structure | undefined) => (s && isBuilt(s) ? s : undefined);
   const base = built(baseAt(state, x, y));
@@ -95,7 +104,10 @@ export function blockHeight(state: GameState, x: number, y: number): number {
   if (mount) return base ? 11 : 8;
   if (base) return STRUCTURES[base.kind].blocksMovement ? 6 : 0;
   const terrain = terrainAt(state, x, y);
-  return terrain === "tree" ? 7 : terrain === "rock" || terrain === "goldRock" ? 4 : 0;
+  if (terrain === "tree") return 7;
+  if (terrain === "rock" || terrain === "goldRock") return 4;
+  // Bushes stand just off the ground; they're still walked over.
+  return terrain === "berries" ? 2 : 0;
 }
 
 /**
@@ -145,8 +157,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   }
 
   function drawGlyph(x: number, y: number, glyph: string, fg: string) {
-    // Two-letter codes (Ti, Mi) go smaller to fit; count code points, as 𐤄 is two UTF-16 units.
-    ctx!.font = [...glyph].length > 1 ? CODE_FONT : GLYPH_FONT;
+    ctx!.font = GLYPH_FONT;
     ctx!.fillStyle = fg;
     ctx!.fillText(glyph, (x + 0.5) * TILE_SIZE, (y + 0.5) * TILE_SIZE + 1);
   }
@@ -189,13 +200,17 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     // block's lifted top covers the row behind it.
     for (let y = y0; y <= y1; y++) {
       for (let x = x0; x <= x1; x++) {
-        if (blockHeight(state, x, y) > 0) drawGround(x, y);
-        else drawTileContents(state, x, y, showOwners);
+        if (blockHeight(state, x, y) > 0) {
+          drawGround(x, y);
+          continue;
+        }
+        drawTileContents(state, x, y, showOwners);
+        drawEnclosureTint(state, x, y, 0);
       }
     }
     drawDoors(state);
     // Shadows cast down and to the right, under every block.
-    ctx!.fillStyle = "rgba(0, 0, 0, 0.3)";
+    ctx!.fillStyle = SHADOW;
     for (let y = y0; y <= y1; y++) {
       for (let x = x0; x <= x1; x++) {
         const h = blockHeight(state, x, y);
@@ -229,13 +244,38 @@ export function createRenderer(canvas: HTMLCanvasElement) {
         ctx!.translate(0, -h);
         drawTileContents(state, x, y, showOwners);
         ctx!.restore();
+        drawEnclosureTint(state, x, y, h);
+        const caster = blockHeight(state, x - 1, y);
+        if (caster > h) drawCastShadow(x, y, h, caster);
       }
     }
   }
 
   /**
-   * Keep tiles show a castle (KEEP_GLYPH), except the centre, which shows the keep's HP. A PvP keep is drawn in
-   * its owner's colour.
+   * The shadow a taller block on the left casts over a lower block's front face and top, as it
+   * would on the ground (out to the right by half the caster's height), less the lower block's
+   * own height: e.g. a catapult on a wall shading the wall beside it.
+   */
+  function drawCastShadow(x: number, y: number, h: number, caster: number) {
+    const left = x * TILE_SIZE;
+    const foot = (y + 1) * TILE_SIZE;
+    const reach = (caster - h) / 2;
+    ctx!.fillStyle = SHADOW;
+    // The face: as wide as the ground shadow at its foot, narrowing to `reach` at its top edge.
+    ctx!.beginPath();
+    ctx!.moveTo(left, foot);
+    ctx!.lineTo(left + caster / 2, foot);
+    ctx!.lineTo(left + reach, foot - h);
+    ctx!.lineTo(left, foot - h);
+    ctx!.closePath();
+    ctx!.fill();
+    // The top, lifted by h.
+    ctx!.fillRect(left, y * TILE_SIZE - h, reach, TILE_SIZE);
+  }
+
+  /**
+   * Keep tiles show KEEP_GLYPH, except the centre, which has the keep's HP over it (see
+   * drawKeepHp). A PvP keep is drawn in its owner's colour.
    */
   function drawKeepTile(state: GameState, x: number, y: number) {
     const keep = keepAt(state, x, y)!;
@@ -245,16 +285,31 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     drawTexture(x, y, KEEP_TEXTURE);
     if (x !== keep.x + centre || y !== keep.y + centre) {
       drawGlyph(x, y, KEEP_GLYPH, COLOURS.keepGlyph);
-      return;
     }
-    ctx!.font = KEEP_HP_FONT;
+  }
+
+  /**
+   * Each keep's HP, over its middle. The middle sits low, mostly hidden by the keep's walls, so
+   * the number is drawn after every block, at the height of the walls round it.
+   */
+  function drawKeepHp(state: GameState) {
+    ctx!.font = GLYPH_FONT;
+    ctx!.lineWidth = 2;
+    ctx!.lineJoin = "round";
+    ctx!.strokeStyle = "rgba(0, 0, 0, 0.6)"; // an outline, as it crosses walls and their faces
     ctx!.fillStyle = COLOURS.keepGlyph;
-    ctx!.fillText(
-      String(Math.ceil(keep.hp)),
-      (x + 0.5) * TILE_SIZE,
-      (y + 0.5) * TILE_SIZE + 1,
-      TILE_SIZE - 2,
-    );
+    for (const keep of state.keeps) {
+      const centre = Math.floor(keep.size / 2);
+      const x = keep.x + centre;
+      const y = keep.y + centre;
+      if (x < view.x0 || x > view.x1 || y < view.y0 || y > view.y1) continue;
+      const lift = blockHeight(state, x, keep.y);
+      const text = String(Math.ceil(keep.hp));
+      const px = (x + 0.5) * TILE_SIZE;
+      const py = (y + 0.5) * TILE_SIZE + 1 - lift;
+      ctx!.strokeText(text, px, py, TILE_SIZE - 2);
+      ctx!.fillText(text, px, py, TILE_SIZE - 2);
+    }
   }
 
   function drawTerrain(state: GameState, x: number, y: number) {
@@ -295,25 +350,24 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   }
 
   /**
-   * Shades enclosed areas and their walls: warm for the keep's enclosure, cool for others, and
-   * red for a PvP rival's (where you can't build).
+   * Shades a tile of an enclosed area or its walls, drawn with the tile (h is its block height)
+   * so it sits on the block and under anyone standing there: warm for the keep's enclosure,
+   * cool for others, and red for a PvP rival's (where you can't build).
    */
-  function drawEnclosures(state: GameState) {
+  function drawEnclosureTint(state: GameState, x: number, y: number, h: number) {
+    if (isKeepTile(state, x, y)) return; // the keep's own colour says whose it is
     const { kind, owner } = getEnclosures(state);
-    for (let y = view.y0; y <= view.y1; y++) {
-      for (let x = view.x0; x <= view.x1; x++) {
-        const i = y * state.width + x;
-        const k = kind[i];
-        if (k === NONE) continue;
-        const rival = owner[i] !== 0 && owner[i] !== viewer;
-        ctx!.fillStyle = rival
-          ? COLOURS.enclosureRival
-          : k === KEEP
-            ? COLOURS.enclosureKeep
-            : COLOURS.enclosureOuter;
-        ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-      }
-    }
+    const i = y * state.width + x;
+    const k = kind[i];
+    if (k === NONE) return;
+    const rival = owner[i] !== 0 && owner[i] !== viewer;
+    ctx!.fillStyle = rival
+      ? COLOURS.enclosureRival
+      : k === KEEP
+        ? COLOURS.enclosureKeep
+        : COLOURS.enclosureOuter;
+    // A raised block's top sits h higher, with its front face below it: tint both.
+    ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE - h, TILE_SIZE, TILE_SIZE + h);
   }
 
   /**
@@ -794,7 +848,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       view = visibleTiles(cam);
       textured = tilePixels(cam) >= TEXTURE_MIN_TILE_PX;
       drawGrid(state);
-      drawEnclosures(state);
+      drawKeepHp(state);
       if (ui.showFlow) drawFlow(state);
       drawEffects(state);
       drawFog(state);

@@ -1,6 +1,6 @@
 # Glyphs
 
-Every character drawn on the map, and why it was picked. Glyphs live in `src/sim/config.ts` (enemies, units), `src/render/palette.ts` (structures, terrain, projectiles) and `src/render/canvas.ts` (a few markers). **Keep this page up to date when you add or change one.**
+Every character drawn on the map, and why it was picked. The map draws them all in GNU Unifont, bundled in `fonts/Unifont/` (see `src/styles.css`); a new glyph must be in one of its two files. Glyphs live in `src/sim/config.ts` (enemies, units), `src/render/palette.ts` (structures, terrain, projectiles) and `src/render/canvas.ts` (a few markers). **Keep this page up to date when you add or change one.**
 
 
 ## The rules
@@ -52,14 +52,14 @@ Colours are per kind (`ENEMY_COLOURS` in `palette.ts`); a family shares a colour
 
 | Building | Glyph | Why |
 |---|---|---|
-| Keep (HP in the middle tile) | `⛫` castle (U+26EB) | A castle (was `K`) |
+| Keep (HP over the middle tile) | `♜` rook (U+265C) | A castle's tower, as in chess (was `K`, then `⛫`) |
 | Wall | `#` | Stacked stone |
 | Ruin | `#` | A wall, crumbling (darker stone) |
 | Gate | `∩` | An arch you can walk through |
 | Archer tower | arrow in its facing | Fires one way, through a slit |
 | Cannon | `C` | **C**annon (fires all round: no facing shown) |
 | Catapult | `P` | **'P**ult (fires all round) |
-| Watchtower | `T` | A **t**ower |
+| Watchtower | `⏿` observer eye (U+23FF) | Watching (was `T`) |
 | Floor spikes | `^` | Spikes coming up |
 | Wall spikes | arrow in its facing | Fires at the tile it faces |
 | Bridge | `=` | Planks across |
@@ -67,7 +67,7 @@ Colours are per kind (`ENEMY_COLOURS` in `palette.ts`); a family shares a colour
 | Shop | `¤` currency sign (U+00A4) | Money (was `S`) |
 | Farmhouse | `Fa` | **Fa**rm; `⌂` is the house (was `H`) |
 | Farmland | `𐤄` Phoenician he (U+10904) | A crop in a field (was `"`) |
-| Timber yard | `Ti` | **Ti**mber; the watchtower has `T` (was `L`) |
+| Timber yard | `Ti` | **Ti**mber (was `L`) |
 | Mine | `Mi` | **Mi**ne; ⚒ and ⛏ can turn into emoji (was `M`) |
 | Forager hut | `Fo` | **Fo**rager (was `F`) |
 | Guardhouse | `⛨` cross on a shield (U+26E8) | A shield (was `G`) |
@@ -77,7 +77,7 @@ Colours are per kind (`ENEMY_COLOURS` in `palette.ts`); a family shares a colour
 | Barracks | `Ba` | **Ba**rracks (⚔ would be emoji) |
 | Archery range | `◎` bullseye (U+25CE) | A target |
 
-The two-letter codes are where no clear, non-emoji symbol has been found yet; they're drawn a little smaller. Better symbols are welcome. A test (`tests/render/glyphs.test.ts`) keeps every building glyph to one symbol or two letters, and rejects emoji-capable characters.
+The two-letter codes are where no clear, non-emoji symbol has been found yet; Unifont's letters are half width, so they fit a tile at full size. Better symbols are welcome. A test (`tests/render/glyphs.test.ts`) keeps every building glyph to one symbol or two letters, and rejects emoji-capable characters.
 
 ## Terrain
 
@@ -89,8 +89,10 @@ The two-letter codes are where no clear, non-emoji symbol has been found yet; th
 | `≈` | Sea | Rougher water |
 | `o` grey | Rock | A boulder |
 | `o` gold | Gold-veined rock | The same boulder, gold |
-| `♣` | Tree | A leafy crown |
-| `b` red on green | Berry bush | **B**erries; red like the fruit, on a green bush (the tile colour tells it from the barbarian) |
+| `🌲` evergreen tree (U+1F332) | Tree | Unifont's pine (was `♣`) |
+| `🫐` blueberries (U+1FAD0), dusky red on green | Berry bush | Fruit on a bush, in a muted berry colour (was `b`) |
+
+The tree and berries are emoji-capable characters, so they're written with the text selector (U+FE0E) and drawn from the bundled Unifont, never a colour emoji font.
 
 ## Markers and effects
 
