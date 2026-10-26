@@ -6,11 +6,11 @@ import { isExplored, reveal } from "./fog";
 import { playerName } from "./players";
 import type {
   CommandResult,
-  Enemy,
   Keep,
   Facing,
   GameState,
   PlayerId,
+  Point,
   Structure,
   StructureKind,
   Terrain,
@@ -113,7 +113,8 @@ export function isElevated(state: GameState, tower: Structure): boolean {
 }
 
 /** True if the enemy is on, or moving between, tiles that include (x, y). */
-export function enemyOccupies(enemy: Enemy, x: number, y: number): boolean {
+/** Whether an enemy (or unit) at its position, maybe between tiles, is on (x, y). */
+export function enemyOccupies(enemy: Point, x: number, y: number): boolean {
   return (
     (Math.floor(enemy.x) === x && Math.floor(enemy.y) === y) ||
     (Math.ceil(enemy.x) === x && Math.ceil(enemy.y) === y)
@@ -250,6 +251,8 @@ export function removeStructure(state: GameState, structure: Structure): void {
     if (mount) removeStructure(state, mount);
   }
   delete state.structures[structure.id];
+  // Its units live on, homeless: nothing replaces them.
+  for (const unit of state.units) if (unit.home === structure.id) unit.home = null;
   layerOf(state, structure.kind)[tileIndex(state, structure.x, structure.y)] = EMPTY;
   state.gridVersion++;
 }

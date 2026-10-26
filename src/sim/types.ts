@@ -1,4 +1,11 @@
-import type { EnemyKindId, MovementProfile, ProjectileKind, STRUCTURES, TERRAIN } from "./config";
+import type {
+  EnemyKindId,
+  MovementProfile,
+  ProjectileKind,
+  STRUCTURES,
+  TERRAIN,
+  UnitKindId,
+} from "./config";
 
 export interface Point {
   x: number;
@@ -84,6 +91,33 @@ export interface Enemy {
   leaderId: number | null;
 }
 
+/** One of a player's own units (see sim/units.ts). Moves tile to tile like an enemy. */
+export interface Unit {
+  id: number;
+  kind: UnitKindId;
+  owner: PlayerId;
+  /** The building that spawned it; null for dev units or once that building is gone. */
+  home: number | null;
+  /** Position in tile coordinates; fractional while moving between tiles. */
+  x: number;
+  y: number;
+  /** The tile it is moving to. */
+  tx: number;
+  ty: number;
+  hp: number;
+  maxHp: number;
+  /** Ticks until it can hit again. */
+  attackCooldown: number;
+  /** A tile it's told to go to and hold (guard spots); null stays where it is. */
+  goal: Point | null;
+  /** Steps still to walk, for `pathGoal` and the grid as it was at `pathVersion`. */
+  path: Point[] | null;
+  pathGoal: string | null;
+  pathVersion: number;
+  /** It needs a path but the tick's search budget ran out: it goes first next tick. */
+  waitingForPath: boolean;
+}
+
 /** Short-lived visual events recorded by the simulation for the renderer. */
 export type Effect =
   | {
@@ -104,7 +138,7 @@ export type Effect =
   | { kind: "spikes"; x: number; y: number; ttl: number }
   | { kind: "heal"; x: number; y: number; ttl: number }
   /**
-   * Something destroyed: an enemy killed, or a structure broken. Drawn still there for
+   * Something destroyed: an enemy or unit killed, or a structure broken. Drawn still there for
    * BURST_DELAY_TICKS, then as its pixels flying apart and fading for BURST_TICKS.
    */
   | {
@@ -114,6 +148,9 @@ export type Effect =
       ttl: number;
       enemy?: EnemyKindId;
       structure?: StructureKind;
+      /** A unit, drawn in its owner's colour. */
+      unit?: UnitKindId;
+      owner?: PlayerId;
     };
 
 /** Things lying on the map that aren't terrain or structures. `resources` adds deposits and animals. */
@@ -181,9 +218,12 @@ export interface GameState {
   nextId: number;
   /** Incremented whenever tile occupancy changes, so pathfinding can recompute lazily. */
   gridVersion: number;
+  /** Incremented whenever a unit spawns, dies or moves to another tile, so sight is redone. */
+  sightVersion: number;
   /** Flow fields per movement profile, built lazily. */
   flows: Partial<Record<MovementProfile, FlowField>>;
   enemies: Enemy[];
+  units: Unit[];
   features: MapFeature[];
   effects: Effect[];
   /** Audible events for the audio layer; see sim/cues.ts. */
@@ -228,15 +268,23 @@ export type Command =
   | { type: "debugOption"; option: DebugOption; on: boolean }
   /** Dev only (offline): turns fog of war on or off. */
   | { type: "debugFog"; on: boolean }
+  /** Dev only (offline): a unit for the sender on (x, y). */
+  | { type: "debugUnit"; kind: UnitKindId; x: number; y: number }
   | { type: "sendWave" }
   | { type: "sell"; x: number; y: number };
 
 /** Commands for testing: offline only, refused online. */
-export type DebugCommand = Extract<Command, { type: "debugSpawn" | "debugOption" | "debugFog" }>;
+export type DebugCommand = Extract<
+  Command,
+  { type: "debugSpawn" | "debugOption" | "debugFog" | "debugUnit" }
+>;
 
 export function isDebugCommand(command: Command): command is DebugCommand {
   return (
-    command.type === "debugSpawn" || command.type === "debugOption" || command.type === "debugFog"
+    command.type === "debugSpawn" ||
+    command.type === "debugOption" ||
+    command.type === "debugFog" ||
+    command.type === "debugUnit"
   );
 }
 

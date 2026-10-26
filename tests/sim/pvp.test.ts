@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { PVP, STRUCTURES, TICK_RATE } from "../../src/sim/config";
+import { PVP, STRUCTURES, TICK_RATE, UNIT_KINDS } from "../../src/sim/config";
 import { applyCommand, createGame, tick } from "../../src/sim/game";
 import { enclosureOwnerAt, priceAt } from "../../src/sim/enclosures";
 import { IN_SIGHT, UNEXPLORED, isExplored, tierAt } from "../../src/sim/fog";
 import { baseAt, mountAt, placeStructure } from "../../src/sim/grid";
+import { spawnUnit } from "../../src/sim/units";
 import type { GameState, StructureKind } from "../../src/sim/types";
 import { ring } from "./helpers";
 
@@ -161,5 +162,67 @@ describe("towers in PvP", () => {
     expect(b.hp).toBe(0);
     expect(state.gameOver).toBe(true);
     expect(state.winner).toBe(1);
+  });
+});
+
+describe("PvP towers and units", () => {
+  const militiaHp = UNIT_KINDS.militia.hp;
+
+  it("a rival archer shoots a unit in its arc before a wall in its arc", () => {
+    const state = pvp();
+    const a = state.keeps[left];
+    placeStructure(state, "archer", a.x + 10, a.y, "E", 1);
+    const wall = placeStructure(state, "wall", a.x + 12, a.y, "N", 2);
+    const unit = spawnUnit(state, "militia", 2, a.x + 14, a.y)!;
+
+    tick(state);
+
+    expect(unit.hp).toBe(militiaHp - STRUCTURES.archer.tower!.damage);
+    expect(wall.hp).toBe(wall.maxHp);
+  });
+
+  it("a rival cannon's splash hurts every unit in the blast", () => {
+    const state = pvp();
+    const a = state.keeps[left];
+    placeStructure(state, "cannon", a.x + 10, a.y, "E", 1);
+    const first = spawnUnit(state, "militia", 2, a.x + 13, a.y)!;
+    const second = spawnUnit(state, "militia", 2, a.x + 13, a.y + 1)!;
+
+    for (let i = 0; i < TICK_RATE && first.hp === militiaHp; i++) tick(state);
+
+    expect(first.hp).toBe(militiaHp - STRUCTURES.cannon.tower!.damage);
+    expect(second.hp).toBe(militiaHp - STRUCTURES.cannon.tower!.damage);
+  });
+
+  it("a cannon holds fire on a rival unit when the blast would catch its own builds", () => {
+    const state = pvp();
+    const a = state.keeps[left];
+    placeStructure(state, "cannon", a.x + 10, a.y, "E", 1);
+    placeStructure(state, "wall", a.x + 13, a.y + 1, "N", 1);
+    const unit = spawnUnit(state, "militia", 2, a.x + 13, a.y)!;
+
+    for (let i = 0; i < 3 * TICK_RATE; i++) tick(state);
+
+    expect(unit.hp).toBe(militiaHp);
+  });
+
+  it("towers never shoot their own side's units, and Endless towers never shoot units", () => {
+    const state = pvp();
+    const a = state.keeps[left];
+    placeStructure(state, "archer", a.x + 10, a.y, "E", 1);
+    const own = spawnUnit(state, "militia", 1, a.x + 12, a.y)!;
+
+    const endless = createGame(1, { blankMap: true, fog: false, players: ["Ann", "Bo"] });
+    endless.wave.countdown = Infinity;
+    placeStructure(endless, "archer", 10, 10, "E", 1);
+    const friend = spawnUnit(endless, "militia", 2, 12, 10)!;
+
+    for (let i = 0; i < 3 * TICK_RATE; i++) {
+      tick(state);
+      tick(endless);
+    }
+
+    expect(own.hp).toBe(militiaHp);
+    expect(friend.hp).toBe(militiaHp);
   });
 });

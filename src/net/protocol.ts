@@ -11,6 +11,7 @@ import type {
   PlayerId,
   Structure,
   StructureKind,
+  Unit,
 } from "../sim/types";
 
 /** Room codes avoid letters that look like digits (I, O). */
@@ -55,6 +56,13 @@ export type ClientEnemy = Pick<Enemy, "id" | "x" | "y" | "hp" | "maxHp" | "varia
 /** An enemy in an update: kind and variant never change, so they're only sent once. */
 export type UpdateEnemy = Omit<ClientEnemy, "kind" | "variant"> &
   Partial<Pick<ClientEnemy, "kind" | "variant">>;
+/** The unit fields a client draws with. `kind` is an index into UNIT_KIND_ORDER. */
+export type ClientUnit = Pick<Unit, "id" | "x" | "y" | "hp" | "maxHp" | "owner"> & {
+  kind: number;
+};
+/** A unit in an update: kind and owner never change, so they're only sent once. */
+export type UpdateUnit = Omit<ClientUnit, "kind" | "owner"> &
+  Partial<Pick<ClientUnit, "kind" | "owner">>;
 /** Structures without their firing cooldown, which only the server needs. */
 export type ClientStructure = Omit<Structure, "cooldown">;
 
@@ -62,15 +70,21 @@ export type ClientStructure = Omit<Structure, "cooldown">;
  * Everything a client needs to draw the game. `flows` are rebuilt lazily, `rngState` stays on
  * the server, and enemies and structures carry only the fields a client uses.
  */
-export type ClientState = Omit<GameState, "flows" | "rngState" | "enemies" | "structures"> & {
+export type ClientState = Omit<
+  GameState,
+  "flows" | "rngState" | "enemies" | "units" | "structures"
+> & {
   enemies: ClientEnemy[];
+  units: ClientUnit[];
   structures: Record<number, ClientStructure>;
 };
 
 type DynamicFields =
   | "tick"
   | "gridVersion"
+  | "sightVersion"
   | "enemies"
+  | "units"
   | "effects"
   | "cues"
   | "players"
@@ -90,9 +104,11 @@ export type TileChanges<T> = [number, T][];
  * built or changed (and the ids of those removed), and when the grid changed, just the tiles
  * that did. Every change sets a value, so applying one twice does no harm.
  */
-export type StateUpdate = Omit<Pick<ClientState, DynamicFields>, "enemies"> & {
+export type StateUpdate = Omit<Pick<ClientState, DynamicFields>, "enemies" | "units"> & {
   /** Every enemy; `kind` and `variant` only for enemies the clients haven't been sent yet. */
   enemies: UpdateEnemy[];
+  /** Every unit; `kind` and `owner` only for units the clients haven't been sent yet. */
+  units: UpdateUnit[];
   /** Structures built or changed (HP, aim) since the last update. */
   structures?: ClientStructure[];
   /** Ids of structures sold or destroyed since the last update. */

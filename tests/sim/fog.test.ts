@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { STRUCTURES, KEEP_SIGHT, type StructureStats } from "../../src/sim/config";
-import { applyCommand, createGame, tick } from "../../src/sim/game";
+import { STRUCTURES, KEEP_SIGHT, UNIT_KINDS, type StructureStats } from "../../src/sim/config";
+import { applyCommand, assignKeeps, createGame, tick } from "../../src/sim/game";
+import { spawnUnit } from "../../src/sim/units";
 import {
   IN_SIGHT,
   SEEN,
@@ -267,5 +268,47 @@ describe("performance", () => {
     const start = performance.now();
     getSight(state);
     expect(performance.now() - start).toBeLessThan(50);
+  });
+});
+
+describe("units", () => {
+  const sight = UNIT_KINDS.militia.sight;
+
+  it("see around them for their own team, and what they've seen stays explored", () => {
+    const state = foggy();
+    const p = { x: 10, y: 10 };
+    expect(tierAt(state, p.x, p.y)).toBe(UNEXPLORED);
+
+    const unit = spawnUnit(state, "militia", 1, p.x, p.y)!;
+    expect(tierAt(state, p.x, p.y)).toBe(IN_SIGHT);
+    expect(tierAt(state, p.x + sight.inner, p.y)).toBe(IN_SIGHT);
+    expect(tierAt(state, p.x + sight.inner + 1, p.y)).toBe(SEEN);
+    expect(tierAt(state, p.x + sight.outer + 1, p.y)).toBe(UNEXPLORED);
+
+    unit.hp = 0;
+    tick(state);
+    expect(tierAt(state, p.x, p.y)).toBe(SEEN);
+  });
+
+  it("only lift fog for their owner's team in PvP", () => {
+    const state = createGame(1, { blankMap: true, mode: "pvp", players: ["A", "B"] });
+    assignKeeps(state);
+    const p = { x: Math.floor(state.width / 2), y: 5 };
+    spawnUnit(state, "militia", 1, p.x, p.y);
+    expect(tierAt(state, p.x, p.y, 1)).toBe(IN_SIGHT);
+    expect(tierAt(state, p.x, p.y, 2)).toBe(UNEXPLORED);
+  });
+
+  it("sight is only worked out again when a unit moves to another tile", () => {
+    const state = foggy();
+    const unit = spawnUnit(state, "militia", 1, 10, 10)!;
+    const before = getSight(state);
+    tick(state);
+    expect(getSight(state)).toBe(before);
+
+    unit.goal = { x: 11, y: 10 };
+    for (let i = 0; i < 40 && unit.x !== 11; i++) tick(state);
+    expect(getSight(state)).not.toBe(before);
+    expect(tierAt(state, 11 + sight.inner, 10)).toBe(IN_SIGHT);
   });
 });

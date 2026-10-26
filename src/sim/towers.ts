@@ -12,8 +12,10 @@ import { addCue } from "./cues";
 import { damageEnemy } from "./enemies";
 import { baseAt, damageKeep, damageStructure, inBounds, isBuilt, keepAt, mountAt } from "./grid";
 import { distanceAt } from "./pathfinding";
+import { teamOf } from "./fog";
 import { addGold } from "./players";
-import type { Enemy, Facing, GameState, Keep, PlayerId, Point, Structure } from "./types";
+import { damageUnit, unitsAt } from "./units";
+import type { Enemy, Facing, GameState, Keep, PlayerId, Point, Structure, Unit } from "./types";
 
 export function updateTowers(state: GameState): void {
   for (const structure of Object.values(state.structures)) {
@@ -174,18 +176,18 @@ function findTarget(state: GameState, structure: Structure, tower: TowerStats): 
   return best;
 }
 
-function isLess(a: [number, number, number], b: [number, number, number]): boolean {
+function isLess(a: number[], b: number[]): boolean {
   for (let i = 0; i < a.length; i++) {
     if (a[i] !== b[i]) return a[i] < b[i];
   }
   return false;
 }
 
-// PvP: towers fire at the rival's structures and keep instead of enemies, with the same range,
-// arcs, turning and splash. A wall shields the tower on it, as it does from enemies.
+// PvP: towers fire at the rival's units, structures and keep instead of enemies, with the same
+// range, arcs, turning and splash. A wall shields the tower on it, as it does from enemies.
 
-/** Something a PvP tower can hit on one tile: a rival structure, or a tile of a rival keep. */
-type SiegeTarget = Point & { structure?: Structure; keep?: Keep };
+/** Something a PvP tower can hit: a rival unit, a rival structure, or a tile of a rival keep. */
+type SiegeTarget = Point & { unit?: Unit; structure?: Structure; keep?: Keep };
 
 function updateSiegeTower(
   state: GameState,
@@ -215,7 +217,9 @@ function updateSiegeTower(
       : [target];
   const keepsHit = new Set<Keep>();
   for (const hit of hits) {
-    if (hit.keep) {
+    if (hit.unit) {
+      damageUnit(hit.unit, tower.damage); // no bounty for units
+    } else if (hit.keep) {
       if (!keepsHit.has(hit.keep)) damageKeep(state, hit.keep, tower.damage);
       keepsHit.add(hit.keep);
       addCue(state, "keepHit");
@@ -273,6 +277,19 @@ function siegeTargetAt(
   return { x, y, structure };
 }
 
+/** Rival units on (x, y), as targets for a tower owned by `owner`. */
+function rivalUnitsAt(
+  state: GameState,
+  owner: PlayerId | null,
+  x: number,
+  y: number,
+): SiegeTarget[] {
+  const team = teamOf(state, owner);
+  return unitsAt(state, x, y)
+    .filter((unit) => teamOf(state, unit.owner) !== team)
+    .map((unit) => ({ x: unit.x, y: unit.y, unit }));
+}
+
 /** Every rival target within `radius` tiles (Chebyshev) of a point. */
 function siegeTargetsNear(
   state: GameState,
@@ -283,6 +300,7 @@ function siegeTargetsNear(
   const targets: SiegeTarget[] = [];
   for (let y = Math.ceil(point.y - radius); y <= Math.floor(point.y + radius); y++) {
     for (let x = Math.ceil(point.x - radius); x <= Math.floor(point.x + radius); x++) {
+      targets.push(...rivalUnitsAt(state, owner, x, y));
       const target = siegeTargetAt(state, owner, x, y);
       if (target) targets.push(target);
     }
@@ -291,8 +309,8 @@ function siegeTargetsNear(
 }
 
 /**
- * The rival target needing the least turning (0 for fixed towers), then the nearest, then
- * the first in reading order.
+ * Rival units before structures and keeps. Among those, the target needing the least turning
+ * (0 for fixed towers), then the nearest, then the first in reading order.
  */
 function findSiegeTarget(
   state: GameState,
@@ -302,22 +320,29 @@ function findSiegeTarget(
   const turns = tower.turnDegreesPerSecond > 0;
   const reach = Math.ceil(tower.range);
   let best: SiegeTarget | undefined;
-  let bestKey: [number, number, number] | undefined;
+  let bestKey: number[] | undefined;
   for (let y = structure.y - reach; y <= structure.y + reach; y++) {
     for (let x = structure.x - reach; x <= structure.x + reach; x++) {
       if (!inBounds(state, x, y)) continue;
       if (!canTarget(tower, structure, structure.facing, { x, y })) continue;
-      const target = siegeTargetAt(state, structure.owner, x, y);
-      if (!target || blastHitsOwn(state, structure, tower, target)) continue;
-      const turn = turns ? angleBetween(structure.aim ?? 0, angleTo(structure, target)) : 0;
-      const key: [number, number, number] = [
-        turn,
-        Math.hypot(x - structure.x, y - structure.y),
-        y * state.width + x,
+      const building = siegeTargetAt(state, structure.owner, x, y);
+      const targets = [
+        ...rivalUnitsAt(state, structure.owner, x, y),
+        ...(building ? [building] : []),
       ];
-      if (!bestKey || isLess(key, bestKey)) {
-        best = target;
-        bestKey = key;
+      for (const target of targets) {
+        if (blastHitsOwn(state, structure, tower, target)) continue;
+        const turn = turns ? angleBetween(structure.aim ?? 0, angleTo(structure, target)) : 0;
+        const key = [
+          target.unit ? 0 : 1,
+          turn,
+          Math.hypot(x - structure.x, y - structure.y),
+          y * state.width + x,
+        ];
+        if (!bestKey || isLess(key, bestKey)) {
+          best = target;
+          bestKey = key;
+        }
       }
     }
   }

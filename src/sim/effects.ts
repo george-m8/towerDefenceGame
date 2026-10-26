@@ -1,5 +1,5 @@
-import { BURST_DELAY_TICKS, BURST_TICKS, type EnemyKindId } from "./config";
-import type { GameState, StructureKind } from "./types";
+import { BURST_DELAY_TICKS, BURST_TICKS, type EnemyKindId, type UnitKindId } from "./config";
+import type { GameState, PlayerId, StructureKind } from "./types";
 
 /** Ages effects by one tick and drops expired ones. */
 export function updateEffects(state: GameState): void {
@@ -12,7 +12,8 @@ export function addBurst(
   state: GameState,
   x: number,
   y: number,
-  what: { enemy: EnemyKindId } | { structure: StructureKind },
+  what:
+    { enemy: EnemyKindId } | { structure: StructureKind } | { unit: UnitKindId; owner: PlayerId },
 ): void {
   state.effects.push({ kind: "burst", x, y, ttl: BURST_DELAY_TICKS + BURST_TICKS, ...what });
 }

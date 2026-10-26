@@ -1,14 +1,27 @@
 // Turns what the server sends into a GameState the UI can draw, so offline and online
 // share the renderer, panel and hover info. Pure: no DOM, no sockets.
-import { ENEMY_KIND_ORDER } from "../sim/config";
-import type { Enemy, GameState, Structure } from "../sim/types";
-import type { ClientEnemy, ClientState, ClientStructure, StateUpdate } from "./protocol";
+import { ENEMY_KIND_ORDER, UNIT_KIND_ORDER } from "../sim/config";
+import type { Enemy, GameState, Structure, Unit } from "../sim/types";
+import type {
+  ClientEnemy,
+  ClientState,
+  ClientStructure,
+  ClientUnit,
+  StateUpdate,
+} from "./protocol";
+
+/** Enemies and units as an update leaves them, with every field filled in, for smoothing. */
+export interface Movers {
+  enemies: ClientEnemy[];
+  units: ClientUnit[];
+}
 
 /** A full GameState from a welcome snapshot, with server-only fields defaulted. */
 export function fromClientState(client: ClientState): GameState {
   return {
     ...client,
     enemies: client.enemies.map(toEnemy),
+    units: client.units.map(toUnit),
     structures: toStructures(client.structures),
     flows: {}, // rebuilt lazily by getFlowField when needed
     rngState: 0,
@@ -16,11 +29,11 @@ export function fromClientState(client: ClientState): GameState {
 }
 
 /**
- * Applies an update in place and returns its enemies with kind and variant filled in from
- * what the view already knows. Structures and tiles only come when they changed; layers are
+ * Applies an update in place and returns its enemies and units with kind, variant and owner
+ * filled in from what the view already knows. Structures and tiles only come when they changed; layers are
  * updated tile by tile, so the client's arrays stay the ones it was welcomed with.
  */
-export function applyUpdate(view: GameState, update: StateUpdate): ClientEnemy[] {
+export function applyUpdate(view: GameState, update: StateUpdate): Movers {
   const known = new Map(view.enemies.map((e) => [e.id, e]));
   const enemies = update.enemies.map((e): ClientEnemy => {
     const before = known.get(e.id);
@@ -30,9 +43,20 @@ export function applyUpdate(view: GameState, update: StateUpdate): ClientEnemy[]
       variant: e.variant ?? before?.variant ?? 0,
     };
   });
+  const knownUnits = new Map(view.units.map((u) => [u.id, u]));
+  const units = update.units.map((u): ClientUnit => {
+    const before = knownUnits.get(u.id);
+    return {
+      ...u,
+      kind: u.kind ?? (before ? UNIT_KIND_ORDER.indexOf(before.kind) : 0),
+      owner: u.owner ?? before?.owner ?? 0,
+    };
+  });
   view.tick = update.tick;
   view.gridVersion = update.gridVersion;
+  view.sightVersion = update.sightVersion;
   view.enemies = enemies.map(toEnemy);
+  view.units = units.map(toUnit);
   view.effects = update.effects;
   view.cues = update.cues;
   view.players = update.players;
@@ -53,7 +77,34 @@ export function applyUpdate(view: GameState, update: StateUpdate): ClientEnemy[]
     for (const [i, bits] of tiles.explored ?? []) view.explored[i] = bits;
   }
   if (update.features) view.features = update.features;
-  return enemies;
+  return { enemies, units };
+}
+
+/** Units a fraction `t` (0-1) of the way from `previous` to `next`, as for enemies. */
+export function interpolateUnits(previous: ClientUnit[], next: ClientUnit[], t: number): Unit[] {
+  const f = Math.min(1, Math.max(0, t));
+  const before = new Map(previous.map((u) => [u.id, u]));
+  return next.map((u) => {
+    const from = before.get(u.id);
+    if (!from) return toUnit(u);
+    return toUnit({ ...u, x: lerp(from.x, u.x, f), y: lerp(from.y, u.y, f) });
+  });
+}
+
+function toUnit(u: ClientUnit): Unit {
+  return {
+    ...u,
+    kind: UNIT_KIND_ORDER[u.kind],
+    home: null,
+    tx: Math.round(u.x),
+    ty: Math.round(u.y),
+    attackCooldown: 0,
+    goal: null,
+    path: null,
+    pathGoal: null,
+    pathVersion: -1,
+    waitingForPath: false,
+  };
 }
 
 /**

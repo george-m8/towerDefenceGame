@@ -3,9 +3,16 @@ import type { MapSize } from "../sim/config";
 import type { Command, CommandResult, GameMode, GameState, PlayerId } from "../sim/types";
 import { isDebugCommand } from "../sim/types";
 import { tokenKey } from "./join";
-import type { ClientEnemy, ClientMessage, LobbyInfo, ServerMessage } from "./protocol";
+import type { ClientMessage, LobbyInfo, ServerMessage } from "./protocol";
 import type { PendingBuild, Session } from "./session";
-import { applyUpdate, fromClientState, interpolateEnemies, interpolationFraction } from "./view";
+import {
+  applyUpdate,
+  fromClientState,
+  interpolateEnemies,
+  interpolateUnits,
+  interpolationFraction,
+  type Movers,
+} from "./view";
 
 export type JoinIntent =
   | { mode: "create"; name: string; game?: GameMode; size?: MapSize }
@@ -68,9 +75,9 @@ export function createNetworkSession(
   let replaced = false;
   let reconnects = 0;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-  /** Enemies from the two most recent ticks we heard about, for smoothing. */
-  let previous: { enemies: ClientEnemy[]; at: number } | null = null;
-  let newest: { enemies: ClientEnemy[]; at: number; tick: number } | null = null;
+  /** Enemies and units from the two most recent ticks we heard about, for smoothing. */
+  let previous: { movers: Movers; at: number } | null = null;
+  let newest: { movers: Movers; at: number; tick: number } | null = null;
   /** Builds in flight by seq; `confirmed` ones are cleared once the next update has them. */
   const pending = new Map<number, PendingBuild & { confirmed: boolean }>();
 
@@ -123,10 +130,11 @@ export function createNetworkSession(
       send({ type: "restart" });
     },
     frame(now: number) {
-      // Draw enemies one update behind, blending the two most recent ticks.
+      // Draw enemies and units one update behind, blending the two most recent ticks.
       if (!view || !previous || !newest) return;
       const t = interpolationFraction(previous.at, newest.at, now);
-      view.enemies = interpolateEnemies(previous.enemies, newest.enemies, t);
+      view.enemies = interpolateEnemies(previous.movers.enemies, newest.movers.enemies, t);
+      view.units = interpolateUnits(previous.movers.units, newest.movers.units, t);
     },
     close() {
       closedByUs = true;
@@ -177,13 +185,13 @@ export function createNetworkSession(
         if (!view) return;
         const { update } = message;
         lobby = message.lobby;
-        const enemies = applyUpdate(view, update);
+        const movers = applyUpdate(view, update);
         const at = deps.now();
         // Updates sent straight after a command repeat the same tick: refresh, don't shift.
         if (newest && newest.tick !== update.tick)
-          previous = { enemies: newest.enemies, at: newest.at };
-        newest = { enemies, at, tick: update.tick };
-        previous ??= { enemies, at };
+          previous = { movers: newest.movers, at: newest.at };
+        newest = { movers, at, tick: update.tick };
+        previous ??= { movers, at };
         for (const [s, build] of pending) if (build.confirmed) pending.delete(s);
         return;
       }

@@ -174,7 +174,7 @@ Build order: `enemy-kinds` -> `bestiary` -> `enemy-pathing` -> `enemy-targeting`
 
 # Capability Map: AoE update (economy, workers, unit spawners)
 
-Status: APPROVED (2026-10-25)
+Status: APPROVED (2026-10-25); `unit-core` built (2026-10-26)
 Last updated: 2026-10-25
 
 Gatherer buildings spawn workers that go out and chop trees, mine rocks and forage berries, paying out gold and food as they go. Guard towers spawn defensive units, and barracks spawn offensive ones. Every spawner is a building that costs gold and spawns its units free, one per minute, up to a quota.

@@ -1,127 +1,83 @@
-# Tasks: enemy-pathing
+# Tasks: resources
 
-Spec: [`SPEC-enemy-pathing.md`](../SPEC-enemy-pathing.md) · Plan: [`plan.md`](plan.md) (`enemy-pathing` section)
+Spec: [`SPEC-resources.md`](../SPEC-resources.md) · Plan: [`plan.md`](plan.md) ("AoE update: resources")
 
-Standard verification for every task: `npm run typecheck && npm test && npm run build`
+Standard verification for every task: `npm run typecheck && npm test && npm run build`, checked by exit code. Tests take their numbers from config (`RESOURCES`, `UNIT_KINDS`, `STRUCTURES`, `MAP_GEN`), never repeat them.
 
-## Task 1: Fields keyed by profile (refactor)
+## Task 1: Resource layers and harvest
 
-`MovementProfile` type; `GameState.flow` becomes `flows: Partial<Record<MovementProfile, FlowField>>`; `getFlowField(state, profile = "follower")`, `nextStep(..., profile)`, `distanceAt(..., profile)`; `canCross(state, profile, x, y)` (follower: today's `isWalkable`). Snapshot, protocol and view drop `flows` like `flow`. Only `follower` is used, so nothing changes in play.
+Terrain rows `goldRock` and `berries`; `RESOURCES` (amount range, value, word) in config; `state.resources` and `state.resourceStart`; `src/sim/resources.ts` with `resourceAt`, `placeResource` and `harvest`. `createGame` fills amounts for every resource tile from the map seed. The sell tool's tree clearing also clears its timber.
 
-- [x] The existing suite passes untouched (apart from `flow` -> `flows` in any test that reads it)
-- [x] Fields for different profiles are cached separately and rebuilt when `gridVersion` changes
-- [x] A field is only built when first asked for
+- [ ] `harvest` takes the units, pays `units x value` to the owner, and returns what it paid; the last hit pays only what was left; nothing is paid on an empty tile
+- [ ] At 0 the tile becomes ground and `gridVersion` changes; a used-up rock opens a route enemies then take
+- [ ] Amounts are within each kind's range and the same for the same seed; blank maps have none
+- [ ] Clearing a tree with the sell tool still pays 1 gold and leaves no timber behind
+- [ ] The existing suite passes untouched
 
-Files: `src/sim/types.ts`, `src/sim/pathfinding.ts`, `src/sim/game.ts`, `src/net/snapshot.ts`, `src/net/protocol.ts`, `src/net/view.ts`, `tests/sim/pathfinding.test.ts`. Size: S (mechanical). Depends on: none.
+Files: `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/resources.ts` (new), `src/sim/game.ts`, `src/sim/economy.ts`, `tests/sim/resources.test.ts` (new). Size: M. Depends on: none.
 
-## Task 2: Wandering respects terrain (bug fix)
+## Task 2: Gold veins and berry patches
 
-Wandering only picks tiles the enemy's profile can cross (`canCross`), as well as no structures and no keep.
+`MAP_GEN.goldVeinChance`, `berryPatchesPer1000`, `berryPatchSize`. Veins and patches are placed after everything map-gen already does, using the same generator; patches avoid the keep's clear zone and the spawn strip; every rock cluster keeps a plain rock.
 
-- [x] With wander chance 1 on generated maps, no enemy ever targets a rock, tree or water tile (fails before the fix)
-- [x] Existing wander tests still pass
+- [ ] Across many seeds every map still passes the existing checks
+- [ ] Veins are roughly `goldVeinChance` of rock tiles; patch counts and sizes fall in their ranges
+- [ ] No bush in the keep's clear zone or on the spawn strip
+- [ ] Apart from veins and bushes, terrain for a seed is exactly what it was before (compared against today's generator)
 
-Files: `src/sim/enemies.ts`, `tests/sim/enemies.test.ts`. Size: XS. Depends on: 1.
+Files: `src/sim/config.ts`, `src/sim/mapgen.ts`, `tests/sim/mapgen.test.ts`. Size: M. Depends on: 1.
 
-## Task 3: Breacher profile
+## Task 3: Workers and the gather behaviour
 
-`profile` on every kind (followers by default); `d`, `D`, `G` become breachers. `BREACH` config; the breacher field costs a blocking structure `1 + ceil(HP / referenceDps x referenceSpeed)` using its HP when the field is built. Enemies step by their own profile's field.
+`UNIT_KINDS` rows for lumberjack `j`, miner `p` and forager `f` with `gathers`; `gather` behaviour: work a resource in reach on the interval (the first in N, E, S, W order, or the tile under it for berries), otherwise walk to the nearest tile it can work from, otherwise stand still until the grid changes.
 
-- [x] Detour 20 tiles longer than one wall: a dwarf breaks the wall, a goblin walks round
-- [x] Detour only 4 tiles longer: both walk round
-- [x] After a rebuild, a breacher picks a damaged wall over a full one
+- [ ] A lumberjack walks to the nearest tree and chops on its interval, paying its owner; it ignores rocks and bushes
+- [ ] A forager stands on its bush; a miner works plain and gold-veined rock (gold-veined pays `value` times more)
+- [ ] When its resource is gone it moves to the next nearest
+- [ ] With nothing reachable it stands still, and sets off once something becomes reachable
+- [ ] A worker never attacks an enemy; a goblin stops to kill a lumberjack beside its path
 
-Files: `src/sim/config.ts`, `src/sim/pathfinding.ts`, `src/sim/enemies.ts`, `tests/sim/pathfinding.test.ts`, `tests/sim/enemies.test.ts`. Size: M. Depends on: 2.
+Files: `src/sim/config.ts`, `src/sim/units.ts`, `tests/sim/units.test.ts`. Size: M. Depends on: 1.
 
-## Task 4: Marine profile, marines and a timing test
+## Task 4: Gatherer buildings
 
-`MARINE_COSTS` (river 2, sea 4); `canCross` lets marines onto river and sea; marine field. Rows for `m` and `M` (spec stats, descriptions, threat, first wave, mix weight). XL timing test: building all three fields stays within one tick (50 ms).
+`STRUCTURES` rows `timberYard` (`T`), `mine` (`M`) and `foragerHut` (`F`), each a spawner of its worker; build tools on `T`, `G` and `B`.
 
-- [x] A marine takes a river route that's shorter than the land route; a goblin doesn't
-- [x] For equal lengths a marine prefers river to sea; no other kind ever enters water
-- [x] Building a bridge on a river tile with a marine in it is refused
-- [x] All three fields on an XL map build within one tick (50 ms, standalone; revised from 20 ms, measured 24-34 ms); the unit test guards a 250 ms bound
+- [ ] Each spawns its own worker kind, up to its quota, one per interval, once built
+- [ ] Selling one leaves its workers working, with none replaced
+- [ ] The build keys pick the tools; placement follows house rules
 
-Files: `src/sim/config.ts`, `src/sim/pathfinding.ts`, `tests/sim/pathfinding.test.ts`, `tests/sim/enemies.test.ts`, `tests/sim/economy.test.ts`. Size: M. Depends on: 2.
+Files: `src/sim/config.ts`, `src/ui/state.ts`, `tests/sim/units.test.ts` (or `resources.test.ts`). Size: S. Depends on: 3.
 
-## Checkpoint C (after Tasks 1-4)
+**Checkpoint A:** a timber yard fills to 5 lumberjacks who clear trees and earn gold; a goblin kills one and the yard sends another.
 
-- [x] All tests pass; typecheck and build clean
-- [ ] Browser: on a maze, dwarves and golems break through while goblins walk round; marines use a river on a generated map; nobody stands on rock, trees or water
-- [ ] **Review breacher eagerness (`BREACH`) with George**
+## Task 5: Drawing and hover
 
-## Task 5: Behaviour table and bombers
+Berry bush (green tile, red `b`), gold-veined rock (gold flecks), a thin bar on worked resource tiles, building glyphs and colours. Hover: `Tree - 18 of 30 timber left (18g)` and the like; workers add `chopping` / `mining` / `foraging`, `walking`, or `idle: nothing to gather`.
 
-`BehaviourId`, `behaviour` on every kind, `BEHAVIOURS` table in `src/sim/behaviours.ts` (run before movement; true means the turn is used). `Enemy.mode` and `targetId`. Bombers `x`/`X`: spot a player-built wall, tower, house or wall spikes within 3 tiles; sprint (2.5x) to a tile next to it along a search of up to 6 tiles; explode for 60/120 on every structure and the keep in the 3x3; die with no bounty; splash effect and an `explosion` cue (with a sound).
+- [ ] Hover lines for each resource and for a working, walking and idle worker
+- [ ] Browser: every gatherer works, resources shrink and vanish, gold rises (also `unit-core` checkpoint B)
 
-- [x] Sprints only once a target is within 3 tiles; ignores ruins, bridges, floor spikes and the keep as targets
-- [x] Explodes next to its target, damaging the 3x3 and nothing outside it; never damages enemies; drops no bounty
-- [x] No explosion if killed before it arrives; no sprint if there's no short path
+Files: `src/render/canvas.ts`, `src/render/palette.ts`, `src/ui/tileInfo.ts`, `tests/ui/tileInfo.test.ts`. Size: M. Depends on: 4.
 
-Files: `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/behaviours.ts`, `src/sim/enemies.ts`, `src/audio/sounds.ts` (+ `src/sim/cues.ts`), `tests/sim/behaviours.test.ts`. Size: M. Depends on: 2.
+**Checkpoint B:** offline browser check with George.
 
-Built: the blast is `ability.amount` (60 / 120); a bomber's ordinary hit (when blocked, or at the keep) is a small `damage` (3 / 5), so a bomber that reaches the keep doesn't hit it for 60 a second. Tile-to-tile stepping moved to `src/sim/movement.ts` so sprinting reuses it. Enemies at 0 HP no longer act before they're removed.
+## Task 6: Network
 
-## Task 6: Bands
+`resources` and `resourceStart` in the welcome snapshot; updates carry changed `resources` tiles only.
 
-`leader` and `band` on kinds (`b` follows `B`, `d` follows `D`); `Enemy.leaderId`. A band member uses the leader's profile, waits rather than get more than 1 tile ahead (by field distance), and moves at 1.3x while more than 4 tiles behind; on the leader's death it uses its own profile. The stopgap mix spawns a drawn leader with a band (2-4 `b`, 2-3 `d`) on the same tile, within budget.
+- [ ] Welcome carries both layers; a hit sends just that tile next update; `resourceStart` is never resent
+- [ ] Browser: a second player sees workers and resources vanish in step (also `unit-core`'s online check)
 
-- [x] Members stay at most 1 tile ahead and catch up when behind
-- [x] Members attack the wall their breaching chief or thane stops at
-- [x] Members carry on alone when the leader dies
-- [x] The mix never draws a leader whose smallest band doesn't fit the budget; total threat stays within budget
+Files: `src/net/protocol.ts`, `src/net/snapshot.ts`, `src/net/view.ts`, `tests/net/view.test.ts`. Size: S. Depends on: 5.
 
-Files: `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/enemies.ts`, `src/sim/waves.ts`, `tests/sim/enemies.test.ts`, `tests/sim/waves.test.ts`. Size: M. Depends on: 3, 5.
+## Task 7: Timing, determinism, docs and tuning table
 
-Built: `leader` and `band.kind` are typed `string` in `EnemyKind` (an `EnemyKindId` there is a circular type), read through `bandOf`, and `tests/sim/config.test.ts` checks they name real kinds. `pickWaveGroup` replaces `pickWaveKind` as the mix's entry point; a band is as big as rolled or as the budget can pay for, never below its minimum.
+- [ ] Measured standalone: four gatherers at quota on XL, ticks where a tile runs out; recorded here (skip the grid change for berries if it helps)
+- [ ] The 2,000-tick determinism test gains a timber yard and a mine
+- [ ] README: resources, gatherers, keys, and a Tuning table (each number, where it lives, its value, and a full gatherer's rough income per minute); SPEC.md "Since `resources`"; plan and CAPABILITIES statuses
+- [ ] `src/sim/` coverage stays at 80% or more
 
-## Task 7: Shaman and the heal effect
+Files: `tests/sim/game.test.ts`, `README.md`, `SPEC.md`, `CAPABILITIES.md`, `tasks/plan.md`. Size: S. Depends on: 6.
 
-Row for `s`; healer behaviour: every 2 s, +6 HP (up to max) to every other enemy within 2.5 tiles. `heal` effect, drawn as a green `+` in sight.
-
-- [x] Heals others in range every 2 s up to max HP; not itself; not out of range
-- [x] Heal effects only on enemies actually healed
-
-Files: `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/behaviours.ts`, `src/render/canvas.ts`, `tests/sim/behaviours.test.ts`. Size: S. Depends on: 5.
-
-Built: a heal pulse fires as soon as someone in range is hurt, then waits its 2 s (`Enemy.abilityCooldown`, which diggers reuse). The green `+` floats up over 10 ticks.
-
-## Task 8: Battering ram and diggers
-
-Rows for `R` (breacher, siege behaviour: no extra code yet) and `n`. Digger behaviour: spot a player-built wall or wall spikes within 4 tiles; walk to a tile next to it (search of up to 8 tiles); dig in (`mode: "digging"`), hitting that wall each interval until it falls (with its tower); then walk on. Diggers stay attackable while digging.
-
-- [x] A ram breaks through a maze wall; its hits are 60 every 2.5 s
-- [x] A digger digs under the nearest wall within 4 tiles, brings it (and its tower) down, then walks on
-- [x] Towers and traps still hit a digging digger
-
-Files: `src/sim/config.ts`, `src/sim/behaviours.ts`, `tests/sim/behaviours.test.ts`, `tests/sim/enemies.test.ts`. Size: M. Depends on: 5.
-
-Built: a digger heads for its wall in `walking` mode with `targetId` set, and switches to `digging` once next to it. Once the wall falls it may notice another within 4 tiles and dig again.
-
-## Task 9: Hover words and the network
-
-`ClientEnemy` gains `mode` (only when not walking) and `banded` (only while its leader lives). Hover info adds `sprinting`, `digging`, `with its chief` / `with its thane`.
-
-- [x] `mode` and `banded` survive snapshot and update round trips, and are left out when not needed
-- [x] Hover lines for a sprinting bomber, a digging digger and a banded barbarian
-- [x] The 200-enemy update size test still passes
-
-Files: `src/net/protocol.ts`, `src/net/snapshot.ts`, `src/net/view.ts`, `src/ui/tileInfo.ts`, tests. Size: S. Depends on: 6, 7, 8.
-
-Built: instead of a `banded: true` flag, `ClientEnemy` carries `leaderId` (only while the leader lives). Same information, and the client's `Enemy` then means what the server's does, so the hover code is shared. The "chief" / "thane" word is the last word of the leader kind's name.
-
-## Checkpoint D (after Tasks 5-9)
-
-- [x] All tests pass; coverage 80%+ lines for `src/sim/` (99% lines; the XL timing guards are flaky under coverage instrumentation, as they were before this module)
-- [ ] Browser: every new kind via `E` (bombers blow holes, shamans heal, bands follow, rams and diggers bring walls down); each gets a journal entry
-- [ ] Online: two clients see the same behaviours
-- [ ] **Review with George**
-
-## Task 10: Determinism test and docs
-
-A test that runs the same seed with every kind for 2,000 ticks twice and compares the state. README (enemy table with the new kinds, profiles and behaviours in plain words), SPEC.md "Since `enemy-pathing`", plan roadmap status.
-
-- [x] Same seed, same state
-- [x] Docs match the built behaviour
-
-Files: `tests/sim/game.test.ts`, `README.md`, `SPEC.md`, `tasks/plan.md`. Size: S. Depends on: 9.
+**Checkpoint C:** online check with two browsers, then review.

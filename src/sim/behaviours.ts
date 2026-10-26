@@ -13,6 +13,7 @@ import {
 import { addCue } from "./cues";
 import { baseAt, blocksAt, damageKeep, damageStructure, inBounds, keepAt, mountAt } from "./grid";
 import { atTileCentre, stepTo, walk } from "./movement";
+import { damageUnit, unitsAt } from "./units";
 import { DIRECTIONS, canCross } from "./pathfinding";
 import type { Enemy, GameState, Keep, Point, Structure } from "./types";
 
@@ -225,6 +226,7 @@ function explode(state: GameState, enemy: Enemy, ability: EnemyAbility) {
       if (mount) damageStructure(state, mount, amount);
       const base = baseAt(state, x, y);
       if (base) damageStructure(state, base, amount);
+      for (const unit of unitsAt(state, x, y)) damageUnit(unit, amount);
     }
   }
   enemy.hp = 0;

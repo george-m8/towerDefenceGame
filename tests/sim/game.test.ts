@@ -98,7 +98,7 @@ describe("determinism", () => {
     expect(run()).toBe(run());
   });
 
-  it("stays identical over 2,000 ticks with every kind of enemy and walls to attack", () => {
+  it("stays identical over 2,000 ticks with every kind of enemy, walls and units", () => {
     const run = () => {
       const s = createGame(42);
       const keep = s.keeps[0];
@@ -115,17 +115,25 @@ describe("determinism", () => {
       for (const kind of ENEMY_KIND_ORDER) {
         applyCommand(s, 1, { type: "debugSpawn", count: 2, kind });
       }
+      // Militia in the enemies' way, and some walking out to meet them.
+      for (let i = 0; i < 6; i++) {
+        applyCommand(s, 1, { type: "debugUnit", kind: "militia", x: keep.x - 6, y: keep.y + i });
+      }
+      for (const unit of s.units.slice(0, 3)) unit.goal = { x: keep.x - 20, y: unit.y };
       const modes = new Set<string>();
+      let unitsFought = false;
       for (let i = 0; i < 2000; i++) {
         tick(s);
         for (const e of s.enemies) modes.add(e.mode);
+        unitsFought ||= s.units.some((u) => u.hp < u.maxHp);
       }
-      return { json: JSON.stringify(s), modes };
+      return { json: JSON.stringify(s), modes, unitsFought };
     };
     const first = run();
     expect(first.json).toBe(run().json);
     expect(first.modes).toEqual(new Set(["walking", "sprinting", "digging"]));
-  });
+    expect(first.unitsFought).toBe(true);
+  }, 20_000); // two long runs; slow under coverage instrumentation
 });
 
 describe("ownership", () => {

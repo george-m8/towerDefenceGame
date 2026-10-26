@@ -98,6 +98,9 @@ export function bindInput(
       // One of each kind in turn, so every kind is easy to look at.
       dispatch({ type: "debugSpawn", count: 1, kind: ENEMY_KIND_ORDER[debugKind] });
       debugKind = (debugKind + 1) % ENEMY_KIND_ORDER.length;
+    } else if (e.code === "KeyU" && import.meta.env.DEV && ui.hover) {
+      // A militia for you on the hovered tile (offline only, like the other debug keys).
+      dispatch({ type: "debugUnit", kind: "militia", x: ui.hover.x, y: ui.hover.y });
     } else if (e.code === "KeyM" && import.meta.env.DEV) {
       dispatch({ type: "debugSpawn", count: STRESS_TEST_ENEMIES });
     } else if (e.code === "KeyJ" && keys) {

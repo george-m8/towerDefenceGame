@@ -19,6 +19,7 @@ import {
   HEAL_EFFECT_TICKS,
   ENEMY_KINDS,
   STRUCTURES,
+  UNIT_KINDS,
   type StructureStats,
   type TowerStats,
 } from "../sim/config";
@@ -191,14 +192,20 @@ export function createRenderer(canvas: HTMLCanvasElement) {
         if (h > 0) ctx!.fillRect(x * TILE_SIZE + h / 2, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
       }
     }
-    // Enemies go in with their row, so blocks in front of them (further down) hide them.
+    // Enemies and units go in with their row, so blocks in front of them (further down) hide them.
     const enemiesByRow = new Map<number, GameState["enemies"]>();
     for (const enemy of state.enemies) {
       const row = enemyDrawRow(state, enemy);
       enemiesByRow.set(row, [...(enemiesByRow.get(row) ?? []), enemy]);
     }
+    const unitsByRow = new Map<number, GameState["units"]>();
+    for (const unit of state.units) {
+      const row = Math.round(unit.y);
+      unitsByRow.set(row, [...(unitsByRow.get(row) ?? []), unit]);
+    }
     for (let y = y0; y <= y1 + 1; y++) {
       drawFeatures(state, y - 1);
+      drawUnits(state, unitsByRow.get(y - 1) ?? []);
       drawEnemies(state, enemiesByRow.get(y - 1) ?? []);
       for (let x = x0; x <= x1; x++) {
         const h = blockHeight(state, x, y);
@@ -624,13 +631,15 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   function drawBurst(burst: Extract<GameState["effects"][number], { kind: "burst" }>) {
     const colours = burst.enemy
       ? [ENEMY_COLOURS[burst.enemy], ENEMY_COLOURS[burst.enemy], COLOURS.burstSpark]
-      : burst.structure
-        ? [
-            STRUCTURE_COLOURS[burst.structure].bg,
-            STRUCTURE_COLOURS[burst.structure].bg,
-            STRUCTURE_COLOURS[burst.structure].fg,
-          ]
-        : [COLOURS.burstSpark];
+      : burst.unit && burst.owner !== undefined
+        ? [playerColour(burst.owner), playerColour(burst.owner), COLOURS.burstSpark]
+        : burst.structure
+          ? [
+              STRUCTURE_COLOURS[burst.structure].bg,
+              STRUCTURE_COLOURS[burst.structure].bg,
+              STRUCTURE_COLOURS[burst.structure].fg,
+            ]
+          : [COLOURS.burstSpark];
     if (burstWaiting(burst)) {
       // Still there for a moment, health bar emptied, before it bursts.
       if (burst.enemy) {
@@ -638,6 +647,11 @@ export function createRenderer(canvas: HTMLCanvasElement) {
         ctx!.font = enemyFont(kind.variants[0].size);
         ctx!.fillStyle = ENEMY_COLOURS[burst.enemy];
         ctx!.fillText(kind.glyph, (burst.x + 0.5) * TILE_SIZE, (burst.y + 0.5) * TILE_SIZE + 1);
+      } else if (burst.unit && burst.owner !== undefined) {
+        ctx!.font = GLYPH_FONT;
+        ctx!.fillStyle = playerColour(burst.owner);
+        const glyph = UNIT_KINDS[burst.unit].glyph;
+        ctx!.fillText(glyph, (burst.x + 0.5) * TILE_SIZE, (burst.y + 0.5) * TILE_SIZE + 1);
       } else if (burst.structure) {
         const look = STRUCTURE_COLOURS[burst.structure];
         drawTile(burst.x, burst.y, look.bg, glyphFor(burst.structure), look.fg);
@@ -666,6 +680,18 @@ export function createRenderer(canvas: HTMLCanvasElement) {
         const attacking = blocksAt(state, next.x, next.y);
         drawGlyph(x, y, arrow, attacking ? COLOURS.flowAttack : COLOURS.flowArrow);
       }
+    }
+  }
+
+  /** Units in their owner's colour. A rival's are hidden in fog, as enemies are. */
+  function drawUnits(state: GameState, units: GameState["units"]) {
+    ctx!.font = GLYPH_FONT;
+    for (const unit of units) {
+      if (!canSeeEnemiesAt(state, unit.x, unit.y, viewer)) continue;
+      ctx!.fillStyle = playerColour(unit.owner);
+      const glyph = UNIT_KINDS[unit.kind].glyph;
+      ctx!.fillText(glyph, (unit.x + 0.5) * TILE_SIZE, (unit.y + 0.5) * TILE_SIZE + 1);
+      if (unit.hp < unit.maxHp) drawHpBar(unit.x, unit.y, unit.hp / unit.maxHp);
     }
   }
 

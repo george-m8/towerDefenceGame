@@ -68,7 +68,7 @@ spawner?: { unit: UnitKindId; quota: number; intervalSeconds: number };
 
 - **Free:** spawning costs nothing. The building's gold cost pays for it.
 - **Quota:** at most `quota` living units whose home is this building. A new building starts its own count from zero, even if units from a sold one are still alive nearby.
-- **Timer:** the first unit appears as soon as the building is placed. After that the spawn timer counts down each tick. When it reaches 0 and the building is below quota, a unit spawns and the timer resets to `intervalSeconds`. A building at quota keeps its timer at 0, so it spawns again straight away once a unit dies.
+- **Timer:** the first unit appears as soon as the building is finished (build time, PR #33: a construction site does nothing). After that the spawn timer counts down each tick. When it reaches 0 and the building is below quota, a unit spawns and the timer resets to `intervalSeconds`. A building at quota keeps its timer at 0, so it spawns again straight away once a unit dies.
 - **Where:** on the tile the building faces if it's open, otherwise the first open neighbour going clockwise from the facing. Buildings with no facing count as facing south. If no neighbour is open, it waits and tries again next tick.
 - The structure's `cooldown` field holds the spawn timer, as it does for income buildings.
 - `unit-core` adds a **test-only** spawner kind in a test config, not in `STRUCTURES`, so the first real spawner is the timber yard in `resources`.
