@@ -1,8 +1,17 @@
-// The start page: your name, then play solo, create a room, or join one by code. Playing solo
-// or creating a room goes on to the game mode screen.
+// The start pages: who's playing (pick a saved player or add one), then play solo, create a
+// room, or join one by code. Playing solo or creating a room goes on to the game mode screen.
 import { ROOM_CODE_LENGTH } from "../net/protocol";
-import { cleanName } from "../net/join";
 import type { PageIntent } from "../net/join";
+import {
+  PICTURE_CELLS,
+  PICTURE_GROUPS,
+  PICTURE_TILES,
+  randomPicture,
+  tileHtml,
+  type Picture,
+} from "./picture";
+import { createPictureView, roomAbove } from "./pictureCanvas";
+import { loadPlayers, putPlayer, removePlayer, savePlayers, type Profile } from "./profiles";
 import type { GameMode } from "../sim/types";
 import { DEFAULT_MAP_SIZE, MAP_SIZES, type MapSize } from "../sim/config";
 
@@ -25,23 +34,27 @@ export const GAME_MODES: { mode: GameMode; name: string; description: string; on
     },
   ];
 
-const NAME_KEY = "keep-defence-name";
+/** Modes still to come: shown on the mode screen, above the real ones, but not playable yet. */
+export const COMING_MODES: { name: string; description: string }[] = [
+  {
+    name: "Campaign",
+    description:
+      "A run of hand-made levels, each with its own map, waves and buildings to work with.",
+  },
+];
 
-/** The name this device used last time, if any. */
-export function rememberedName(): string | null {
+/** localStorage, or null where it's blocked. */
+function deviceStorage(): Storage | null {
   try {
-    return cleanName(localStorage.getItem(NAME_KEY));
+    return localStorage;
   } catch {
-    return null; // storage blocked: just ask again
+    return null;
   }
 }
 
-function rememberName(name: string) {
-  try {
-    localStorage.setItem(NAME_KEY, name);
-  } catch {
-    // not remembered; harmless
-  }
+/** The player picked last on this device, if any (for rejoining a room on reload). */
+export function rememberedName(): string | null {
+  return loadPlayers(deviceStorage())[0]?.name ?? null;
 }
 
 /** A hand-made map Endless can be played on (from maps/), as the mode screen lists it. */
@@ -57,29 +70,302 @@ export interface ItemsChoice {
   title: string;
 }
 
-/** Shows the start screen in `root` and calls `onChoose` once with the player's choice. */
-export function showStartScreen(
+type StartOptions = {
+  room?: string;
+  /** Hand-made Endless maps to offer solo, besides a generated one. */
+  maps?: MapChoice[];
+  /** Items files (build limits) to offer solo, besides none. */
+  items?: ItemsChoice[];
+  onChoose: (intent: Exclude<PageIntent, { mode: "menu" }>) => void;
+};
+
+/** How big a picture's tiles are wherever a player is shown on the start screens (px). */
+const PICK_CELL = 36;
+
+/** The New player card's icon: a dashed square, a picture's size, with a plus. */
+const NEW_PLAYER_ICON = `<span class="picture-new" style="--size:${PICK_CELL * 3}px;--above:${roomAbove(PICK_CELL)}px" aria-hidden="true">+</span>`;
+
+/**
+ * The start: who's playing (the player select screen), then what to play. Calls `onChoose`
+ * once with the player's choice.
+ */
+export function showStartScreen(root: HTMLElement, options: StartOptions) {
+  showPlayerScreen(root, options);
+}
+
+/**
+ * Who's playing: a card for each player saved on this device (picked last first), each with
+ * their picture, and New player. Picking one goes on to the play screen; ✎ edits a player's
+ * name and picture, ✕ removes them. With nobody saved yet, it goes straight to New player.
+ */
+function showPlayerScreen(root: HTMLElement, options: StartOptions) {
+  const storage = deviceStorage();
+  let players = loadPlayers(storage);
+  if (players.length === 0) return showPlayerEditor(root, options, players, null);
+  root.innerHTML = `
+    <div class="window dialog-window start-window player-select">
+      <p class="dialog-title">Who's playing?</p>
+      <div class="player-list">
+        ${players
+          .map(
+            ({ name }) => `
+          <div class="player-card">
+            <button class="player-pick" data-player="${escapeHtml(name)}">
+              <span class="player-name">${escapeHtml(name)}</span>
+            </button>
+            <div class="player-tools">
+              <button data-edit="${escapeHtml(name)}"
+                title="Change ${escapeHtml(name)}'s name or picture" aria-label="Edit ${escapeHtml(name)}">✎</button>
+              <button data-remove="${escapeHtml(name)}"
+                title="Remove ${escapeHtml(name)} from this device" aria-label="Remove ${escapeHtml(name)}">✕</button>
+            </div>
+          </div>`,
+          )
+          .join("")}
+        <div class="player-card">
+          <button class="player-pick" data-action="new">${NEW_PLAYER_ICON}<span class="player-name">New player</span></button>
+        </div>
+      </div>
+    </div>
+  `;
+  const named = (name: string) => players.find((p) => p.name === name)!;
+  // Each picture lies flat until its player is hovered (or tabbed to): then it's built up.
+  for (const b of root.querySelectorAll<HTMLButtonElement>("[data-player]")) {
+    buildOnHover(b, named(b.dataset.player!).picture);
+  }
+  for (const b of root.querySelectorAll<HTMLButtonElement>("[data-player]")) {
+    b.addEventListener("click", () => {
+      savePlayers(storage, players, b.dataset.player!);
+      showPlayScreen(root, options, named(b.dataset.player!));
+    });
+  }
+  for (const b of root.querySelectorAll<HTMLButtonElement>("[data-edit]")) {
+    b.addEventListener("click", () =>
+      showPlayerEditor(root, options, players, named(b.dataset.edit!)),
+    );
+  }
+  for (const b of root.querySelectorAll<HTMLButtonElement>("[data-remove]")) {
+    b.addEventListener("click", () => {
+      const name = b.dataset.remove!;
+      if (!window.confirm(`Remove ${name} from this device?`)) return;
+      players = savePlayers(storage, removePlayer(players, name));
+      showPlayerScreen(root, options);
+    });
+  }
+  root
+    .querySelector('[data-action="new"]')!
+    .addEventListener("click", () => showPlayerEditor(root, options, players, null));
+  root.hidden = false;
+}
+
+/**
+ * A new player, or changing one (`editing`): their name, and their picture, a 3x3 grid. Click
+ * a square, then a tile from the picker to put there (the next square is picked after);
+ * Shuffle makes a random one. Saving picks the player and goes on to the play screen.
+ */
+function showPlayerEditor(
   root: HTMLElement,
-  options: {
-    room?: string;
-    /** Hand-made Endless maps to offer solo, besides a generated one. */
-    maps?: MapChoice[];
-    /** Items files (build limits) to offer solo, besides none. */
-    items?: ItemsChoice[];
-    onChoose: (intent: Exclude<PageIntent, { mode: "menu" }>) => void;
-  },
+  options: StartOptions,
+  players: Profile[],
+  editing: Profile | null,
 ) {
+  const storage = deviceStorage();
+  const picture = [...(editing?.picture ?? randomPicture(String(Math.random())))];
+  let selected = 0;
+  root.innerHTML = `
+    <form class="window dialog-window start-window player-editor">
+      <p class="dialog-title">${editing ? `Change ${escapeHtml(editing.name)}` : "New player"}</p>
+      <label class="field">
+        <span>Name</span>
+        <input name="name" maxlength="16" autocomplete="nickname" spellcheck="false"
+          value="${escapeHtml(editing?.name ?? "")}" />
+      </label>
+      <div class="picture-editor">
+        <div class="picture picture-large" data-field="cells"></div>
+        <div class="picture-help">
+          <span>Your picture: click a square, then pick what goes there.</span>
+          <button class="button" type="button" data-action="shuffle">Shuffle</button>
+        </div>
+      </div>
+      <div class="picture-picker">
+        ${PICTURE_GROUPS.map(
+          (group) => `
+          <p class="picture-group">${group}</p>
+          <div class="picture-tiles">
+            ${PICTURE_TILES.filter((t) => t.group === group)
+              .map(
+                (t) =>
+                  `<button type="button" class="picture-pick" data-tile="${t.id}">${tileHtml(t.id)}</button>`,
+              )
+              .join("")}
+          </div>`,
+        ).join("")}
+      </div>
+      <p class="start-note" data-field="note"></p>
+      <div class="choices together">
+        ${players.length > 0 ? '<button class="button" type="button" data-action="cancel">Cancel</button>' : ""}
+        <button class="button" type="submit">${editing ? "Save" : "Add"}</button>
+      </div>
+    </form>
+  `;
+  const form = root.querySelector<HTMLFormElement>("form")!;
+  const cells = root.querySelector<HTMLElement>('[data-field="cells"]')!;
+  const drawCells = () => {
+    cells.innerHTML = picture
+      .map(
+        (id, i) =>
+          `<button type="button" class="picture-cell${i === selected ? " selected" : ""}" data-cell="${i}" aria-label="Square ${i + 1}">${tileHtml(id)}</button>`,
+      )
+      .join("");
+  };
+  drawCells();
+  cells.addEventListener("click", (e) => {
+    const cell = (e.target as HTMLElement).closest<HTMLElement>("[data-cell]");
+    if (!cell) return;
+    selected = Number(cell.dataset.cell);
+    drawCells();
+  });
+  root.querySelector(".picture-picker")!.addEventListener("click", (e) => {
+    const pick = (e.target as HTMLElement).closest<HTMLElement>("[data-tile]");
+    if (!pick) return;
+    picture[selected] = pick.dataset.tile!;
+    selected = (selected + 1) % PICTURE_CELLS;
+    drawCells();
+  });
+  root.querySelector('[data-action="shuffle"]')!.addEventListener("click", () => {
+    picture.splice(0, PICTURE_CELLS, ...randomPicture(String(Math.random())));
+    drawCells();
+  });
+  root
+    .querySelector('[data-action="cancel"]')
+    ?.addEventListener("click", () => showPlayerScreen(root, options));
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const name = form.querySelector<HTMLInputElement>('input[name="name"]')!.value;
+    const result = putPlayer(players, { name, picture: [...picture] }, editing?.name);
+    if ("error" in result) {
+      root.querySelector('[data-field="note"]')!.textContent = result.error;
+      return;
+    }
+    const player = result.players[0];
+    savePlayers(storage, result.players, player.name);
+    showPlayScreen(root, options, player);
+  });
+  root.hidden = false;
+  form.querySelector<HTMLInputElement>('input[name="name"]')!.focus();
+}
+
+/**
+ * Who's playing, as the player select screen shows them: their picture (built up on hover)
+ * and name, centred, with ⇄ under it. Any of it goes back to the player select screen.
+ */
+function playingAsHtml(name: string): string {
+  return `
+      <div class="player-list player-select playing-as">
+        <div class="player-card">
+          <button class="player-pick" data-action="change" title="Change player">
+            <span class="player-name">${escapeHtml(name)}</span>
+          </button>
+          <div class="player-tools">
+            <button data-action="change" title="Change player" aria-label="Change player">⇄</button>
+          </div>
+        </div>
+      </div>`;
+}
+
+/** A picture that lies flat until `button` is hovered (or tabbed to), then is built up. */
+function buildOnHover(button: HTMLButtonElement, picture: Picture) {
+  const view = createPictureView(picture, PICK_CELL);
+  button.prepend(view.canvas);
+  button.addEventListener("pointerenter", () => view.raise(true));
+  button.addEventListener("pointerleave", () => view.raise(button.matches(":focus-visible")));
+  button.addEventListener("focus", () => view.raise(button.matches(":focus-visible")));
+  button.addEventListener("blur", () => view.raise(button.matches(":hover")));
+}
+
+/** Fills in playingAsHtml's picture and makes its Change button work. */
+function bindPlayingAs(root: HTMLElement, options: StartOptions, player: Profile) {
+  buildOnHover(root.querySelector<HTMLButtonElement>(".playing-as .player-pick")!, player.picture);
+  for (const b of root.querySelectorAll('[data-action="change"]')) {
+    b.addEventListener("click", () => showPlayerScreen(root, options));
+  }
+}
+
+/**
+ * The mode screen, then on into a game: solo (offline), or creating a room. Back returns to
+ * where it came from.
+ */
+function chooseGame(
+  root: HTMLElement,
+  options: StartOptions,
+  player: Profile,
+  online: boolean,
+  onBack: () => void,
+) {
+  const { name } = player;
+  showModeScreen(root, {
+    online,
+    maps: options.maps ?? [],
+    items: options.items ?? [],
+    onBack,
+    onChoose: (game, size, map, items, fog) => {
+      // Only "off" is sent: fog of war is on unless asked otherwise.
+      const fogOff = fog ? {} : { fog: false as const };
+      root.hidden = true;
+      if (!online) {
+        return options.onChoose({
+          mode: "offline",
+          ...(map ? { map } : { size }),
+          ...(items ? { items } : {}),
+          ...fogOff,
+        });
+      }
+      options.onChoose(
+        game === "endless"
+          ? { mode: "create", name, size, ...fogOff }
+          : { mode: "create", name, game, size, ...fogOff },
+      );
+    },
+  });
+}
+
+/**
+ * What to play, as `player`: Solo (on to the mode screen) or Co-op (joining or creating a
+ * room). An invite link's room code goes straight on to Co-op.
+ */
+function showPlayScreen(root: HTMLElement, options: StartOptions, player: Profile) {
+  if (options.room) return showCoopScreen(root, options, player);
   root.innerHTML = `
     <div class="window dialog-window start-window">
       <p class="dialog-title">Keep Defence</p>
-      <label class="field">
-        <span>Your name</span>
-        <input name="name" maxlength="16" autocomplete="nickname" spellcheck="false" />
-      </label>
-      <div class="choices">
-        <button class="button" data-action="solo">Play solo</button>
-        <button class="button" data-action="create">Create room</button>
+      ${playingAsHtml(player.name)}
+      <div class="play-choices">
+        <button class="button play-choice" data-action="solo">Solo</button>
+        <button class="button play-choice" data-action="coop">Co-op</button>
       </div>
+    </div>
+  `;
+  bindPlayingAs(root, options, player);
+  const solo = root.querySelector<HTMLButtonElement>('[data-action="solo"]')!;
+  solo.addEventListener("click", () =>
+    chooseGame(root, options, player, false, () => showPlayScreen(root, options, player)),
+  );
+  root
+    .querySelector('[data-action="coop"]')!
+    .addEventListener("click", () => showCoopScreen(root, options, player));
+  root.hidden = false;
+  solo.focus();
+}
+
+/**
+ * Co-op: join a room by its code (at the top), or create one, which goes on to the mode
+ * screen. Back returns to Solo / Co-op.
+ */
+function showCoopScreen(root: HTMLElement, options: StartOptions, player: Profile) {
+  root.innerHTML = `
+    <div class="window dialog-window start-window">
+      <p class="dialog-title">Co-op</p>
+      ${playingAsHtml(player.name)}
       <form class="join-form">
         <label class="field">
           <span>Room code</span>
@@ -87,80 +373,47 @@ export function showStartScreen(
         </label>
         <button class="button" type="submit">Join</button>
       </form>
+      <p class="or-divider"><span>or</span></p>
+      <button class="button" data-action="create">Create room</button>
+      <div class="choices">
+        <button class="button" data-action="back">Back</button>
+      </div>
     </div>
   `;
-  const nameInput = root.querySelector<HTMLInputElement>('input[name="name"]')!;
+  // Leaving this screen forgets an invite's code, so Back and Change don't bounce back here.
+  const elsewhere = { ...options, room: undefined };
+  bindPlayingAs(root, elsewhere, player);
   const roomInput = root.querySelector<HTMLInputElement>('input[name="room"]')!;
-  const solo = root.querySelector<HTMLButtonElement>('[data-action="solo"]')!;
-  const create = root.querySelector<HTMLButtonElement>('[data-action="create"]')!;
   const form = root.querySelector<HTMLFormElement>(".join-form")!;
   const join = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
-
-  nameInput.value = rememberedName() ?? "";
   roomInput.value = options.room ?? "";
-
-  const name = () => cleanName(nameInput.value);
   const room = () => roomInput.value;
   const refresh = () => {
-    const named = name() !== null;
-    solo.disabled = !named;
-    create.disabled = !named;
-    join.disabled = !named || room().length !== ROOM_CODE_LENGTH;
+    join.disabled = room().length !== ROOM_CODE_LENGTH;
   };
-
   // Room codes are letters only; show them as the server expects.
   roomInput.addEventListener("input", () => {
     roomInput.value = roomInput.value.toUpperCase().replace(/[^A-Z]/g, "");
     refresh();
   });
-  nameInput.addEventListener("input", refresh);
-
-  const choose = (intent: Exclude<PageIntent, { mode: "menu" }>) => {
-    const chosen = name();
-    if (!chosen) return;
-    rememberName(chosen);
-    root.hidden = true;
-    options.onChoose(intent);
-  };
-  // Solo and Create room go on to the mode screen; PvP needs a room.
-  const chooseMode = (online: boolean) => {
-    const chosen = name();
-    if (!chosen) return;
-    showModeScreen(root, {
-      online,
-      maps: options.maps ?? [],
-      items: options.items ?? [],
-      onBack: () => showStartScreen(root, { ...options, room: room() }),
-      onChoose: (game, size, map, items, fog) => {
-        // Only "off" is sent: fog of war is on unless asked otherwise.
-        const fogOff = fog ? {} : { fog: false as const };
-        if (!online) {
-          return choose({
-            mode: "offline",
-            ...(map ? { map } : { size }),
-            ...(items ? { items } : {}),
-            ...fogOff,
-          });
-        }
-        choose(
-          game === "endless"
-            ? { mode: "create", name: chosen, size, ...fogOff }
-            : { mode: "create", name: chosen, game, size, ...fogOff },
-        );
-      },
-    });
-  };
-  solo.addEventListener("click", () => chooseMode(false));
-  create.addEventListener("click", () => chooseMode(true));
   form.addEventListener("submit", (e) => {
     e.preventDefault();
-    if (!join.disabled) choose({ mode: "join", room: room(), name: name()! });
+    if (join.disabled) return;
+    root.hidden = true;
+    options.onChoose({ mode: "join", room: room(), name: player.name });
   });
-
+  root
+    .querySelector('[data-action="create"]')!
+    .addEventListener("click", () =>
+      chooseGame(root, elsewhere, player, true, () => showCoopScreen(root, elsewhere, player)),
+    );
+  root
+    .querySelector('[data-action="back"]')!
+    .addEventListener("click", () => showPlayScreen(root, elsewhere, player));
   refresh();
   root.hidden = false;
-  // Invite links arrive with a code: the name is all that's left to fill in.
-  (options.room && name() ? join : nameInput).focus();
+  // Invite links arrive with a code: Join is all that's left to press.
+  (options.room ? join : roomInput).focus();
 }
 
 /** What the settings screen has chosen so far (kept when going back to the modes). */
@@ -175,8 +428,8 @@ interface ModeSettings {
 }
 
 /**
- * The game mode screen: a card per mode, each with a short description. Online-only modes are
- * greyed out solo. Picking one goes on to that mode's settings.
+ * The game mode screen: a card per mode, each with a short description. Online-only modes
+ * (PvP) only show for a room, not solo. Picking one goes on to that mode's settings.
  */
 function showModeScreen(
   root: HTMLElement,
@@ -199,14 +452,23 @@ function showModeScreen(
     <div class="window dialog-window start-window">
       <p class="dialog-title">Game mode</p>
       <div class="modes">
-        ${GAME_MODES.map(
+        ${COMING_MODES.map(
           (m) => `
-          <button class="mode-card" data-mode="${m.mode}" ${m.online && !options.online ? "disabled" : ""}>
+          <button class="mode-card" disabled>
             <strong>${m.name}</strong>
             <span>${m.description}</span>
-            ${m.online && !options.online ? "<em>Needs two players: create a room.</em>" : ""}
+            <em>Coming soon.</em>
           </button>`,
         ).join("")}
+        ${GAME_MODES.filter((m) => options.online || !m.online)
+          .map(
+            (m) => `
+          <button class="mode-card" data-mode="${m.mode}">
+            <strong>${m.name}</strong>
+            <span>${m.description}</span>
+          </button>`,
+          )
+          .join("")}
       </div>
       <div class="choices">
         <button class="button" data-action="back">Back</button>
