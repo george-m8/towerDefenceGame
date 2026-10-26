@@ -6,9 +6,11 @@ import {
   UNIT_KINDS,
   STRUCTURES,
   UNIT_PATH_SEARCHES_PER_TICK,
+  type ResourceTerrain,
   type SpawnerStats,
   type StructureStats,
   type UnitKind,
+  type UnitKindId,
 } from "../../src/sim/config";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand, createGame, tick } from "../../src/sim/game";
@@ -465,7 +467,10 @@ describe("performance", () => {
 
 describe("workers", () => {
   const chopTicks = UNIT_KINDS.lumberjack.attackInterval * TICK_RATE;
-  const perHit = UNIT_KINDS.lumberjack.damage;
+  /** Hits one worker needs to clear a fresh tile of this kind. */
+  const hitsFor = (terrain: ResourceTerrain, worker: UnitKindId) =>
+    RESOURCES[terrain].seconds / UNIT_KINDS[worker].attackInterval;
+  const work = (terrain: ResourceTerrain) => RESOURCES[terrain].seconds * TICK_RATE;
 
   /** Ticks until `done` holds (at most `limit`), so tests don't depend on walking speed. */
   function until(state: GameState, done: () => boolean, limit = 2000) {
@@ -475,41 +480,44 @@ describe("workers", () => {
 
   it("a lumberjack walks to the nearest tree and chops it on its interval, paying its owner", () => {
     const state = createGameWithoutWaves();
-    placeResource(state, 12, 5, "tree", 100);
+    const perHit = 2;
+    placeResource(state, 12, 5, "tree", perHit * hitsFor("tree", "lumberjack"));
     placeResource(state, 8, 5, "rock", 100);
     placeResource(state, 6, 5, "berries", 100);
     spawnUnit(state, "lumberjack", 1, 5, 5);
     const gold = goldOf(state);
+    const left = () => resourceAt(state, 12, 5)!.goldLeft;
+    const full = left();
 
-    until(state, () => resourceAt(state, 12, 5)!.left < 100);
-    expect(resourceAt(state, 12, 5)!.left).toBe(100 - perHit);
-    expect(goldOf(state)).toBe(gold + perHit * RESOURCES.tree.value);
+    until(state, () => left() < full);
+    expect(goldOf(state)).toBe(gold + perHit);
     run(state, chopTicks - 1);
-    expect(resourceAt(state, 12, 5)!.left).toBe(100 - perHit);
+    expect(left()).toBe(full - perHit);
     tick(state);
-    expect(resourceAt(state, 12, 5)!.left).toBe(100 - 2 * perHit);
-    expect(resourceAt(state, 8, 5)!.left).toBe(100);
-    expect(resourceAt(state, 6, 5)!.left).toBe(100);
+    expect(left()).toBe(full - 2 * perHit);
+    expect(resourceAt(state, 8, 5)!.workLeft).toBe(work("rock"));
+    expect(resourceAt(state, 6, 5)!.workLeft).toBe(work("berries"));
   });
 
   it("a forager stands on its bush to forage it", () => {
     const state = createGameWithoutWaves();
     placeResource(state, 9, 5, "berries", 100);
     const forager = spawnUnit(state, "forager", 1, 5, 5)!;
-    until(state, () => resourceAt(state, 9, 5)!.left < 100);
+    until(state, () => resourceAt(state, 9, 5)!.workLeft < work("berries"));
     expect({ x: forager.x, y: forager.y }).toEqual({ x: 9, y: 5 });
   });
 
   it("a miner works plain rock, then moves on to gold-veined rock when it's gone", () => {
     const state = createGameWithoutWaves();
-    placeResource(state, 12, 5, "rock", UNIT_KINDS.miner.damage);
-    placeResource(state, 16, 5, "goldRock", 50);
+    placeResource(state, 12, 5, "rock", 1);
+    const perHit = 3;
+    placeResource(state, 16, 5, "goldRock", perHit * hitsFor("goldRock", "miner"));
     spawnUnit(state, "miner", 1, 10, 5);
 
-    until(state, () => resourceAt(state, 12, 5) === null);
+    until(state, () => resourceAt(state, 12, 5) === null, work("rock") + 20 * TICK_RATE);
     const gold = goldOf(state);
-    until(state, () => resourceAt(state, 16, 5)!.left < 50);
-    expect(goldOf(state)).toBe(gold + UNIT_KINDS.miner.damage * RESOURCES.goldRock.value);
+    until(state, () => resourceAt(state, 16, 5)!.workLeft < work("goldRock"));
+    expect(goldOf(state)).toBe(gold + perHit);
   });
 
   it("stands still with nothing it can reach, and sets off once something can be reached", () => {
@@ -521,7 +529,7 @@ describe("workers", () => {
     expect({ x: worker.x, y: worker.y }).toEqual({ x: 10, y: 5 });
 
     sellAt(state, 12, 5);
-    until(state, () => resourceAt(state, 20, 5)!.left < 100);
+    until(state, () => resourceAt(state, 20, 5)!.workLeft < work("tree"));
   });
 
   it("never attacks an enemy, and a goblin stops to kill one beside its path", () => {

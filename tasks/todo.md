@@ -95,3 +95,14 @@ Files: `tests/sim/game.test.ts`, `README.md`, `SPEC.md`, `CAPABILITIES.md`, `tas
 Built: measured on XL over 12 game minutes with two timber yards, a mine and a forager hut (115 tiles used up). Ticks with no grid change: 0.08 ms median, 0.18 ms p95. Ticks where a tile ran out: 25 ms median, 35 ms p95, almost all of it rebuilding the three enemy flow fields (6-7 ms each); the rest of such a tick takes 0.1 ms. A few spikes (up to 120 ms) also appeared on quiet ticks (47 ms), so they look like machine noise, not this module. The berry-bush shortcut wasn't needed. `src/sim/` coverage: 99% of lines.
 
 **Checkpoint C:** online check with two browsers, then review.
+
+## Task 8: Resources tuned by worth and time (after play-testing)
+
+George, 2026-10-26: rewards feel low for the time a resource takes, and each resource should be tunable by what it's worth and how long it takes to clear. `RESOURCES` rows become `worth` (gold a tile pays in all, rolled per tile) and `seconds` (how long one worker takes to clear it). Each tile tracks the work left (`resources`, in ticks) and its worth (`resourceWorth`, was `resourceStart`); a hit of `attackInterval` seconds pays the gold earned since the last hit, so a tile pays exactly its worth over exactly its time whatever the numbers. Defaults keep today's averages (tree 20-40g over 90 s, rock 30-60g and gold-veined 90-180g over 135 s, berries 15-30g over 60 s), ready to retune.
+
+- [x] A tile pays exactly its worth over exactly its `seconds` of work, for worths that don't divide evenly
+- [x] Changing `worth` or `seconds` in config changes reward and time and nothing else (tests read config)
+- [x] Workers, hover (`Tree - 18 of 30g of timber left`), network and README tuning table follow the new rows
+
+Files: `src/sim/config.ts`, `src/sim/resources.ts`, `src/sim/units.ts`, `src/sim/types.ts`, `src/net/*`, `src/ui/tileInfo.ts`, `src/render/canvas.ts`, tests, `README.md`, `SPEC-resources.md`. Size: M.
+

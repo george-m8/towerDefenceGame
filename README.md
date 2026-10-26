@@ -75,7 +75,7 @@ Trees, rocks and berry bushes hold resources, and workers turn them into gold. B
 - **Mine** (`G`, 100g, drawn `M`): miners `p` mine rock. Gold-veined rock (`o` in gold) pays three times as much.
 - **Forager hut** (`B`, 40g, drawn `F`): foragers `f` pick berry bushes (green, red `b`). Berries are food in the story; for now they pay gold too.
 
-Each worker walks to the nearest resource it gathers (even into fog, lighting it up), and every 3 seconds takes one unit and pays you its value. A tile that's used up disappears: a tree or rock becomes open ground, which can open a new route for enemies. Hover a resource to see what's left (`Tree - 18 of 30 timber left (18g)`) or a worker to see what it's doing (`chopping`, `walking`, `idle: nothing to gather`).
+Each worker walks to the nearest resource it gathers (even into fog, lighting it up) and works it. Every resource tile is worth some gold and takes a set time to clear: every 3 seconds a worker pays you the share of its worth that work earned, and two workers on one tile clear it twice as fast. A tile that's used up disappears: a tree or rock becomes open ground, which can open a new route for enemies. Hover a resource to see what's left (`Tree - 18 of 30g of timber left`) or a worker to see what it's doing (`chopping`, `walking`, `idle: nothing to gather`).
 
 Workers never fight. Enemies kill them like any unit, and in PvP your rival's towers shoot them, but their building sends a replacement as soon as it can. Sell or lose the building and its workers carry on, but nobody replaces them.
 
@@ -111,10 +111,10 @@ Every game starts on a new, randomly generated map (the seed is shown in the pan
 | Ford | sandy | yes | yes | A shallow crossing of the river |
 | River | `~` light blue | no | bridges only | Build a bridge (`8`) to cross it anywhere else |
 | Sea | `≈` dark blue | no | no | Coastline along one edge |
-| Rock | `o` grey | no | no | Miners mine it (30-60 ore, 1g each); open ground once used up |
-| Gold-veined rock | `o` gold | no | no | About 1 rock in 8. Miners mine it (30-60 ore, 3g each) |
-| Tree | `♣` green | no | no | Lumberjacks chop it (20-40 timber, 1g each). Or clear it with `X` for 1 gold |
-| Berry bush | `b` red on green | yes | no | Foragers pick it (15-30 berries, 1g each) |
+| Rock | `o` grey | no | no | Miners mine it (worth 30-60g, 135s of work); open ground once used up |
+| Gold-veined rock | `o` gold | no | no | About 1 rock in 8. Miners mine it (worth 90-180g, 135s) |
+| Tree | `♣` green | no | no | Lumberjacks chop it (worth 20-40g, 90s). Or clear it with `X` for 1 gold |
+| Berry bush | `b` red on green | yes | no | Foragers pick it (worth 15-30g, 60s) |
 
 - **Ruins** (`#` in dark stone) are old, damaged walls. They block enemies, can hold a tower, and sell for a little salvage. You can't build new ones.
 - **Treasure chests** (`$` in gold) are piles of gold lying on the map (20-60, more the further from the keep). Build anything on one to claim it.
@@ -385,9 +385,9 @@ The economy, to balance against each other:
 | Starting gold | `STARTING_GOLD` | 250 |
 | House cost and income | `STRUCTURES.house` | 40g; 2g every 5s (24g a minute) |
 | Gatherer cost, quota, spawn interval | `STRUCTURES.timberYard`, `.mine`, `.foragerHut` (`cost`, `spawner`) | 60 / 100 / 40g; 5 workers; one every 60s |
-| Worker stats (HP, speed, units per hit, seconds per hit) | `UNIT_KINDS.lumberjack`, `.miner`, `.forager` (`damage`, `attackInterval`) | 1 unit every 3s (20 a minute each) |
-| Resource amounts and gold per unit | `RESOURCES` | trees 20-40 x1g, rock 30-60 x1g, gold-veined 30-60 x3g, berries 15-30 x1g |
+| Worker stats (HP, speed, how often gold comes in) | `UNIT_KINDS.lumberjack`, `.miner`, `.forager` (`attackInterval`) | paid every 3s |
+| What each resource tile is worth, and how long one worker takes to clear it | `RESOURCES` (`worth`, `seconds`) | trees 20-40g / 90s, rock 30-60g / 135s, gold-veined 90-180g / 135s, berries 15-30g / 60s |
 | How much is on the map | `MAP_GEN` (`forestsPer1000`, `rockClustersPer1000`, `goldVeinChance`, `berryPatchesPer1000`, ...) | gold veins 12% of rock |
 | Clearing a tree with `X` | `TREE_CLEAR_GOLD` | 1g |
 
-Roughly, a full gatherer (5 workers working, ignoring walking) earns 100g a minute: a timber yard or forager hut 100g, a mine 100g on plain rock and up to 300g on gold veins. A house earns 24g a minute.
+A worker earns about `average worth / seconds` gold a second while working (walking between tiles not counted): 0.33g/s on trees, berries and plain rock, 1g/s on gold veins. So a full gatherer (5 workers) earns about 100g a minute (a mine up to 300g on gold veins), against a house's 24g. To make a resource pay more for the time, raise its `worth` or lower its `seconds`.

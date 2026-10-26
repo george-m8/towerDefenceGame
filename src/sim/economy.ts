@@ -1,12 +1,5 @@
 import { SELL_REFUND, STRUCTURES, TICK_RATE, TREE_CLEAR_GOLD, type StructureStats } from "./config";
-import {
-  enemyOccupies,
-  isBuilt,
-  isKeepTile,
-  removeStructure,
-  terrainAt,
-  topAt,
-} from "./grid";
+import { enemyOccupies, isBuilt, isKeepTile, removeStructure, terrainAt, topAt } from "./grid";
 import { addCue } from "./cues";
 import { addBurst } from "./effects";
 import { isExplored } from "./fog";

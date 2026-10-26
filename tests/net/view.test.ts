@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ENEMY_KIND_ORDER } from "../../src/sim/config";
+import { ENEMY_KIND_ORDER, RESOURCES, TICK_RATE } from "../../src/sim/config";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { applyCommand, createGame, tick } from "../../src/sim/game";
 import { canBuild, topAt } from "../../src/sim/grid";
@@ -258,16 +258,17 @@ describe("resources over the network", () => {
     placeResource(server, 5, 5, "tree", 30);
     placeResource(server, 9, 9, "rock", 40);
     const view = fromClientState(overTheWire(toClientState(server)));
-    expect(resourceAt(view, 5, 5)).toEqual({ terrain: "tree", left: 30, start: 30 });
+    expect(resourceAt(view, 5, 5)).toMatchObject({ terrain: "tree", worth: 30, goldLeft: 30 });
 
     const sent = sentStateOf(server);
-    harvest(server, 5, 5, 2, 1);
+    harvest(server, 5, 5, RESOURCES.tree.seconds / 3, 1);
     tick(server);
     const update = overTheWire(toUpdate(server, sent));
-    expect(update.tiles?.resources).toEqual([[5 * server.width + 5, 28]]);
-    expect(update).not.toHaveProperty("resourceStart");
+    const workLeft = (RESOURCES.tree.seconds * TICK_RATE * 2) / 3;
+    expect(update.tiles?.resources).toEqual([[5 * server.width + 5, workLeft]]);
+    expect(update).not.toHaveProperty("resourceWorth");
     applyUpdate(view, update);
-    expect(resourceAt(view, 5, 5)).toEqual({ terrain: "tree", left: 28, start: 30 });
+    expect(resourceAt(view, 5, 5)).toMatchObject({ worth: 30, goldLeft: 20, workLeft });
 
     tick(server);
     expect(toUpdate(server, sent).tiles?.resources).toBeUndefined(); // nothing changed
@@ -278,7 +279,7 @@ describe("resources over the network", () => {
     placeResource(server, 5, 5, "berries", 1);
     const view = fromClientState(overTheWire(toClientState(server)));
     const sent = sentStateOf(server);
-    harvest(server, 5, 5, 1, 1);
+    harvest(server, 5, 5, RESOURCES.berries.seconds, 1);
     applyUpdate(view, overTheWire(toUpdate(server, sent)));
     expect(resourceAt(view, 5, 5)).toBeNull();
     expect(view.terrain[5 * view.width + 5]).toBe("ground");

@@ -288,7 +288,7 @@ export interface UnitKind {
   speed: number; // tiles per second
   sight: SightStats;
   behaviour: UnitBehaviourId;
-  /** Workers: the resources it gathers. Its `damage` is the units it takes per hit. */
+  /** Workers: the resources it gathers, one `attackInterval` of work per hit. */
   gathers?: ResourceTerrain[];
   /** Workers: what hover info says while it works ("chopping"). */
   working?: string;
@@ -308,8 +308,9 @@ export const UNIT_KINDS = {
     sight: { inner: 3, outer: 5 },
     behaviour: "hold",
   },
-  // Workers, spawned by gatherer buildings. `damage` is units taken per hit, every
-  // `attackInterval` seconds; RESOURCES says what each unit pays.
+  // Workers, spawned by gatherer buildings. They work a resource every `attackInterval`
+  // seconds (how often gold comes in); RESOURCES says what a tile pays and how long it takes.
+  // `damage` is unused: workers never fight.
   lumberjack: {
     glyph: "j",
     name: "Lumberjack",
@@ -772,21 +773,25 @@ export const TERRAIN = {
   berries: { name: "Berry bush", walkable: true, buildable: "none" },
 } satisfies Record<string, TerrainStats>;
 
-/** What a resource tile holds and pays (see sim/resources.ts). Tune freely: tests read these. */
+/**
+ * What a resource tile pays and how long it takes (see sim/resources.ts). Each worker hit pays
+ * the share of `worth` its work earned, so a tile pays exactly its worth over exactly `seconds`
+ * of one worker's work. Tune freely: tests read these.
+ */
 export interface ResourceStats {
-  /** Units a tile starts with, rolled per tile from the map seed: [least, most]. */
-  amount: [number, number];
-  /** Gold paid per unit gathered. */
-  value: number;
-  /** What a unit of it is called, for hover info. */
+  /** Gold a tile pays in all, rolled per tile from the map seed: [least, most]. */
+  worth: [number, number];
+  /** Seconds one worker takes to clear a tile (more workers share it). */
+  seconds: number;
+  /** What it's called, for hover info. */
   word: string;
 }
 
 export const RESOURCES = {
-  tree: { amount: [20, 40], value: 1, word: "timber" },
-  rock: { amount: [30, 60], value: 1, word: "ore" },
-  goldRock: { amount: [30, 60], value: 3, word: "ore" },
-  berries: { amount: [15, 30], value: 1, word: "berries" },
+  tree: { worth: [20, 40], seconds: 90, word: "timber" },
+  rock: { worth: [30, 60], seconds: 135, word: "ore" },
+  goldRock: { worth: [90, 180], seconds: 135, word: "ore" },
+  berries: { worth: [15, 30], seconds: 60, word: "berries" },
 } satisfies Record<string, ResourceStats>;
 
 /** Terrain that holds a resource. */

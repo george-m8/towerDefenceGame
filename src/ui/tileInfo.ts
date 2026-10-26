@@ -86,11 +86,9 @@ export function describeTile(state: GameState, p: Point, viewer?: PlayerId): str
   } else {
     const resource = resourceAt(state, p.x, p.y);
     if (resource) {
-      const { word, value } = RESOURCES[resource.terrain];
+      const { word } = RESOURCES[resource.terrain];
       const name = TERRAIN[resource.terrain].name;
-      lines.push(
-        `${name} - ${resource.left} of ${resource.start} ${word} left (${resource.left * value}g)`,
-      );
+      lines.push(`${name} - ${resource.goldLeft} of ${resource.worth}g of ${word} left`);
       if (resource.terrain === "tree") lines.push(`X to clear for ${TREE_CLEAR_GOLD}g`);
     } else {
       lines.push(TERRAIN_DESCRIPTIONS[terrainAt(state, p.x, p.y)]);

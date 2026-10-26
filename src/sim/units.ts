@@ -38,7 +38,7 @@ function gather(state: GameState, unit: Unit) {
   const target = atTileCentre(unit) ? workableFrom(state, unit.x, unit.y, gathers) : null;
   if (target) {
     if (unit.attackCooldown === 0) {
-      harvest(state, target.x, target.y, kind.damage, unit.owner);
+      harvest(state, target.x, target.y, kind.attackInterval, unit.owner);
       unit.attackCooldown = kind.attackInterval * TICK_RATE;
     }
     return;

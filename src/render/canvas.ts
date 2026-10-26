@@ -23,6 +23,7 @@ import {
   type StructureStats,
   type TowerStats,
 } from "../sim/config";
+import { resourceAt } from "../sim/resources";
 import { canTarget } from "../sim/towers";
 import { hitTile } from "../sim/traps";
 import type {
@@ -255,10 +256,9 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     const style = TERRAIN_STYLES[terrain];
     drawTile(x, y, style.bg, style.glyph, style.fg);
     // A resource being worked shows what's left (in sight only, like enemies).
-    const i = y * state.width + x;
-    const left = state.resources[i];
-    if (left > 0 && left < state.resourceStart[i] && canSeeEnemiesAt(state, x, y, viewer)) {
-      drawHpBar(x, y, left / state.resourceStart[i], COLOURS.resourceLeft);
+    const resource = resourceAt(state, x, y);
+    if (resource && resource.goldLeft < resource.worth && canSeeEnemiesAt(state, x, y, viewer)) {
+      drawHpBar(x, y, resource.goldLeft / resource.worth, COLOURS.resourceLeft);
     }
   }
 

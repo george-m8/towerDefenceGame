@@ -4,6 +4,8 @@ import {
   STRUCTURES,
   TICK_RATE,
   TREE_CLEAR_GOLD,
+  UNIT_KINDS,
+  type ResourceStats,
   type ResourceTerrain,
 } from "../../src/sim/config";
 import { spawnEnemy } from "../../src/sim/enemies";
@@ -15,27 +17,58 @@ import { TOOLS } from "../../src/ui/state";
 import type { GameState } from "../../src/sim/types";
 import { column, createGameWithoutWaves, goldOf, paintTerrain } from "./helpers";
 
+/** Ticks of work a fresh tile of this kind takes. */
+const workOf = (terrain: ResourceTerrain) => RESOURCES[terrain].seconds * TICK_RATE;
+
 describe("harvest", () => {
-  it("takes the units and pays units x value to the owner", () => {
+  it("pays the share of a tile's worth that the work earned", () => {
     const state = createGameWithoutWaves();
-    placeResource(state, 5, 5, "tree", 3);
+    placeResource(state, 5, 5, "tree", 30);
     const gold = goldOf(state);
 
-    expect(harvest(state, 5, 5, 2, 1)).toBe(2 * RESOURCES.tree.value);
-    expect(goldOf(state)).toBe(gold + 2 * RESOURCES.tree.value);
-    expect(resourceAt(state, 5, 5)).toEqual({ terrain: "tree", left: 1, start: 3 });
+    expect(harvest(state, 5, 5, RESOURCES.tree.seconds / 3, 1)).toBe(10);
+    expect(goldOf(state)).toBe(gold + 10);
+    expect(resourceAt(state, 5, 5)).toEqual({
+      terrain: "tree",
+      worth: 30,
+      goldLeft: 20,
+      workLeft: workOf("tree") - workOf("tree") / 3,
+    });
   });
 
-  it("gold-veined rock pays its own value per unit", () => {
+  it("pays exactly its worth over exactly its time, even when that doesn't divide evenly", () => {
     const state = createGameWithoutWaves();
-    placeResource(state, 5, 5, "goldRock", 10);
-    expect(harvest(state, 5, 5, 1, 1)).toBe(RESOURCES.goldRock.value);
+    const hit = UNIT_KINDS.lumberjack.attackInterval;
+    placeResource(state, 5, 5, "tree", 23);
+    let paid = 0;
+    let hits = 0;
+    while (resourceAt(state, 5, 5)) {
+      paid += harvest(state, 5, 5, hit, 1);
+      hits++;
+    }
+    expect(paid).toBe(23);
+    expect(hits).toBe(Math.ceil(RESOURCES.tree.seconds / hit));
   });
 
-  it("the last hit pays only what's left, and an empty tile pays nothing", () => {
+  it("worth and time come straight from config", () => {
     const state = createGameWithoutWaves();
-    placeResource(state, 5, 5, "rock", 1);
-    expect(harvest(state, 5, 5, 5, 1)).toBe(RESOURCES.rock.value);
+    const berries: ResourceStats = RESOURCES.berries;
+    const seconds = berries.seconds;
+    berries.seconds = 10;
+    try {
+      placeResource(state, 5, 5, "berries", 50);
+      expect(harvest(state, 5, 5, 5, 1)).toBe(25);
+      expect(harvest(state, 5, 5, 5, 1)).toBe(25);
+      expect(resourceAt(state, 5, 5)).toBeNull();
+    } finally {
+      berries.seconds = seconds;
+    }
+  });
+
+  it("an empty tile pays nothing", () => {
+    const state = createGameWithoutWaves();
+    placeResource(state, 5, 5, "rock", 10);
+    expect(harvest(state, 5, 5, RESOURCES.rock.seconds, 1)).toBe(10);
     const gold = goldOf(state);
     expect(harvest(state, 5, 5, 5, 1)).toBe(0);
     expect(harvest(state, 9, 9, 5, 1)).toBe(0);
@@ -46,7 +79,7 @@ describe("harvest", () => {
     const state = createGameWithoutWaves();
     placeResource(state, 5, 5, "berries", 2);
     const version = state.gridVersion;
-    harvest(state, 5, 5, 2, 1);
+    harvest(state, 5, 5, RESOURCES.berries.seconds, 1);
     expect(terrainAt(state, 5, 5)).toBe("ground");
     expect(resourceAt(state, 5, 5)).toBeNull();
     expect(state.gridVersion).toBeGreaterThan(version);
@@ -61,15 +94,15 @@ describe("harvest", () => {
     placeResource(state, x, y, "rock", 1); // ...and through this rock, once it's mined
     const before = distanceAt(state, x - 1, y);
 
-    harvest(state, x, y, 1, 1);
+    harvest(state, x, y, RESOURCES.rock.seconds, 1);
 
     expect(distanceAt(state, x - 1, y)).toBeLessThan(before);
     expect(distanceAt(state, x - 1, y)).toBe(distanceAt(state, x, y) + 1);
   });
 });
 
-describe("amounts on a new map", () => {
-  it("every resource tile starts within its kind's range, the same for the same seed", () => {
+describe("resources on a new map", () => {
+  it("every resource tile is worth something in its kind's range, the same for the same seed", () => {
     const state = createGame(5);
     const again = createGame(5);
     let tiles = 0;
@@ -79,14 +112,14 @@ describe("amounts on a new map", () => {
         expect(state.resources[i]).toBe(0);
         continue;
       }
-      const [lo, hi] = RESOURCES[terrain as ResourceTerrain].amount;
-      expect(state.resources[i]).toBeGreaterThanOrEqual(lo);
-      expect(state.resources[i]).toBeLessThanOrEqual(hi);
-      expect(state.resourceStart[i]).toBe(state.resources[i]);
+      const [lo, hi] = RESOURCES[terrain as ResourceTerrain].worth;
+      expect(state.resourceWorth[i]).toBeGreaterThanOrEqual(lo);
+      expect(state.resourceWorth[i]).toBeLessThanOrEqual(hi);
+      expect(state.resources[i]).toBe(workOf(terrain as ResourceTerrain));
       tiles++;
     }
     expect(tiles).toBeGreaterThan(0);
-    expect(again.resources).toEqual(state.resources);
+    expect(again.resourceWorth).toEqual(state.resourceWorth);
   });
 
   it("blank maps have none", () => {
@@ -135,7 +168,7 @@ describe("gatherer buildings", () => {
     expect(applyCommand(state, 1, { type: "sell", x: 10, y: 10 })).toEqual({ ok: true });
     run(state, 2 * STRUCTURES.timberYard.spawner.intervalSeconds * TICK_RATE);
     expect(state.units).toHaveLength(1);
-    expect(resourceAt(state, 10, 13)!.left).toBeLessThan(100);
+    expect(resourceAt(state, 10, 13)?.workLeft ?? 0).toBeLessThan(workOf("tree")); // worked, maybe cleared
   });
 
   it("checkpoint A: a yard fills up, its lumberjacks clear trees for gold, and a death is replaced", () => {

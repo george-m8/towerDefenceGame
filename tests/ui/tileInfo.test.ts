@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { spawnUnit } from "../../src/sim/units";
-import { placeResource } from "../../src/sim/resources";
+import { harvest, placeResource } from "../../src/sim/resources";
 import { RESOURCES } from "../../src/sim/config";
 import { createGame } from "../../src/sim/game";
 import type { Enemy } from "../../src/sim/types";
@@ -103,19 +103,15 @@ describe("fog hover info", () => {
   it("says how much each resource has left and what it's worth", () => {
     const state = createGame(1, { blankMap: true, fog: false });
     placeResource(state, 5, 5, "tree", 30);
-    state.resources[5 * state.width + 5] = 18;
-    placeResource(state, 6, 5, "goldRock", 52);
-    state.resources[5 * state.width + 6] = 40;
+    harvest(state, 5, 5, (RESOURCES.tree.seconds * 12) / 30, 1); // 12g taken
+    placeResource(state, 6, 5, "goldRock", 60);
+    harvest(state, 6, 5, RESOURCES.goldRock.seconds / 3, 1); // 20g taken
     placeResource(state, 7, 5, "berries", 20);
-    const tree = RESOURCES.tree.value * 18;
-    const ore = RESOURCES.goldRock.value * 40;
-    expect(describeTile(state, { x: 5, y: 5 })).toContain(`Tree - 18 of 30 timber left (${tree}g)`);
+    expect(describeTile(state, { x: 5, y: 5 })).toContain("Tree - 18 of 30g of timber left");
     expect(describeTile(state, { x: 6, y: 5 })).toContain(
-      `Gold-veined rock - 40 of 52 ore left (${ore}g)`,
+      "Gold-veined rock - 40 of 60g of ore left",
     );
-    expect(describeTile(state, { x: 7, y: 5 })).toContain(
-      `Berry bush - 20 of 20 berries left (${RESOURCES.berries.value * 20}g)`,
-    );
+    expect(describeTile(state, { x: 7, y: 5 })).toContain("Berry bush - 20 of 20g of berries left");
   });
 
   it("says whether a worker is working, walking or idle", () => {

@@ -9,7 +9,7 @@ import { updateEffects } from "./effects";
 import { initialExplored, revealKeep } from "./fog";
 import { generateTerrain, layoutFor } from "./mapgen";
 import { randomInt } from "./rng";
-import { startingResources } from "./resources";
+import { startingWork, startingWorth } from "./resources";
 import { updateTowers } from "./towers";
 import { updateTraps } from "./traps";
 import { removeDeadUnits, spawnUnit, updateSpawners, updateUnits } from "./units";
@@ -53,8 +53,8 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     width,
     height,
     terrain: map.terrain,
-    resources: startingResources(map.terrain, seed),
-    resourceStart: startingResources(map.terrain, seed),
+    resources: startingWork(map.terrain),
+    resourceWorth: startingWorth(map.terrain, seed),
     base,
     mount: new Array<number>(width * height).fill(EMPTY),
     structures: {},
