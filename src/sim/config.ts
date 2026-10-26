@@ -260,6 +260,7 @@ export const STRUCTURES = {
     cost: 60,
     maxHp: 40,
     blocksMovement: true,
+    directional: true, // R turns which side its door is on
     sight: { inner: 3, outer: 6 },
     spawner: { unit: "lumberjack", quota: 5, intervalSeconds: 60 },
   },
@@ -269,6 +270,7 @@ export const STRUCTURES = {
     cost: 100,
     maxHp: 40,
     blocksMovement: true,
+    directional: true, // R turns which side its door is on
     sight: { inner: 3, outer: 6 },
     spawner: { unit: "miner", quota: 5, intervalSeconds: 60 },
   },
@@ -278,6 +280,7 @@ export const STRUCTURES = {
     cost: 40,
     maxHp: 30,
     blocksMovement: true,
+    directional: true, // R turns which side its door is on
     sight: { inner: 3, outer: 6 },
     spawner: { unit: "forager", quota: 5, intervalSeconds: 60 },
   },

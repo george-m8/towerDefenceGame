@@ -4,8 +4,6 @@ import type { TextureStyle } from "./textures";
 
 export const TILE_SIZE = 20;
 /** Facing notch on a tower tile edge, and the hovered turning tower's aim line. */
-export const NOTCH_LENGTH_PX = 8;
-export const NOTCH_DEPTH_PX = 3;
 export const AIM_LINE_TILES = 2;
 /**
  * How each tower's shot looks in flight: its symbol, and how high its arc rises as a fraction
@@ -108,7 +106,10 @@ export const COLOURS = {
   /** A shot's projectile in flight. */
   projectile: "#ffe08a",
   chest: "#ffcc33",
-  facingNotch: "#ffffff",
+  /** A spawner's door: a border while placing, a faint S once built. */
+  door: "#ffffff",
+  /** Where a guard building being placed will station its guards. */
+  guardSpot: "rgba(255, 255, 255, 0.45)",
   aimLine: "#ff6b6b",
   splash: "rgba(255, 150, 40, 0.45)",
   heal: "#5ee36a",
@@ -288,6 +289,8 @@ export const STRUCTURE_TEXTURES: Partial<Record<StructureKind, TextureStyle>> = 
 export const TEXTURE_MIN_TILE_PX = 10;
 
 export const OWNER_MARK_PX = 6;
+/** How faint a built spawner's door S is. */
+export const DOOR_ALPHA = 0.25;
 
 /** One colour per player (ids 1-4; later ids wrap round), for owner marks and the players list. */
 export const PLAYER_COLOURS = ["#f2c14e", "#4ea8de", "#f25c54", "#6fd08c"];

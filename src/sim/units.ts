@@ -195,7 +195,7 @@ export function updateSpawners(state: GameState): void {
     if (structure.cooldown > 0) continue;
     const alive = state.units.filter((u) => u.home === structure.id && u.hp > 0).length;
     if (alive >= spawner.quota) continue;
-    const tile = spawnTile(state, structure);
+    const tile = spawnTileOf(state, structure);
     if (!tile) continue;
     spawnUnit(state, spawner.unit, structure.owner, tile.x, tile.y, structure.id);
     structure.cooldown = spawner.intervalSeconds * TICK_RATE;
@@ -210,8 +210,14 @@ const STEP: Record<Facing, Point> = {
   W: { x: -1, y: 0 },
 };
 
-/** The tile a spawner faces (south without a facing) if open, else the next open one clockwise. */
-function spawnTile(state: GameState, structure: Structure): Point | null {
+/**
+ * A spawner's door: the tile it faces (south without a facing) if open, else the next open one
+ * clockwise, else none. Spawning and drawing the door marker both use it.
+ */
+export function spawnTileOf(
+  state: GameState,
+  structure: Pick<Structure, "x" | "y" | "facing">,
+): Point | null {
   const first = CLOCKWISE.indexOf(structure.facing ?? "S");
   for (let i = 0; i < 4; i++) {
     const d = STEP[CLOCKWISE[(first + i) % 4]];

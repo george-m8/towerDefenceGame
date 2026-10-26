@@ -8,11 +8,13 @@ Standard verification for every task: `npm run typecheck && npm test && npm run 
 
 Remove the facing notch everywhere (built and while placing). `spawnTileOf(state, structure)` in `units.ts` is the one door rule (facing tile, else next open clockwise, else none), used by spawning and drawing. Gatherer buildings become directional. While placing a spawner, its door gets a white border (guard buildings: their guard spots too, fainter); built spawners show a faint `S` on their current door.
 
-- [ ] `spawnTileOf` returns the facing tile, else the next open one clockwise, else null
-- [ ] A timber yard placed facing west sends its lumberjacks out to the west
+- [x] `spawnTileOf` returns the facing tile, else the next open one clockwise, else null
+- [x] A timber yard placed facing west sends its lumberjacks out to the west
 - [ ] Browser: no notches; door borders while placing; faint `S` on built doors, moving when the door is blocked
 
 Files: `src/sim/units.ts`, `src/sim/config.ts`, `src/render/canvas.ts`, `src/render/palette.ts`, `tests/sim/units.test.ts`. Size: M. Depends on: none.
+
+Built: the notch code is gone (`needsNotch`, `drawFacingNotch`, its constants and colour). `guardSpotsFor` works out a not-yet-placed building's guard spots for the preview. The faint `S` only shows where the viewer has explored. The browser check is still to do.
 
 ## Task 2: Building symbols and the digger's glyph
 
