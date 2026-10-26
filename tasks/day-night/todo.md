@@ -125,7 +125,7 @@ Files: `src/render/dayNight.ts` (new), `src/render/palette.ts`, `tests/render/da
 
 `UiState.clock`; the renderer fades shadows by `daylight` and washes the map with the night colour after the fog, before previews.
 
-- [ ] No clock: drawn exactly as before
+- [x] No clock: drawn exactly as before
 - [ ] At midnight the map is dark blue but readable, with no shadows; previews stay clear
 
 Files: `src/ui/state.ts`, `src/render/canvas.ts`, `tests/ui/state.test.ts`. Size: S. Depends on: 9.

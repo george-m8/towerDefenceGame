@@ -53,6 +53,7 @@ import {
   ARC_SEGMENTS,
   PROJECTILES,
   BATTLEMENT_PX,
+  DAY_NIGHT,
   BUILD_BORDER_PX,
   CONSTRUCTION_ALPHA,
   ENEMY_COLOURS,
@@ -79,9 +80,10 @@ import { burstPixels, burstWaiting } from "./burst";
 import { textureSpecks, textureVariant, type TextureStyle } from "./textures";
 import { borderColour, borderTrace } from "./buildBorder";
 import { CASTERS, castShade, shadowOffset, sweptTile, type Block, type Sun } from "./sun";
+import { darknessAt, daylight } from "./dayNight";
 
-/** Blocks' shadows, on the ground and on lower blocks beside them. */
-const SHADOW = "rgba(0, 0, 0, 0.3)";
+/** How dark blocks' shadows are in full daylight, on the ground and on lower blocks beside them. */
+const SHADOW_ALPHA = 0.3;
 
 /** Compass degrees (0 = north, clockwise) to canvas radians (0 = east, clockwise). */
 function toCanvasAngle(compassDegrees: number): number {
@@ -171,6 +173,8 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   const textureImages = new Map<string, HTMLCanvasElement>();
   /** False when zoomed too far out for textures to show. */
   let textured = true;
+  /** Blocks' shadows this frame: fainter as the light fades (see dayNight.ts). */
+  let shadow = `rgba(0, 0, 0, ${SHADOW_ALPHA})`;
   /** The fog image and the sight it was made from. */
   let fog: { tier: Uint8Array; image: HTMLCanvasElement; lift: number } | null = null;
 
@@ -236,7 +240,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     // Shadows cast away from the sun, under every block, from a tile beyond the view too (a
     // shadow reaches at most a tile). One fill, so overlapping shadows aren't darker.
     const { dx, dy } = shadowOffset(sun);
-    ctx!.fillStyle = SHADOW;
+    ctx!.fillStyle = shadow;
     ctx!.beginPath();
     for (let y = Math.max(0, y0 - 1); y <= Math.min(state.height - 1, y1 + 1); y++) {
       for (let x = Math.max(0, x0 - 1); x <= Math.min(state.width - 1, x1 + 1); x++) {
@@ -292,8 +296,18 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       if (top) tracePolygon(top);
       if (face) tracePolygon(face);
     }
-    ctx!.fillStyle = SHADOW;
+    ctx!.fillStyle = shadow;
     ctx!.fill();
+  }
+
+  /** Night: a dark wash over the whole view, map and fog alike (previews go over it). */
+  function drawNight(darkness: number) {
+    if (darkness <= 0) return;
+    ctx!.save();
+    ctx!.setTransform(1, 0, 0, 1, 0, 0);
+    ctx!.fillStyle = `rgba(${DAY_NIGHT.nightColour}, ${darkness})`;
+    ctx!.fillRect(0, 0, canvas.width, canvas.height);
+    ctx!.restore();
   }
 
   /** Adds a closed polygon to the path being built. */
@@ -894,11 +908,14 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       ctx.textBaseline = "middle";
       view = visibleTiles(cam);
       textured = tilePixels(cam) >= TEXTURE_MIN_TILE_PX;
+      const hour = ui.clock?.hour;
+      shadow = `rgba(0, 0, 0, ${SHADOW_ALPHA * (hour === undefined ? 1 : daylight(hour))})`;
       drawGrid(state, ui.sun);
       drawKeepHp(state);
       if (ui.showFlow) drawFlow(state);
       drawEffects(state);
       drawFog(state);
+      if (hour !== undefined) drawNight(darknessAt(hour));
       drawPending(pending);
       drawRange(state, ui);
       drawGhost(state, ui);

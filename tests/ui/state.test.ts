@@ -8,4 +8,8 @@ describe("createUiState", () => {
     expect(ui.sun).toEqual(DEFAULT_SUN);
     expect(ui.showSun).toBe(false);
   });
+
+  it("starts with the day and night clock off", () => {
+    expect(createUiState().clock).toBeNull();
+  });
 });
