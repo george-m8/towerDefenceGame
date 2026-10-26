@@ -177,7 +177,7 @@ Browser checks: no notches anywhere; placing a spawner borders its door (and a g
 
 ## Boundaries
 
-- **Always:** numbers in config and tests that read them; every search within the per-tick budget; reuse `unit-core` and `units` code (attacks, shots, `walkTowards`); update README (Offence tab, units, tuning table) and SPEC.md.
+- **Always:** numbers in config and tests that read them; every new or changed glyph recorded in [`GLYPHS.md`](GLYPHS.md) with why; every search within the per-tick budget; reuse `unit-core` and `units` code (attacks, shots, `walkTowards`); update README (Offence tab, units, tuning table) and SPEC.md.
 - **Ask first:** offensive units walking into unexplored land, attacking neutral ruins, player orders, circling walls before breaching.
 - **Never:** attack their own side's buildings; search without the budget; pay a bounty for killing units.
 

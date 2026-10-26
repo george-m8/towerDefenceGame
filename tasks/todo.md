@@ -18,7 +18,7 @@ Files: `src/sim/units.ts`, `src/sim/config.ts`, `src/render/canvas.ts`, `src/ren
 
 Per the spec's table: the keep's tiles draw `⛫` (the middle still shows HP), houses `⌂`, farmland `𐤄`, shop `¤`, guardhouse `⛨`, paladin hall `✠`, archery post `➶`, scout camp `⚑`; two-letter codes as the last resort (`Fa`, `Ti`, `Mi`, `Fo`, `Ba`, `Ra`), drawn smaller. The glyph font list gains symbol-font fallbacks. The build picker uses the same.
 
-- [ ] Every structure's glyph is one symbol or a two-letter code, matching the spec's table
+- [ ] Every structure's glyph is one symbol or a two-letter code, matching the spec's table and [`GLYPHS.md`](../GLYPHS.md) (planned marks there become current)
 - [ ] None of the symbols is an emoji-capable code point (a test lists the ones to avoid)
 - [ ] Browser: every symbol draws as a plain glyph (no boxes, no colour emoji) on this Mac; any that doesn't falls back to its code, recorded here
 
@@ -91,7 +91,7 @@ Files: `src/sim/fieldUnits.ts`, `src/ui/tileInfo.ts`, `tests/ui/tileInfo.test.ts
 
 - [ ] The 2,000-tick determinism test gains a scout camp and a barracks; a PvP determinism run with a siege
 - [ ] Timing: 20 offensive buildings (60 units) and 200 enemies on XL, median and 95th percentile as the other timing tests; measured standalone and recorded here
-- [ ] README: Offence tab, scouts, soldiers, rangers, doors and labels (structures table), Tuning rows; SPEC.md "Since `field-units`"; plan and CAPABILITIES statuses
+- [ ] README: Offence tab, scouts, soldiers, rangers, doors and symbols (structures table), Tuning rows; SPEC.md "Since `field-units`"; plan and CAPABILITIES statuses; `GLYPHS.md` has no "planned" marks left
 - [ ] `src/sim/` coverage stays at 80% or more
 
 Files: `tests/sim/game.test.ts`, `tests/sim/fieldUnits.test.ts`, `README.md`, `SPEC.md`, `CAPABILITIES.md`, `tasks/plan.md`. Size: S. Depends on: 8.
