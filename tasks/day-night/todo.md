@@ -19,9 +19,9 @@ Files: `src/render/sun.ts` (new), `src/render/palette.ts`, `tests/render/sun.tes
 
 `UiState` gets `sun` (default `DEFAULT_SUN`) and `showSun` (default false). The renderer's ground-shadow pass draws each block's footprint moved by `h * shadowOffset(ui.sun)`, all in one path with a single fill. The pass starts one tile above and left of the view so shadows from just off screen still show.
 
-- [ ] At the default sun, ground shadows go sideways to the right, close to today's look
-- [ ] `__ui.sun = 0.5` gives short shadows straight down, showing on the ground in front of blocks
-- [ ] Where shadows overlap (a row of walls at noon) the ground isn't darker than one shadow
+- [x] At the default sun, ground shadows go sideways to the right, close to today's look
+- [x] `__ui.sun = 0.5` gives short shadows straight down, showing on the ground in front of blocks
+- [x] Where shadows overlap (a row of walls at noon) the ground isn't darker than one shadow
 
 Files: `src/ui/state.ts`, `src/render/canvas.ts`. Size: S. Depends on: 1.
 
