@@ -44,7 +44,7 @@ export function gateSide(state: GameState, keep: Keep): Facing {
 }
 
 /** The ring's corners: KEEP_WALLS.courtyard tiles of open ground between it and the keep. */
-function ringBounds(keep: Keep) {
+function ringBounds(keep: Pick<Keep, "x" | "y" | "size">) {
   const out = KEEP_WALLS.courtyard + 1;
   return {
     x0: keep.x - out,
@@ -54,7 +54,7 @@ function ringBounds(keep: Keep) {
   };
 }
 
-export function ringTiles(keep: Keep): Point[] {
+export function ringTiles(keep: Pick<Keep, "x" | "y" | "size">): Point[] {
   const { x0, y0, x1, y1 } = ringBounds(keep);
   const tiles: Point[] = [];
   for (let x = x0; x <= x1; x++) tiles.push({ x, y: y0 }, { x, y: y1 });

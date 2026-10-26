@@ -44,14 +44,16 @@ Built: `GET /__maps` lists the maps on disk now, so the editor's Open sees a sav
 
 `src/editor/model.ts`: the editing operations on a `MapFile` and an undo history. No DOM.
 
-- [ ] Terrain brush (1, 3, 5) and rectangle fill; painting under something that can't stand there removes it
-- [ ] Keep: place and move (Endless one, PvP two in order), keep walls rebuilt on request
-- [ ] Spawn zones added and erased; ruins and chests placed with their amounts
-- [ ] Structures placed by the game's terrain and layer rules, with facing and nearest keep
-- [ ] Eraser: structure, then ruin or chest, then spawn tile, else ground
-- [ ] Undo and redo step through strokes, 100 deep
+- [x] Terrain brush (1, 3, 5) and rectangle fill; painting under something that can't stand there removes it
+- [x] Keep: place and move (Endless one, PvP two in order), keep walls rebuilt on request
+- [x] Spawn zones added and erased; ruins and chests placed with their amounts
+- [x] Structures placed by the game's terrain and layer rules, with facing and nearest keep
+- [x] Eraser: structure, then ruin or chest, then spawn tile, else ground
+- [x] Undo and redo step through strokes, 100 deep
 
 Files: `src/editor/model.ts`, `tests/editor/model.test.ts`. Size: L. Depends on: 1, 2.
+
+Built: every edit returns `{ map, note? }`; the note goes to the status line ("Removed a wall and a chest that couldn't stand there", "Keeps can't overlap"). Placing a keep or a spawn zone puts ground under it and clears what was there. Rebuilding the keep walls runs the game's own `placeKeepWalls` on a scratch game, so the ring is exactly a new game's. `ringTiles` takes just a keep's position and size now.
 
 ## Task 5: Editor page
 
