@@ -31,6 +31,8 @@ const BEHAVIOURS: Record<UnitBehaviourId, Behaviour> = {
   hold,
   gather,
   guard,
+  scout: hold, // until sim/fieldUnits.ts
+  attack: hold,
 };
 
 /**

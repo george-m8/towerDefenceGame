@@ -16,6 +16,9 @@ describe("building symbols", () => {
       guardhouse: "⛨",
       archeryPost: "➶",
       paladinHall: "✠",
+      scoutCamp: "⚑",
+      barracks: "Ba",
+      archeryRange: "◎",
     });
   });
 

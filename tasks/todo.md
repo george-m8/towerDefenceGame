@@ -45,8 +45,8 @@ Built: `Unit.pathSight` records the `sightVersion` of the last search, so a unit
 
 `UNIT_KINDS` scout `!`, soldier `&`, ranger `}` (projectile arrow); `STRUCTURES` scoutCamp `⚑`, barracks `Ba`, archeryRange `◎`, directional spawners per the spec's table; their tools in the Offence tab, which is no longer greyed out. Until Tasks 5-6, scouts and attackers behave like `hold`.
 
-- [ ] Each building spawns its own kind up to its quota, one per interval, once built
-- [ ] The Offence tab lists the three and is no longer greyed out; `3` opens it
+- [x] Each building spawns its own kind up to its quota, one per interval, once built
+- [x] The Offence tab lists the three and is no longer greyed out; `3` opens it
 
 Files: `src/sim/config.ts`, `src/sim/units.ts`, `src/ui/state.ts`, `src/render/palette.ts`, `tests/sim/fieldUnits.test.ts` (new), `tests/ui/hud.test.ts`. Size: S. Depends on: none.
 
