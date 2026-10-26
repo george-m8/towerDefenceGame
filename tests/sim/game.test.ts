@@ -98,7 +98,7 @@ describe("determinism", () => {
     expect(run()).toBe(run());
   });
 
-  it("stays identical over 2,000 ticks with every kind of enemy, walls, units and gatherers", () => {
+  it("stays identical over 2,000 ticks with every kind of enemy, walls, units, gatherers and farms", () => {
     const run = () => {
       const s = createGame(42);
       const keep = s.keeps[0];
@@ -128,6 +128,22 @@ describe("determinism", () => {
         const x = keep.x + (dx > 0 ? keep.size + dx : dx);
         if (canBuild(s, 1, kind, x, keep.y).ok) placeStructure(s, kind, x, keep.y, "N", 1);
       }
+      // A farm with a band of fields across the enemies' approach, for heavy ones to trample.
+      const fieldsAt = { x: keep.x - 10, y: keep.y + 1 };
+      if (canBuild(s, 1, "farmhouse", fieldsAt.x, fieldsAt.y - 3).ok) {
+        placeStructure(s, "farmhouse", fieldsAt.x, fieldsAt.y - 3, "N", 1);
+      }
+      for (let dy = -2; dy <= 6; dy++) {
+        for (let dx = 0; dx < 3; dx++) {
+          const [x, y] = [fieldsAt.x + dx, fieldsAt.y + dy];
+          if (canBuild(s, 1, "farmland", x, y).ok) placeStructure(s, "farmland", x, y, "N", 1);
+        }
+      }
+      const fieldHp = () =>
+        Object.values(s.structures)
+          .filter((st) => st.kind === "farmland")
+          .reduce((sum, st) => sum + st.hp, 0);
+      const fieldsBefore = fieldHp();
       const total = () => s.resources.reduce((sum, n) => sum + n, 0);
       const resourcesBefore = total();
       const modes = new Set<string>();
@@ -138,13 +154,15 @@ describe("determinism", () => {
         unitsFought ||= s.units.some((u) => u.hp < u.maxHp);
       }
       const harvested = total() < resourcesBefore;
-      return { json: JSON.stringify(s), modes, unitsFought, harvested };
+      const trampled = fieldHp() < fieldsBefore;
+      return { json: JSON.stringify(s), modes, unitsFought, harvested, trampled };
     };
     const first = run();
     expect(first.json).toBe(run().json);
     expect(first.modes).toEqual(new Set(["walking", "sprinting", "digging"]));
     expect(first.unitsFought).toBe(true);
     expect(first.harvested).toBe(true);
+    expect(first.trampled).toBe(true);
   }, 20_000); // two long runs; slow under coverage instrumentation
 });
 

@@ -71,8 +71,10 @@ Built: glyphs and colours went in with Tasks 2 and 4. Farmland draws flat like o
 
 ## Task 7: Docs, tuning table and determinism
 
-- [ ] The 2,000-tick determinism test gains a farm with fields that a heavy enemy can trample
-- [ ] README: farms, shops, tabs and the new keys (controls table), enemy weight, and the Tuning table (farm and shop rows, income per minute next to houses and gatherers); SPEC.md "Since `town-economy`"; plan and CAPABILITIES statuses
-- [ ] `src/sim/` coverage stays at 80% or more
+- [x] The 2,000-tick determinism test gains a farm with fields that a heavy enemy can trample
+- [x] README: farms, shops, tabs and the new keys (controls table), enemy weight, and the Tuning table (farm and shop rows, income per minute next to houses and gatherers); SPEC.md "Since `town-economy`"; plan and CAPABILITIES statuses
+- [x] `src/sim/` coverage stays at 80% or more
 
 Files: `tests/sim/game.test.ts`, `README.md`, `SPEC.md`, `CAPABILITIES.md`, `tasks/plan.md`. Size: S. Depends on: 6.
+
+Built: the README's structures table now lists each structure's tab instead of its key. `src/sim/` coverage: 99% of lines, `farms.ts` 100%.

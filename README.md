@@ -69,11 +69,11 @@ Gatherer buildings make workers (see [Resources](#resources)). On the dev server
 
 ### Resources
 
-Trees, rocks and berry bushes hold resources, and workers turn them into gold. Build a gatherer and it sends out a worker straight away, then another every minute, up to 5:
+Trees, rocks and berry bushes hold resources, and workers turn them into gold. Build a gatherer (Civic tab) and it sends out a worker straight away, then another every minute, up to 5:
 
-- **Timber yard** (`T`, 60g, drawn `L`): lumberjacks `j` chop trees.
-- **Mine** (`G`, 100g, drawn `M`): miners `p` mine rock. Gold-veined rock (`o` in gold) pays three times as much.
-- **Forager hut** (`B`, 40g, drawn `F`): foragers `f` pick berry bushes (green, red `b`). Berries are food in the story; for now they pay gold too.
+- **Timber yard** (60g, drawn `L`): lumberjacks `j` chop trees.
+- **Mine** (100g, drawn `M`): miners `p` mine rock. Gold-veined rock (`o` in gold) pays three times as much.
+- **Forager hut** (40g, drawn `F`): foragers `f` pick berry bushes (green, red `b`). Berries are food in the story; for now they pay gold too.
 
 Each worker walks to the nearest resource it gathers (even into fog, lighting it up) and works it. Every resource tile is worth some gold and takes a set time to clear: every 3 seconds a worker pays you the share of its worth that work earned, and two workers on one tile clear it twice as fast. A tile that's used up disappears: a tree or rock becomes open ground, which can open a new route for enemies. Hover a resource to see what's left (`Tree - 18 of 30g of timber left`) or a worker to see what it's doing (`chopping`, `walking`, `idle: nothing to gather`).
 
@@ -85,22 +85,35 @@ The first time a kind of enemy comes into sight (not while it's hidden in fog), 
 
 ### Structures
 
-| Key | Structure | Glyph | Cost | What it does |
+Open the build picker with the Build box or `1` / `2` / `3` for the **Defence**, **Civic** and **Offence** tabs, then click a tool. (Offence is greyed out until barracks arrive.)
+
+| Tab | Structure | Glyph | Cost | What it does |
 |---|---|---|---|---|
-| `1` | Wall | `#` | 5 | Blocks movement. 50 HP. Towers can be built on top. |
-| `2` | Archer | fletched arrow, pointing where it faces | 25 | Range 5, 6 damage every 1s, single target. Fixed 90° arc. |
-| `3` | Cannon | `C` | 50 | Range 4, 15 damage every 2.5s, hits a 3x3 area. Turns 90°/s. |
-| `4` | Catapult | `P` | 80 | Range 3-9, 30 damage every 5s, hits a 5x5 area. Can't hit enemies closer than 3 tiles. Turns 30°/s. |
-| `5` | Floor spikes | `^` | 15 | Walkable. Every 1.5s spikes come up and deal 15 damage to every enemy on the tile. |
-| `6` | Wall spikes | arrow `↑→↓←` | 20 | A wall section that fires every 2s, dealing 20 damage to the one tile it faces. Press `R` to rotate before placing. |
-| `7` | House | `h` | 40 | +2 gold every 5s. Blocks movement. |
-| `T` | Timber yard | `L` | 60 | Sends out up to 5 lumberjacks, one a minute, to chop trees for gold. Blocks movement. |
-| `G` | Mine | `M` | 100 | Sends out up to 5 miners to mine rock (gold-veined rock pays 3x). Blocks movement. |
-| `B` | Forager hut | `F` | 40 | Sends out up to 5 foragers to pick berry bushes. Blocks movement. |
-| `8` | Bridge | `=` | 10 | Only on river tiles. Makes the river walkable there (for enemies too). |
-| `9` | Watchtower | `T` | 20 | Doesn't attack. Sees all round, as far as a cannon (see [Fog of war](#fog-of-war)). Stands on open ground or a wall, like a tower. |
-| `0` | Gate | `∩` | 15 | Part of a wall that enemies walk straight through. Still closes a ring of walls, so the area inside counts as enclosed (and keeps its discount). |
-| `X` | Sell | `$` | - | Refunds 50% of cost, less if damaged. Sells the top layer first (a tower before the wall under it). Also clears trees. |
+| Defence | Wall | `#` | 5 | Blocks movement. 50 HP. Towers can be built on top. |
+| Defence | Archer | fletched arrow, pointing where it faces | 25 | Range 5, 6 damage every 1s, single target. Fixed 90° arc. |
+| Defence | Cannon | `C` | 50 | Range 4, 15 damage every 2.5s, hits a 3x3 area. Turns 90°/s. |
+| Defence | Catapult | `P` | 80 | Range 3-9, 30 damage every 5s, hits a 5x5 area. Can't hit enemies closer than 3 tiles. Turns 30°/s. |
+| Defence | Floor spikes | `^` | 15 | Walkable. Every 1.5s spikes come up and deal 15 damage to every enemy on the tile. |
+| Defence | Wall spikes | arrow `↑→↓←` | 20 | A wall section that fires every 2s, dealing 20 damage to the one tile it faces. Press `R` to rotate before placing. |
+| Defence | Bridge | `=` | 10 | Only on river tiles. Makes the river walkable there (for enemies too). |
+| Defence | Watchtower | `T` | 20 | Doesn't attack. Sees all round, as far as a cannon (see [Fog of war](#fog-of-war)). Stands on open ground or a wall, like a tower. |
+| Defence | Gate | `∩` | 15 | Part of a wall that enemies walk straight through. Still closes a ring of walls, so the area inside counts as enclosed (and keeps its discount). |
+| Civic | House | `h` | 40 | +2 gold every 5s. Blocks movement. |
+| Civic | Shop | `S` | 70 | +4 gold every 5s. Blocks movement. |
+| Civic | Farmhouse | `H` | 50 | +1 gold every 10s for each field joined to it (up to 8). Blocks movement. See [Farms](#farms-and-town). |
+| Civic | Farmland | `"` | 3 | A field: walkable, 10 HP. Counts for a farmhouse it's joined to. Heavy enemies trample it. |
+| Civic | Timber yard | `L` | 60 | Sends out up to 5 lumberjacks, one a minute, to chop trees for gold. Blocks movement. |
+| Civic | Mine | `M` | 100 | Sends out up to 5 miners to mine rock (gold-veined rock pays 3x). Blocks movement. |
+| Civic | Forager hut | `F` | 40 | Sends out up to 5 foragers to pick berry bushes. Blocks movement. |
+| Every tab (`X`) | Sell | `$` | - | Refunds 50% of cost, less if damaged. Sells the top layer first (a tower before the wall under it). Also clears trees. |
+
+### Farms and town
+
+When the trees and rocks nearby are gone, farms and a town keep the gold coming.
+
+- **Farms:** build a farmhouse, then paint farmland out from it. A field counts if it touches the farmhouse (not diagonally) or joins it through other fields, up to 8 per farmhouse; a field joined to two farmhouses counts for the nearer. Loose fields earn nothing. Hover a farmhouse to see `Farmhouse - 6 of 8 fields, +6g every 10s`, or a field to see which farmhouse it counts for.
+- **Trampling:** every enemy has a weight. Each step onto a field takes that much off its 10 HP: goblins and zergs are light (0) and do no harm, most others weigh 1, leaders (chiefs, thanes, captains, demolishers) 2, golems 4 and battering rams 6. A trampled field that breaks a chain cuts off the fields beyond it. Your own units don't trample.
+- **Town:** houses (+2g every 5s) and shops (+4g every 5s) earn a flat income wherever they are.
 
 ### The map
 
@@ -182,9 +195,10 @@ Towers always shoot the enemy closest to the keep. Traps fire on a fixed timer f
 
 | Input | Action |
 |---|---|
-| `1`-`9`, `X` or click a tool | Select a build tool / sell |
+| `1` / `2` / `3`, or the Build box | Open the build picker on the Defence, Civic or Offence tab; click a tool to select it |
+| `X` | Select sell |
 | Left click | Place (or sell) |
-| Left drag | Paint walls, spikes, bridges, or sell/clear along the dragged tiles |
+| Left drag | Paint walls, spikes, bridges, gates, farmland, or sell/clear along the dragged tiles |
 | Right click or `Esc` | Clear the selected tool |
 | `R` | Rotate the facing of the tower or wall spikes you're placing |
 | `Space` or Pause button | Pause / resume (you can still build while paused) |
@@ -354,6 +368,7 @@ src/sim/              Pure, deterministic game simulation (no DOM, seeded RNG)
   movement.ts         Tile-to-tile stepping shared by enemies and units
   units.ts            Player units: spawning, spawner buildings, behaviours (hold, gather), fighting
   resources.ts        Resource amounts on the map, and harvesting them for gold
+  farms.ts            Farmhouses, which fields count for them, farm income, trampling
   unitPaths.ts        Path search for units (to the nearest of any number of goals)
   towers.ts           Tower targeting and damage
   traps.ts            Spike trap cycles
@@ -387,6 +402,10 @@ The economy, to balance against each other:
 |---|---|---|
 | Starting gold | `STARTING_GOLD` | 250 |
 | House cost and income | `STRUCTURES.house` | 40g; 2g every 5s (24g a minute) |
+| Shop cost and income | `STRUCTURES.shop` | 70g; 4g every 5s (48g a minute) |
+| Farm: farmhouse cost, gold per field, interval, most fields | `STRUCTURES.farmhouse` (`cost`, `farm`) | 50g; 1g per field every 10s; 8 fields (a full farm: 48g a minute) |
+| Farmland cost and HP | `STRUCTURES.farmland` | 3g; 10 HP |
+| How hard each enemy tramples | `ENEMY_KINDS.*.weight` | 0 (goblin, zerg) up to 6 (ram) |
 | Gatherer cost, quota, spawn interval | `STRUCTURES.timberYard`, `.mine`, `.foragerHut` (`cost`, `spawner`) | 60 / 100 / 40g; 5 workers; one every 60s |
 | Worker stats (HP, speed, how often gold comes in) | `UNIT_KINDS.lumberjack`, `.miner`, `.forager` (`attackInterval`) | paid every 3s |
 | What each resource tile is worth, and how long one worker takes to clear it | `RESOURCES` (`worth`, `seconds`) | trees 20-40g / 90s, rock 30-60g / 135s, gold-veined 90-180g / 135s, berries 15-30g / 60s |
