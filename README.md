@@ -256,6 +256,7 @@ Open http://localhost:5173/?editor (or `?editor=example` to open `maps/example.m
 - **Open** lists the maps in `maps/`, or opens a `.map` file from your computer. **Save** writes `maps/<name>.map` (with `npm run dev` only); **Download** saves a copy anywhere. Leaving with unsaved changes asks first (the title shows a dot).
 - **Play** (`P`) plays the map as a single-player game with today's waves and starting gold; **Back to editor** returns to it, undo history and all. Play is off while the map has errors (no spawn, no way from the spawn to the keep, a keep on rock...), listed in the status line; warnings (a spawn close to the keep, a chest you can't reach) don't stop it.
 - **Keep walls** rebuilds the ring of walls and the gate round each keep, as a new game has.
+- **Playing a map:** solo, the Endless card on the mode screen has a map dropdown listing the Endless maps in `maps/` (those with no errors), or open `?solo&map=<name>`. Online rooms still play generated maps for now.
 
 | Input | Action |
 |---|---|

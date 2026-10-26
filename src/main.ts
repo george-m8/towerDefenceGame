@@ -19,7 +19,7 @@ import { loadPointerSettings, pointerCursor, savePointerSettings } from "./ui/po
 import { createGameOverDialog } from "./ui/gameOver";
 import { createOnlinePanel } from "./ui/players";
 import { createWaitingRoom } from "./ui/waitingRoom";
-import { rememberedName, showStartScreen } from "./ui/startScreen";
+import { rememberedName, showStartScreen, type MapChoice } from "./ui/startScreen";
 import { showIntro } from "./ui/intro";
 import { createWebAudioEngine, unlockOnFirstGesture } from "./audio/engine";
 import { loadAudioSettings, saveAudioSettings } from "./audio/settings";
@@ -46,6 +46,7 @@ import bundledMaps from "virtual:maps";
 import { createEditor, keepWalls, type Editor } from "./editor/editor";
 import { createFileActions } from "./editor/files";
 import { newMap } from "./editor/model";
+import { validateMap } from "./sim/mapFile";
 import { createToolbar } from "./editor/toolbar";
 import type { Command, DebugOption, GameState, PlayerId } from "./sim/types";
 
@@ -248,7 +249,10 @@ function followMusic() {
 /** Starts playing: offline, or in a room on the game server. */
 function startSession(intent: Exclude<PageIntent, { mode: "menu" }>) {
   if (intent.mode === "offline") {
-    session = createLocalSession(Date.now() >>> 0, undefined, { fog, size: intent.size });
+    const map = intent.map ? bundledMaps[intent.map] : undefined;
+    session = map
+      ? createLocalSession(map.seed, () => map.seed, { fog, map }) // Restart replays the map
+      : createLocalSession(Date.now() >>> 0, undefined, { fog, size: intent.size });
   } else {
     network = createNetworkSession(
       serverUrl(location),
@@ -270,6 +274,13 @@ function startSession(intent: Exclude<PageIntent, { mode: "menu" }>) {
     session = network;
   }
   listen(session);
+}
+
+/** The hand-made Endless maps in maps/ with nothing wrong with them, for the mode screen. */
+function playableMaps(): MapChoice[] {
+  return Object.entries(bundledMaps)
+    .filter(([, map]) => map.mode === "endless" && validateMap(map).errors.length === 0)
+    .map(([name, map]) => ({ name, title: map.title, size: map.size }));
 }
 
 /** Shows refusals and plays the sound for each command's result. */
@@ -356,7 +367,11 @@ if (new URLSearchParams(location.search).has("editor")) {
   // Dismissing the intro is the first gesture, so audio is unlocked by then.
   showIntro(element("#intro"), () => {
     void music.play("intro");
-    showStartScreen(element("#start"), { room: intent.room, onChoose: startSession });
+    showStartScreen(element("#start"), {
+      room: intent.room,
+      maps: playableMaps(),
+      onChoose: startSession,
+    });
   });
 }
 

@@ -8,6 +8,11 @@ describe("readJoinIntent", () => {
     expect(readJoinIntent("?create")).toEqual({ mode: "menu" });
     expect(readJoinIntent("?solo&size=xl")).toEqual({ mode: "offline", size: "XL" });
     expect(readJoinIntent("?solo&size=huge")).toEqual({ mode: "offline" });
+    expect(readJoinIntent("?solo&map=river-crossing")).toEqual({
+      mode: "offline",
+      map: "river-crossing",
+    });
+    expect(readJoinIntent("?solo&map=../secret")).toEqual({ mode: "offline" });
     expect(readJoinIntent("?create&name=Ann&size=S")).toEqual({
       mode: "create",
       name: "Ann",

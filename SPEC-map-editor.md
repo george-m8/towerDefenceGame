@@ -306,4 +306,5 @@ None.
 - **Play-test:** a Play button in the editor. Choosing maps from the start screen comes with levels.
 - **Keys:** the editor uses the game's keys. Structures are on the build picker's tabs (`1`–`3`), and the map pieces are on a fourth tab (`4`).
 - **Settings:** none in the file. Files are `.map` files holding only the map, to be combined with `.wave` and `.loadout` files into levels. Until those exist, Play uses today's defaults.
+- **Solo maps on the mode screen (asked for once the editor was built):** solo, the Endless card has a map dropdown: a new generated map, or any Endless map in `maps/` with no errors (`?solo&map=<name>` does the same). A chosen map brings its own size. Online rooms still play generated maps until `levels`.
 - **Online:** the hosted game ships with its `.map` files, and players choose from those. No uploading. The client and the game server both read the same bundled set, so a room only needs to send a map's name. Wiring that up comes with levels; this module keeps the plugin's list usable from the server build too (`virtual:maps` in `vite build --ssr`).
