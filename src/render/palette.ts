@@ -153,6 +153,7 @@ export const GLYPHS: Record<StructureKind, string> = {
   house: "h",
   bridge: "=",
   watchtower: "T",
+  gate: "∩",
   ruin: "#",
 };
 
@@ -225,6 +226,7 @@ export const STRUCTURE_COLOURS: Record<StructureKind, { bg: string; fg: string }
   house: { bg: "#7a3b2e", fg: "#ffd28a" },
   bridge: { bg: "#6b4f2a", fg: "#d9b77a" },
   watchtower: { bg: "#4a5a6b", fg: "#e0ecff" },
+  gate: { bg: "#7a5a32", fg: "#2a1d10" },
   ruin: { bg: "#55524c", fg: "#2e2c28" },
 };
 
@@ -256,6 +258,7 @@ export const STRUCTURE_TEXTURES: Partial<Record<StructureKind, TextureStyle>> = 
   wall: "stone",
   wallSpikes: "stone",
   ruin: "ruinedStone",
+  gate: "planks",
 };
 /** Below this many screen pixels per tile, textures are too small to see and aren't drawn. */
 export const TEXTURE_MIN_TILE_PX = 10;

@@ -8,9 +8,10 @@ import { TILE_SIZE } from "./palette";
  * Speckle: grainy dirt, stone or leaves. Pebbles: speckle with a few small stones. Ore: speckle
  * with flecks of gold glinting in it. Ripple: water. Stone: cut stone blocks laid in offset
  * rows, like the keep's walls. Ruined stone: the same blocks, crumbling: some knocked out,
- * mortar worn away, and cracks.
+ * mortar worn away, and cracks. Planks: upright wooden boards held by two iron bands (gates).
  */
-export type TextureStyle = "speckle" | "pebbles" | "ore" | "ripple" | "stone" | "ruinedStone";
+export type TextureStyle =
+  "speckle" | "pebbles" | "ore" | "ripple" | "stone" | "ruinedStone" | "planks";
 
 /** One speck, in pixels within the tile. */
 export interface Speck {
@@ -45,16 +46,11 @@ export function textureSpecks(style: TextureStyle, variant: number): Speck[] {
   const random = seeded(hashString(style) + variant * 7919);
   const specks: Speck[] = [];
   const grain = (gx: number, gy: number, w: number, colour: string) => {
-    specks.push({
-      x: gx * GRAIN_PX,
-      y: gy * GRAIN_PX,
-      w: w * GRAIN_PX,
-      h: GRAIN_PX,
-      colour,
-    });
+    specks.push({ x: gx * GRAIN_PX, y: gy * GRAIN_PX, w: w * GRAIN_PX, h: GRAIN_PX, colour });
   };
   if (style === "stone") return stoneSpecks(random);
   if (style === "ruinedStone") return ruinedStoneSpecks(random);
+  if (style === "planks") return plankSpecks(random);
   if (style === "ripple") {
     // Short light dashes, a few per tile, spread down it.
     for (let row = 1; row < GRAINS; row += 3) {
@@ -139,13 +135,7 @@ function ruinedStoneSpecks(random: () => number): Speck[] {
       const left = cuts[i];
       const width = cuts[i + 1] - left;
       if (random() < 0.2) {
-        specks.push({
-          x: left,
-          y: top,
-          w: width,
-          h: STONE_ROW_PX,
-          colour: HOLE,
-        });
+        specks.push({ x: left, y: top, w: width, h: STONE_ROW_PX, colour: HOLE });
         continue;
       }
       if (random() < 0.75) specks.push({ x: left, y: top, w: width, h: 1, colour: MORTAR });
@@ -166,6 +156,29 @@ function ruinedStoneSpecks(random: () => number): Speck[] {
       y++;
       if (random() < 0.6) x = Math.min(TILE_SIZE - 1, Math.max(0, x + step));
     }
+  }
+  return specks;
+}
+
+/** Planks: boards this wide, so they line up across tiles; bands this far from top and bottom. */
+const PLANK_PX = 5;
+const BAND_INSET_PX = 4;
+
+/** Upright boards with dark seams, two iron bands across, and a little grain in the wood. */
+function plankSpecks(random: () => number): Speck[] {
+  const specks: Speck[] = [];
+  for (let x = PLANK_PX - 1; x < TILE_SIZE; x += PLANK_PX) {
+    specks.push({ x, y: 0, w: 1, h: TILE_SIZE, colour: MORTAR });
+  }
+  for (const y of [BAND_INSET_PX, TILE_SIZE - BAND_INSET_PX - 2]) {
+    specks.push({ x: 0, y, w: TILE_SIZE, h: 2, colour: MORTAR });
+    specks.push({ x: 0, y: y + 2, w: TILE_SIZE, h: 1, colour: LIGHT });
+  }
+  // Grain: short streaks running down the boards.
+  for (let i = 0; i < 6; i++) {
+    const x = Math.floor(random() * TILE_SIZE);
+    if (x % PLANK_PX === PLANK_PX - 1) continue; // not on a seam
+    specks.push({ x, y: Math.floor(random() * (TILE_SIZE - 3)), w: 1, h: 3, colour: DARK });
   }
   return specks;
 }

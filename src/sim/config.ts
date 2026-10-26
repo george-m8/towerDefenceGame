@@ -83,6 +83,11 @@ export interface StructureStats {
   buildable?: boolean;
   /** Gold when sold at full HP, instead of the usual share of cost. */
   salvageGold?: number;
+  /**
+   * Closes a ring of walls when enclosures are worked out, though enemies walk through it
+   * (gates): a walled area with a gate in it still gets its discount.
+   */
+  enclosing?: boolean;
   /** How far it lets players see (fog of war). Towers see in the shape of their arc. */
   sight?: SightStats;
   /** Spawns units (see sim/units.ts). Its timer is the structure's `cooldown`, so a spawner
@@ -219,6 +224,15 @@ export const STRUCTURES = {
     maxHp: 30,
     blocksMovement: true,
     sight: { inner: 5, outer: 9 }, // as far as a cannon, all round; never fires
+  },
+  gate: {
+    name: "Gate",
+    layer: "base",
+    cost: 15,
+    maxHp: 50, // enemies walk through rather than attack it; rival towers can still hit it
+    blocksMovement: false,
+    enclosing: true,
+    sight: { inner: 2, outer: 3 }, // a little further than a wall: you can look out through it
   },
   ruin: {
     name: "Ruin",
