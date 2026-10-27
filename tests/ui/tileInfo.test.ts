@@ -291,3 +291,42 @@ describe("hover details (beginner-help)", () => {
     expect(text).toContain(`${kind.damage} dmg every ${kind.attackInterval}s`);
   });
 });
+
+describe("hover info with a tool selected", () => {
+  it("keeps to names and HP, without descriptions, numbers or the enclosure line", () => {
+    const state = walledGame();
+    const keep = state.keeps[0];
+    const wall = { x: keep.x - 2, y: keep.y - 2 };
+    placeStructure(state, "cannon", wall.x, wall.y, "N");
+    spawnEnemy(state, wall.x, wall.y, { kind: "goblin" });
+    const ui = createUiState();
+    ui.hover = wall;
+    ui.tool = "cannon";
+    const text = hoverText(state, ui);
+    expect(text).toContain("Cannon here:");
+    expect(text).toContain("Cannon (on wall), facing north");
+    expect(text).toContain("Wall\nHP 50 / 50");
+    expect(text).toContain("Goblin");
+    for (const gone of [
+      STRUCTURES.cannon.description,
+      STRUCTURES.wall.description,
+      ENEMY_KINDS.goblin.description,
+      "Sells for",
+      "builds 50% off",
+    ]) {
+      expect(text).not.toContain(gone);
+    }
+  });
+
+  it("keeps the sell price for the sell tool, and everything with no tool", () => {
+    const state = walledGame();
+    const keep = state.keeps[0];
+    const ui = createUiState();
+    ui.hover = { x: keep.x - 2, y: keep.y - 2 };
+    ui.tool = "sell";
+    expect(hoverText(state, ui)).toContain("Sells for");
+    expect(hoverText(state, ui)).not.toContain(STRUCTURES.wall.description);
+    ui.tool = null;
+    expect(hoverText(state, ui)).toContain(STRUCTURES.wall.description);
+  });
+});

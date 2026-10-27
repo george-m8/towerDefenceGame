@@ -65,6 +65,8 @@ New players (and testers starting games with only a few things to build) should 
 - **Structures:** today's lines (name, HP, range, damage, arc), plus the description line and the hints that still apply ("Sells for 12g" stays).
 - **Enemies:** name and variant, HP, then the kind's description and its numbers: damage per hit, speed, what it does ("breaks through walls", "heals nearby enemies"), and its leader if it has one. Armour once enemies have it (rebalance).
 - **Units:** name, owner, HP, what it's doing (today), plus the description, damage, range and armour.
+- **With a tool selected** the box stays short (George, 2026-10-27): the price line, then what's on the tile by name and HP only, no descriptions, numbers or traits. Building also drops the enclosure line (the price line covers it) and the sell price; the sell tool keeps the sell price.
+- The Info box never runs down over the HUD: its height is capped and a crowded tile's last lines are cut off.
 - Up to 3 enemies and units are listed per tile as today. Only the first gets its full description; the rest keep one line each, so the box stays short.
 
 ### The picker: one row or three tabs

@@ -871,6 +871,10 @@ a.button {
 }
 .info-box {
   min-height: 3em;
+  /* Never down over the HUD's stats: below the minimap (~225px) and above the HUD (~85px). A
+     crowded tile's last lines are cut off rather than covering the gold. */
+  max-height: calc(100vh - 320px);
+  overflow: hidden;
   white-space: pre-line;
 }
 

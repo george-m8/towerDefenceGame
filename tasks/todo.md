@@ -123,6 +123,11 @@ Files: `README.md`, `SPEC.md`, `SPEC-beginner-help.md`, `tasks/roadmap.md`, `CAP
 
 Built: coverage 97.7% for `src/sim/`, 80.3% for `tools/` (coverage only measures those two). Under `npm run coverage` the XL timing tests (units, pathing fields, sometimes guards and the clock) fail or time out because coverage slows the code they time, as noted in map-editor's Task 8; under `npm test` all 1067 pass.
 
+## After the build (George's feedback)
+
+- [x] The build picker scrolls instead of running off the top of a short window; its tabs stay pinned
+- [x] With a tool selected, hover info is brief (price line, then names and HP only); the Info box never covers the HUD
+
 ## Checkpoint C: done
 
 - [x] Every success criterion in the spec checked in the browser (headless Chrome over the extension: defaults, hover info, picker cards and one-list layout, Rotate button, price wording, sidebar)
