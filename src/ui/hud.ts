@@ -19,6 +19,7 @@ import {
   type UiState,
 } from "./state";
 import { statList, type Stat, type StatId } from "./stats";
+import { buildHints, describeKind, traits } from "./describe";
 
 export interface HudContent {
   /** The selected tool, or null with none selected. */
@@ -75,6 +76,54 @@ export function limitLabel(state: GameState, player: PlayerId, kind: StructureKi
 export function allowed(state: GameState, kind: StructureKind): boolean {
   return state.limits[kind] !== 0;
 }
+
+/** What a build picker item's tooltip card says, top to bottom. */
+export interface PickerCard {
+  /** Glyph and name, e.g. "C Cannon". */
+  title: string;
+  /** Full price, and the limit if an items file sets one: "50g · 2/5". */
+  cost: string;
+  description: string;
+  numbers: string[];
+  /** Short trait words joined: "Splash damage · Turns slowly". Empty when it has none. */
+  traits: string;
+  hints: string[];
+}
+
+export function pickerCard(state: GameState, player: PlayerId, kind: StructureKind): PickerCard {
+  const { title, description, numbers } = describeKind({ type: "structure", kind });
+  const limit = limitLabel(state, player, kind);
+  return {
+    title: `${GLYPHS[kind]} ${title}`,
+    cost: `${STRUCTURES[kind].cost}g${limit ? ` · ${limit}` : ""}`,
+    description,
+    numbers,
+    traits: traits(kind).join(" · "),
+    hints: buildHints(kind),
+  };
+}
+
+/** Fills the tooltip card element with a picker item's card. */
+function renderCard(root: HTMLElement, card: PickerCard) {
+  const line = (className: string, text: string) =>
+    Object.assign(document.createElement("p"), { className, textContent: text });
+  const head = document.createElement("p");
+  head.className = "card-head";
+  head.append(
+    Object.assign(document.createElement("strong"), { textContent: card.title }),
+    Object.assign(document.createElement("span"), { textContent: card.cost }),
+  );
+  root.replaceChildren(
+    head,
+    line("card-description", card.description),
+    ...card.numbers.map((n) => line("card-numbers", n)),
+    ...(card.traits ? [line("card-traits", card.traits)] : []),
+    ...card.hints.map((h) => line("card-hint", h)),
+  );
+}
+
+/** Space between a picker button and its card, in pixels. */
+const CARD_GAP_PX = 14;
 
 /** The build time the HUD shows, and the tool it was for. */
 export interface ShownTime {
@@ -135,6 +184,7 @@ export function createHud(root: HTMLElement, ui: UiState) {
           </button>`,
         ).join("")}
       </div>
+      <div class="picker-card" data-field="card" role="tooltip" hidden></div>
       <button class="hud-box hud-tool" data-field="tool" title="Choose what to build">
         <span class="hud-glyph" data-field="glyph"></span>
         <span data-field="name"></span>
@@ -163,6 +213,33 @@ export function createHud(root: HTMLElement, ui: UiState) {
   /** The stat menu's rows by id, rebuilt only when the set of stats changes (PvP differs). */
   let statRows = new Map<string, HTMLButtonElement>();
   const toolButtons = [...picker.querySelectorAll<HTMLButtonElement>("[data-tool]")];
+  const card = field("card");
+  /** The game the card describes (its limits and counts), kept from the last update. */
+  let cardState: GameState | null = null;
+  /** Shows the card beside a picker button, pointing at it, kept inside the window. */
+  function showCard(button: HTMLButtonElement) {
+    const tool = button.dataset.tool as UiState["tool"];
+    if (!isBuildTool(tool) || !cardState) return hideCard();
+    renderCard(card, pickerCard(cardState, ui.playerId, tool));
+    card.hidden = false;
+    const at = button.getBoundingClientRect();
+    const box = picker.getBoundingClientRect();
+    const height = card.offsetHeight;
+    const top = Math.max(8, Math.min(at.top + at.height / 2 - 24, window.innerHeight - height - 8));
+    card.style.left = `${box.right + CARD_GAP_PX}px`;
+    card.style.top = `${top}px`;
+    // The pointer on the card's left edge lines up with the button's middle.
+    card.style.setProperty("--card-arrow", `${at.top + at.height / 2 - top}px`);
+  }
+  function hideCard() {
+    card.hidden = true;
+  }
+  for (const button of toolButtons) {
+    button.addEventListener("pointerenter", () => showCard(button));
+    button.addEventListener("focus", () => showCard(button));
+    button.addEventListener("blur", hideCard);
+  }
+  picker.addEventListener("pointerleave", hideCard);
   const tabButtons = [...picker.querySelectorAll<HTMLButtonElement>(".build-tab")];
   for (const button of tabButtons) {
     button.addEventListener("click", () => {
@@ -281,7 +358,11 @@ export function createHud(root: HTMLElement, ui: UiState) {
         picker.hidden = false;
         statPicker.hidden = true;
       }
-      if (picker.hidden) return;
+      cardState = state;
+      if (picker.hidden) {
+        card.hidden = true;
+        return;
+      }
       for (const button of tabButtons) {
         button.setAttribute("aria-selected", String(button.dataset.tab === ui.tab));
       }

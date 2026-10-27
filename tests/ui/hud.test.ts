@@ -15,6 +15,7 @@ import {
   hudContent,
   hudStats,
   limitLabel,
+  pickerCard,
   toggleHudStat,
 } from "../../src/ui/hud";
 import { newItems, withLimit } from "../../src/sim/itemsFile";
@@ -245,5 +246,38 @@ describe("build limits in the picker", () => {
     expect(limitLabel(state, 1, "house")).toBeNull();
     expect(allowed(state, "house")).toBe(false);
     expect(allowed(state, "archer")).toBe(true);
+  });
+});
+
+describe("pickerCard", () => {
+  it("gives a tower its glyph, name, cost, description, numbers, traits and hints", () => {
+    const state = createGame(1, { blankMap: true, fog: false });
+    const card = pickerCard(state, 1, "cannon");
+    expect(card.title).toContain(STRUCTURES.cannon.name);
+    expect(card.cost).toBe(`${STRUCTURES.cannon.cost}g`);
+    expect(card.description).toBe(STRUCTURES.cannon.description);
+    expect(card.numbers.join("\n")).toContain(`${STRUCTURES.cannon.tower.damage} dmg every`);
+    expect(card.traits).toContain("Splash damage");
+    expect(card.hints.join("\n")).toContain("off inside your keep's walls");
+  });
+
+  it("gives a spawner its unit, and a trap its damage", () => {
+    const state = createGame(1, { blankMap: true, fog: false });
+    expect(pickerCard(state, 1, "barracks").numbers.join("\n")).toContain(
+      `up to ${STRUCTURES.barracks.spawner.quota} at once`,
+    );
+    expect(pickerCard(state, 1, "floorSpikes").numbers.join("\n")).toContain(
+      `${STRUCTURES.floorSpikes.trap.damage} dmg every`,
+    );
+    expect(pickerCard(state, 1, "archer").hints).toContain("R to rotate");
+  });
+
+  it("shows a limit beside the cost", () => {
+    const state = createGame(1, {
+      blankMap: true,
+      fog: false,
+      items: withLimit(newItems("Few"), "cannon", 5),
+    });
+    expect(pickerCard(state, 1, "cannon").cost).toBe(`${STRUCTURES.cannon.cost}g · 0/5`);
   });
 });

@@ -52,10 +52,12 @@ Built: the label is HTML (`pointerLabel.ts`), so `canvas.ts` wasn't touched. Bro
 
 Hovering or focusing a picker button shows a card next to it, pointing at it: glyph, name, full cost and limit, description, numbers, traits and hints. It goes when the pointer leaves the picker and never covers the picker's buttons.
 
-- [ ] `pickerCard(state, kind, viewer)` (pure) returns the card's sections in order; tested for a tower, a spawner, a trap and a limited kind (`2/5`)
-- [ ] Browser: every picker item shows its card; the card stays clear of the buttons at the picker's edges; keyboard focus shows it too
+- [x] `pickerCard(state, player, kind)` (pure, in `hud.ts` beside `limitLabel`) returns the card's sections in order; tested for a tower, a spawner, a trap and a limited kind (`2/5`)
+- [x] Browser: every picker item shows its card; the card stays clear of the buttons at the picker's edges; keyboard focus shows it too
 
 Files: `src/ui/describe.ts`, `src/ui/hud.ts`, `src/styles.css`, `tests/ui/hud.test.ts`. Size: M. Depends on: 1.
+
+Built: the card is `position: fixed`, placed from the button's and picker's screen rectangles and clamped to the window; its arrow follows the button when the card is pushed up. Browser-checked: the guardhouse's card near the bottom of the picker.
 
 ## Task 5: One list or three tabs
 

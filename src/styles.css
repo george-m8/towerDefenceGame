@@ -355,6 +355,54 @@ body {
 .hud-picker[hidden] {
   display: none;
 }
+/* A build picker item's tooltip: what it is and does, beside the picker, pointing at the item. */
+.picker-card {
+  position: fixed;
+  z-index: 5;
+  width: 320px;
+  padding: 8px 10px;
+  font-size: 18px;
+  line-height: 1.25;
+  color: var(--ink);
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+  pointer-events: none;
+}
+.picker-card[hidden] {
+  display: none;
+}
+.picker-card::before {
+  content: "";
+  position: absolute;
+  left: -10px;
+  top: calc(var(--card-arrow, 24px) - 8px);
+  border: 8px solid transparent;
+  border-left: 0;
+  border-right: 10px solid var(--ink);
+}
+.picker-card p {
+  margin: 0;
+}
+.picker-card .card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 22px;
+}
+.picker-card .card-description {
+  margin: 4px 0;
+}
+.picker-card .card-traits {
+  margin-top: 4px;
+  font-weight: bold;
+}
+.picker-card .card-hint {
+  opacity: 0.7;
+}
+.picker-card .card-hint::before {
+  content: "· ";
+}
 
 .dialog {
   position: absolute;
