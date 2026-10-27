@@ -70,10 +70,10 @@ Files: `src/render/dayNight.ts`, `src/render/canvas.ts`, `src/ui/clockControls.t
 
 ## Task 6: Night spawns in the sim
 
-`GameOptions.enemiesCome` ("always" | "night", default always) and `GameState.enemiesCome`; "night" turns the clock on (from 17:00). `NIGHT_SPAWNS = { from: 17 }`. `isSpawningTime(state)`. `updateWaves` runs only in spawning time; entering it starts the countdown; sunrise drops the unspawned threat and resets the countdown. `sendWaveEarly` refuses by day ("Enemies come at night"). `state.nights` counts sunrises with the keep standing.
+`GameOptions.enemiesCome` ("always" | "night", default always) and `GameState.enemiesCome`; "night" turns the clock on (from 17:00). `NIGHT_SPAWNS = { from: 17 }`. `isSpawningTime(state)`. `updateWaves` runs only in spawning time; entering it starts the countdown; at sunrise no new wave starts (the countdown stops) but a wave already spawning finishes. `sendWaveEarly` refuses by day ("Enemies come at night"). `state.nights` counts sunrises with the keep standing.
 
 - [ ] No spawns by day; the first wave comes a countdown after 17:00; waves run through the night, wave numbers carrying on to the next night
-- [ ] At sunrise spawning stops, the unspawned rest is dropped, enemies on the map remain; `nights` goes up
+- [ ] At sunrise no new wave starts; a wave already spawning finishes; enemies on the map remain; `nights` goes up
 - [ ] "always" is unchanged (existing wave tests pass); a night game is deterministic
 
 Files: `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/game.ts`, `src/sim/waves.ts`, `src/sim/clock.ts`, `tests/sim/nightSpawns.test.ts` (new). Size: M. Depends on: 3.

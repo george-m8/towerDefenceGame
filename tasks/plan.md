@@ -996,7 +996,7 @@ Specs: [`SPEC-long-shadows.md`](../SPEC-long-shadows.md), [`SPEC-game-clock.md`]
 
 - **The sim owns the clock.** `state.clock` (`{ hour, day }`, or null) advances in `tick()`, so pausing and fast-forward come free and every client gets the server's time. Sunrise and sunset move from `DAY_NIGHT` (render) to `GAME_CLOCK` (sim config); the render table keeps only the look (arcs, twilight, darkness). The clock has no randomness, so determinism holds.
 - **One rule for the drawn hour.** `skyHour(state, ui)`: the game's clock, else the Debug clock, else none (full daylight). `ui.sun` stays the drawn sun, and `main.ts` sets it from the clock whenever the clock moves, so the Sun sliders are a preview that the game pulls back.
-- **Waves are gated, not rewritten.** `updateWaves` keeps today's rhythm and only runs in spawning time; sunrise zeroes the unspawned threat and resets the countdown. All the time is the same code with the gate always open.
+- **Waves are gated, not rewritten.** `updateWaves` keeps today's rhythm and only runs in spawning time; only starting a wave is gated, so a wave already spawning at sunrise finishes. All the time is the same code with the gate always open.
 - **Options travel like map size.** `enemiesCome` goes in `GameOptions`, `ModeSettings`, the `create` message and the room (kept for restarts).
 - **Long shadows stay local.** `CASTERS` grows to the 24 offsets within 2 tiles; `castShade` already clips at any distance. Block heights are cached per frame so the extra neighbours don't cost 3x the lookups.
 
@@ -1028,7 +1028,7 @@ T1-T2 and T3 don't depend on each other; they're built in order anyway.
 | Risk | Impact | Mitigation |
 |---|---|---|
 | 24 neighbour checks per block slow drawing on big maps | Med | Per-frame height cache; a stub-canvas timing test before and after (T2); fall back to 1.5 tiles (8 + 12 neighbours) if over budget |
-| Sunrise mid-wave leaves waves in a bad state (half-spawned bands, a countdown running by day) | Med | Gate in one place; tests for sunrise during spawning, during countdown and with send-early |
+| A countdown running on by day starts a wave after sunrise | Low | Only starting a wave is gated, in one place (a wave already spawning finishes, agreed); tests for sunrise during spawning, during the countdown and with send-early |
 | The clock drifts between server and client | Low | The client never runs it, only copies it from updates; float steps are the same on every machine |
 | Debug time-jumps (debugClock) skip sunrise handling | Low | Setting the hour goes through the same sunrise check (crossing sunrise ends the night) |
 | Restart or rejoin online loses the option | Low | Kept on the room like `size`; a restart test |
