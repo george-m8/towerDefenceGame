@@ -79,6 +79,6 @@ Built: also `src/styles.css` (a hidden HUD button). The Players panel marks a sk
 
 README (night lights; the Skip to night button in the controls table and multiplayer votes), `SPEC.md` "Since" line, `CAPABILITIES.md` statuses, the specs' "Last updated".
 
-- [ ] Docs updated and accurate
+- [x] Docs updated and accurate
 
 Files: `README.md`, `SPEC.md`, `CAPABILITIES.md`, `SPEC-town-lights.md`, `SPEC-skip-to-night.md`. Size: S. Depends on: 5.

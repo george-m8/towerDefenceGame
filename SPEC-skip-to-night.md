@@ -1,6 +1,7 @@
 # Spec: skip-to-night
 
 Status: APPROVED (2026-10-27)
+Last updated: 2026-10-27 (built)
 Module: `skip-to-night`, on the capability map's Day and night section. Builds on `game-clock` and `night-spawns`.
 
 ## Objective
@@ -42,10 +43,10 @@ In a game with enemies at night, you can skip the rest of the day: when you've b
 
 ## Success criteria
 
-- [ ] By day in a night game, Skip to night jumps to 17:00 (solo at once; co-op once everyone votes).
-- [ ] The button shows only by day in night games, with the vote count in co-op.
-- [ ] Votes clear after the skip, at dusk and on drop-out; the command is refused by night and with enemies all the time.
-- [ ] Unit and protocol tests, the typecheck and the build pass.
+- [x] By day in a night game, Skip to night jumps to 17:00 (solo at once; co-op once everyone votes).
+- [ ] The button shows only by day in night games, with the vote count in co-op. (By hand: still to check.)
+- [x] Votes clear after the skip, at dusk and on drop-out; the command is refused by night and with enemies all the time.
+- [x] Unit and protocol tests, the typecheck and the build pass.
 
 ## Open questions
 

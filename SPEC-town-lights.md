@@ -1,6 +1,7 @@
 # Spec: town-lights
 
 Status: APPROVED (2026-10-27)
+Last updated: 2026-10-27 (built: the light map of what's built is cached per grid change (0.3 ms a frame zoomed right out on an XL map of walls))
 Module: `town-lights`, on the capability map's Day and night section. Builds on `day-night` (the night wash) and `game-clock`.
 
 ## Objective
@@ -56,10 +57,10 @@ At night, your town glows. Today night is one even dark wash over the whole map.
 
 ## Success criteria
 
-- [ ] At night, built structures and units (not scouts) light the darkness round them, by kind; enemies and open land stay dark.
-- [ ] Lights fade smoothly to their radius and come up and go with the darkness; by day nothing changes.
-- [ ] Night drawing on an XL map stays within 2ms a frame of today's.
-- [ ] Unit tests, the typecheck and the build pass.
+- [ ] At night, built structures and units (not scouts) light the darkness round them, by kind; enemies and open land stay dark. (By hand: still to check.)
+- [ ] Lights fade smoothly to their radius and come up and go with the darkness; by day nothing changes. (By hand: still to check.)
+- [x] Night drawing on an XL map stays within 2ms a frame of today's.
+- [x] Unit tests, the typecheck and the build pass.
 
 ## Open questions
 

@@ -29,7 +29,7 @@ Enemies spawn from the red strip on the left edge and walk to your keep (`⛫`, 
 
 ### Enemies at night
 
-Endless's settings (after picking the mode, solo or as a room's host) have **Enemies come: All the time / At night**. All the time is the game as it always was. At night, the game has a clock: a day and night take 8 minutes (5 of day, 3 of night; `GAME_CLOCK` in `src/sim/config.ts`), pausing and fast-forwarding with the game, and the light shows the time: the sun crosses the sky, shadows swing and stretch, and night darkens the map. The game starts at 17:00, so the first wave comes after the usual countdown; waves run as normal through the night. At sunrise no new wave starts (one already coming finishes) and the enemies left must be killed; days are for building. The next evening the waves carry on. The HUD shows the night ("Night 2 · wave 7", and "At dusk" for the next wave by day), and game over says how many nights you survived. For testing, `?solo&night` starts a solo game at night.
+Endless's settings (after picking the mode, solo or as a room's host) have **Enemies come: All the time / At night**. All the time is the game as it always was. At night, the game has a clock: a day and night take 8 minutes (5 of day, 3 of night; `GAME_CLOCK` in `src/sim/config.ts`), pausing and fast-forwarding with the game, and the light shows the time: the sun crosses the sky, shadows swing and stretch, and night darkens the map. The game starts at 17:00, so the first wave comes after the usual countdown; waves run as normal through the night. At sunrise no new wave starts (one already coming finishes) and the enemies left must be killed; days are for building. The next evening the waves carry on. The HUD shows the night ("Night 2 · wave 7", and "At dusk" for the next wave by day), and game over says how many nights you survived. At night your town glows: the keep most, towers and buildings round them, walls as a thin lit line, and your units carry a little light (scouts stay dark, out in the night); enemies and open land stay dark (`LIGHTS` in `src/render/palette.ts`). By day, **Skip to night** jumps to the early evening when you're ready (a vote in co-op). For testing, `?solo&night` starts a solo game at night.
 
 ### Enemies
 
@@ -243,6 +243,7 @@ Towers always shoot the enemy closest to the keep. Traps fire on a fixed timer f
 | `R` | Rotate the facing of the tower or wall spikes you're placing |
 | `Space` or Pause button | Pause / resume (you can still build while paused) |
 | `F` or `>>` button | Toggle fast forward (2x game speed) |
+| Skip to night button | By day, with enemies at night: skip to the early evening (17:00), when you're ready for enemies. No gold for it. A vote in co-op |
 | `` ` `` or Debug button | Open the Debug menu: test options, Show paths (arrows show where enemies will walk; red means "will attack this"), Sun slider (two sliders over the map: **Across** moves the sun from the left horizon to the right, **Arc** sets how its path leans: up to 90° over the top of the sky (90° straight overhead), past 90° over the bottom, so shadows fall behind blocks; shadows follow. Off puts the sun back), Day/night (a **Time** slider and **Play**: the sun rises on a shallow arc, is overhead at noon and leans back for long evening shadows, then night darkens the map and morning comes round again, a whole day in 96 seconds; off puts the daylight back. In a game at night, it shows the game's own time instead, and solo its slider moves it), and the Damage tool (offline: each click takes 35% of its full amount off the top thing on the tile, an enemy, unit, tower, structure, the keep or a tree/rock/bush, and at 0 it's destroyed or used up as in play, paying nobody; right-click or `Esc` ends it) |
 | `J` | Open or close the monster journal (`Esc` also closes it) |
 | Hover a tile | Show its details in the Info box, and a tower's range |
@@ -398,7 +399,7 @@ npm run dev -- --host     # the game page, reachable from other computers
 - Gold is your own: you earn bounties for kills by your towers and traps, and income from your houses.
 - You can only sell what you built (ruins are anyone's). Towers go on your own walls or on ruins.
 - Each structure has a corner mark in its owner's colour; the panel lists players, and hover info says who built what.
-- **Pause** and **fast-forward** are votes: they happen when every connected player has pressed them, and the buttons show the count (e.g. `Pause 1/2`). Press again to take your vote back.
+- **Pause**, **fast-forward** and **Skip to night** are votes: they happen when every connected player has pressed them, and the buttons show the count (e.g. `Pause 1/2`). Press again to take your vote back. The Players panel marks each vote (`||`, `>>`, `☾`); a Skip to night vote is dropped if the evening comes first.
 - Builds show faintly until the server confirms them.
 - If your connection drops, the game reconnects you; reloading the page rejoins as the same player.
 - When the keep falls, anyone can press **Restart** for a new game in the same room.
@@ -467,7 +468,7 @@ src/sim/              Pure, deterministic game simulation (no DOM, seeded RNG)
   waves.ts            Wave formulas and scheduling
   clock.ts            The game clock (time of day) and when enemies may spawn at night
   economy.ts          Bounties, house income, selling
-  players.ts          Players, per-player gold, pause/fast-forward votes
+  players.ts          Players, per-player gold, pause/fast-forward/skip-to-night votes
   mapFile.ts          .map files: parse, write, validate
   itemsFile.ts        .items files: what can be built, and how many at once
 src/net/              Message types and state snapshots, shared by browser and server
