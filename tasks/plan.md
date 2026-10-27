@@ -2,8 +2,9 @@
 
 Capability map: [`CAPABILITIES.md`](../CAPABILITIES.md)
 Current module spec: [`SPEC-map-editor.md`](../SPEC-map-editor.md) (editors)
-Task list (current module only): `tasks/todo.md`, written when the next module's spec is approved
+Task list (current module only): `tasks/todo.md` (now `beginner-help`; map-editor's moved to [`tasks/map-editor/`](map-editor/todo.md))
 Finished modules: [`tasks/tile-layers/`](tile-layers/todo.md), [`tasks/tower-aiming/`](tower-aiming/todo.md), [`tasks/audio/`](audio/todo.md), [`tasks/map-gen/`](map-gen/todo.md), [`tasks/players/`](players/todo.md), [`tasks/game-server/`](game-server/todo.md) (awaiting the cross-machine probe and review), [`tasks/net-client/`](net-client/todo.md)
+Next up: [`roadmap.md`](roadmap.md) (2026-10-27)
 Previous plan (MVP, complete except a Firefox/Safari smoke test): [`tasks/mvp/`](mvp/plan.md)
 
 ## How this plan works
@@ -42,7 +43,7 @@ Modules are built one at a time in the approved order. Each module goes spec -> 
 | 1c. Presentation | `audio` | Done |
 | | `music-packs` | Done (tasks in [`tasks/music-packs/`](music-packs/todo.md)) |
 | | `music-director` | Outline only (see below); intro hand-over now part of `music-packs` |
-| 1f. Editors and levels (see below) | `map-editor` | **Built; browser-checked headless, hand checks pending (tasks in [`tasks/todo.md`](todo.md))** |
+| 1f. Editors and levels (see below) | `map-editor` | **Built; browser-checked headless, hand checks pending (tasks in [`tasks/map-editor/`](map-editor/todo.md))** |
 | | `wave-editor` | Next: `.wave` files |
 | | `loadout-editor` | After: `.loadout` files |
 | | `levels` | A level = a `.map`, a `.wave` and a `.loadout`; the level picker and online play |
@@ -936,7 +937,7 @@ Moved to the Armies plan above (now split into `units` and `field-units`).
 
 ## Editors and levels: map-editor
 
-Spec: [`SPEC-map-editor.md`](../SPEC-map-editor.md) (approved). Tasks: [`tasks/todo.md`](todo.md).
+Spec: [`SPEC-map-editor.md`](../SPEC-map-editor.md) (approved). Tasks: [`tasks/map-editor/todo.md`](map-editor/todo.md).
 
 A **level** will be three files: a `.map` (this module), a `.wave` and a `.loadout` (the next two editors). The hosted game ships with them, and players choose from those; the `levels` module adds the picker and online play.
 
@@ -1073,3 +1074,39 @@ T3 Skip-to-night vote in the sim
 ## Open questions
 
 None for `tower-aiming`. Each later module's questions are settled in its spec.
+
+## Beginner help: beginner-help
+
+Spec: [`SPEC-beginner-help.md`](../SPEC-beginner-help.md) (approved and built, 2026-10-27). Tasks: [`tasks/todo.md`](todo.md). First on the [roadmap](roadmap.md).
+
+### Architecture decisions
+
+- **One source of words.** `src/ui/describe.ts` (pure, no DOM) turns a kind into a title, description, number lines, trait words and build hints. The picker card, the Info box, the price line and the journal all read it, so they never disagree. When `balance-files` lands, this is the one place that switches from config to `state.balance`.
+- **Traits are worked out, not written.** Trait words come from numbers and flags (`splashRadius`, `minRange`, `arcDegrees`, `blocksMovement`, `income`), so they stay right after the rebalance. Descriptions are hand-written but contain no numbers (a test checks).
+- **No sim or protocol changes.** Everything is client UI, so online play is unaffected.
+- **Device preferences like the journal.** `viewPrefs.ts` loads and saves View toggles and HUD stats with the journal's pattern (try/catch, junk ignored).
+
+### Dependency graph
+
+```
+T1 Descriptions + describeKind (pure)
+ ├─ T2 Map hover info
+ ├─ T3 Price line + pointer label   (Checkpoint A after T3)
+ ├─ T4 Picker tooltip cards
+ └─ T6 Rotate button
+T5 One list or three tabs           (Checkpoint B after T4-T6)
+T7 Defaults + remembered prefs
+T8 Keys in the sidebar
+ └─ T9 Docs (after all)             (Checkpoint C)
+```
+
+T5, T7 and T8 don't depend on T1 and can go in any order.
+
+### Risks
+
+| Risk | Impact | Mitigation |
+|---|---|---|
+| The Info box gets too long with descriptions for every enemy on a tile | Med | Only the first enemy and unit get the full entry; the rest stay one line |
+| Picker cards cover buttons or run off screen on small windows | Med | The card is placed beside the hovered button and clamped to the viewport; checked at 1280x720 and narrow |
+| Moving the Keys panel breaks the editor's layout | Low | Its own task; checked in game and editor |
+| Saved preferences hide Info for testers who turned it off long ago | Low | Only choices made after this ships are saved (a new storage key) |

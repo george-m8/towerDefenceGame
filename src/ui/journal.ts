@@ -2,6 +2,7 @@
 // Pure (no DOM); the window lives in journalView.ts. Storage can be missing or blocked, so every
 // read and write is guarded, as in audio/settings.ts.
 import { ENEMY_KIND_ORDER, ENEMY_KINDS, type EnemyKindId, type EnemyVariant } from "../sim/config";
+import { describeKind } from "./describe";
 import { canSeeEnemiesAt } from "../sim/fog";
 import type { GameState, PlayerId } from "../sim/types";
 
@@ -79,7 +80,7 @@ export function entryLines(kindId: EnemyKindId, journal: Journal): string[] {
   const lines = [
     `${kind.name} (${kind.glyph})`,
     kind.description,
-    `HP ${kind.hp} · speed ${kind.speed} · hits ${kind.damage} every ${kind.attackInterval}s · bounty ${kind.bounty}`,
+    describeKind({ type: "enemy", kind: kindId }).numbers.join(" · "),
     `${appears} · first seen on wave ${found.firstSeenWave}`,
   ];
   if (kind.variants.length > 1) lines.push(...kind.variants.map(variantSummary));
