@@ -3,6 +3,7 @@ import type { Facing, PlayerId, Point, StructureKind } from "../sim/types";
 import { createCamera, type Camera } from "./camera";
 import type { Rotation } from "../render/rotation";
 import type { StatId } from "./stats";
+import { defaultViewPrefs } from "./viewPrefs";
 import { DEFAULT_SUN, type Sun } from "../render/sun";
 import type { Curtain } from "./curtain";
 
@@ -127,7 +128,7 @@ export function createUiState(): UiState {
     playerId: 1,
     camera: createCamera(),
     rotation: 0,
-    hudStats: ["gold"],
+    hudStats: defaultViewPrefs().hudStats,
     tab: "defence",
     openPicker: false,
     panKeys: { left: false, right: false, up: false, down: false },

@@ -92,11 +92,13 @@ Built: `showsRotate(tool)` in `hud.ts`; the button calls the same `rotateFacing`
 
 The Info box starts shown and the HUD stats start as Gold and Income. Changes to the View toggles and HUD stats are saved per device (`src/ui/viewPrefs.ts`, the same load and save pattern as `journal.ts`, every storage call in try/catch) and used next time.
 
-- [ ] A new UI state shows gold and income; the Info box starts visible
-- [ ] Saved choices are used when storage has them; storage that throws or holds junk gives the defaults
-- [ ] Browser: turn Info off, reload, it stays off; clear site data, it's back on
+- [x] A new UI state shows gold and income; the Info box starts visible
+- [x] Saved choices are used when storage has them; storage that throws or holds junk gives the defaults
+- [x] Browser: turn Info off, reload, it stays off; clear site data, it's back on
 
 Files: `src/ui/state.ts`, `src/ui/viewPrefs.ts`, `src/main.ts`, `index.html`, `tests/ui/viewPrefs.test.ts`. Size: M. Depends on: none.
+
+Built: `viewPrefs.ts` (key `keep-view`) holds the Map, Info and Keys panels and the HUD stats; `main.ts` applies them at start and saves when they change (compared once a frame). Keys still starts hidden. Browser-checked: a fresh device shows Info, Gold and Income; turning Info off survives a reload.
 
 ## Task 8: Keys in the sidebar
 
