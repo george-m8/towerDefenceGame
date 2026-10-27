@@ -24,7 +24,7 @@ New to it? The game explains itself as you go:
 - **Hover anything in the build picker** (`1`, or the Build box) for a card with its cost, what it does, its numbers and tips, before you buy it.
 - **Turn things before placing them** with `R`, or the Rotate button that appears beside the tool. The faint `R ⟳` by the price means the thing you're placing can be turned.
 - **Build inside your walls**: inside the keep's walls (the warm yellow shade) everything costs 50% less, inside other closed rings of walls 25% less. The price by the pointer shows the full price struck through when you're saving.
-- Your **gold** and **income** (gold per minute) are at the bottom right. Click either to choose which stats to show. The View menu shows and hides Map, Info and Keys; both are remembered on this device.
+- Your **gold**, **income** (gold per minute) and the **wave** are at the bottom right. Click any of them to choose which stats to show. The View menu shows and hides Map, Info and Keys; both are remembered on this device.
 
 ## How to play
 

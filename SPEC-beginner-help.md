@@ -27,7 +27,7 @@ New players (and testers starting games with only a few things to build) should 
 ### On by default
 
 - The **Info** box (View menu) starts shown. Its empty text becomes "Hover anything for details".
-- The HUD's stats start as **Gold** and **Income** (`+N/min`), not Gold alone.
+- The HUD's stats start as **Gold**, **Income** (`+N/min`) and **Wave** (George, 2026-10-27), not Gold alone. PvP has no waves, so it shows Gold and Income.
 - The **Keys** panel (`#panel`) moves from the left (under the View and Debug buttons) into the side column (`.map-side`), below the minimap and the Info box, so Map, Info and Keys are one sidebar, each shown or hidden from the View menu as now. The editor's own use of the panel moves with it.
 - If the player changes either, the choice is remembered on this device and used next time (`localStorage`, wrapped in try/catch; with storage blocked, the defaults apply each visit).
 
@@ -120,7 +120,7 @@ export function canRotate(kind: StructureKind): boolean;
 
 // src/ui/state.ts
 export function pickerLayout(offered: number): "row" | "tabs";
-// createUiState(): hudStats: ["gold", "income"]; remembered choices loaded by main.ts
+// createUiState(): hudStats: ["gold", "income", "wave"]; remembered choices loaded by main.ts
 
 // src/ui/settings storage (existing per-device pattern): { infoShown, hudStats }
 ```
@@ -165,7 +165,7 @@ Vitest, written first:
 - **Traits:** the catapult gets splash, minimum range and "won't fire where its blast would hit your own walls"; the archer gets "fixed"; floor spikes get "enemies walk over it"; a kind with none of those gets none.
 - **Picker layout:** 9 offered gives one row, 10 gives tabs; a tab with nothing offered is hidden; sell is never counted.
 - **Price line:** without a discount on the tile it names the price inside the keep's walls; with one it says where it comes from; with a turnable tool it adds the facing.
-- **Defaults:** a new UI state shows gold and income; remembered choices are used when storage has them and ignored when it throws.
+- **Defaults:** a new UI state shows gold, income and the wave; remembered choices are used when storage has them and ignored when it throws.
 - Browser, by hand: a new device opens with Info and Income shown, and Map, Info and Keys in one sidebar; hover each picker item; play with `?solo&items=arrows-only` and see one row; Rotate button and R agree; discount wording in the picker, Info and the pointer label.
 
 Coverage for `src/ui/` pure modules stays where it is (80%+ for `src/sim/` unchanged).
@@ -178,7 +178,7 @@ Coverage for `src/ui/` pure modules stays where it is (80%+ for `src/sim/` uncha
 
 ## Success criteria
 
-1. A first visit shows the Info box and Gold + Income without touching a menu, and the player's later choices stick.
+1. A first visit shows the Info box and Gold, Income and Wave without touching a menu, and the player's later choices stick.
 2. Hovering any picker item shows its description, numbers and the hints that apply, before buying.
 3. Hovering any structure, unit or enemy on the map shows its description and numbers.
 4. A game with 9 or fewer buildable kinds shows them all in one picker list; more shows tabs, with no empty tabs.

@@ -11,10 +11,10 @@ function memoryStorage() {
 }
 
 describe("view preferences", () => {
-  it("shows the Info box and income by default", () => {
+  it("shows the Info box, income and the wave by default", () => {
     const prefs = loadViewPrefs(null);
     expect(prefs.panels.info).toBe(true);
-    expect(prefs.hudStats).toEqual(["gold", "income"]);
+    expect(prefs.hudStats).toEqual(["gold", "income", "wave"]);
     expect(createUiState().hudStats).toEqual(defaultViewPrefs().hudStats);
   });
 

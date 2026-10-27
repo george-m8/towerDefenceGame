@@ -92,9 +92,9 @@ Built: `showsRotate(tool)` in `hud.ts`; the button calls the same `rotateFacing`
 
 ## Task 7: Shown by default, and remembered
 
-The Info box starts shown and the HUD stats start as Gold and Income. Changes to the View toggles and HUD stats are saved per device (`src/ui/viewPrefs.ts`, the same load and save pattern as `journal.ts`, every storage call in try/catch) and used next time.
+The Info box starts shown and the HUD stats start as Gold, Income and Wave. Changes to the View toggles and HUD stats are saved per device (`src/ui/viewPrefs.ts`, the same load and save pattern as `journal.ts`, every storage call in try/catch) and used next time.
 
-- [x] A new UI state shows gold and income; the Info box starts visible
+- [x] A new UI state shows gold, income and the wave; the Info box starts visible
 - [x] Saved choices are used when storage has them; storage that throws or holds junk gives the defaults
 - [x] Browser: turn Info off, reload, it stays off; clear site data, it's back on
 

@@ -104,10 +104,11 @@ describe("hudContent", () => {
 });
 
 describe("the stat boxes", () => {
-  it("show gold and income by default, and every stat turned on, in the menu's order", () => {
+  it("show gold, income and the wave by default, and every stat turned on, in the menu's order", () => {
     const { state, ui } = setup();
-    expect(hudStats(state, ui).map((s) => s.id)).toEqual(["gold", "income"]);
+    expect(hudStats(state, ui).map((s) => s.id)).toEqual(["gold", "income", "wave"]);
     toggleHudStat(ui, "income");
+    toggleHudStat(ui, "wave");
     expect(hudStats(state, ui)).toEqual([{ id: "gold", label: "Gold", value: "250" }]);
     toggleHudStat(ui, "seed");
     toggleHudStat(ui, "keep");
@@ -119,6 +120,7 @@ describe("the stat boxes", () => {
   it("always keep one on", () => {
     const { state, ui } = setup();
     toggleHudStat(ui, "income");
+    toggleHudStat(ui, "wave");
     toggleHudStat(ui, "gold");
     expect(ui.hudStats).toEqual(["gold"]);
     expect(hudStats(state, ui).map((s) => s.id)).toEqual(["gold"]);

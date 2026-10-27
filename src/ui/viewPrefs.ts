@@ -1,5 +1,5 @@
 // What this device shows (SPEC-beginner-help.md): which side panels are open (View menu) and which
-// stats the HUD shows. New players get the Info box and their income without opening a menu;
+// stats the HUD shows. New players get the Info box, their income and the wave without opening a menu;
 // whatever a player changes is remembered here and used next time. Storage can be missing or
 // blocked, so every read and write is guarded, as in journal.ts.
 import type { StatId } from "./stats";
@@ -13,7 +13,7 @@ export interface ViewPrefs {
 }
 
 export function defaultViewPrefs(): ViewPrefs {
-  return { panels: { map: true, info: true, keys: false }, hudStats: ["gold", "income"] };
+  return { panels: { map: true, info: true, keys: false }, hudStats: ["gold", "income", "wave"] };
 }
 
 const KEY = "keep-view";
