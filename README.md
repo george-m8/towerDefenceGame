@@ -27,6 +27,10 @@ Enemies spawn from the red strip on the left edge and walk to your keep (`⛫`, 
 - Most enemies take an open route if one exists, however long, and only break through your walls when the keep is completely sealed off. **Breachers** (dwarves, thanes, golems and rams) work out when smashing a wall is quicker than walking round, and go through the weakest point. **Marines** swim rivers and the sea when that's the quicker way in.
 - Enemies mostly stick to their route, but at each tile there is a small chance (10% by default, `ENEMY.wanderChance` in `src/sim/config.ts`) that one drifts sideways onto an open tile instead. They never step backwards, double back onto the tile they just left, wander into structures, or step onto rock, trees or water (unless they can swim).
 
+### Enemies at night
+
+Endless's settings (after picking the mode, solo or as a room's host) have **Enemies come: All the time / At night**. All the time is the game as it always was. At night, the game has a clock: a day and night take 8 minutes (5 of day, 3 of night; `GAME_CLOCK` in `src/sim/config.ts`), pausing and fast-forwarding with the game, and the light shows the time: the sun crosses the sky, shadows swing and stretch, and night darkens the map. The game starts at 17:00, so the first wave comes after the usual countdown; waves run as normal through the night. At sunrise no new wave starts (one already coming finishes) and the enemies left must be killed; days are for building. The next evening the waves carry on. The HUD shows the night ("Night 2 · wave 7", and "At dusk" for the next wave by day), and game over says how many nights you survived. For testing, `?solo&night` starts a solo game at night.
+
 ### Enemies
 
 Waves 1 and 2 are all goblins. Later waves mix in other kinds from the wave shown: each wave has a threat budget (5 + 3 x wave, where a goblin costs 1) spent on whichever kinds have arrived. HP grows 15% per wave and bounties by 1 every 5 waves, for every kind. Each enemy hits structures in its way, and the keep, with its own damage and speed of attack.
@@ -240,7 +244,7 @@ Towers always shoot the enemy closest to the keep. Traps fire on a fixed timer f
 | `Space` or Pause button | Pause / resume (you can still build while paused) |
 | `F` or `>>` button | Toggle fast forward (2x game speed) |
 | Send wave button | Start the next wave now, for +1 gold per second skipped |
-| `` ` `` or Debug button | Open the Debug menu: test options, Show paths (arrows show where enemies will walk; red means "will attack this"), Sun slider (two sliders over the map: **Across** moves the sun from the left horizon to the right, **Arc** sets how its path leans: up to 90° over the top of the sky (90° straight overhead), past 90° over the bottom, so shadows fall behind blocks; shadows follow. Off puts the sun back), Day/night (a **Time** slider and **Play**: the sun rises on a shallow arc, is overhead at noon and leans back for long evening shadows, then night darkens the map and morning comes round again, a whole day in 96 seconds; off puts the daylight back), and the Damage tool (offline: each click takes 35% of its full amount off the top thing on the tile, an enemy, unit, tower, structure, the keep or a tree/rock/bush, and at 0 it's destroyed or used up as in play, paying nobody; right-click or `Esc` ends it) |
+| `` ` `` or Debug button | Open the Debug menu: test options, Show paths (arrows show where enemies will walk; red means "will attack this"), Sun slider (two sliders over the map: **Across** moves the sun from the left horizon to the right, **Arc** sets how its path leans: up to 90° over the top of the sky (90° straight overhead), past 90° over the bottom, so shadows fall behind blocks; shadows follow. Off puts the sun back), Day/night (a **Time** slider and **Play**: the sun rises on a shallow arc, is overhead at noon and leans back for long evening shadows, then night darkens the map and morning comes round again, a whole day in 96 seconds; off puts the daylight back. In a game at night, it shows the game's own time instead, and solo its slider moves it), and the Damage tool (offline: each click takes 35% of its full amount off the top thing on the tile, an enemy, unit, tower, structure, the keep or a tree/rock/bush, and at 0 it's destroyed or used up as in play, paying nobody; right-click or `Esc` ends it) |
 | `J` | Open or close the monster journal (`Esc` also closes it) |
 | Hover a tile | Show its details in the Info box, and a tower's range |
 | `W` `A` `S` `D` or arrow keys | Move the view around the map |
@@ -460,6 +464,7 @@ src/sim/              Pure, deterministic game simulation (no DOM, seeded RNG)
   towers.ts           Tower targeting and damage
   traps.ts            Spike trap cycles
   waves.ts            Wave formulas and scheduling
+  clock.ts            The game clock (time of day) and when enemies may spawn at night
   economy.ts          Bounties, house income, selling
   players.ts          Players, per-player gold, pause/fast-forward votes
   mapFile.ts          .map files: parse, write, validate

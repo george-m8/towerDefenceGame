@@ -1,6 +1,7 @@
 # Spec: long-shadows
 
 Status: APPROVED (2026-10-27)
+Last updated: 2026-10-27 (built: heights cached per frame; drawing timed faster than before)
 Module: `long-shadows`, on the capability map's Day and night section. Builds on `day-night` ([`SPEC-day-night.md`](SPEC-day-night.md)).
 
 ## Objective
@@ -37,10 +38,10 @@ Long shadows as the sun comes up and as it goes down. Today no shadow is longer 
 
 ## Success criteria
 
-- [ ] Dawn and dusk shadows reach about 2 tiles; noon and the default sun look as before.
-- [ ] Long shadows shade lower blocks up to 2 tiles away, never taller ones.
-- [ ] Drawing an XL map stays within 2ms of today's frame time.
-- [ ] Unit tests, the typecheck and the build pass.
+- [ ] Dawn and dusk shadows reach about 2 tiles; noon and the default sun look as before. (By hand: still to check.)
+- [x] Long shadows shade lower blocks up to 2 tiles away, never taller ones.
+- [x] Drawing an XL map stays within 2ms of today's frame time.
+- [x] Unit tests, the typecheck and the build pass.
 
 ## Open questions
 

@@ -231,7 +231,7 @@ Status: `map-editor` built (2026-10-26). Hand-made content for the game: a **lev
 
 ## Day and night (2026-10-26)
 
-Status: `day-night` steps 1 and 2 built (2026-10-26/27). Map extended 2026-10-27 with `long-shadows`, `game-clock`, `night-spawns` and `edge-spawns`.
+Status: `day-night` steps 1 and 2 built (2026-10-26/27). Map extended 2026-10-27 with `long-shadows`, `game-clock`, `night-spawns` and `edge-spawns`; the first three built 2026-10-27.
 
 | Module | What it delivers | Depends on |
 |---|---|---|

@@ -1,6 +1,7 @@
 # Spec: night-spawns
 
 Status: APPROVED (2026-10-27)
+Last updated: 2026-10-27 (built: nights survived is `clock.day - 1`, no separate field)
 Module: `night-spawns`, on the capability map's Day and night section. Builds on `game-clock` ([`SPEC-game-clock.md`](SPEC-game-clock.md)). `edge-spawns` (where enemies come from) will add a second option beside this one, with `wave-director`.
 
 ## Objective
@@ -61,11 +62,11 @@ A new way to play Endless: enemies come at night. Days are for building and clea
 
 ## Success criteria
 
-- [ ] Endless setup offers Enemies come: All the time / At night, solo and online.
-- [ ] At night, waves run from early evening until sunrise; no new wave starts after sunrise (one already coming finishes); stragglers stay until killed; the next night carries on.
-- [ ] The HUD shows the night; game over says how many nights were survived.
-- [ ] All the time plays exactly as now.
-- [ ] Unit, determinism and protocol tests, the typecheck and the build pass; docs updated.
+- [ ] Endless setup offers Enemies come: All the time / At night, solo and online. (By hand: still to check.)
+- [x] At night, waves run from early evening until sunrise; no new wave starts after sunrise (one already coming finishes); stragglers stay until killed; the next night carries on.
+- [x] The HUD shows the night; game over says how many nights were survived.
+- [x] All the time plays exactly as now.
+- [x] Unit, determinism and protocol tests, the typecheck and the build pass; docs updated.
 
 ## Open questions
 

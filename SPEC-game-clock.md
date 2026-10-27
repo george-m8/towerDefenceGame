@@ -1,6 +1,7 @@
 # Spec: game-clock
 
 Status: APPROVED (2026-10-27)
+Last updated: 2026-10-27 (built)
 Module: `game-clock`, on the capability map's Day and night section. Builds on `day-night` ([`SPEC-day-night.md`](SPEC-day-night.md)). `night-spawns` builds on it.
 
 ## Objective
@@ -57,11 +58,11 @@ Make the time of day part of the game. Today the day and night clock is drawing 
 
 ## Success criteria
 
-- [ ] With a clock, the sky follows the game's time: 8 minutes a day at normal speed, paused with the game, faster on fast-forward.
-- [ ] Every player online sees the same time.
-- [ ] Games without a clock are unchanged.
-- [ ] Debug Day/night shows and (offline) sets the game's time; the Sun sliders preview a sun, and the game's clock pulls it back.
-- [ ] Unit, determinism and network tests, the typecheck and the build pass.
+- [x] With a clock, the sky follows the game's time: 8 minutes a day at normal speed, paused with the game, faster on fast-forward.
+- [x] Every player online sees the same time.
+- [x] Games without a clock are unchanged.
+- [ ] Debug Day/night shows and (offline) sets the game's time; the Sun sliders preview a sun, and the game's clock pulls it back. (By hand: still to check.)
+- [x] Unit, determinism and network tests, the typecheck and the build pass.
 
 ## Open questions
 

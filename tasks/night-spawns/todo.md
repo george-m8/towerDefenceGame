@@ -134,6 +134,6 @@ Built: the stat is labelled "Night" with the value "2 · wave 7", so the HUD rea
 
 README (setup choice, how night waves work, Debug Day/night with a game clock), `SPEC.md` "Since" lines, `CAPABILITIES.md` statuses, each spec's "Last updated".
 
-- [ ] Docs updated and accurate
+- [x] Docs updated and accurate
 
 Files: `README.md`, `SPEC.md`, `CAPABILITIES.md`, the three specs. Size: S. Depends on: 9.
