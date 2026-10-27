@@ -64,13 +64,15 @@ Files: `src/net/protocol.ts`, `tests/server/protocol.test.ts`, `tests/server/roo
 
 A **Skip to night** button beside Pause and Fast forward, shown only by day in night games, labelled with the vote count in co-op ("Skip to night 1/2"), lit when you've voted. The Players panel marks a skip vote.
 
-- [ ] Shown only by day in night games (a pure "should it show" helper, tested); the vote label and lit state as Pause's
+- [x] Shown only by day in night games (a pure "should it show" helper, tested); the vote label and lit state as Pause's
 
 Files: `src/ui/panel.ts`, `src/ui/players.ts`, `src/ui/votes.ts`, `tests/ui/votes.test.ts` (new, or the existing HUD tests). Size: S. Depends on: 3.
 
+Built: also `src/styles.css` (a hidden HUD button). The Players panel marks a skip vote with ☾. `tests/ui/votes.test.ts` already existed: the new tests are added to it.
+
 ## Checkpoint B: after Task 5
 
-- [ ] Standard verification passes
+- [x] Standard verification passes
 - [ ] By hand: Skip to night solo by day (gone at night); a co-op vote in two tabs
 
 ## Task 6: Docs
