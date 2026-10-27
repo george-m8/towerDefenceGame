@@ -19,6 +19,12 @@ describe("readJoinIntent", () => {
     });
     expect(readJoinIntent("?solo&items=../secret")).toEqual({ mode: "offline" });
     expect(readJoinIntent("?solo&night")).toEqual({ mode: "offline", enemiesCome: "night" });
+    expect(readJoinIntent("?solo&level=01-starter&size=XL")).toEqual({
+      mode: "offline",
+      level: "01-starter",
+    });
+    expect(readJoinIntent("?solo&level=../secret")).toEqual({ mode: "offline" });
+    expect(readJoinIntent("?levels")).toEqual({ mode: "menu", levels: true });
     expect(readJoinIntent("?create&name=Ann&size=S")).toEqual({
       mode: "create",
       name: "Ann",

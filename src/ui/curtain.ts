@@ -1,21 +1,17 @@
-// The fog curtain between the start screens and a game: the fog closes in over the game playing
-// behind the menus until it covers the screen, the chosen game is swapped in under it, and the
-// fog opens back out to wherever the game's own fog of war is (or all the way, without fog).
-// Pure: main.ts runs it each frame, and the renderer draws the fog through curtainTier.
-import { UNEXPLORED } from "../sim/fog";
-import { tilePixels, type Camera } from "./camera";
-
-/** A circle the fog is held back to, in the view's tiles: full fog outside it. */
-export interface Curtain {
-  x: number;
-  y: number;
-  radius: number;
-}
+// The fog curtain between the start screens and a game: a sheet of fog over the whole map window
+// (the HUD and the map's controls too) closes in over the game playing behind the menus until it
+// covers the screen, the chosen game is swapped in under it, and it opens back out, leaving the
+// game as it is underneath, its own fog of war and all. It's the game's block fog (render/fog.ts)
+// on a grid of tiles fixed to the window, held back from a circle in the middle; main.ts moves
+// it on each frame and a curtain painter draws it.
+import { IN_SIGHT, UNEXPLORED } from "../sim/fog";
+import { fogImage } from "../render/fog";
+import { TILE_SIZE } from "../render/palette";
 
 /** How long the fog takes to close in, and to open back out (ms). */
 export const CLOSE_MS = 900;
 export const OPEN_MS = 1400;
-/** Past the screen's corners by this many tiles, so the fog's soft edge starts off screen. */
+/** Past the window's corners by this many tiles, so the fog's stepped edge starts off screen. */
 const EDGE_TILES = 3;
 
 export type CurtainPhase =
@@ -24,54 +20,84 @@ export type CurtainPhase =
   | { phase: "covered" }
   | { phase: "opening"; started: number };
 
-/** The radius that clears the whole view: from its centre to a corner, and a bit. */
-export function openRadius(cam: Camera): number {
-  const tile = tilePixels(cam);
-  return Math.hypot(cam.viewWidth / tile, cam.viewHeight / tile) / 2 + EDGE_TILES;
+/** The radius (px) that clears the whole window, with `cell` px tiles: past its corners. */
+export function openRadius(width: number, height: number, cell: number): number {
+  return Math.hypot(width, height) / 2 + EDGE_TILES * cell;
 }
 
 /** Slow at both ends. */
 const ease = (t: number) => t * t * (3 - 2 * t);
 
 /**
- * The curtain at `now`, centred on the view: shrinking while closing, nothing showing while
- * covered, growing while opening. `done` once it's fully closed or open.
+ * The curtain's clear circle at `now` in a window this size (px), with `cell` px tiles:
+ * shrinking while closing, nothing while covered, growing while opening. `done` once it's fully
+ * closed or open.
  */
 export function curtainAt(
   phase: CurtainPhase,
   now: number,
-  cam: Camera,
-): { curtain: Curtain; done: boolean } {
-  const tile = tilePixels(cam);
-  const x = cam.x + cam.viewWidth / tile / 2;
-  const y = cam.y + cam.viewHeight / tile / 2;
-  const full = openRadius(cam);
-  if (phase.phase === "covered") return { curtain: { x, y, radius: 0 }, done: false };
+  width: number,
+  height: number,
+  cell: number,
+): { radius: number; done: boolean } {
+  if (phase.phase === "covered") return { radius: 0, done: false };
   const length = phase.phase === "closing" ? CLOSE_MS : OPEN_MS;
   const t = Math.min(1, Math.max(0, (now - phase.started) / length));
   const open = phase.phase === "closing" ? 1 - ease(t) : ease(t);
-  return { curtain: { x, y, radius: full * open }, done: t >= 1 };
+  return { radius: openRadius(width, height, cell) * open, done: t >= 1 };
 }
 
 /**
- * The game's sight with the curtain drawn over it: unexplored outside the circle (measured to
- * each tile's centre), as the game sees it inside.
+ * The curtain's tiles, `cols` by `rows` of `cell` px from the window's top-left: clear where a
+ * tile's centre is inside the circle (round the window's middle), unexplored fog elsewhere.
  */
-export function curtainTier(
-  tier: Uint8Array,
+export function curtainTiles(
+  cols: number,
+  rows: number,
+  cell: number,
   width: number,
   height: number,
-  curtain: Curtain,
+  radius: number,
 ): Uint8Array {
-  const out = new Uint8Array(tier.length);
-  const r2 = curtain.radius * curtain.radius;
-  for (let y = 0; y < height; y++) {
-    const dy = y + 0.5 - curtain.y;
-    for (let x = 0; x < width; x++) {
-      const dx = x + 0.5 - curtain.x;
-      const i = y * width + x;
-      out[i] = dx * dx + dy * dy <= r2 ? tier[i] : UNEXPLORED;
+  const tiles = new Uint8Array(cols * rows);
+  const r2 = radius * radius;
+  for (let y = 0; y < rows; y++) {
+    const dy = (y + 0.5) * cell - height / 2;
+    for (let x = 0; x < cols; x++) {
+      const dx = (x + 0.5) * cell - width / 2;
+      tiles[y * cols + x] = dx * dx + dy * dy <= r2 ? IN_SIGHT : UNEXPLORED;
     }
   }
-  return out;
+  return tiles;
+}
+
+/**
+ * Draws the curtain on `canvas` (stretched over the window): the game's block fog, tile by tile,
+ * redrawn only when the circle takes in or gives up a tile (or the window or tiles change size).
+ */
+export function createCurtainPainter(canvas: HTMLCanvasElement) {
+  let drawn = "";
+  return {
+    draw(radius: number, cell: number) {
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+      // A row more below: fog is raised, so the bottom row's blocks stand up into the window.
+      const cols = Math.ceil(width / cell);
+      const rows = Math.ceil(height / cell) + 1;
+      const tiles = curtainTiles(cols, rows, cell, width, height, radius);
+      const key = `${width}x${height}:${cell}:${tiles.join("")}`;
+      if (key === drawn) return;
+      drawn = key;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+      const ctx = canvas.getContext("2d")!;
+      const scale = cell / TILE_SIZE;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, width, height);
+      const { image, lift } = fogImage(tiles, cols, rows);
+      ctx.imageSmoothingEnabled = false; // hard tile edges, as on the map
+      ctx.drawImage(image, 0, -lift * scale, cols * cell, image.height * scale);
+    },
+  };
 }

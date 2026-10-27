@@ -24,13 +24,15 @@ import { createOnlinePanel } from "./ui/players";
 import { createWaitingRoom } from "./ui/waitingRoom";
 import {
   rememberedName,
+  saveLevelStars,
   showStartScreen,
   type ItemsChoice,
+  type LevelChoice,
   type MapChoice,
 } from "./ui/startScreen";
 import { showIntro } from "./ui/intro";
 import { createBackdrop, type Backdrop } from "./ui/backdrop";
-import { curtainAt, type CurtainPhase } from "./ui/curtain";
+import { createCurtainPainter, curtainAt, type CurtainPhase } from "./ui/curtain";
 import { createWebAudioEngine, unlockOnFirstGesture } from "./audio/engine";
 import { loadAudioSettings, saveAudioSettings } from "./audio/settings";
 import { createJournalView } from "./ui/journalView";
@@ -54,12 +56,14 @@ import { liveVoiceCount } from "./audio/synth";
 import { showNotice } from "./ui/notice";
 import bundledMaps from "virtual:maps";
 import bundledItems from "virtual:items";
+import bundledLevels from "virtual:levels";
 import { createEditor, keepWalls, type Editor } from "./editor/editor";
 import { createFileActions } from "./editor/files";
 import { createItemsEditor } from "./editor/itemsEditor";
 import { newItems, type ItemsFile } from "./sim/itemsFile";
 import { newMap } from "./editor/model";
 import { validateMap, type MapFile } from "./sim/mapFile";
+import { mapIcon, type LevelWin } from "./sim/levelFile";
 import { createToolbar } from "./editor/toolbar";
 import type { Command, DebugOption, EnemiesCome, GameState, PlayerId } from "./sim/types";
 
@@ -70,6 +74,8 @@ const storage = tabStorage();
 /** Read once at load: the address bar loses the flag when a room code replaces it. */
 const fog = fogFromUrl(location.search);
 let session: Session | null = null;
+/** The campaign level being played, if one is. */
+let playingLevel: { name: string; win: LevelWin } | null = null;
 /** The online session, for its waiting room (null offline). */
 let network: NetworkSession | null = null;
 /** Online-only parts of the page, updated every frame. */
@@ -81,6 +87,8 @@ let editorActive = false;
 let backdrop: Backdrop | null = null;
 /** The fog curtain while a chosen game is swapped in for the backdrop (see ui/curtain.ts). */
 let curtain: CurtainPhase | null = null;
+const curtainCanvas = element<HTMLCanvasElement>("#curtain");
+const curtainPainter = createCurtainPainter(curtainCanvas);
 
 /** Types of commands sent, oldest first, waiting for their results (to pick a sound). */
 const awaitingResults: string[] = [];
@@ -123,7 +131,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-zoom]")
   button.addEventListener("click", () => {
     button.blur();
     const action = button.dataset.zoom;
-    // "fit" zooms all the way out; the camera clamps it to the whole map.
+    // "fit" zooms all the way out; the camera clamps it to the map's width.
     zoomBy(ui.camera, action === "in" ? ZOOM_STEP : action === "out" ? 1 / ZOOM_STEP : 0);
   });
 }
@@ -230,10 +238,19 @@ createMapButtons(element("#map-buttons"), {
   settings: element("#settings"),
   journal: () => journalView.toggle(),
 });
-const gameOver = createGameOverDialog(element("#game-over"), () => {
-  session?.restart();
-  ui.tool = null;
-});
+const gameOver = createGameOverDialog(
+  element("#game-over"),
+  () => {
+    session?.restart();
+    ui.tool = null;
+  },
+  {
+    onWon: (stars) => {
+      if (playingLevel) saveLevelStars(playingLevel.name, stars);
+    },
+    onLevels: () => location.assign("?levels"),
+  },
+);
 bindInput(
   canvas,
   ui,
@@ -316,7 +333,19 @@ function followMusic() {
 /** Starts playing: offline, or in a room on the game server. */
 function startSession(intent: Exclude<PageIntent, { mode: "menu" }>) {
   stopBackdrop();
-  if (intent.mode === "offline") {
+  const level = intent.mode === "offline" && intent.level ? bundledLevels[intent.level] : undefined;
+  if (level && intent.mode === "offline") {
+    // A campaign level brings its own map, limits, fog, day and night, and last wave.
+    const { map, items, level: setup } = level;
+    playingLevel = { name: intent.level!, win: setup.win };
+    session = createLocalSession(map.seed, () => map.seed, {
+      fog: fog && setup.fog,
+      map,
+      items,
+      enemiesCome: setup.dayNight.enemiesCome,
+      lastWave: setup.win.waves,
+    });
+  } else if (intent.mode === "offline") {
     const map = intent.map ? bundledMaps[intent.map] : undefined;
     const items = intent.items ? bundledItems[intent.items] : undefined;
     session = soloSession(map, items, intent.size, fog && intent.fog !== false, intent.enemiesCome);
@@ -362,6 +391,19 @@ function soloSession(
 /** The items files in items/, for the mode screen. */
 function itemsChoices(): ItemsChoice[] {
   return Object.entries(bundledItems).map(([name, items]) => ({ name, title: items.title }));
+}
+
+/** The campaign's levels whose maps have nothing wrong with them, in order. */
+function campaignLevels(): LevelChoice[] {
+  return Object.entries(bundledLevels)
+    .filter(
+      ([, { level, map }]) => level.mode === "endless" && validateMap(map).errors.length === 0,
+    )
+    .map(([name, { level, map }]) => ({
+      name,
+      title: level.title,
+      icon: level.icon ?? mapIcon(map),
+    }));
 }
 
 /** The hand-made Endless maps in maps/ with nothing wrong with them, for the mode screen. */
@@ -502,6 +544,8 @@ if (new URLSearchParams(location.search).has("editor")) {
       room: intent.room,
       maps: playableMaps(),
       items: itemsChoices(),
+      levels: campaignLevels(),
+      openLevels: intent.levels,
       // The fog closes over the backdrop, and the game starts under it.
       onChoose: (chosen) =>
         (curtain = {
@@ -592,7 +636,7 @@ function frame(now: number) {
       hud.update(state);
       pointerLabel.update(view, viewUi);
       if (!infoBox.hidden) infoBox.textContent = hoverText(state, ui) || "Hover a tile for details";
-      gameOver.update(state, session.playerId);
+      gameOver.update(state, session.playerId, playingLevel?.win ?? null);
       cues.update(state.cues);
       updateJournal(state, session.playerId, now);
     }
@@ -604,13 +648,17 @@ requestAnimationFrame(frame);
 
 /**
  * Moves the fog curtain on, just before a frame is drawn: closing over the backdrop, then (once
- * the game it covers has its first frame) opening out on it, centred on the camera.
+ * the game it covers has its first frame) opening out on it. It's a sheet over the whole map
+ * window, HUD and all; while it's covered (waiting for a room) it stays as last drawn.
  */
 function updateCurtain(now: number) {
   if (!curtain) return;
   if (curtain.phase === "covered") curtain = { phase: "opening", started: now };
-  const { curtain: drawn, done } = curtainAt(curtain, now, ui.camera);
-  ui.curtain = drawn;
+  curtainCanvas.hidden = false;
+  const { clientWidth: width, clientHeight: height } = curtainCanvas;
+  const cell = tilePixels(ui.camera);
+  const { radius, done } = curtainAt(curtain, now, width, height, cell);
+  curtainPainter.draw(radius, cell);
   if (!done) return;
   if (curtain.phase === "closing") {
     const { then } = curtain;
@@ -618,7 +666,7 @@ function updateCurtain(now: number) {
     then();
   } else {
     curtain = null;
-    ui.curtain = null;
+    curtainCanvas.hidden = true;
   }
 }
 

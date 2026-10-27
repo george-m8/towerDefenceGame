@@ -76,7 +76,6 @@ import {
   KEEP_GLYPH,
 } from "./palette";
 import { fogImage } from "./fog";
-import { curtainTier, type Curtain } from "../ui/curtain";
 import { createHpBarTracker } from "./hpBars";
 import { burstPixels, burstWaiting } from "./burst";
 import { textureSpecks, textureVariant, type TextureStyle } from "./textures";
@@ -214,10 +213,9 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     const row = y - y0;
     return col >= 0 && row >= 0 && col < width && row < height ? data[row * width + col] : 0;
   }
-  /** The fog image and what it was made from: the sight, and the curtain's radius if any. */
+  /** The fog image and the sight it was made from. */
   let fog: {
     tier: Uint8Array;
-    radius: number | null;
     image: HTMLCanvasElement;
     lift: number;
   } | null = null;
@@ -511,18 +509,12 @@ export function createRenderer(canvas: HTMLCanvasElement) {
    * Fog of war, over everything drawn so far: a white mist raised like the blocks, thin and low
    * over seen land, solid and high over unexplored land, stepping down in see-through bands
    * along its edge. Enemies and effects out of sight are left out before this, not covered by
-   * it. The fog image is only rebuilt when sight changes. While a game is being swapped in, the
-   * curtain's fog goes over it too (all of it, with fog of war off).
+   * it. The fog image is only rebuilt when sight changes.
    */
-  function drawFog(state: GameState, curtain: Curtain | null) {
-    if (!state.fog && !curtain) return;
+  function drawFog(state: GameState) {
+    if (!state.fog) return;
     const tier = getSight(state, viewer);
-    // Rebuilt for every whole tile the curtain moves, not every frame.
-    const radius = curtain && Math.round(curtain.radius);
-    if (fog?.tier !== tier || fog.radius !== radius) {
-      const drawn = curtain ? curtainTier(tier, state.width, state.height, curtain) : tier;
-      fog = { tier, radius, ...fogImage(drawn, state.width, state.height) };
-    }
+    if (fog?.tier !== tier) fog = { tier, ...fogImage(tier, state.width, state.height) };
     ctx!.imageSmoothingEnabled = false; // hard tile edges
     ctx!.drawImage(fog.image, 0, -fog.lift, state.width * TILE_SIZE, fog.image.height);
     ctx!.imageSmoothingEnabled = true;
@@ -1013,7 +1005,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       drawKeepHp(state);
       if (ui.showFlow) drawFlow(state);
       drawEffects(state);
-      drawFog(state, ui.curtain);
+      drawFog(state);
       if (hour !== undefined) drawNight(state, darknessAt(hour));
       drawPending(pending);
       drawRange(state, ui);

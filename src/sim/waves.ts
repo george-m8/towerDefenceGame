@@ -78,6 +78,11 @@ function kindsThatFit(wave: number, threatLeft: number): EnemyKindId[] {
   });
 }
 
+/** Whether a level's last wave has started (or there's no next one to come). */
+export function isLastWave(state: GameState): boolean {
+  return state.lastWave !== null && state.wave.number >= state.lastWave;
+}
+
 export function createWaveState(): WaveState {
   return { number: 0, threatLeft: 0, spawnTimer: 0, countdown: COUNTDOWN_TICKS };
 }
@@ -85,6 +90,8 @@ export function createWaveState(): WaveState {
 export function updateWaves(state: GameState): void {
   const { wave } = state;
   if (wave.threatLeft === 0) {
+    // A level's last wave has come: no more after it.
+    if (isLastWave(state)) return;
     // Outside spawning time (enemies at night, by day) the countdown waits, full, for the evening.
     // A wave already spawning carries on, so one coming at sunrise finishes.
     if (!isSpawningTime(state)) {
@@ -119,6 +126,7 @@ export function updateWaves(state: GameState): void {
 export function sendWaveEarly(state: GameState, player: PlayerId): CommandResult {
   if (state.gameOver) return { ok: false, reason: "Game over" };
   if (state.wave.threatLeft > 0) return { ok: false, reason: "Wave still spawning" };
+  if (isLastWave(state)) return { ok: false, reason: "That was the last wave" };
   if (!isSpawningTime(state)) return { ok: false, reason: "Enemies come at night" };
   const skipped = Math.floor(state.wave.countdown / TICK_RATE);
   addGold(state, player, skipped * WAVES.earlySendGoldPerSecond);

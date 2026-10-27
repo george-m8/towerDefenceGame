@@ -1,0 +1,26 @@
+{
+  "format": "keep-defence-level",
+  "version": 1,
+  "title": "Example L",
+  "icon": [
+    ["land:ground", "land:ground", "land:ground", "land:ground", "land:tree", "land:ground", "land:tree"],
+    ["land:tree", "land:ground", "land:berries", "land:ground", "land:ground", "land:ground", "land:ground"],
+    ["land:river", "land:river", "land:river", "land:tree", "land:river", "land:river", "land:river"],
+    ["enemy:goblin", "land:tree", "land:rock", "keep", "land:ground", "land:ground", "land:tree"],
+    ["land:ground", "land:berries", "land:ground", "land:tree", "land:ground", "land:ground", "land:ground"],
+    ["land:ground", "land:ground", "land:ground", "land:tree", "land:tree", "land:rock", "land:ground"],
+    ["land:sea", "land:sea", "land:sea", "land:sea", "land:sea", "land:sea", "land:sea"]
+  ],
+  "mode": "endless",
+  "win": {
+    "waves": 5,
+    "stars": {
+      "2": 50,
+      "3": 100
+    }
+  },
+  "fog": true,
+  "dayNight": {
+    "enemiesCome": "always"
+  }
+}
