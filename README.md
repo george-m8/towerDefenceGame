@@ -16,7 +16,7 @@ npm install
 npm run dev
 ```
 
-Then open http://localhost:5173, click (or press any key) past the title screen, enter a name and press **Play solo**. To play with friends, see [Playing together](#playing-together).
+Then open http://localhost:5173, click (or press any key) past the title screen, pick who's playing (or add a **New player**, with a name and a picture: a 3x3 grid of map tiles you choose, or Shuffle for a random one. Players are saved on this device, the last one first; hovering one builds their picture up, ✎ changes one and ✕ removes one), then press **Solo**. To play with friends, see [Playing together](#playing-together).
 
 ## How to play
 
@@ -381,9 +381,9 @@ npm run server            # the game server
 npm run dev -- --host     # the game page, reachable from other computers
 ```
 
-**2. The host creates a room:** open `http://localhost:5173`, enter a name and press **Create room**. The waiting room shows the room code (e.g. `RUVM`) and a **Copy invite link** button.
+**2. The host creates a room:** open `http://localhost:5173`, pick a player, press **Co-op**, then **Create room**. The waiting room shows the room code (e.g. `RUVM`) and a **Copy invite link** button.
 
-**3. Friends join** from their browser (they don't need to install anything): either open the invite link, which fills in the code, or open `http://<host's address>:5173`, enter the code and press **Join**.
+**3. Friends join** from their browser (they don't need to install anything): either open the invite link, which fills in the code, or open `http://<host's address>:5173`, pick a player, press **Co-op**, enter the code at the top and press **Join**. (With an invite link, picking a player goes straight to Co-op with the code filled in.)
 
 `npm run server` prints the host's address (e.g. `192.168.1.20`). Friends must be on the same network. If they can't connect, the host's firewall is probably blocking it: on macOS, allow `node` to accept incoming connections (System Settings > Network > Firewall). A second tab on the host also works as a second player, for trying it alone.
 
@@ -398,7 +398,7 @@ npm run dev -- --host     # the game page, reachable from other computers
 - If your connection drops, the game reconnects you; reloading the page rejoins as the same player.
 - When the keep falls, anyone can press **Restart** for a new game in the same room.
 
-To play on your own, press **Play solo** on the start screen (or open `?solo`). Links of the form `?create&name=Ann` and `?room=CODE&name=Bo` skip the start screen.
+To play on your own, press **Solo** on the start screen (or open `?solo`). Links of the form `?create&name=Ann` and `?room=CODE&name=Bo` skip the start screen.
 
 ## Running the multiplayer server
 

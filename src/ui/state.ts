@@ -1,5 +1,6 @@
 import type { Facing, PlayerId, Point, StructureKind } from "../sim/types";
 import { createCamera, type Camera } from "./camera";
+import type { Rotation } from "../render/rotation";
 import type { StatId } from "./stats";
 import { DEFAULT_SUN, type Sun } from "../render/sun";
 
@@ -88,8 +89,10 @@ export interface UiState {
   facing: Facing;
   /** The player this screen acts as. Always 1 offline. */
   playerId: PlayerId;
-  /** The view onto the map: scroll position and zoom. */
+  /** The view onto the map: scroll position and zoom, in the turned view's tiles. */
   camera: Camera;
+  /** Quarter turns the view is turned: 0, or 2 once flipped (Q). The camera works in the view. */
+  rotation: Rotation;
   /** Which stats the HUD shows, a box each (toggled in its menu). Never empty. */
   hudStats: StatId[];
   /** The build picker tab showing. */
@@ -114,6 +117,7 @@ export function createUiState(): UiState {
     facing: "N",
     playerId: 1,
     camera: createCamera(),
+    rotation: 0,
     hudStats: ["gold"],
     tab: "defence",
     openPicker: false,

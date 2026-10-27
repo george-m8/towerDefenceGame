@@ -1242,3 +1242,194 @@ a.hud-action,
 a.button {
   text-decoration: none;
 }
+
+/* The player select screen: a card per saved player (their icon and name), and New player. */
+/* The player select screen is drawn half as big again as the other start windows. */
+.player-select {
+  font-size: 30px;
+}
+.player-select .dialog-title {
+  font-size: 36px;
+}
+.player-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 27px 36px;
+  justify-content: center;
+  max-width: 780px;
+  padding: 6px 0;
+}
+.player-card {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+}
+/* A player is their picture and name, nothing round them; hovering builds the picture up. */
+.player-pick {
+  display: grid;
+  justify-items: center;
+  gap: 9px;
+  padding: 0;
+  font: inherit;
+  color: var(--ink);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.player-pick:focus-visible {
+  outline: none;
+}
+.player-pick:hover .player-name,
+.player-pick:focus-visible .player-name {
+  text-decoration: underline;
+}
+.player-name {
+  max-width: 165px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.picture-canvas {
+  display: block;
+}
+.player-tools {
+  display: flex;
+  gap: 9px;
+}
+.player-tools button {
+  padding: 0 6px;
+  font: inherit;
+  font-size: 21px;
+  color: var(--ink);
+  background: none;
+  border: none;
+  opacity: 0.4;
+  cursor: pointer;
+}
+.player-tools button:hover,
+.player-tools button:focus-visible {
+  opacity: 1;
+}
+.picture-new {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: var(--size);
+  height: var(--size);
+  margin-top: var(--above);
+  font-size: 48px;
+  border: 3px dashed var(--ink);
+  opacity: 0.6;
+}
+.player-pick:hover .picture-new,
+.player-pick:focus-visible .picture-new {
+  opacity: 1;
+}
+/* A player's picture: a 3x3 grid of map tiles in the map's font (ui/picture.ts). */
+.picture {
+  display: inline-grid;
+  grid-template-columns: repeat(3, var(--cell));
+  grid-auto-rows: var(--cell);
+  border: 1px solid var(--ink);
+  --cell: 16px;
+}
+.picture-large {
+  --cell: 40px;
+  gap: 2px;
+  padding: 2px;
+  background: var(--ink);
+}
+.picture-tile {
+  display: grid;
+  place-items: center;
+  width: var(--cell, 24px);
+  height: var(--cell, 24px);
+  overflow: hidden;
+  font-family: Unifont, "Apple Symbols", "Segoe UI Symbol", monospace;
+  font-size: calc(var(--cell, 24px) * 0.8);
+  line-height: 1;
+}
+.player-editor {
+  max-width: 460px;
+}
+.picture-editor {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.picture-help {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  font-size: 16px;
+}
+.picture-cell,
+.picture-pick {
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.picture-cell .picture-tile {
+  --cell: 40px;
+}
+.picture-cell.selected {
+  outline: 3px solid #ffd84a;
+  outline-offset: -3px;
+  position: relative;
+  z-index: 1;
+}
+.picture-picker {
+  max-height: 220px;
+  overflow-y: auto;
+}
+.picture-group {
+  margin: 6px 0 2px;
+  font-size: 16px;
+}
+.picture-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+.picture-pick .picture-tile {
+  --cell: 24px;
+}
+.picture-pick:hover,
+.picture-pick:focus-visible {
+  outline: 2px solid var(--ink);
+}
+/* Who's playing, over Solo / Co-op: one player card, as on the player select screen. */
+.playing-as {
+  margin: 0 auto;
+}
+.start-note {
+  min-height: 1em;
+  margin: 0;
+  font-size: 16px;
+}
+
+/* Solo / Co-op: two big choices side by side. */
+.play-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.play-choice {
+  padding: 14px 0;
+  font-size: 28px;
+}
+/* "or" between joining a room and creating one, with a rule either side. */
+.or-divider {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 0;
+  opacity: 0.7;
+}
+.or-divider::before,
+.or-divider::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--ink);
+}

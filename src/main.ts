@@ -1,5 +1,6 @@
 import { GRID_HEIGHT, GRID_WIDTH, type MapSize } from "./sim/config";
 import { createRenderer } from "./render/canvas";
+import { toView, turnFacing, turnView, viewOf } from "./render/rotation";
 import { GLYPH_FONT, TERRAIN_STYLES } from "./render/palette";
 import { centerOn, panBy, setViewport, tilePixels, zoomBy } from "./ui/camera";
 import { ZOOM_STEP } from "./ui/input";
@@ -108,6 +109,10 @@ function fitCanvas(mapWidth: number, mapHeight: number) {
 }
 fitCanvas(GRID_WIDTH, GRID_HEIGHT);
 
+element("[data-turn]").addEventListener("click", (e) => {
+  (e.currentTarget as HTMLElement).blur();
+  if (!editorActive) turnView(ui, session?.state ?? null, 2);
+});
 for (const button of document.querySelectorAll<HTMLButtonElement>("[data-zoom]")) {
   button.addEventListener("click", () => {
     button.blur();
@@ -193,7 +198,7 @@ createMapButtons(element("#map-buttons"), {
       },
     },
     {
-      // Clicks take 35% off whatever's on the tile (never destroying it).
+      // Clicks take 35% off whatever's on the tile (destroying it at 0).
       label: "Damage tool",
       isOn: () => ui.debugDamage,
       toggle: () => {
@@ -442,6 +447,7 @@ function backToEditor() {
   session = null;
   editorActive = true;
   ui.tool = null;
+  ui.rotation = 0; // the editor's view doesn't turn
   document.body.classList.replace("testing", "editing");
 }
 
@@ -506,7 +512,10 @@ function frame(now: number) {
     const state = session.state;
     for (const view of onlineViews) view.update(state);
     if (state) {
-      fitCanvas(state.width, state.height);
+      // Drawn through the view's turn (Q): the camera, minimap and renderer see a turned copy.
+      const view = viewOf(state, ui.rotation);
+      const viewUi = turnedUi(state);
+      fitCanvas(view.width, view.height);
       // A new map (first game, restart, or joining a room): start looking at the keep.
       // (PvP keeps are handed out at the start, so that counts as a new map too.)
       const mine = state.keeps.findIndex((k) => k.owner === ui.playerId);
@@ -514,16 +523,21 @@ function frame(now: number) {
       if (mapKey !== centredFor) {
         ui.camera.zoom = 1;
         // Your own keep in PvP (once they're handed out), else the shared one.
-        const keep = state.keeps[mine] ?? state.keeps[0];
+        const keep = view.keeps[mine] ?? view.keeps[0];
         centerOn(ui.camera, keep.x + keep.size / 2, keep.y + keep.size / 2);
         centredFor = mapKey;
       }
       panWithKeys(seconds);
-      renderer.render(state, ui, session.pending);
-      minimap.update(state);
+      const pending = session.pending.map((p) => ({
+        ...p,
+        ...toView(p, ui.rotation, state.width, state.height),
+        ...(p.facing ? { facing: turnFacing(p.facing, ui.rotation) } : {}),
+      }));
+      renderer.render(view, viewUi, pending);
+      minimap.update(view);
       panel.update(state);
       hud.update(state);
-      pointerLabel.update(state, ui);
+      pointerLabel.update(view, viewUi);
       if (!infoBox.hidden) infoBox.textContent = hoverText(state, ui) || "Hover a tile for details";
       gameOver.update(state, session.playerId);
       cues.update(state.cues);
@@ -534,6 +548,16 @@ function frame(now: number) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+
+/** The UI as the turned view sees it: the hovered tile and the build facing, turned. */
+function turnedUi(state: GameState): typeof ui {
+  if (ui.rotation === 0) return ui;
+  return {
+    ...ui,
+    hover: ui.hover && toView(ui.hover, ui.rotation, state.width, state.height),
+    facing: turnFacing(ui.facing, ui.rotation),
+  };
+}
 
 /** Moves the view while arrow keys (or WASD) are held. */
 function panWithKeys(seconds: number) {
