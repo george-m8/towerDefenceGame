@@ -77,7 +77,7 @@ New players (and testers starting games with only a few things to build) should 
 
 ### Rotating
 
-- When the selected tool can be turned (it has a facing: directional traps, fixed-arc towers, spawner doors, gates), the HUD shows a **Rotate (R)** button beside the tool box with the current facing's arrow. Clicking it turns the facing, the same as pressing R. It also works on touch.
+- When the selected tool can be turned (it has a facing: directional traps, fixed-arc towers, spawner doors), the HUD shows a **Rotate (R)** button beside the tool box with the current facing's arrow. Clicking it turns the facing, the same as pressing R. It also works on touch.
 - The price line in the Info box adds the facing: `Archer here: 25g · facing north (R to rotate)`.
 - The pointer label shows a small, dim `R ⟳` beside the price whenever a turnable tool is selected. It's always there for now, kept quiet so it doesn't get in the way (smaller and fainter than the price).
 
@@ -111,7 +111,7 @@ export type KindRef =
   | { type: "unit"; kind: UnitKindId }
   | { type: "enemy"; kind: EnemyKindId };
 export function describeKind(ref: KindRef): { title: string; description: string; numbers: string[] };
-export function buildHints(state: GameState, kind: StructureKind, viewer: PlayerId): string[];
+export function buildHints(kind: StructureKind): string[]; // the same for every player and tile
 /** Short words from a kind's numbers and flags: "Splash damage", "Can't hit enemies closer than 3 tiles". */
 export function traits(kind: StructureKind): string[];
 export function canRotate(kind: StructureKind): boolean;

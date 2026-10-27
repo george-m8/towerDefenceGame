@@ -80,6 +80,8 @@ export interface IncomeStats {
 
 export interface StructureStats {
   name: string;
+  /** One line for hover info and the build picker, with no numbers (they come from the stats). */
+  description: string;
   /** Base: what the tile is (walls, spikes, houses). Mount: a tower standing on ground or a wall. */
   layer: "base" | "mount";
   /** A tower can be mounted on top (walls only). */
@@ -144,6 +146,7 @@ export const SIGHT_CLOSE_RADIUS = 1.5;
 export const STRUCTURES = {
   wall: {
     name: "Wall",
+    description: "Blocks enemies. Close a ring of walls for cheaper building inside.",
     layer: "base",
     acceptsMount: true,
     cost: 5,
@@ -153,6 +156,8 @@ export const STRUCTURES = {
   },
   archer: {
     name: "Archer",
+    description:
+      "Fires arrows through a slit, so it only covers a narrow arc. Turn it with R before placing.",
     layer: "mount",
     cost: 25,
     maxHp: 40,
@@ -172,6 +177,7 @@ export const STRUCTURES = {
   },
   cannon: {
     name: "Cannon",
+    description: "Turns to fire all round. Its shot splashes the enemies near its target.",
     layer: "mount",
     cost: 50,
     maxHp: 60,
@@ -191,6 +197,7 @@ export const STRUCTURES = {
   },
   catapult: {
     name: "Catapult",
+    description: "Lobs heavy stones a long way. Slow to turn, and it can't hit enemies close by.",
     layer: "mount",
     cost: 80,
     maxHp: 40,
@@ -210,6 +217,7 @@ export const STRUCTURES = {
   },
   floorSpikes: {
     name: "Floor spikes",
+    description: "A trap in the floor that stabs whatever walks over it.",
     layer: "base",
     cost: 15,
     maxHp: 0, // walkable and never attacked
@@ -219,6 +227,7 @@ export const STRUCTURES = {
   },
   wallSpikes: {
     name: "Wall spikes",
+    description: "A wall with spikes that stab the tile it faces.",
     layer: "base",
     cost: 20,
     maxHp: 50,
@@ -229,6 +238,7 @@ export const STRUCTURES = {
   },
   house: {
     name: "House",
+    description: "Makes gold over time. Enemies may break it if it's in their way.",
     layer: "base",
     cost: 40,
     maxHp: 30,
@@ -238,6 +248,7 @@ export const STRUCTURES = {
   },
   shop: {
     name: "Shop",
+    description: "Makes more gold than a house, for more gold up front.",
     layer: "base",
     cost: 70,
     maxHp: 30,
@@ -248,6 +259,7 @@ export const STRUCTURES = {
   // Farms: a farmhouse earns for each farmland tile joined to it (see sim/farms.ts).
   farmhouse: {
     name: "Farmhouse",
+    description: "Makes gold for each field of farmland joined to it.",
     layer: "base",
     cost: 50,
     maxHp: 30,
@@ -257,6 +269,7 @@ export const STRUCTURES = {
   },
   farmland: {
     name: "Farmland",
+    description: "Fields for a farmhouse. Enemies walk over it, and heavy ones trample it.",
     layer: "base",
     cost: 3,
     maxHp: 10,
@@ -266,6 +279,7 @@ export const STRUCTURES = {
   // Gatherer buildings: free workers up to `quota`, one every `intervalSeconds` (see UNIT_KINDS).
   timberYard: {
     name: "Timber yard",
+    description: "Lumberjacks chop nearby trees for gold.",
     layer: "base",
     cost: 60,
     maxHp: 40,
@@ -276,6 +290,7 @@ export const STRUCTURES = {
   },
   mine: {
     name: "Mine",
+    description: "Miners dig nearby rocks for gold. Gold-veined rock pays most.",
     layer: "base",
     cost: 100,
     maxHp: 40,
@@ -286,6 +301,7 @@ export const STRUCTURES = {
   },
   foragerHut: {
     name: "Forager hut",
+    description: "Foragers pick berries from nearby bushes for gold.",
     layer: "base",
     cost: 40,
     maxHp: 30,
@@ -296,6 +312,7 @@ export const STRUCTURES = {
   },
   bridge: {
     name: "Bridge",
+    description: "Lets enemies, units and workers cross a river.",
     layer: "base",
     cost: 10,
     maxHp: 0, // walkable and never attacked
@@ -305,6 +322,7 @@ export const STRUCTURES = {
   },
   watchtower: {
     name: "Watchtower",
+    description: "Sees far all round, so you can see enemies coming. It never fires.",
     layer: "mount",
     cost: 20,
     maxHp: 30,
@@ -313,6 +331,7 @@ export const STRUCTURES = {
   },
   gate: {
     name: "Gate",
+    description: "Enemies walk through it, but it still closes a ring of walls.",
     layer: "base",
     cost: 15,
     maxHp: 50, // enemies walk through rather than attack it; rival towers can still hit it
@@ -324,6 +343,7 @@ export const STRUCTURES = {
   // in front of the building (its facing, set with R). See sim/guards.ts.
   guardhouse: {
     name: "Guardhouse",
+    description: "Sends out swordsmen who hold the tiles in front of it.",
     layer: "base",
     cost: 60,
     maxHp: 60,
@@ -334,6 +354,7 @@ export const STRUCTURES = {
   },
   archeryPost: {
     name: "Archery post",
+    description: "Sends out archers who guard the tiles in front of it and shoot from range.",
     layer: "base",
     cost: 70,
     maxHp: 50,
@@ -344,6 +365,7 @@ export const STRUCTURES = {
   },
   paladinHall: {
     name: "Paladin hall",
+    description: "Sends out paladins: heavily armoured guards who block the way.",
     layer: "base",
     cost: 90,
     maxHp: 80,
@@ -355,6 +377,7 @@ export const STRUCTURES = {
   // Offensive buildings (Offence tab): field units that go out exploring and attacking.
   scoutCamp: {
     name: "Scout camp",
+    description: "Sends out scouts who explore the fog and never fight.",
     layer: "base",
     cost: 40,
     maxHp: 40,
@@ -365,6 +388,7 @@ export const STRUCTURES = {
   },
   barracks: {
     name: "Barracks",
+    description: "Sends out soldiers who hunt enemies they can see, else patrol the fog's edge.",
     layer: "base",
     cost: 80,
     maxHp: 60,
@@ -375,6 +399,7 @@ export const STRUCTURES = {
   },
   archeryRange: {
     name: "Archery range",
+    description: "Sends out rangers who hunt enemies from range.",
     layer: "base",
     cost: 90,
     maxHp: 50,
@@ -385,6 +410,7 @@ export const STRUCTURES = {
   },
   ruin: {
     name: "Ruin",
+    description: "An old wall, already damaged. It blocks enemies and can carry a tower.",
     layer: "base",
     acceptsMount: true,
     cost: 0,
@@ -413,6 +439,8 @@ export type UnitBehaviourId = "hold" | "gather" | "guard" | "scout" | "attack";
 export interface UnitKind {
   glyph: string;
   name: string;
+  /** One line for hover info, with no numbers (they come from the stats). */
+  description: string;
   hp: number;
   /** Taken off every hit it takes, never below 1 damage. */
   armour: number;
@@ -443,6 +471,7 @@ export const UNIT_KINDS = {
   militia: {
     glyph: "i",
     name: "Militia",
+    description: "A rough fighter, for testing.",
     torch: true,
     hp: 30,
     armour: 0,
@@ -457,6 +486,7 @@ export const UNIT_KINDS = {
   swordsman: {
     glyph: "/",
     name: "Swordsman",
+    description: "Holds its spot by the guardhouse and fights what comes near.",
     torch: true,
     hp: 60,
     armour: 1,
@@ -471,6 +501,7 @@ export const UNIT_KINDS = {
   archer: {
     glyph: ")",
     name: "Archer",
+    description: "Guards near its post and shoots enemies from range.",
     torch: true,
     hp: 35,
     armour: 0,
@@ -486,6 +517,7 @@ export const UNIT_KINDS = {
   paladin: {
     glyph: "]",
     name: "Paladin",
+    description: "Stays put and blocks the way, hard to bring down.",
     torch: true,
     hp: 120,
     armour: 4,
@@ -501,6 +533,7 @@ export const UNIT_KINDS = {
   scout: {
     glyph: "!",
     name: "Scout",
+    description: "Runs to the edge of the fog to explore it. Never fights.",
     hp: 20,
     armour: 0,
     damage: 0, // never fights
@@ -513,6 +546,7 @@ export const UNIT_KINDS = {
   soldier: {
     glyph: "&",
     name: "Soldier",
+    description: "Hunts enemies it can see, else patrols the edge of the fog.",
     torch: true,
     hp: 70,
     armour: 2,
@@ -526,6 +560,7 @@ export const UNIT_KINDS = {
   ranger: {
     glyph: "}",
     name: "Ranger",
+    description: "Hunts enemies from range, else patrols the edge of the fog.",
     torch: true,
     hp: 40,
     armour: 0,
@@ -543,6 +578,7 @@ export const UNIT_KINDS = {
   lumberjack: {
     glyph: "j",
     name: "Lumberjack",
+    description: "Chops trees for gold.",
     torch: true,
     hp: 15,
     armour: 0,
@@ -558,6 +594,7 @@ export const UNIT_KINDS = {
   miner: {
     glyph: "p",
     name: "Miner",
+    description: "Digs rock for gold.",
     torch: true,
     hp: 18,
     armour: 1,
@@ -573,6 +610,7 @@ export const UNIT_KINDS = {
   forager: {
     glyph: "f",
     name: "Forager",
+    description: "Picks berries for gold.",
     torch: true,
     hp: 12,
     armour: 0,

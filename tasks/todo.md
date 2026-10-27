@@ -8,12 +8,14 @@ Standard verification for every task: `npm run typecheck && npm test && npm run 
 
 Every structure and unit kind gets a one-line `description` in config (required by the type, as enemy kinds already have). `src/ui/describe.ts` (new, no DOM) gives a kind's title, description and number lines, its trait words, and its build hints, for structures, units and enemies.
 
-- [ ] Every structure and unit kind has a non-empty description, and none of them contain digits (numbers come from config)
-- [ ] `describeKind` number lines: an archer's mention damage, interval, range and "fixed"; a cannon's splash and turning; a guardhouse's its unit, quota and interval, with the unit's HP, damage and range; an enemy's damage and speed
-- [ ] `traits`: the catapult gets "Splash damage", its minimum range and "Won't fire where its blast would hit your own walls"; the archer "Fixed: fires through a slit"; floor spikes "Enemies walk over it"; walls "Blocks enemies"; houses "Makes gold over time"
-- [ ] `canRotate` is true for exactly the kinds with a facing (fixed-arc towers, directional traps, spawner doors, gates); `buildHints` gives "R to rotate" for those, the enclosure discount line for every kind the discount applies to, and the placement rule for bridges
+- [x] Every structure and unit kind has a non-empty description, and none of them contain digits (numbers come from config)
+- [x] `describeKind` number lines: an archer's mention damage, interval, range and "fixed"; a cannon's splash and turning; a guardhouse's its unit, quota and interval, with the unit's HP, damage and range; an enemy's damage and speed
+- [x] `traits`: the catapult gets "Splash damage", its minimum range and "Won't fire where its blast would hit your own walls"; the archer "Fixed: fires through a slit"; floor spikes "Enemies walk over it"; walls "Blocks enemies"; houses "Makes gold over time"
+- [x] `canRotate` is true for exactly the kinds with a facing (fixed-arc towers, directional traps, spawner doors); `buildHints` gives "R to rotate" for those, the enclosure discount line for every kind the discount applies to, and the placement rule for bridges
 
 Files: `src/sim/config.ts`, `src/ui/describe.ts`, `tests/ui/describe.test.ts`, `tests/sim/config.test.ts`. Size: M. Depends on: none.
+
+Built: the description test lives in `tests/ui/describe.test.ts` with the rest. `buildHints` takes only the kind: the discount and build-time hints are the same everywhere (the price line says what this tile costs). Gates have no facing, so they don't rotate.
 
 ## Task 2: Hover info on the map
 
