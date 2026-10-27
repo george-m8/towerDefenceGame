@@ -1,6 +1,6 @@
 # Spec: skip-to-night
 
-Status: DRAFT (2026-10-27)
+Status: APPROVED (2026-10-27)
 Module: `skip-to-night`, on the capability map's Day and night section. Builds on `game-clock` and `night-spawns`.
 
 ## Objective
@@ -15,7 +15,7 @@ In a game with enemies at night, you can skip the rest of the day: when you've b
 - The button shows in the HUD beside **Pause** and **Fast forward** (the other votes), only with enemies at night and only by day (outside spawning time). By night it's hidden.
 - **Solo:** pressing it skips straight away.
 - **Co-op:** pressing it toggles your vote (press again to take it back), as Pause does. It happens as soon as every connected player has voted, the same unanimous rule as Pause and Fast forward. The button reads e.g. "Skip to night (1/2)", and the Players panel shows who has voted.
-- **Skipping:** the clock jumps to `NIGHT_SPAWNS.from` (17:00) on the same day. The sun and light jump with it. The wave countdown starts from full, as it does every evening. No gold is paid for the time skipped (unlike sending a wave early: skipping the day gives up building time, not fighting time).
+- **Skipping** (an "I'm ready for enemies!" button): the clock jumps to `NIGHT_SPAWNS.from` (17:00) on the same day. The sun and light jump with it. The wave countdown starts from full, as it does every evening. No gold is paid for the time skipped (unlike sending a wave early: skipping the day gives up building time, not fighting time).
 - Votes are cleared when the skip happens, when spawning time starts on its own, and (as now) when a player drops out.
 - The skip is a command, so it works the same solo and online, and replays the same.
 

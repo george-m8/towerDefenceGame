@@ -243,7 +243,6 @@ Towers always shoot the enemy closest to the keep. Traps fire on a fixed timer f
 | `R` | Rotate the facing of the tower or wall spikes you're placing |
 | `Space` or Pause button | Pause / resume (you can still build while paused) |
 | `F` or `>>` button | Toggle fast forward (2x game speed) |
-| Send wave button | Start the next wave now, for +1 gold per second skipped |
 | `` ` `` or Debug button | Open the Debug menu: test options, Show paths (arrows show where enemies will walk; red means "will attack this"), Sun slider (two sliders over the map: **Across** moves the sun from the left horizon to the right, **Arc** sets how its path leans: up to 90° over the top of the sky (90° straight overhead), past 90° over the bottom, so shadows fall behind blocks; shadows follow. Off puts the sun back), Day/night (a **Time** slider and **Play**: the sun rises on a shallow arc, is overhead at noon and leans back for long evening shadows, then night darkens the map and morning comes round again, a whole day in 96 seconds; off puts the daylight back. In a game at night, it shows the game's own time instead, and solo its slider moves it), and the Damage tool (offline: each click takes 35% of its full amount off the top thing on the tile, an enemy, unit, tower, structure, the keep or a tree/rock/bush, and at 0 it's destroyed or used up as in play, paying nobody; right-click or `Esc` ends it) |
 | `J` | Open or close the monster journal (`Esc` also closes it) |
 | Hover a tile | Show its details in the Info box, and a tower's range |
@@ -251,6 +250,8 @@ Towers always shoot the enemy closest to the keep. Traps fire on a fixed timer f
 | Mouse wheel, or `+` / `-` | Zoom in and out (the wheel zooms around the cursor) |
 | Minimap (top of the panel) | Click or drag to move the view there; the white box is what you're looking at |
 | `-` / `+` / `Fit` buttons | Zoom out, zoom in, or show the whole map |
+
+Sending a wave early has no button: the `sendWave` command (start the next wave now, for +1 gold per second of countdown skipped) is still in the game, but isn't planned for players. It's kept for testing, or to bring back later.
 
 Dev server only: `E` spawns one enemy of each kind in turn (goblin, zerg, wolf rider, ...), `M` spawns 200 goblins (stress test), and `U` puts a militia on the hovered tile. These only work offline.
 

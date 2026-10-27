@@ -1,6 +1,6 @@
 # Spec: town-lights
 
-Status: DRAFT (2026-10-27)
+Status: APPROVED (2026-10-27)
 Module: `town-lights`, on the capability map's Day and night section. Builds on `day-night` (the night wash) and `game-clock`.
 
 ## Objective
@@ -63,4 +63,4 @@ At night, your town glows. Today night is one even dark wash over the whole map.
 
 ## Open questions
 
-1. **Soft or blocky?** Drafted as soft pools of light. Fog keeps hard tile edges for the grid look; lights could do the same (blocky, a light level per tile) if that fits better.
+None. Settled 2026-10-27: soft pools of light, as drafted (blocky is a one-line change if it looks wrong in play).
