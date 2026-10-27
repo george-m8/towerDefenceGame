@@ -29,6 +29,7 @@ import {
 } from "./ui/startScreen";
 import { showIntro } from "./ui/intro";
 import { createBackdrop, type Backdrop } from "./ui/backdrop";
+import { curtainAt, type CurtainPhase } from "./ui/curtain";
 import { createWebAudioEngine, unlockOnFirstGesture } from "./audio/engine";
 import { loadAudioSettings, saveAudioSettings } from "./audio/settings";
 import { createJournalView } from "./ui/journalView";
@@ -77,6 +78,8 @@ let editing: { editor: Editor; toolbar: ReturnType<typeof createToolbar> } | nul
 let editorActive = false;
 /** The game played out behind the intro and start screens, until a game starts (else null). */
 let backdrop: Backdrop | null = null;
+/** The fog curtain while a chosen game is swapped in for the backdrop (see ui/curtain.ts). */
+let curtain: CurtainPhase | null = null;
 
 /** Types of commands sent, oldest first, waiting for their results (to pick a sound). */
 const awaitingResults: string[] = [];
@@ -474,7 +477,13 @@ if (new URLSearchParams(location.search).has("editor")) {
       room: intent.room,
       maps: playableMaps(),
       items: itemsChoices(),
-      onChoose: startSession,
+      // The fog closes over the backdrop, and the game starts under it.
+      onChoose: (chosen) =>
+        (curtain = {
+          phase: "closing",
+          started: performance.now(),
+          then: () => startSession(chosen),
+        }),
     });
   });
 }
@@ -508,6 +517,7 @@ function frame(now: number) {
     fitCanvas(state.width, state.height);
     ui.camera.zoom = 1;
     centerOn(ui.camera, backdrop.focus.x, backdrop.focus.y);
+    updateCurtain(now);
     renderer.render(state, ui);
   } else if (session) {
     session.frame(now);
@@ -517,7 +527,6 @@ function frame(now: number) {
     if (state) {
       // Drawn through the view's turn (Q): the camera, minimap and renderer see a turned copy.
       const view = viewOf(state, ui.rotation);
-      const viewUi = turnedUi(state);
       fitCanvas(view.width, view.height);
       // A new map (first game, restart, or joining a room): start looking at the keep.
       // (PvP keeps are handed out at the start, so that counts as a new map too.)
@@ -531,6 +540,8 @@ function frame(now: number) {
         centredFor = mapKey;
       }
       panWithKeys(seconds);
+      updateCurtain(now);
+      const viewUi = turnedUi(state);
       const pending = session.pending.map((p) => ({
         ...p,
         ...toView(p, ui.rotation, state.width, state.height),
@@ -551,6 +562,26 @@ function frame(now: number) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+
+/**
+ * Moves the fog curtain on, just before a frame is drawn: closing over the backdrop, then (once
+ * the game it covers has its first frame) opening out on it, centred on the camera.
+ */
+function updateCurtain(now: number) {
+  if (!curtain) return;
+  if (curtain.phase === "covered") curtain = { phase: "opening", started: now };
+  const { curtain: drawn, done } = curtainAt(curtain, now, ui.camera);
+  ui.curtain = drawn;
+  if (!done) return;
+  if (curtain.phase === "closing") {
+    const { then } = curtain;
+    curtain = { phase: "covered" };
+    then();
+  } else {
+    curtain = null;
+    ui.curtain = null;
+  }
+}
 
 /** The UI as the turned view sees it: the hovered tile and the build facing, turned. */
 function turnedUi(state: GameState): typeof ui {
