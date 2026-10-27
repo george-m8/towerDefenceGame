@@ -9,7 +9,7 @@ Last updated: 2026-10-27
 1. The wave's size stays as it is today: a threat budget of `baseCount + countPerWave x wave` (times the balance file's `enemyCount`). This module changes what the budget is spent on and where it enters, not how big waves are.
 2. Band following is already built (`BAND`, `leaderId`). New groups reuse it rather than adding a new follow rule.
 3. "All round the map" means the map's outer edge, not anywhere in the fog.
-4. In-game names for the new leaders are placeholders (goblin boss, zerg brood) to be settled at review, glyphs included.
+4. New leaders keep their followers' letter with a crown above it (see "Leaders wear a crown"), so a goblin boss is a crowned `g`. Their names (goblin boss, zerg brood mother) are placeholders to settle at review.
 5. PvP has no waves, so nothing here changes PvP.
 
 ## Objective
@@ -52,7 +52,8 @@ Waves feel like armies arriving rather than a stream of random enemies. Enemies 
   | Diggers | 2-4 `t` | 9 |
   | Marine raid | `M` + 3-6 `m` (enters from the sea) | 7 |
 
-- **New leaders:** a **goblin boss** (leads goblins) and a **zerg brood mother** (leads a swarm; optional, see open questions). Each is a new enemy kind row (`leader` on the members via the template, not on the kind), with its own glyph, colour, journal entry and stats. Today's `leader`/`band` fields on kinds move to the templates, so any template can name a leader.
+- **New leaders:** a **goblin boss** (leads goblins) and a **zerg brood mother** (leads a swarm; optional, see open questions). Each is a new enemy kind row (`leader` on the members via the template, not on the kind), with its own colour shade, journal entry and stats.
+- **Leaders wear a crown:** every leader kind (goblin boss, brood mother, and today's `B`, `D` and `M`) is drawn with a small crown, `👑` (U+1F451, from Unifont's upper planes, a monochrome bitmap like the rest of the map), above its letter. New leaders use their followers' letter (a crowned `g`), so the crown is what marks them out. A `crowned: true` flag on the kind drives it. The journal and hover info show it too. Today's `leader`/`band` fields on kinds move to the templates, so any template can name a leader.
 - **Every member of a group with a leader** spawns with `leaderId` set and follows it by today's `BAND` rule. When the leader dies, they carry on with their own pathing (unchanged).
 - **One kind more often:** most templates are single-kind. A wave also has a **theme**: when it starts, it rolls 1-2 favoured templates, which get `themeWeight` (x3) for that wave, so a wave tends to be "mostly goblins" or "mostly dwarves" rather than an even mix.
 
@@ -78,10 +79,18 @@ Waves feel like armies arriving rather than a stream of random enemies. Enemies 
 - **All round the map:**
   - Candidate entry points are map-edge tiles that are walkable, have nothing built on them, and have a terrain route to the keep for the group's movement profile (a terrain-only field: structures ignored).
   - Each group picks a candidate at random, at least `minEntrySpacing` tiles (default 15, along the edge) from the other groups' points in the same wave when possible.
-  - **Edge band:** the outermost `edgeBand` tiles (default 2) of the map can't be built on, so entry is never sealed off. This replaces today's spawn-zone build rule in these games.
   - The spawn zone of a `.map` file is ignored.
 - **Marine groups** prefer sea-edge tiles (sea at the map edge) with a marine route to the keep. Without one they use a land entry point and walk.
 - If no candidate exists (a map with no walkable edge), the group falls back to the spawn zone, or else to the edge tile closest to a route.
+
+### Building where enemies enter
+
+George (2026-10-27): building on the spawn area is allowed, but you can't block the spawn completely.
+
+- **Spawn zone games:** today's rule that refuses building on spawn tiles is lifted. A build is refused only if it would leave fewer than `minOpenSpawnTiles` (default 3) unbuilt, walkable spawn tiles: "Enemies need somewhere to come in".
+- **All round games:** building on edge tiles is allowed. A build is refused only if it would leave a side of the map that has walkable edge tiles with none open (unbuilt, walkable, with a terrain route): the same message.
+- Routes through walls still count, since breachers break walls. The rule is only about entry tiles being clear, checked in `canBuild`.
+- Entry points never use a built tile (as above).
 
 ### What changes for enclosures and fog (all round only)
 
@@ -125,8 +134,8 @@ export interface GroupTemplate {
 }
 export const GROUP_TEMPLATES: GroupTemplate[];
 export const WAVES = { ...existing, groupGapSeconds: 4, warningSeconds: 5, themeWeight: 3,
-  themes: { min: 1, max: 2 }, groupGrowthPerWave: 0.1, minEntrySpacing: 15, edgeBand: 2 };
-// EnemyKind loses `band` and `mixWeight`; `leader` moves to templates.
+  themes: { min: 1, max: 2 }, groupGrowthPerWave: 0.1, minEntrySpacing: 15, minOpenSpawnTiles: 3 };
+// EnemyKind loses `band` and `mixWeight`; `leader` moves to templates; gains `crowned?: true`.
 
 // src/sim/types.ts
 export type EnemiesEnter = "zone" | "edges";
@@ -157,7 +166,8 @@ Unchanged: `npm run dev`, `npm run server`, `npm test`, `npm run coverage`, `npm
 - `src/sim/waves.ts`: composition, group spawning, warnings (rewritten from the stopgap).
 - `src/sim/edges.ts` (new): entry candidates and the terrain-only reachability field.
 - `src/sim/enclosures.ts`, `src/sim/fog.ts`: flood and reveal from the edge in all-round games.
-- `src/sim/grid.ts`: the edge band build rule beside `isSpawnTile`.
+- `src/sim/grid.ts`: the open-entry build rule, replacing the spawn-tile refusal in `canBuild`.
+- `fonts/Unifont/UnifontUpper-Regular.woff2` and its `@font-face` in `src/styles.css`: re-subset with U+1F451 added (same `pyftsubset` command as in the comment there); `src/render/canvas.ts` draws the crown above a crowned kind's letter.
 - `src/sim/config.ts`: templates, new leader kinds, `WAVES` numbers; `band`/`mixWeight` removed.
 - `src/sim/game.ts`, `src/sim/types.ts`: `enemiesEnter`, `incoming`.
 - `src/render/canvas.ts`, `src/ui/minimap.ts`: entry markers; `src/ui/tileInfo.ts`: group names; `src/audio` cue for the horn.
@@ -174,7 +184,7 @@ As `waves.ts` today: pure functions on `GameState`, every random roll through th
 - **Composition:** same seed, same wave, same groups; total threat never exceeds the budget; nothing appears before its first wave; with the theme bonus, the most common template in a wave is a favoured one far more often than not (over many seeds); a leader template always spawns its leader first and sets every member's `leaderId`.
 - **Spawning:** groups come `groupGapSeconds` apart; a warning precedes each by `warningSeconds`; the marker goes after the last member.
 - **Entry points (500 seeds, every map size):** every chosen point is on the edge, walkable, unbuilt, and has a terrain route to the keep for its profile; groups in one wave are spaced apart when the map allows; marine raids enter from the sea when there is one.
-- **Edge band:** building in the band is refused in all-round games and allowed in zone games.
+- **Open entry:** building on spawn tiles and edge tiles is allowed; the build that would close the last open spawn tiles (zone) or a side's last open edge tile (all round) is refused; enemies never enter on a built tile.
 - **Enclosures (all round):** a ring touching only the keep side is enclosed; a ring with a gap to any edge isn't; zone games are unchanged (existing tests untouched).
 - **Night spawns:** waves still only start in spawning time; a wave finishes its groups after sunrise.
 - **Determinism:** the 2,000-tick test with all-round entry and every template.
@@ -196,9 +206,13 @@ As `waves.ts` today: pure functions on `GameState`, every random roll through th
 5. The option works solo and online and survives a restart.
 6. `npm run typecheck`, `npm test`, `npm run coverage` (80%+ for `src/sim/`) and `npm run build` pass.
 
+## Resolved decisions
+
+1. **Building on the spawn area is allowed**, as long as enemies always have somewhere to come in (2026-10-27).
+2. **Leaders wear a crown** (U+1F451) above their letter (2026-10-27).
+
 ## Open questions
 
-1. Names and glyphs for the goblin boss and the zerg brood mother. Does the swarm need a leader, or is a leaderless swarm better?
-2. Should the edge band be 2 tiles, or should building there be allowed but entry points just skip built tiles (with the risk that a fully walled edge leaves no entry)?
-3. Groups one after another (proposed), or several groups at once from different sides in late waves?
-4. Should the theme be shown to the player ("Wave 8: dwarves")?
+1. Names for the goblin boss and the zerg brood mother. Does the swarm need a leader, or is a leaderless swarm better?
+2. Groups one after another (proposed), or several groups at once from different sides in late waves?
+3. Should the theme be shown to the player ("Wave 8: dwarves")?

@@ -6,7 +6,7 @@ Last updated: 2026-10-27
 
 ## Assumptions (correct these before approval)
 
-1. **Enemies get armour.** Today only units have armour. For the crossbow's "ignores armour" to mean anything, enemy kinds get an `armour` number too (0 for most; golems, thanes, rams and marine captains have some). Every hit takes armour off its damage, never below 1, as units already do. This is a balance change, and it's tuned in the balance file.
+1. **Enemy armour arrives with the rebalance, before this module.** Today only units have armour. It's a balance stat that changes every tower's damage, so it's added and tuned with the rebalance rather than here (see "Armour for enemies"). The crossbow's "ignores armour" builds on it.
 2. The four new structures go in the build picker's Defence tab, and `.items` files can limit them like anything else.
 3. All numbers below are starting points, to be tuned with the balance panel.
 4. Wall spikes are removed (George: floor spikes do the same job). In old `.map` files they become plain walls, so the maze stays the same; in old `.items` files the entry is dropped.
@@ -87,11 +87,33 @@ As a player, I can build each one, see from its hover info and overlay what it d
 - Movement multiplies speed by the slow factor. Burning damage applies once a second through `damageEnemy`, with kill credit.
 - Snapshots carry burning and slowed as flags, so clients can draw a flicker (burning) and a pale tint (slowed). Hover info adds "burning" or "slowed".
 
-### Armour for enemies
+### Armour for enemies (built with the rebalance)
 
-- `EnemyKind.armour` (default 0). Damage taken = `max(1, damage - armour)`, unless the attack ignores armour (`ignoresArmour` on the crossbow).
-- Starting values: golem 4, battering ram 5, dwarf thane 2, barbarian chief 1, marine captain 1, everyone else 0. Variants don't change armour.
-- The journal shows armour when it's above 0.
+Decided 2026-10-27: anything that could logically wear armour has some.
+
+- `EnemyKind.armour` (default 0). Damage taken = `max(1, damage - armour)`, unless the attack ignores armour (`ignoresArmour` on the crossbow, from this module). Variants don't change armour.
+- Starting values, tuned in the balance file:
+
+| Kind | Armour | Why |
+|---|---|---|
+| Goblin `g` | 1 | Scraps of leather: very weak |
+| Goblin boss | 2 | |
+| Zerg `z` | 0 | |
+| Wolf rider `w` | 1 | |
+| Barbarian `b` | 0 | No armour |
+| Barbarian chief `B` | 3 | The chief has armour |
+| Dwarf `d` | 2 | Dwarves wear mail |
+| Dwarf thane `D` | 4 | |
+| Dwarf bomber `x` / demolisher `X` | 1 / 2 | |
+| Digger `t` | 1 | |
+| Golem `G` | 6 | Stone: strong armour |
+| Marine `m` | 2 | Mid armour |
+| Marine captain `M` | 3 | |
+| Shaman `s` | 0 | |
+| Battering ram `R` | 6 | A roofed frame |
+
+- The journal and hover info show armour when it's above 0.
+- This module adds only `ignoresArmour`; armour itself is in place by then.
 
 ### Removing wall spikes
 
@@ -128,10 +150,9 @@ export interface StructureStats {
   pour?: { damage: number; intervalSeconds: number; burn: { dps: number; seconds: number } };
 }
 export interface TrapStats { ...existing; slow?: { factor: number; seconds: number; heavyFactor: number } }
-export interface EnemyKind { ...existing; armour: number }
 
 // src/sim/types.ts
-interface Enemy { ...existing; armour: number;
+interface Enemy { ...existing;
   burning: { dps: number; ticks: number; by: PlayerId | null } | null;
   slowed: { factor: number; ticks: number } | null }
 
@@ -139,7 +160,7 @@ interface Enemy { ...existing; armour: number;
 export function updateStatus(state: GameState): void;
 ```
 
-Every new number (`pierce`, `pour`, `slow`, `armour`) is part of the balance file's field list automatically (it's derived from config).
+Every new number (`pierce`, `pour`, `slow`) is part of the balance file's field list automatically (it's derived from config).
 
 ## Commands
 
@@ -147,10 +168,10 @@ Unchanged. No new dependencies.
 
 ## Project structure
 
-- `src/sim/config.ts`: the four structures, `armour` on enemy kinds; `wallSpikes` removed.
+- `src/sim/config.ts`: the four structures; `wallSpikes` removed.
 - `src/sim/towers.ts`: pierce firing and target choice, ignoring armour.
 - `src/sim/oil.ts` (new) or `towers.ts`: pouring. `src/sim/traps.ts`: caltrops' slow.
-- `src/sim/status.ts` (new): burning and slowed. `src/sim/enemies.ts`: armour in `damageEnemy`, slowed speed in movement.
+- `src/sim/status.ts` (new): burning and slowed. `src/sim/enemies.ts`: `ignoresArmour` in `damageEnemy`, slowed speed in movement.
 - `src/sim/grid.ts`: `mountsOn` in `canBuild`.
 - `src/sim/mapFile.ts`, `src/sim/itemsFile.ts`: legacy kinds.
 - `src/render/palette.ts`, `src/render/canvas.ts`, `src/render/lights.ts`: glyphs, projectiles, status tints, the oil light. `src/ui/state.ts`: picker. `src/ui/tileInfo.ts`, `src/ui/journalView.ts`: hover and journal lines. `src/audio`: cues for a bolt and a pour.
@@ -164,10 +185,10 @@ As `towers.ts` and `traps.ts`: stats from `state.balance`, a cue per visible eve
 ## Testing strategy
 
 - **Ballista:** three enemies in a line take 60, 51 and 43; a seventh enemy on the line is untouched with `max` 6; a wall stops a ground ballista's bolt and doesn't stop one on a wall; it turns at 20° a second; it picks the target that lines up the most enemies.
-- **Crossbow:** against a golem (armour 4) it deals its full 18, where an archer's 6 becomes 2; it never turns.
+- **Crossbow:** against a golem (armour 6) it deals its full 18, where an archer's 6 becomes 1; it never turns.
 - **Burning oil:** can't be built on the ground or on a house ("Burning oil goes on a wall"); pours only with an enemy in reach; burn damage over 4 s matches; a new pour restarts and doesn't stack the burn; kill credit for an enemy that dies burning; it doesn't hurt the owner's structures.
 - **Caltrops:** an enemy crossing is at half speed for 2 s; a golem at x0.75; slows don't stack.
-- **Armour:** damage taken is `max(1, damage - armour)`; units' armour is unchanged.
+- **Ignoring armour:** the crossbow deals full damage to an armoured enemy, and every other tower doesn't.
 - **Wall spikes:** an old map with wall spikes loads them as walls; an old items file loads without the entry; neither is refused.
 - **Determinism:** the 2,000-tick test with every new tower.
 - Browser, by hand: a ballista shot through a corridor of goblins; burning enemies at a wall at night; caltrops in front of archers.
@@ -177,7 +198,7 @@ Coverage for `src/sim/` stays at 80% lines or more.
 ## Boundaries
 
 - **Always:** numbers in config, so they're tunable in the balance file; use `canSee` for direct fire; kill credit through `damageEnemy`.
-- **Ask first:** enemy armour values above 5; status effects on units; removing floor spikes as well.
+- **Ask first:** status effects on units; removing floor spikes as well.
 - **Never:** refuse an old file because it has wall spikes; let burning oil be built off a wall.
 
 ## Success criteria
@@ -190,7 +211,6 @@ Coverage for `src/sim/` stays at 80% lines or more.
 
 ## Open questions
 
-1. Enemy armour: fine to add here (proposed), or keep the crossbow simpler (long range, high damage, no armour rule)?
-2. Glyphs: ballista `⇶` or `Ψ`, crossbow `⊥`, burning oil `♨`, caltrops `⁂`? (To check against Unifont coverage.)
-3. Should the ballista be allowed only on walls, to make it a "castle" weapon? Proposed: anywhere, with line of sight doing the work.
-4. Does burning oil burn floor spikes' and caltrops' tiles for a while (a burning patch), or only the enemies it hits? Proposed: only enemies.
+1. Glyphs: ballista `⇶` or `Ψ`, crossbow `⊥`, burning oil `♨`, caltrops `⁂`? (To check against Unifont coverage.)
+2. Should the ballista be allowed only on walls, to make it a "castle" weapon? Proposed: anywhere, with line of sight doing the work.
+3. Does burning oil burn floor spikes' and caltrops' tiles for a while (a burning patch), or only the enemies it hits? Proposed: only enemies.

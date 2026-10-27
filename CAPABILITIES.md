@@ -252,7 +252,7 @@ Status: roadmap agreed (2026-10-27), specs drafted. Order and reasons: [`tasks/r
 | Module | What it delivers | Depends on |
 |---|---|---|
 | `balance-files` | Every game number in `state.balance` instead of module constants, with global multipliers on top. `.balance` files (`balance/`), a tweak panel in the Debug menu, and a Balance choice on the settings step. Spec: [`SPEC-balance-files.md`](SPEC-balance-files.md). | items-editor (file pattern) |
-| `rebalance` | George's write-up as new defaults, easy and hard presets, the build-time curve by distance, and fog sight numbers. A task list, no spec. | balance-files |
+| `rebalance` | George's write-up as new defaults, easy and hard presets, the build-time curve by distance, fog sight numbers, and enemy armour. A task list, no spec. | balance-files |
 | `wave-director` | Waves built from group templates on a threat budget, one kind per group more often, leaders with followers, and the **Enemies enter: spawn zone / all round the map** option (this is `edge-spawns`). Marine groups from the sea. Spec: [`SPEC-wave-director.md`](SPEC-wave-director.md). | enemy-kinds, enemy-pathing, balance-files |
 | `line-of-sight` | Lobbed weapons fire over walls; direct fire depends on height; a preview of the tiles a tower can hit while placing and on hover. Spec: [`SPEC-line-of-sight.md`](SPEC-line-of-sight.md) (revised). | tower-aiming |
 | `siege-towers` | Ballista (pierces), crossbow (ignores armour), burning oil (wall-mounted, burns), caltrops (slow); wall spikes removed. Spec: [`SPEC-siege-towers.md`](SPEC-siege-towers.md). | line-of-sight, balance-files |

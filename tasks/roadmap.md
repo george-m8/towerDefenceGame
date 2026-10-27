@@ -44,11 +44,14 @@ The aim is that nothing new gets hard-coded. Every tower, enemy, unit, wave and 
 - A data change on top of `balance-files`: new defaults, plus `easy` and `hard` presets made with the multipliers.
 - **Build time by distance** (from the postponed build zone): fast near the keep, very slow far away, so cheesing with distant outposts is slow and they risk being destroyed before they're finished. Today `BUILD_TIME` is `{ maxSeconds: 10, fullDistance: 40 }`, a straight ramp. The rebalance may need a curve (for example near-instant inside the keep enclosure, then steeper with distance) and a larger maximum.
 - **Fog clears too fast:** units uncover too much fog too quickly. Unit sight today is `inner` 3-6 and `outer` 5-9 tiles (scouts 6/9), and moving units sweep it along their path. Levers to try, all as balance numbers: smaller unit sight radii (especially `outer`); units explore only their `inner` radius, with `outer` showing live sight without exploring; a slower scout. Bigger rule changes (explored land fading back to unexplored after a while, or limits on what units can't currently see) need a spec. Note them here and decide after play-testing the smaller numbers.
+- **Enemy armour** (decided 2026-10-27): anything that could logically wear armour has some. Goblins very weak, barbarians none but their chiefs some, golems strong, marines mid. Damage taken is `max(1, damage - armour)`, as for units. The values are in [`SPEC-siege-towers.md`](../SPEC-siege-towers.md) ("Armour for enemies"), but armour is built here, because it changes every tower's damage.
 - A task list only, with one review checkpoint in play.
 
 ### 3. `wave-director` + `edge-spawns`
 - Write the spec from the plan.md outline, adding: group templates weighted towards one kind per group, more leaders (a goblin boss, swarms) using `BAND`, marine groups from the sea and from any off-map edge, and the **Enemies enter: spawn zone / all round the map** setup option.
 - Templates, budgets and weights go in the balance file, so the later `.wave` editor edits data that already exists.
+- **Leaders wear a crown** (U+1F451 from Unifont's upper planes) above their letter, so a goblin boss is a crowned `g`.
+- **Building on the spawn area is allowed**, but a build that would leave enemies nowhere to come in is refused.
 - **Change to the agreed order:** `enemy-targeting` was due before this module, but `wave-director` doesn't depend on it. Build `wave-director` first.
 
 ### 4. `line-of-sight` (revise the drafted spec)

@@ -7,7 +7,7 @@ Last updated: 2026-10-27
 ## Assumptions (correct these before approval)
 
 1. "Balance" means numbers only: costs, HP, damage, fire rates, ranges, sight, speeds, intervals, payouts, wave sizes. Names, glyphs, behaviours, movement profiles and which structures exist stay in code (`.items` already decides what can be built).
-2. Starting gold and keep HP move into the balance file. The planned `.loadout` file is then left with the setup options (night spawns, edge spawns and so on).
+2. Starting gold and keep HP are in the balance file (decided 2026-10-27). The planned `.loadout` file can override them for a level, alongside the setup options.
 3. Live tweaking works offline only (solo, and the editors' Play), like the other Debug menu options. Online rooms play a chosen file, fixed for the game.
 4. Global multipliers are applied once, when the game's numbers are resolved, not on every tick.
 5. A tweak changes what is built, spawned or fired from then on. Enemies and units already on the map keep the stats they spawned with (they're copied at spawn today), and built structures keep their max HP.
@@ -232,9 +232,12 @@ Coverage for `src/sim/` and `tools/` stays at 80% lines or more.
 5. Bad files and bad fields are refused with messages naming the problem.
 6. `npm run typecheck`, `npm test`, `npm run coverage` (80%+ for `src/sim/` and `tools/`) and `npm run build` pass.
 
+## Resolved decisions
+
+1. **Starting gold and keep HP** are in the balance file; `.loadout` can override them later (2026-10-27).
+2. **The panel lives in the Debug menu only.** No separate editor page and nothing for normal players yet, since everyone playing is a tester (2026-10-27).
+
 ## Open questions
 
-1. Should starting gold and keep HP live here (proposed) or in `.loadout`?
-2. Is the multiplier list right? Proposed additions if wanted: `goldIncome` separate from resource worth, `keepHp`.
-3. Should the panel also be its own page (`?balance-editor`, like `?items-editor`) with Play, or is the in-game Debug panel enough? Proposed: in-game only to start; the page is a small follow-up if it's missed.
-4. Should enemy variants' multipliers be tunable in v1, or only the kind rows? Proposed: both, since variants are already numbers in config.
+1. Is the multiplier list right? Proposed additions if wanted: `goldIncome` separate from resource worth, `keepHp`.
+2. Should enemy variants' multipliers be tunable in v1, or only the kind rows? Proposed: both, since variants are already numbers in config.
