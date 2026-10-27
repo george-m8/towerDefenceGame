@@ -81,7 +81,7 @@ import { burstPixels, burstWaiting } from "./burst";
 import { textureSpecks, textureVariant, type TextureStyle } from "./textures";
 import { borderColour, borderTrace } from "./buildBorder";
 import { CASTERS, castShade, shadowOffset, sweptTile, type Block, type Sun } from "./sun";
-import { darknessAt, daylight } from "./dayNight";
+import { darknessAt, daylight, skyHour } from "./dayNight";
 
 /** How dark blocks' shadows are in full daylight, on the ground and on lower blocks beside them. */
 const SHADOW_ALPHA = 0.3;
@@ -951,7 +951,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       ctx.textBaseline = "middle";
       view = visibleTiles(cam);
       textured = tilePixels(cam) >= TEXTURE_MIN_TILE_PX;
-      const hour = ui.clock?.hour;
+      const hour = skyHour(state.clock, ui.clock);
       shadow = `rgba(0, 0, 0, ${SHADOW_ALPHA * (hour === undefined ? 1 : daylight(hour))})`;
       drawGrid(state, ui.sun);
       drawKeepHp(state);

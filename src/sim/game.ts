@@ -7,7 +7,7 @@ import {
   PVP,
   type MapSize,
 } from "./config";
-import { advanceClock, createClock } from "./clock";
+import { advanceClock, createClock, setClockHour } from "./clock";
 import { buildTicksAt, updateBuilding } from "./building";
 import { debugDamage } from "./debug";
 import { priceAt } from "./enclosures";
@@ -262,6 +262,10 @@ export function applyCommand(
       return { ok: true };
     case "debugDamage":
       return debugDamage(state, command.x, command.y);
+    case "debugClock":
+      if (!state.clock) return { ok: false, reason: "This game has no clock" };
+      setClockHour(state, command.hour);
+      return { ok: true };
     case "debugUnit":
       return spawnUnit(state, command.kind, playerId, command.x, command.y)
         ? { ok: true }

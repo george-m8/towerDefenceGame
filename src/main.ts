@@ -12,7 +12,7 @@ import { createPanel } from "./ui/panel";
 import { createHud } from "./ui/hud";
 import { createMapButtons, panelToggle } from "./ui/mapButtons";
 import { createSunSlider, toggleSun } from "./ui/sunSlider";
-import { advanceClock, createClockControls, toggleClock } from "./ui/clockControls";
+import { advanceClock, createClockControls, followSky, toggleClock } from "./ui/clockControls";
 import { hoverText } from "./ui/tileInfo";
 import { bindInput } from "./ui/input";
 import { createUiState, showMessage } from "./ui/state";
@@ -167,7 +167,18 @@ const debugToggle = (label: string, option: DebugOption) => ({
   available: inGame,
 });
 const sunSlider = createSunSlider(element("#sun"), ui);
-const clockControls = createClockControls(element("#clock"), ui, () => sunSlider.sync());
+const clockControls = createClockControls(
+  element("#clock"),
+  ui,
+  {
+    clock: () => session?.state?.clock ?? null,
+    setHour: (hour) => dispatch({ type: "debugClock", hour }),
+    canSet: () => session?.online !== true,
+  },
+  () => sunSlider.sync(),
+);
+/** The game clock's hour the sky last followed (see followSky). */
+let skyFollowed: number | null = null;
 createMapButtons(element("#map-buttons"), {
   view: [
     panelToggle("Map", element("#minimap-box")),
@@ -191,6 +202,7 @@ createMapButtons(element("#map-buttons"), {
       isOn: () => ui.showSun,
       toggle: () => {
         toggleSun(ui);
+        skyFollowed = null; // with a game clock, the sun goes straight back to it
         sunSlider.sync();
       },
     },
@@ -199,6 +211,7 @@ createMapButtons(element("#map-buttons"), {
       isOn: () => ui.clock !== null,
       toggle: () => {
         toggleClock(ui);
+        skyFollowed = null; // with a game clock, the sun goes straight back to it
         clockControls.sync();
         sunSlider.sync();
       },
@@ -505,8 +518,16 @@ function frame(now: number) {
   const seconds = Math.min(0.1, (now - lastFrame) / 1000);
   lastFrame = now;
   // The day and night clock runs on real time, paused game or not (it's only drawing).
-  if (ui.clock?.playing) {
+  // A game's own clock runs with the game (and wins over the Debug clock).
+  const gameClock = editorActive ? null : (session?.state?.clock ?? null);
+  if (ui.clock?.playing && !gameClock) {
     advanceClock(ui, seconds);
+    clockControls.sync();
+    sunSlider.sync();
+  }
+  const followed = followSky(ui, gameClock, skyFollowed);
+  if (followed !== skyFollowed) {
+    skyFollowed = followed;
     clockControls.sync();
     sunSlider.sync();
   }

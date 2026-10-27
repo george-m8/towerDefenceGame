@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { clockLabel, darknessAt, daylight, sunAt, wrapHour } from "../../src/render/dayNight";
+import {
+  clockLabel,
+  darknessAt,
+  daylight,
+  skyHour,
+  sunAt,
+  wrapHour,
+} from "../../src/render/dayNight";
 import { DAY_NIGHT } from "../../src/render/palette";
 import { GAME_CLOCK } from "../../src/sim/config";
 
@@ -73,5 +80,13 @@ describe("clockLabel", () => {
     expect(clockLabel(14.5)).toBe("Time 14:30");
     expect(clockLabel(9)).toBe("Time 09:00");
     expect(clockLabel(23.99)).toBe("Time 23:59");
+  });
+});
+
+describe("skyHour", () => {
+  it("draws the sky from the game's clock first, else the Debug clock, else none", () => {
+    expect(skyHour({ hour: 20, day: 1 }, { hour: 9, playing: false })).toBe(20);
+    expect(skyHour(null, { hour: 9, playing: false })).toBe(9);
+    expect(skyHour(null, null)).toBeUndefined();
   });
 });

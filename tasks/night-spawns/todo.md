@@ -64,11 +64,13 @@ Files: `src/net/protocol.ts`, `src/net/snapshot.ts`, `src/net/view.ts`, `tests/n
 
 `skyHour(state, ui)`: the game's clock, else `ui.clock`, else none. The renderer takes darkness and shadow strength from it. In the frame loop, whenever the game's hour moves, `ui.sun = sunAt(hour)` and the Debug boxes sync. A `debugClock { hour }` command (offline only, in `isDebugCommand`) sets the game's hour through `setClockHour`. With a game clock, the Debug Day/night box shows the game's time, its slider sends `debugClock`, and it has no Play button.
 
-- [ ] With a game clock the sky follows it; without, Debug Day/night works as before
-- [ ] `debugClock` sets the hour offline and is never sent online
-- [ ] The Sun sliders can nudge the sun; the game's clock pulls it back as it moves
+- [x] With a game clock the sky follows it; without, Debug Day/night works as before
+- [x] `debugClock` sets the hour offline and is never sent online
+- [x] The Sun sliders can nudge the sun; the game's clock pulls it back as it moves
 
 Files: `src/render/dayNight.ts`, `src/render/canvas.ts`, `src/ui/clockControls.ts`, `src/main.ts`, `src/sim/types.ts` + `src/sim/game.ts` (the command), `tests/ui/clockControls.test.ts`, `tests/sim/clock.test.ts`. Size: M. Depends on: 3.
+
+Built: `followSky` (pure, tested) does the pulling back; turning Sun slider or Day/night on or off hands the sun straight back to a game's clock. With a game clock the Debug clock doesn't run, and online the Time slider is disabled (debug commands aren't sent).
 
 ---
 

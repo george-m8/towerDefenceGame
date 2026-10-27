@@ -4,6 +4,16 @@
 import { GAME_CLOCK } from "../sim/config";
 import { DAY_NIGHT } from "./palette";
 import type { Sun } from "./sun";
+import type { Clock } from "../sim/types";
+import type { UiState } from "../ui/state";
+
+/**
+ * The hour the sky is drawn for: the game's clock (games that have one), else the Debug menu's,
+ * else none (full daylight, the default sun).
+ */
+export function skyHour(game: Clock | null, debug: UiState["clock"]): number | undefined {
+  return (game ?? debug)?.hour;
+}
 
 /** A number held between two others. */
 const clamp = (value: number, low: number, high: number) => Math.min(high, Math.max(low, value));

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { GAME_CLOCK, TICK_RATE } from "../../src/sim/config";
-import { createGame, tick } from "../../src/sim/game";
+import { applyCommand, createGame, tick } from "../../src/sim/game";
+import { isDebugCommand } from "../../src/sim/types";
 import { isNight, setClockHour } from "../../src/sim/clock";
 
 const { sunrise, sunset, dayMinutes, nightMinutes } = GAME_CLOCK;
@@ -71,5 +72,20 @@ describe("the game clock", () => {
     expect(isNight(sunrise)).toBe(false);
     expect(isNight(sunset - 0.1)).toBe(false);
     expect(isNight(sunset)).toBe(true);
+  });
+});
+
+describe("debugClock", () => {
+  it("sets the game's hour (a debug command, offline only)", () => {
+    const state = clocked();
+    expect(applyCommand(state, 1, { type: "debugClock", hour: 23 })).toEqual({ ok: true });
+    expect(state.clock!.hour).toBe(23);
+    expect(isDebugCommand({ type: "debugClock", hour: 23 })).toBe(true);
+  });
+
+  it("is refused in a game without a clock", () => {
+    const state = createGame(1, { blankMap: true });
+    expect(applyCommand(state, 1, { type: "debugClock", hour: 23 }).ok).toBe(false);
+    expect(state.clock).toBeNull();
   });
 });
