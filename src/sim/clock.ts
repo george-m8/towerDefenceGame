@@ -1,7 +1,7 @@
 // The time of day as game state (games that use it only: see SPEC-game-clock.md). It runs on
 // game ticks, so it stops while paused and runs faster on fast-forward, and it's the same for
 // every player. Day hours and night hours pass at different rates (GAME_CLOCK).
-import { GAME_CLOCK, TICK_RATE } from "./config";
+import { GAME_CLOCK, NIGHT_SPAWNS, TICK_RATE } from "./config";
 import type { Clock, GameState } from "./types";
 
 export function createClock(): Clock {
@@ -38,4 +38,19 @@ function moveClock(state: GameState, hour: number): void {
   const next = ((hour % 24) + 24) % 24;
   if (isNight(clock.hour) && !isNight(next) && next >= GAME_CLOCK.sunrise) clock.day++;
   clock.hour = next;
+}
+
+/**
+ * Whether waves may run now: always, unless enemies come at night, when it's from the early
+ * evening (NIGHT_SPAWNS.from) until sunrise.
+ */
+export function isSpawningTime(state: GameState): boolean {
+  if (state.enemiesCome !== "night" || !state.clock) return true;
+  const { hour } = state.clock;
+  return hour >= NIGHT_SPAWNS.from || hour < GAME_CLOCK.sunrise;
+}
+
+/** Nights the keep has stood through: each sunrise is one (the game stops when the keep falls). */
+export function nightsSurvived(state: GameState): number {
+  return state.clock ? state.clock.day - 1 : 0;
 }

@@ -29,7 +29,15 @@ import { updateTraps } from "./traps";
 import { removeDeadUnits, spawnUnit, updateSpawners, updateUnits } from "./units";
 import { createWaveState, sendWaveEarly, updateWaves } from "./waves";
 import { addPlayer, updateVotes } from "./players";
-import type { Command, CommandResult, GameMode, GameState, PlayerId, Terrain } from "./types";
+import type {
+  Command,
+  CommandResult,
+  EnemiesCome,
+  GameMode,
+  GameState,
+  PlayerId,
+  Terrain,
+} from "./types";
 
 export interface GameOptions {
   /** Skip map generation and start on open ground (used by tests). */
@@ -51,6 +59,8 @@ export interface GameOptions {
   items?: ItemsFile;
   /** Give the game a clock, the time of day (default off; night spawns turn it on). */
   clock?: boolean;
+  /** When enemies come (Endless only): all the time (default), or at night, with a clock. */
+  enemiesCome?: EnemiesCome;
 }
 
 export function createGame(seed: number, options: GameOptions = {}): GameState {
@@ -61,6 +71,8 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     keep: keepSide,
   } = MAP_SIZES[file?.size ?? options.size ?? DEFAULT_MAP_SIZE];
   const mode = file?.mode ?? options.mode ?? "endless";
+  // PvP has no waves, so its enemies come "all the time" (never).
+  const enemiesCome: EnemiesCome = mode === "pvp" ? "always" : (options.enemiesCome ?? "always");
   const layout = file
     ? {
         width,
@@ -115,7 +127,8 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     keeps: layout.keeps.map((keep) => ({ ...keep, hp: keepHp, maxHp: keepHp, owner: null })),
     winner: null,
     wave: createWaveState(),
-    clock: options.clock ? createClock() : null,
+    clock: options.clock || enemiesCome === "night" ? createClock() : null,
+    enemiesCome,
     players: {},
     nextPlayerId: 1,
     tick: 0,

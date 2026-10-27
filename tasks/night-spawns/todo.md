@@ -80,11 +80,13 @@ Built: `followSky` (pure, tested) does the pulling back; turning Sun slider or D
 
 `GameOptions.enemiesCome` ("always" | "night", default always) and `GameState.enemiesCome`; "night" turns the clock on (from 17:00). `NIGHT_SPAWNS = { from: 17 }`. `isSpawningTime(state)`. `updateWaves` runs only in spawning time; entering it starts the countdown; at sunrise no new wave starts (the countdown stops) but a wave already spawning finishes. `sendWaveEarly` refuses by day ("Enemies come at night"). `state.nights` counts sunrises with the keep standing.
 
-- [ ] No spawns by day; the first wave comes a countdown after 17:00; waves run through the night, wave numbers carrying on to the next night
-- [ ] At sunrise no new wave starts; a wave already spawning finishes; enemies on the map remain; `nights` goes up
-- [ ] "always" is unchanged (existing wave tests pass); a night game is deterministic
+- [x] No spawns by day; the first wave comes a countdown after 17:00; waves run through the night, wave numbers carrying on to the next night
+- [x] At sunrise no new wave starts; a wave already spawning finishes; enemies on the map remain; `nights` goes up
+- [x] "always" is unchanged (existing wave tests pass); a night game is deterministic
 
 Files: `src/sim/config.ts`, `src/sim/types.ts`, `src/sim/game.ts`, `src/sim/waves.ts`, `src/sim/clock.ts`, `tests/sim/nightSpawns.test.ts` (new). Size: M. Depends on: 3.
+
+Built: no `state.nights` field: `nightsSurvived(state)` is `clock.day - 1`, since a new day starts at each sunrise and the game stops ticking once the keep falls. By day the countdown is held full, so it starts fresh in the early evening. PvP always gets "always".
 
 ## Task 7: Solo: the setup choice and `?solo&night`
 

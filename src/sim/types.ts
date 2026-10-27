@@ -208,6 +208,9 @@ export interface WaveState {
 /** Endless: hold one shared keep against waves. PvP: two players, a keep each, no waves. */
 export type GameMode = "endless" | "pvp";
 
+/** When enemies come (Endless): all the time, as ever, or only at night (with a clock). */
+export type EnemiesCome = "always" | "night";
+
 /**
  * Test options, from the Debug menu: keeps that take no damage, and gold that never runs out
  * (builds are free).
@@ -265,6 +268,8 @@ export interface GameState {
   wave: WaveState;
   /** The time of day, in games that use it (night spawns); null otherwise. See sim/clock.ts. */
   clock: Clock | null;
+  /** When enemies come: all the time, or only at night (waves only in spawning time). */
+  enemiesCome: EnemiesCome;
   players: Record<PlayerId, Player>;
   nextPlayerId: PlayerId;
   tick: number;

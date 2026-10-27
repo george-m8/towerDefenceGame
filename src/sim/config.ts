@@ -982,6 +982,9 @@ export const GAME_CLOCK = {
   startHour: 17,
 };
 
+/** Night spawns: with enemies at night, waves run from `from` (early evening) until sunrise. */
+export const NIGHT_SPAWNS = { from: 17 };
+
 export const WAVES = {
   countdownSeconds: 20, // before wave 1, and after each wave finishes spawning
   spawnIntervalSeconds: 0.5,
