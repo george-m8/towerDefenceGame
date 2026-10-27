@@ -82,6 +82,8 @@ export interface UiState {
   showSun: boolean;
   /** Where the sun is, for shadows (see render/sun.ts). */
   sun: Sun;
+  /** Debug: the day and night clock (render/dayNight.ts), or null when it's off. */
+  clock: { hour: number; playing: boolean } | null;
   /** Debug Damage tool: clicks wear down what's on the tile (offline only). Picking a tool ends it. */
   debugDamage: boolean;
   /** Facing for directional structures, rotated with R. */
@@ -113,6 +115,7 @@ export function createUiState(): UiState {
     showFlow: false,
     showSun: false,
     sun: { ...DEFAULT_SUN },
+    clock: null,
     debugDamage: false,
     facing: "N",
     playerId: 1,

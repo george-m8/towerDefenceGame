@@ -700,15 +700,27 @@ a.button {
   display: none;
 }
 
-/* The sun slider (Debug menu), along the bottom middle of the map */
-.sun-slider {
+/* The sun sliders and the day and night clock (Debug menu), at the bottom middle of the map */
+.sky-controls {
   position: absolute;
   bottom: 12px;
   left: 50%;
+  display: grid;
+  gap: 8px;
   transform: translateX(-50%);
 }
-.sun-slider .slider {
+.sun-slider .slider,
+.clock-controls .slider {
   grid-template-columns: 88px 1fr;
+}
+.clock-controls {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+}
+.clock-controls[hidden] {
+  display: none;
 }
 .map-toggle {
   box-shadow:
@@ -1065,7 +1077,7 @@ body.testing .editor-back {
 body.editing .map-left {
   top: 54px;
 }
-body.editing .sun-slider {
+body.editing .sky-controls {
   bottom: 60px;
 }
 body.editing #hud,
