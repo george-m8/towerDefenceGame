@@ -3,7 +3,7 @@
 import { randomBytes } from "node:crypto";
 import { DEFAULT_MAP_SIZE, STARTING_GOLD, TICK_RATE, type MapSize } from "../src/sim/config";
 import { applyCommand, assignKeeps, createGame, tick } from "../src/sim/game";
-import { addPlayer, setConnected, updateVotes } from "../src/sim/players";
+import { NO_VOTES, addPlayer, setConnected, updateVotes } from "../src/sim/players";
 import type {
   EnemiesCome,
   Command,
@@ -206,7 +206,7 @@ export function restartRoom(room: Room, seed: number): CommandResult {
     state.players[player.id] = {
       ...player,
       gold: STARTING_GOLD,
-      votes: { pause: false, fastForward: false },
+      votes: { ...NO_VOTES },
     };
   }
   state.nextPlayerId = old.nextPlayerId;

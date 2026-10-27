@@ -44,11 +44,13 @@ Built: also `src/render/lights.ts` (`nightLight`). The first version, working ou
 
 `votes.skipToNight` on players (everywhere votes are built: new players, drop-outs, restarts). A `voteSkipToNight` command toggles the sender's vote; refused with enemies all the time ("No night to skip to") or in spawning time ("It's already night"). `updateVotes`: when the skip vote is unanimous, `skipToNight(state)` (the clock to `NIGHT_SPAWNS.from`, same day) and clear the votes. `tick()`: skip votes clear once spawning time starts.
 
-- [ ] Solo, the vote skips at once to 17:00, and the first wave comes after the countdown; no gold paid
-- [ ] With two players one vote doesn't skip and two do; a vote can be taken back; votes clear after the skip, at dusk and on a drop-out
-- [ ] Refused by night and with enemies all the time
+- [x] Solo, the vote skips at once to 17:00, and the first wave comes after the countdown; no gold paid
+- [x] With two players one vote doesn't skip and two do; a vote can be taken back; votes clear after the skip, at dusk and on a drop-out
+- [x] Refused by night and with enemies all the time
 
 Files: `src/sim/types.ts`, `src/sim/players.ts`, `src/sim/game.ts`, `src/sim/clock.ts`, `server/room.ts`, `tests/sim/skipToNight.test.ts` (new). Size: M. Depends on: none.
+
+Built: `NO_VOTES` (players.ts) is the one place a fresh set of votes comes from (new players, drop-outs, restarts). `tests/sim/players.test.ts` now expects the third vote in a cleared set.
 
 ## Task 4: Online: the command
 

@@ -30,7 +30,7 @@ export interface Player {
   gold: number;
   /** False while dropped out; they keep their gold and structures. */
   connected: boolean;
-  votes: { pause: boolean; fastForward: boolean };
+  votes: { pause: boolean; fastForward: boolean; skipToNight: boolean };
 }
 
 export interface Structure {
@@ -311,6 +311,8 @@ export type Command =
   /** Dev only (offline): sets the game's clock to an hour (games with a clock). */
   | { type: "debugClock"; hour: number }
   | { type: "sendWave" }
+  /** Votes to skip the rest of the day to the early evening (games with enemies at night). */
+  | { type: "voteSkipToNight" }
   | { type: "sell"; x: number; y: number };
 
 /** Commands for testing: offline only, refused online. */
