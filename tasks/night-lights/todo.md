@@ -12,11 +12,13 @@ Standard verification for every task: `npm run typecheck && npm test && npm run 
 
 `LIGHTS` in `src/render/palette.ts` (radius and strength per structure kind, an entry for units, none for scouts, a warm tint). `src/render/lights.ts`: `lightSources(state)` (built structures, not ruins or ones still being built; units except scouts) and `lightMap(sources, region)` (per tile: the brightest light reaching it, fading smoothly to nothing at its radius).
 
-- [ ] Built structures and units give light by kind; scouts, enemies, ruins and unfinished buildings don't
-- [ ] A tile's light is the brightest reaching it (lights don't add up), fading to 0 at the radius
-- [ ] Sources out of reach of the region are left out
+- [x] Built structures and units give light by kind; scouts, enemies, ruins and unfinished buildings don't
+- [x] A tile's light is the brightest reaching it (lights don't add up), fading to 0 at the radius
+- [x] Sources out of reach of the region are left out
 
 Files: `src/render/lights.ts` (new), `src/render/palette.ts`, `tests/render/lights.test.ts` (new). Size: S. Depends on: none.
+
+Built: farmland lights like walls (a thin line), as the spec has every built structure give light. The keep's light comes from `state.keeps` (it isn't a structure). The falloff is `strength x (1 - d²/r²)`.
 
 ## Task 2: Night through the light map
 
