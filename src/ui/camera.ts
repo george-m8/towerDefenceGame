@@ -34,12 +34,13 @@ export function setViewport(
   clamp(cam);
 }
 
-/** The zoom that shows the whole map. */
+/**
+ * The furthest out the view zooms: just far enough that the map spans the view from its left
+ * edge to its right, so there's never empty space beside it (above and below, a map shorter than
+ * the view is centred).
+ */
 export function fitZoom(cam: Camera): number {
-  return Math.min(
-    cam.viewWidth / (cam.mapWidth * TILE_SIZE),
-    cam.viewHeight / (cam.mapHeight * TILE_SIZE),
-  );
+  return cam.viewWidth / (cam.mapWidth * TILE_SIZE);
 }
 
 /** Size of one tile on screen, in pixels. */
@@ -63,7 +64,9 @@ export function panBy(cam: Camera, dxTiles: number, dyTiles: number): void {
   clamp(cam);
 }
 
+/** Looks at a map point (in tiles), keeping the zoom within its limits first. */
 export function centerOn(cam: Camera, tx: number, ty: number): void {
+  cam.zoom = clampZoom(cam, cam.zoom);
   cam.x = tx - cam.viewWidth / tilePixels(cam) / 2;
   cam.y = ty - cam.viewHeight / tilePixels(cam) / 2;
   clamp(cam);

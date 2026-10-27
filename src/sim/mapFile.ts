@@ -249,17 +249,21 @@ export function nearestKeep(keeps: Point[], p: Point): number {
 
 /**
  * Reads a `.map` file's JSON. Anything malformed is refused with a message naming the problem;
- * fields this version doesn't know are kept.
+ * fields this version doesn't know are kept. A campaign level's map gets its mode from the level
+ * (`mode`), so the file mustn't have one of its own.
  */
-export function parseMap(json: unknown): { map: MapFile } | { error: string } {
+export function parseMap(
+  json: unknown,
+  options: { mode?: GameMode } = {},
+): { map: MapFile } | { error: string } {
   try {
-    return { map: readMap(json) };
+    return { map: readMap(json, options.mode) };
   } catch (e) {
     return { error: (e as Error).message };
   }
 }
 
-function readMap(json: unknown): MapFile {
+function readMap(json: unknown, givenMode?: GameMode): MapFile {
   const o = record(json, "The map");
   if (o.format !== MAP_FORMAT) throw new Error(`Not a map file (format should be "${MAP_FORMAT}")`);
   const version = int(o.version, "version");
@@ -268,7 +272,11 @@ function readMap(json: unknown): MapFile {
   }
   if (version < 1) throw new Error("version must be 1 or more");
   if (typeof o.title !== "string") throw new Error("title must be text");
-  if (!MODES.includes(o.mode as GameMode)) throw new Error(`mode must be ${MODES.join(" or ")}`);
+  if (givenMode && o.mode !== undefined) {
+    throw new Error("a level's map has no mode of its own (it's in the .level file)");
+  }
+  const mode = givenMode ?? (o.mode as GameMode);
+  if (!MODES.includes(mode)) throw new Error(`mode must be ${MODES.join(" or ")}`);
   if (typeof o.size !== "string" || !(o.size in MAP_SIZES)) {
     throw new Error(`size must be one of ${Object.keys(MAP_SIZES).join(", ")}`);
   }
@@ -347,7 +355,7 @@ function readMap(json: unknown): MapFile {
     format: MAP_FORMAT,
     version,
     title: o.title,
-    mode: o.mode as GameMode,
+    mode,
     size,
     seed,
     terrain: terrain as string[],
@@ -385,13 +393,14 @@ function point(value: unknown, what: string): Point {
 
 /**
  * A map as file text: the known fields in a fixed order, then any extras; terrain one row per
- * line and one item per line, so a diff shows what changed.
+ * line and one item per line, so a diff shows what changed. A field that's missing (a level's
+ * map's mode) is left out.
  */
-export function serializeMap(map: MapFile): string {
+export function serializeMap(map: Omit<MapFile, "mode"> & { mode?: GameMode }): string {
   const keys = [
     ...KNOWN_KEYS,
     ...Object.keys(map).filter((k) => !(KNOWN_KEYS as readonly string[]).includes(k)),
-  ];
+  ].filter((key) => map[key] !== undefined);
   const lines = keys.map((key) => {
     const value = map[key];
     const name = JSON.stringify(key);

@@ -280,6 +280,13 @@ export interface GameState {
   /** Chance (0-1) at each tile that an enemy wanders off the path. Starts at ENEMY.wanderChance. */
   wanderChance: number;
   gameOver: boolean;
+  /**
+   * A campaign level's last wave: no wave starts after it, and once it has all come and been
+   * beaten with the keep still standing, the level is won. Null in other games (waves go on).
+   */
+  lastWave: number | null;
+  /** Whether the level was won (the game is over, the keep standing): see lastWave. */
+  won: boolean;
   rngState: number;
   /** False turns fog of war off: every tile is in sight. */
   fog: boolean;

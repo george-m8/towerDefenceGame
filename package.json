@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "server": "tsx watch server/main.ts",
     "server:probe": "tsx server/probe.ts",
+    "level-icons": "tsx tools/levelIcons.ts",
     "build:server": "vite build --ssr server/main.ts --outDir dist-server",
     "start": "node dist-server/main.js --static dist",
     "test": "vitest run",

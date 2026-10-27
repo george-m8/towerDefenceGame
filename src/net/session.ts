@@ -51,7 +51,8 @@ export function createLocalSession(
   /**
    * `fog: false` is the ?fog=off dev switch; `size` is the map size picked at the start; `map`
    * is a `.map` file to play (the map editor's Play); `items` an `.items` file's build limits;
-   * `enemiesCome` when enemies come (at night, or all the time).
+   * `enemiesCome` when enemies come (at night, or all the time); `lastWave` a campaign level's
+   * last wave, beating which wins.
    */
   options: {
     fog?: boolean;
@@ -59,6 +60,7 @@ export function createLocalSession(
     map?: MapFile;
     items?: ItemsFile;
     enemiesCome?: EnemiesCome;
+    lastWave?: number;
   } = {},
 ): Session {
   let state = createGame(seed, options);

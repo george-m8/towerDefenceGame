@@ -61,6 +61,16 @@ describe("the .map format", () => {
     expect(roundTrip(map)).toEqual({ map });
   });
 
+  it("reads a level's map without a mode, taking the level's, and refuses one with its own", () => {
+    const { mode: _, ...modeless } = openMap({ mode: "pvp" });
+    const text = serializeMap(modeless);
+    expect(text).not.toContain('"mode"');
+    expect(parseMap(JSON.parse(text), { mode: "pvp" })).toEqual({ map: openMap({ mode: "pvp" }) });
+    expect(parseMap(JSON.parse(text))).toEqual({ error: "mode must be endless or pvp" });
+    const own = parseMap(JSON.parse(serializeMap(openMap())), { mode: "endless" });
+    expect("error" in own && own.error).toContain("no mode of its own");
+  });
+
   it("writes terrain one row per line, so a diff shows the row that changed", () => {
     const text = serializeMap(openMap());
     expect(text.split("\n").filter((line) => line.startsWith('    ".'))).toHaveLength(height);

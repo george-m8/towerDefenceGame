@@ -67,6 +67,8 @@ export interface GameOptions {
   clock?: boolean;
   /** When enemies come (Endless only): all the time (default), or at night, with a clock. */
   enemiesCome?: EnemiesCome;
+  /** A campaign level's last wave: beating it wins (default none: waves go on). */
+  lastWave?: number;
 }
 
 export function createGame(seed: number, options: GameOptions = {}): GameState {
@@ -142,6 +144,8 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     speed: 1,
     wanderChance: ENEMY.wanderChance,
     gameOver: false,
+    lastWave: options.lastWave ?? null,
+    won: false,
     debug: { infiniteKeep: false, infiniteGold: false },
     limits: { ...options.items?.limits },
     rngState: seed,
@@ -230,7 +234,21 @@ export function tick(state: GameState): void {
       state.winner = state.keeps.find((keep) => keep.hp > 0)?.owner ?? null;
     }
     addCue(state, "gameOver");
+  } else if (!state.gameOver && lastWaveBeaten(state)) {
+    state.gameOver = true;
+    state.won = true;
   }
+}
+
+/** Whether a level's last wave has all come and every enemy is dead. */
+function lastWaveBeaten(state: GameState): boolean {
+  const { lastWave, wave } = state;
+  return (
+    lastWave !== null &&
+    wave.number >= lastWave &&
+    wave.threatLeft === 0 &&
+    state.enemies.length === 0
+  );
 }
 
 export function applyCommand(

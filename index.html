@@ -28,7 +28,7 @@
             <div class="zoom-controls">
               <button class="button" data-zoom="out" title="Zoom out (-)">-</button>
               <button class="button" data-zoom="in" title="Zoom in (+)">+</button>
-              <button class="button" data-zoom="fit" title="Show the whole map">Fit</button>
+              <button class="button" data-zoom="fit" title="Zoom out as far as it goes: the map from edge to edge">Fit</button>
               <button class="button" data-turn title="Flip the view round (Q)">⇅</button>
             </div>
           </div>
@@ -44,6 +44,7 @@
             <button class="button" data-action="close-settings">Close</button>
           </div>
         </div>
+        <canvas id="curtain" class="curtain" hidden></canvas>
         <div id="game-over" class="dialog" hidden></div>
         <div id="waiting" class="dialog" hidden></div>
         <div id="start" class="dialog" hidden></div>

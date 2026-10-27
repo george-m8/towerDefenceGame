@@ -311,6 +311,35 @@ An `.items` file is JSON, and a structure that isn't listed has no limit:
 }
 ```
 
+## Campaign levels
+
+Solo, **Campaign** on the mode screen opens the level select screen: a 4x3 grid of levels, each with its icon (built up on hover), up to three stars and its name. Only the first level is open to start with; each one after unlocks once the one before has a star. Locked levels are greyed out with no name or stars, and slots with no level yet are greyed-out ground. Stars are kept per player on the device, the best for each level.
+
+A level is won by beating its waves (5 to start with) with the keep standing: no wave comes after the last, and once every enemy of it is dead the level is complete. The stars go by the keep's health then: 3 stars untouched (100%), 2 at 50% or more, 1 otherwise. **Play again** replays it; **Levels** goes back to the level select screen (`?levels`). Open a level directly with `?solo&level=<folder>`.
+
+A level is a folder in [`levels/`](levels/), played in folder-name order (so they're numbered: `01-starter`). It holds one `.map` file, at most one `.items` file, and one `.level` file (any names). A folder with something wrong is skipped with a warning when the dev server starts. `01-starter` is the first level; `02-example-xs` to `06-example-xl` are examples on generated maps, one of each size. The `.level` file is JSON:
+
+```json
+{
+  "format": "keep-defence-level",
+  "version": 1,
+  "title": "Starter",
+  "icon": [
+    ["land:river", "land:river", "land:tree"],
+    ["enemy:goblin", "land:ground", "keep"],
+    ["land:sea", "land:sea", "land:sea"]
+  ],
+  "mode": "endless",
+  "win": { "waves": 5, "stars": { "3": 100, "2": 50 } },
+  "fog": true,
+  "dayNight": { "enemiesCome": "night" }
+}
+```
+
+A level's game mode is in its `.level` file (`"endless"` or `"pvp"`, defaulting to `"endless"`; only Endless levels show for now), so its `.map` file has no `mode` of its own (one that does is refused). `win` is what it takes to win: `waves` to beat, and `stars`, the keep health (a percentage) needed for 3 and for 2 stars; it defaults to the 5 waves, 100% and 50% above. `fog` defaults to `true` and `dayNight.enemiesCome` (`"always"` or `"night"`) to `"always"`. Fields the game doesn't know yet are kept, so more settings can be added later.
+
+The `icon` is the map simplified to a square of tiles (the player picture's tile names, row by row): 3x3 for an XXS map, 4x4 for XS, and so on up to 8x8 for XL. Each tile is a block of the map: the keep, an enemy where a spawn zone is, or else the terrain other than open ground there's most of (if there's at least a line of it across the block), or ground. `npm run level-icons` saves an icon into each `.level` file that has none of the right size, leaving hand-made ones be; `npm run level-icons -- --all` remakes them all. A level without one gets one made when the game loads, with a warning.
+
 ## Sound and music
 
 Everything you hear is played by the game's own small chiptune synth (pulse waves with PWM, triangle, sawtooth, sine and noise, with volume and pitch envelopes) on the browser's Web Audio API. There's no audio library.

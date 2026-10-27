@@ -174,3 +174,50 @@ describe("send wave early", () => {
     });
   });
 });
+
+describe("a campaign level's last wave", () => {
+  /** A level game whose last wave (2) has just finished spawning. */
+  function lastWaveIn(): GameState {
+    const state = createGame(3, { blankMap: true, fog: false, lastWave: 2 });
+    state.wave.number = 1;
+    sendWaveEarly(state, 1);
+    while (state.wave.threatLeft > 0) tick(state);
+    return state;
+  }
+
+  it("is the last: no wave comes after it, and none can be sent early", () => {
+    const state = lastWaveIn();
+    expect(state.wave.number).toBe(2);
+    expect(sendWaveEarly(state, 1)).toEqual({ ok: false, reason: "That was the last wave" });
+    state.debug.infiniteKeep = true;
+    run(state, countdownTicks * 2);
+    expect(state.wave.number).toBe(2);
+  });
+
+  it("wins once every enemy of it is dead, with the keep standing", () => {
+    const state = lastWaveIn();
+    expect(state.enemies.length).toBeGreaterThan(0);
+    tick(state);
+    expect(state.won).toBe(false);
+    state.enemies = [];
+    tick(state);
+    expect(state.gameOver).toBe(true);
+    expect(state.won).toBe(true);
+  });
+
+  it("isn't won if the keep falls", () => {
+    const state = lastWaveIn();
+    state.enemies = [];
+    state.keeps[0].hp = 0;
+    tick(state);
+    expect(state.gameOver).toBe(true);
+    expect(state.won).toBe(false);
+  });
+
+  it("isn't there in other games: the waves go on", () => {
+    const state = createGame(3, { blankMap: true, fog: false });
+    expect(state.lastWave).toBeNull();
+    state.wave.number = 40;
+    expect(sendWaveEarly(state, 1).ok).toBe(true);
+  });
+});
