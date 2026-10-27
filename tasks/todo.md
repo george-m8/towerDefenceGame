@@ -104,10 +104,12 @@ Built: `viewPrefs.ts` (key `keep-view`) holds the Map, Info and Keys panels and 
 
 The Keys panel moves into the side column (`.map-side`), below the minimap and Info, so Map, Info and Keys are one sidebar, each toggled from View as now. The editor's use of the panel moves with it. Keys gains the line "Shaded: cheaper building inside walls".
 
-- [ ] The Keys panel is in `.map-side`; View still shows and hides it
-- [ ] Browser: in a game and in the map editor, the sidebar holds Map, Info and Keys, nothing overlaps at 1280x720 and on a narrow window
+- [x] The Keys panel is in `.map-side`; View still shows and hides it
+- [x] Browser: in a game and in the map editor, the sidebar holds Map, Info and Keys, nothing overlaps at 1280x720 and on a narrow window
 
 Files: `index.html`, `src/styles.css`, `src/ui/panel.ts`, `src/editor/editor.ts` (if it places the panel). Size: S. Depends on: none.
+
+Built: only `index.html` moved the panel; the editor never shows Keys (`body.editing #panel` hides it), so `editor.ts` wasn't touched. Browser-checked at 1092x670: Map, Info and Keys stacked down the right.
 
 ## Task 9: Docs
 

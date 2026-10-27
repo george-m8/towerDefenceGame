@@ -747,7 +747,7 @@ a.button {
   }
 }
 
-/* Top left of the map: the View and Settings buttons, and the Controls panel below them */
+/* Top left of the map: the View, Journal, Settings and Debug buttons */
 .map-left {
   position: absolute;
   top: 12px;
@@ -776,6 +776,9 @@ a.button {
   margin: 0;
   padding: 0;
   border: none;
+}
+.controls-box .help + .help {
+  margin-top: 6px;
 }
 
 /* Messages (a refused build, "PAUSED"), along the top middle of the map */
