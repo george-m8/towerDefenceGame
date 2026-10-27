@@ -75,16 +75,18 @@ Built: `offeredTools(state, tab?)` in `hud.ts` counts what's offered. If the ope
 
 With a turnable tool selected, the HUD shows a Rotate (R) button beside the tool box, with the current facing's arrow. Clicking it turns the facing exactly as R does.
 
-- [ ] The button shows only for tools where `canRotate` is true
-- [ ] Clicking it and pressing R give the same facing (tested on the shared rotate function)
-- [ ] Browser: click to turn an archer before placing; touch-sized
+- [x] The button shows only for tools where `canRotate` is true
+- [x] Clicking it and pressing R give the same facing (tested on the shared rotate function)
+- [x] Browser: click to turn an archer before placing; touch-sized
 
 Files: `src/ui/hud.ts`, `src/ui/state.ts`, `src/styles.css`, `tests/ui/hud.test.ts`. Size: S. Depends on: 1.
 
+Built: `showsRotate(tool)` in `hud.ts`; the button calls the same `rotateFacing` as R. Browser-checked: clicking it turns an archer from north to east, and the tool box's arrow follows.
+
 ## Checkpoint B: after Tasks 4-6
 
-- [ ] All tests pass; typecheck and build clean
-- [ ] Browser: picker cards for every tab, one-list layout with an items file, the Rotate button
+- [x] All tests pass; typecheck and build clean
+- [x] Browser: picker cards for every tab, one-list layout with an items file, the Rotate button
 
 ## Task 7: Shown by default, and remembered
 

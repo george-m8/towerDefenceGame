@@ -9,10 +9,18 @@ import { discountAt, priceAt } from "../sim/enclosures";
 import { refundFor } from "../sim/economy";
 import { ownedCount, topAt } from "../sim/grid";
 import type { GameState, PlayerId, StructureKind } from "../sim/types";
-import { ARROW_SYMBOLS, GLYPHS, glyphFor } from "../render/palette";
-import { BUILD_TABS, TOOLS, isBuildTool, pickerLayout, type BuildTab, type UiState } from "./state";
+import { ARROW_SYMBOLS, GLYPHS, facingArrow, glyphFor } from "../render/palette";
+import {
+  BUILD_TABS,
+  TOOLS,
+  isBuildTool,
+  pickerLayout,
+  rotateFacing,
+  type BuildTab,
+  type UiState,
+} from "./state";
 import { statList, type Stat, type StatId } from "./stats";
-import { buildHints, describeKind, traits } from "./describe";
+import { buildHints, canRotate, describeKind, traits } from "./describe";
 
 export interface HudContent {
   /** The selected tool, or null with none selected. */
@@ -122,6 +130,11 @@ function renderCard(root: HTMLElement, card: PickerCard) {
   );
 }
 
+/** Whether the HUD offers a Rotate button: the selected tool turns with R. */
+export function showsRotate(tool: UiState["tool"]): boolean {
+  return isBuildTool(tool) && canRotate(tool);
+}
+
 /** Space between a picker button and its card, in pixels. */
 const CARD_GAP_PX = 14;
 
@@ -194,6 +207,9 @@ export function createHud(root: HTMLElement, ui: UiState) {
         <span class="hud-glyph" data-field="glyph"></span>
         <span data-field="name"></span>
       </button>
+      <button class="hud-box hud-tool hud-rotate" data-field="rotate" title="Rotate (R)" hidden>
+        <span data-field="arrow"></span> <kbd>R</kbd>
+      </button>
       <div class="hud-box hud-cost" data-field="cost"></div>
       <div class="hud-box hud-cost" data-field="time" title="Time to build here"></div>
       <div class="hud-actions" data-field="actions"></div>
@@ -209,6 +225,12 @@ export function createHud(root: HTMLElement, ui: UiState) {
   const glyph = field("glyph");
   const name = field("name");
   const cost = field("cost");
+  const rotate = field("rotate");
+  const arrow = field("arrow");
+  rotate.addEventListener("click", () => {
+    rotateFacing(ui); // the same turn as pressing R
+    rotate.blur(); // so Space only ever toggles pause
+  });
   const time = field("time");
   let shownTime: ShownTime | null = null;
   const statBoxes = field("stats");
@@ -352,6 +374,8 @@ export function createHud(root: HTMLElement, ui: UiState) {
       name.textContent = damaging
         ? "Damage (debug)"
         : `${hud.tool?.name ?? "Build"}${limit ? ` ${limit}` : ""}`;
+      rotate.hidden = !showsRotate(ui.tool);
+      arrow.textContent = facingArrow(ui.facing);
       cost.hidden = hud.cost === null;
       cost.textContent = hud.cost ?? "";
       shownTime = heldTime(shownTime, ui.tool, hud.time);

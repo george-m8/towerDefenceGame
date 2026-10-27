@@ -348,6 +348,16 @@ body {
   cursor: pointer;
   pointer-events: auto;
 }
+/* Rotate (R): beside the tool box while the tool turns. Big enough to tap. */
+.hud-rotate {
+  min-width: 64px;
+}
+.hud-rotate kbd {
+  font: inherit;
+  font-size: 0.7em;
+  padding: 0 3px;
+  border: 1px solid currentColor;
+}
 .hud-tool:active {
   color: var(--paper);
   background: var(--ink);

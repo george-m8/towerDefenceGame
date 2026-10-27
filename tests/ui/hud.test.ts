@@ -7,6 +7,7 @@ import {
   createUiState,
   hasBuildTools,
   pickerLayout,
+  rotateFacing,
   tabForKey,
   toolsInTab,
   type BuildTab,
@@ -19,6 +20,7 @@ import {
   limitLabel,
   offeredTools,
   pickerCard,
+  showsRotate,
   toggleHudStat,
 } from "../../src/ui/hud";
 import { newItems, withLimit } from "../../src/sim/itemsFile";
@@ -304,5 +306,18 @@ describe("one list or three tabs", () => {
     expect(offeredTools(few)).toEqual(["wall", "house"]);
     expect(offeredTools(few, "offence")).toEqual([]);
     expect(pickerLayout(offeredTools(few).length)).toBe("row");
+  });
+});
+
+describe("Rotate button", () => {
+  it("shows for tools that turn, and turns the facing as R does", () => {
+    expect(showsRotate("archer")).toBe(true);
+    expect(showsRotate("guardhouse")).toBe(true);
+    expect(showsRotate("cannon")).toBe(false);
+    expect(showsRotate("sell")).toBe(false);
+    expect(showsRotate(null)).toBe(false);
+    const ui = createUiState();
+    rotateFacing(ui);
+    expect(ui.facing).toBe("E");
   });
 });
