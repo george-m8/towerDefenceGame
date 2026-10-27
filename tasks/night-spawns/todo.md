@@ -12,11 +12,13 @@ Standard verification for every task: `npm run typecheck && npm test && npm run 
 
 `SUN.maxLength` 2.5; `DAY_NIGHT.arcAtSunrise` 10°, `arcAtSunset` 170°. `CASTERS` becomes the 24 offsets within 2 tiles, worked out once.
 
-- [ ] The tallest block's shadow stays under 2 tiles; `CASTERS` has the 24 offsets
-- [ ] A block 2 tiles away shades a lower one when the shadow is long enough, and not when it's short
-- [ ] Existing sun and day/night tests pass (updated only where they state the old numbers)
+- [x] The tallest block's shadow stays under 2 tiles; `CASTERS` has the 24 offsets
+- [x] A block 2 tiles away shades a lower one when the shadow is long enough, and not when it's short
+- [x] Existing sun and day/night tests pass (updated only where they state the old numbers)
 
 Files: `src/render/sun.ts`, `src/render/palette.ts`, `tests/render/sun.test.ts`. Size: S. Depends on: none.
+
+Built: `SUN.reachTiles` (2) sets both how far a shadow may fall and which tiles `CASTERS` lists.
 
 ## Task 2: Renderer reach and speed
 

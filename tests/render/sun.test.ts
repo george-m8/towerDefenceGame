@@ -48,8 +48,9 @@ describe("shadowOffset", () => {
     }
   });
 
-  it("is never longer than the longest shadow, which keeps the tallest block's within a tile", () => {
-    expect(SUN.maxLength * SUN.tallestBlock).toBeLessThan(TILE_SIZE);
+  it("is never longer than the longest shadow, which keeps the tallest block's within its reach", () => {
+    expect(SUN.maxLength * SUN.tallestBlock).toBeLessThan(SUN.reachTiles * TILE_SIZE);
+    expect(SUN.reachTiles).toBe(2);
     for (const arc of arcs) {
       for (const across of day)
         expect(length(across, arc)).toBeLessThanOrEqual(SUN.maxLength + 1e-9);
@@ -115,8 +116,20 @@ describe("castShade", () => {
   const foot = 6 * TILE_SIZE;
   const rim = foot - 6;
 
-  it("checks all 8 neighbours", () => {
-    expect(CASTERS).toHaveLength(8);
+  it("checks every tile within a shadow's reach: 24 within 2", () => {
+    expect(CASTERS).toHaveLength(24);
+    for (const [dx, dy] of CASTERS) {
+      expect(Math.max(Math.abs(dx), Math.abs(dy))).toBeLessThanOrEqual(SUN.reachTiles);
+      expect([dx, dy]).not.toEqual([0, 0]);
+    }
+  });
+
+  it("shades a lower block 2 tiles away when the shadow is long, not when it's short", () => {
+    const keepCorner = { x: 3, y: 5, height: SUN.tallestBlock };
+    const wall = { x: 5, y: 5, height: 2 };
+    // Sun low on the left: shadows long to the right.
+    expect(castShade(at(0.03), keepCorner, wall).top).not.toBeNull();
+    expect(castShade(at(0.5), keepCorner, wall)).toEqual({ top: null, face: null });
   });
 
   it("shades the block on the side the shadow falls, top and face", () => {
