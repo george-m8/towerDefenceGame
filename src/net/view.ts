@@ -61,6 +61,7 @@ export function applyUpdate(view: GameState, update: StateUpdate): Movers {
   view.cues = update.cues;
   view.players = update.players;
   view.wave = update.wave;
+  view.clock = update.clock;
   view.keeps = update.keeps;
   view.winner = update.winner;
   view.paused = update.paused;

@@ -16,7 +16,14 @@ import {
 
 export type JoinIntent =
   /** `fog: false`: the host starts the game without fog of war (picked in the game's settings). */
-  | { mode: "create"; name: string; game?: GameMode; size?: MapSize; fog?: false }
+  | {
+      mode: "create";
+      name: string;
+      game?: GameMode;
+      size?: MapSize;
+      fog?: false;
+      enemiesCome?: "night";
+    }
   | { mode: "join"; room: string; name: string };
 
 /** The parts of the browser WebSocket API we use (the `ws` package matches it in tests). */
@@ -164,6 +171,7 @@ export function createNetworkSession(
         name: intent.name,
         ...(create?.game ? { mode: create.game } : {}),
         ...(create?.size ? { size: create.size } : {}),
+        ...(create?.enemiesCome ? { enemiesCome: create.enemiesCome } : {}),
       });
     }
   }

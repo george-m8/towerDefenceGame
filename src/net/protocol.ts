@@ -1,6 +1,7 @@
 // The messages between browser and game server. Shared by both, so no Node or DOM APIs here.
 import { MAP_SIZES, STRUCTURES, type MapSize, type StructureStats } from "../sim/config";
 import type {
+  EnemiesCome,
   Command,
   CommandResult,
   DebugCommand,
@@ -26,7 +27,7 @@ const MAX_COORDINATE = 4096;
 export type OnlineCommand = Exclude<Command, DebugCommand>;
 
 export type ClientMessage =
-  | { type: "create"; name: string; mode?: GameMode; size?: MapSize }
+  | { type: "create"; name: string; mode?: GameMode; size?: MapSize; enemiesCome?: EnemiesCome }
   | { type: "join"; room: string; name: string }
   | { type: "rejoin"; room: string; token: string }
   | { type: "command"; seq: number; command: OnlineCommand }
@@ -89,6 +90,7 @@ type DynamicFields =
   | "cues"
   | "players"
   | "wave"
+  | "clock"
   | "keeps"
   | "winner"
   | "paused"
@@ -163,6 +165,12 @@ export function parseClientMessage(raw: string): ParseResult {
         if (!isMapSize(data.size)) return fail("Bad map size");
         message.size = data.size;
       }
+      if (data.enemiesCome !== undefined) {
+        if (data.enemiesCome !== "always" && data.enemiesCome !== "night") {
+          return fail("Bad enemiesCome");
+        }
+        message.enemiesCome = data.enemiesCome;
+      }
       return ok(message);
     }
     case "join": {
@@ -197,6 +205,7 @@ function parseCommand(data: unknown): OnlineCommand | null {
   switch (data.type) {
     case "togglePause":
     case "toggleFastForward":
+    case "voteSkipToNight":
     case "sendWave":
       return { type: data.type };
     case "sell":

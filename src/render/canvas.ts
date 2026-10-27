@@ -2,7 +2,6 @@ import {
   baseAt,
   blocksAt,
   canBuild,
-  inBounds,
   isBuilt,
   isKeepTile,
   isSpawnTile,
@@ -54,6 +53,8 @@ import {
   PROJECTILES,
   BATTLEMENT_PX,
   DAY_NIGHT,
+  LIGHTS,
+  SUN,
   BUILD_BORDER_PX,
   CONSTRUCTION_ALPHA,
   ENEMY_COLOURS,
@@ -81,7 +82,15 @@ import { burstPixels, burstWaiting } from "./burst";
 import { textureSpecks, textureVariant, type TextureStyle } from "./textures";
 import { borderColour, borderTrace } from "./buildBorder";
 import { CASTERS, castShade, shadowOffset, sweptTile, type Block, type Sun } from "./sun";
-import { darknessAt, daylight } from "./dayNight";
+import { darknessAt, daylight, skyHour } from "./dayNight";
+import { nightLight } from "./lights";
+
+/** The furthest any light reaches, in tiles: how far round the view lights are looked for. */
+const MAX_LIGHT_RADIUS = Math.max(
+  LIGHTS.keep.radius,
+  LIGHTS.torch.radius,
+  ...Object.values(LIGHTS.structures).map((light) => light.radius),
+);
 
 /** How dark blocks' shadows are in full daylight, on the ground and on lower blocks beside them. */
 const SHADOW_ALPHA = 0.3;
@@ -174,8 +183,37 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   const textureImages = new Map<string, HTMLCanvasElement>();
   /** False when zoomed too far out for textures to show. */
   let textured = true;
+  /** The night's light map as an image, one pixel a tile (see drawNight). */
+  const nightImage = document.createElement("canvas");
   /** Blocks' shadows this frame: fainter as the light fades (see dayNight.ts). */
   let shadow = `rgba(0, 0, 0, ${SHADOW_ALPHA})`;
+  /**
+   * Blocks' heights this frame, for the view and a shadow's reach round it, so the shadow passes
+   * (which look at every tile round each block) don't work each one out again.
+   */
+  let heights = { x0: 0, y0: 0, width: 0, height: 0, data: new Uint8Array(0) };
+
+  /** Works out every block's height for the view and a shadow's reach round it. */
+  function measureHeights(state: GameState) {
+    const x0 = Math.max(0, view.x0 - SUN.reachTiles);
+    const y0 = Math.max(0, view.y0 - SUN.reachTiles);
+    const width = Math.min(state.width - 1, view.x1 + SUN.reachTiles) - x0 + 1;
+    const height = Math.min(state.height - 1, view.y1 + SUN.reachTiles) - y0 + 1;
+    if (heights.data.length < width * height) heights.data = new Uint8Array(width * height);
+    heights = { x0, y0, width, height, data: heights.data };
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++)
+        heights.data[y * width + x] = blockHeight(state, x0 + x, y0 + y);
+    }
+  }
+
+  /** A block's height from this frame's measure: 0 off the map or out of reach of the view. */
+  function heightAt(x: number, y: number): number {
+    const { x0, y0, width, height, data } = heights;
+    const col = x - x0;
+    const row = y - y0;
+    return col >= 0 && row >= 0 && col < width && row < height ? data[row * width + col] : 0;
+  }
   /** The fog image and what it was made from: the sight, and the curtain's radius if any. */
   let fog: {
     tier: Uint8Array;
@@ -229,12 +267,13 @@ export function createRenderer(canvas: HTMLCanvasElement) {
 
   function drawGrid(state: GameState, sun: Sun) {
     const { x0, y0, x1, y1 } = view;
+    measureHeights(state);
     const showOwners = Object.keys(state.players).length > 1;
     // Flat tiles first (ground under raised ones), then raised blocks back to front, so a
     // block's lifted top covers the row behind it.
     for (let y = y0; y <= y1; y++) {
       for (let x = x0; x <= x1; x++) {
-        if (blockHeight(state, x, y) > 0) {
+        if (heightAt(x, y) > 0) {
           drawGround(x, y);
           continue;
         }
@@ -243,14 +282,14 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       }
     }
     drawDoors(state);
-    // Shadows cast away from the sun, under every block, from a tile beyond the view too (a
-    // shadow reaches at most a tile). One fill, so overlapping shadows aren't darker.
+    // Shadows cast away from the sun, under every block, from a shadow's reach beyond the view
+    // too. One fill, so overlapping shadows aren't darker.
     const { dx, dy } = shadowOffset(sun);
     ctx!.fillStyle = shadow;
     ctx!.beginPath();
-    for (let y = Math.max(0, y0 - 1); y <= Math.min(state.height - 1, y1 + 1); y++) {
-      for (let x = Math.max(0, x0 - 1); x <= Math.min(state.width - 1, x1 + 1); x++) {
-        const h = blockHeight(state, x, y);
+    for (let y = heights.y0; y < heights.y0 + heights.height; y++) {
+      for (let x = heights.x0; x < heights.x0 + heights.width; x++) {
+        const h = heightAt(x, y);
         if (h > 0) tracePolygon(sweptTile(x, y, h * dx, h * dy));
       }
     }
@@ -271,7 +310,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       drawUnits(state, unitsByRow.get(y - 1) ?? []);
       drawEnemies(state, enemiesByRow.get(y - 1) ?? []);
       for (let x = x0; x <= x1; x++) {
-        const h = blockHeight(state, x, y);
+        const h = heightAt(x, y);
         if (h === 0) continue;
         // Front face: the block's colour, darkened; the top sits h pixels higher.
         ctx!.fillStyle = minimapColour(state, x, y);
@@ -283,7 +322,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
         drawTileContents(state, x, y, showOwners);
         ctx!.restore();
         drawEnclosureTint(state, x, y, h);
-        drawCastShadows(state, { x, y, height: h }, { dx, dy });
+        drawCastShadows({ x, y, height: h }, { dx, dy });
       }
     }
   }
@@ -292,13 +331,16 @@ export function createRenderer(canvas: HTMLCanvasElement) {
    * The shadows taller blocks round it cast over a lower block's front face and top:
    * e.g. a catapult on a wall shading the wall beside it. One fill, so overlaps aren't darker.
    */
-  function drawCastShadows(state: GameState, receiver: Block, offset: { dx: number; dy: number }) {
+  function drawCastShadows(receiver: Block, offset: { dx: number; dy: number }) {
+    const length = Math.hypot(offset.dx, offset.dy);
     ctx!.beginPath();
     for (const [dx, dy] of CASTERS) {
-      const x = receiver.x + dx;
-      const y = receiver.y + dy;
-      if (!inBounds(state, x, y)) continue;
-      const { top, face } = castShade(offset, { x, y, height: blockHeight(state, x, y) }, receiver);
+      const caster = heightAt(receiver.x + dx, receiver.y + dy);
+      if (caster <= receiver.height) continue;
+      // Too far away for its shadow to reach: the tiles between are wider than the shadow is long.
+      if ((Math.max(Math.abs(dx), Math.abs(dy)) - 1) * TILE_SIZE >= caster * length) continue;
+      const at = { x: receiver.x + dx, y: receiver.y + dy, height: caster };
+      const { top, face } = castShade(offset, at, receiver);
       if (top) tracePolygon(top);
       if (face) tracePolygon(face);
     }
@@ -306,14 +348,59 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     ctx!.fill();
   }
 
-  /** Night: a dark wash over the whole view, map and fog alike (previews go over it). */
-  function drawNight(darkness: number) {
+  /**
+   * Night: a dark wash over the whole view, map and fog alike (previews go over it), lifted round
+   * lights (the town, units) and warmed where they're brightest. On the map it's drawn from a
+   * light map, one pixel a tile, scaled up smoothly; beyond the map it's flat.
+   */
+  function drawNight(state: GameState, darkness: number) {
     if (darkness <= 0) return;
-    ctx!.save();
-    ctx!.setTransform(1, 0, 0, 1, 0, 0);
+    const reach = Math.ceil(MAX_LIGHT_RADIUS);
+    const x0 = Math.max(0, view.x0 - reach);
+    const y0 = Math.max(0, view.y0 - reach);
+    const region = {
+      x0,
+      y0,
+      width: Math.min(state.width - 1, view.x1 + reach) - x0 + 1,
+      height: Math.min(state.height - 1, view.y1 + reach) - y0 + 1,
+    };
+    const light = nightLight(state, region);
+    // Beyond the lit region (off the map): flat night. Everything but the region, by even-odd.
+    const far = 1e6;
+    const left = region.x0 * TILE_SIZE;
+    const top = region.y0 * TILE_SIZE;
+    const width = region.width * TILE_SIZE;
+    const height = region.height * TILE_SIZE;
     ctx!.fillStyle = `rgba(${DAY_NIGHT.nightColour}, ${darkness})`;
-    ctx!.fillRect(0, 0, canvas.width, canvas.height);
-    ctx!.restore();
+    ctx!.beginPath();
+    ctx!.rect(-far, -far, 2 * far, 2 * far);
+    ctx!.rect(left, top, width, height);
+    ctx!.fill("evenodd");
+    // On the region: darkness lifted by the light, then the warm glow.
+    const [nr, ng, nb] = DAY_NIGHT.nightColour.split(",").map(Number);
+    const [tr, tg, tb] = LIGHTS.tint.split(",").map(Number);
+    const warmth = (LIGHTS.tintStrength * darkness) / DAY_NIGHT.darkness;
+    const night = nightImage.getContext("2d")!;
+    nightImage.width = region.width;
+    nightImage.height = region.height;
+    const dark = night.createImageData(region.width, region.height);
+    const glow = night.createImageData(region.width, region.height);
+    for (let i = 0; i < light.length; i++) {
+      const p = i * 4;
+      dark.data[p] = nr;
+      dark.data[p + 1] = ng;
+      dark.data[p + 2] = nb;
+      dark.data[p + 3] = 255 * darkness * (1 - light[i]);
+      glow.data[p] = tr;
+      glow.data[p + 1] = tg;
+      glow.data[p + 2] = tb;
+      glow.data[p + 3] = 255 * warmth * light[i];
+    }
+    ctx!.imageSmoothingEnabled = true; // soft pools of light
+    for (const image of [dark, glow]) {
+      night.putImageData(image, 0, 0);
+      ctx!.drawImage(nightImage, left, top, width, height);
+    }
   }
 
   /** Adds a closed polygon to the path being built. */
@@ -920,14 +1007,14 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       ctx.textBaseline = "middle";
       view = visibleTiles(cam);
       textured = tilePixels(cam) >= TEXTURE_MIN_TILE_PX;
-      const hour = ui.clock?.hour;
+      const hour = skyHour(state.clock, ui.clock);
       shadow = `rgba(0, 0, 0, ${SHADOW_ALPHA * (hour === undefined ? 1 : daylight(hour))})`;
       drawGrid(state, ui.sun);
       drawKeepHp(state);
       if (ui.showFlow) drawFlow(state);
       drawEffects(state);
       drawFog(state, ui.curtain);
-      if (hour !== undefined) drawNight(darknessAt(hour));
+      if (hour !== undefined) drawNight(state, darknessAt(hour));
       drawPending(pending);
       drawRange(state, ui);
       drawGhost(state, ui);

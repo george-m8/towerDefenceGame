@@ -18,12 +18,15 @@ describe("parseClientMessage", () => {
     parses({ type: "create", name: "Ann", mode: "endless" });
     parses({ type: "create", name: "Ann", size: "XS" });
     parses({ type: "create", name: "Ann", mode: "pvp", size: "XL" });
+    parses({ type: "create", name: "Ann", enemiesCome: "night" });
+    parses({ type: "create", name: "Ann", enemiesCome: "always" });
     parses({ type: "join", room: "ABCD", name: "Bo" });
     parses({ type: "rejoin", room: "WXYZ", token: "a".repeat(32) });
     parses({ type: "restart" });
     parses({ type: "start" });
     parses({ type: "start", fog: false });
     parses({ type: "command", seq: 0, command: { type: "togglePause" } });
+    parses({ type: "command", seq: 0, command: { type: "voteSkipToNight" } });
     parses({ type: "command", seq: 1, command: { type: "toggleFastForward" } });
     parses({ type: "command", seq: 2, command: { type: "sendWave" } });
     parses({ type: "command", seq: 3, command: { type: "sell", x: 0, y: 31 } });
@@ -50,6 +53,7 @@ describe("parseClientMessage", () => {
   it("rejects malformed input without throwing", () => {
     rejects("not json");
     rejects({ type: "create", name: "Ann", size: "XXL" });
+    rejects({ type: "create", name: "Ann", enemiesCome: "dawn" });
     rejects({ type: "create", name: "Ann", mode: "chess" });
     rejects("null");
     rejects([]);

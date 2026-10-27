@@ -231,8 +231,16 @@ Status: `map-editor` built (2026-10-26). Hand-made content for the game: a **lev
 
 ## Day and night (2026-10-26)
 
-Status: step 1 built (2026-10-26); step 2, the cycle, built (2026-10-27).
+Status: `day-night` steps 1 and 2 built (2026-10-26/27). Map extended 2026-10-27 with `long-shadows`, `game-clock`, `night-spawns` and `edge-spawns`; the first three built 2026-10-27; `town-lights` and `skip-to-night` added and built the same day.
 
 | Module | What it delivers | Depends on |
 |---|---|---|
 | `day-night` | Step 1: shadows follow a sun on a tilted arc (across the sky, and the arc's height), set from two sliders in the Debug menu (game and map editor); taller blocks shade lower neighbours on any side the shadow falls. Step 2: a day and night clock (Debug > Day/night, Time slider and Play) moves the sun through the day and darkens the night. Drawing only. Next: town lighting at night, then the clock in the game itself. Spec: [`SPEC-day-night.md`](SPEC-day-night.md). | core (raised blocks) |
+| `long-shadows` | Dawn and dusk shadows reach up to about 2 tiles (the cap was 1): a shallower arc at sunrise and sunset, neighbour shading checked 2 tiles out. Drawing only. Spec: [`SPEC-long-shadows.md`](SPEC-long-shadows.md). | day-night |
+| `game-clock` | The time of day as game state (`state.clock`): it runs with game time (a day and night in 8 minutes, 5 of day and 3 of night), pauses and fast-forwards with the game, is shared online, and the sky is drawn from it. Only in games that use it (night spawns, for now). Debug Day/night sets it offline. Spec: [`SPEC-game-clock.md`](SPEC-game-clock.md). | day-night |
+| `night-spawns` | A setup option for Endless, **Enemies come: all the time / at night**. At night, today's waves run from early evening until sunrise, then stop; what's left must be killed. The HUD and game-over screen count nights survived. Spec: [`SPEC-night-spawns.md`](SPEC-night-spawns.md). | game-clock |
+| `town-lights` | At night, built structures light the darkness round them by kind (the keep most, walls a thin line), and units carrying torches (a `torch` flag per unit kind: soldiers and workers do, scouts don't; human enemies later); enemies and open land stay dark. Drawing only. Spec: [`SPEC-town-lights.md`](SPEC-town-lights.md). | game-clock |
+| `skip-to-night` | A Skip to night button by day in night games: jumps the clock to the early evening; a unanimous vote in co-op, like Pause. Spec: [`SPEC-skip-to-night.md`](SPEC-skip-to-night.md). | night-spawns |
+| `edge-spawns` | A setup option, **Enemies enter: spawn zone / all round the map**. It's `wave-director`'s edge spawns (slices 3-4), which change how enclosures and fog measure reachability, so it stays there (after `enemy-targeting`). The setup screen leaves room for the option. | wave-director |
+
+Build order (agreed 2026-10-27): `long-shadows` -> `game-clock` -> `night-spawns`. `edge-spawns` with `wave-director`. Later: the day and night cycle as a look-only option for other modes (it's in the Debug menu for now), and town lighting at night.

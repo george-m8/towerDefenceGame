@@ -50,17 +50,16 @@ export interface Shade {
   face: [number, number][] | null;
 }
 
-/** The neighbours whose shadows can fall on a block: all 8, as shadows reach at most a tile. */
-export const CASTERS: readonly [number, number][] = [
-  [-1, -1],
-  [0, -1],
-  [1, -1],
-  [-1, 0],
-  [1, 0],
-  [-1, 1],
-  [0, 1],
-  [1, 1],
-];
+/** The tiles whose shadows can fall on a block: every one within a shadow's reach. */
+export const CASTERS: readonly [number, number][] = (() => {
+  const offsets: [number, number][] = [];
+  for (let dy = -SUN.reachTiles; dy <= SUN.reachTiles; dy++) {
+    for (let dx = -SUN.reachTiles; dx <= SUN.reachTiles; dx++) {
+      if (dx !== 0 || dy !== 0) offsets.push([dx, dy]);
+    }
+  }
+  return offsets;
+})();
 
 /** Shade smaller than this (in pixels, or square pixels) isn't drawn: it's only rounding. */
 const SLIVER = 0.01;

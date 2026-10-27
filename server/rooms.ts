@@ -1,6 +1,6 @@
 // All rooms on this server, by code.
 import { randomInt } from "node:crypto";
-import type { GameMode, PlayerId } from "../src/sim/types";
+import type { EnemiesCome, GameMode, PlayerId } from "../src/sim/types";
 import { DEFAULT_MAP_SIZE, type MapSize } from "../src/sim/config";
 import { ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, type ServerMessage } from "../src/net/protocol";
 import { EMPTY_ROOM_TTL_MS } from "./config";
@@ -23,6 +23,7 @@ export function openRoom(
   registry: Registry,
   mode: GameMode = "endless",
   size: MapSize = DEFAULT_MAP_SIZE,
+  enemiesCome: EnemiesCome = "always",
 ): Room {
   let code: string;
   do code = randomCode();
@@ -33,6 +34,7 @@ export function openRoom(
     (playerId, message) => registry.deliver(code, playerId, message),
     mode,
     size,
+    enemiesCome,
   );
   registry.rooms.set(code, room);
   return room;

@@ -18,6 +18,7 @@ describe("readJoinIntent", () => {
       items: "towers-only",
     });
     expect(readJoinIntent("?solo&items=../secret")).toEqual({ mode: "offline" });
+    expect(readJoinIntent("?solo&night")).toEqual({ mode: "offline", enemiesCome: "night" });
     expect(readJoinIntent("?create&name=Ann&size=S")).toEqual({
       mode: "create",
       name: "Ann",

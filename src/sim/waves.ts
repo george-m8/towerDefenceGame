@@ -7,6 +7,7 @@ import {
   type EnemyKindId,
 } from "./config";
 import { addCue } from "./cues";
+import { isSpawningTime } from "./clock";
 import { spawnEnemy } from "./enemies";
 import { nextRandom, randomInt } from "./rng";
 import { addGold } from "./players";
@@ -84,6 +85,12 @@ export function createWaveState(): WaveState {
 export function updateWaves(state: GameState): void {
   const { wave } = state;
   if (wave.threatLeft === 0) {
+    // Outside spawning time (enemies at night, by day) the countdown waits, full, for the evening.
+    // A wave already spawning carries on, so one coming at sunrise finishes.
+    if (!isSpawningTime(state)) {
+      wave.countdown = COUNTDOWN_TICKS;
+      return;
+    }
     wave.countdown--;
     if (wave.countdown > 0) return;
     startWave(state);
@@ -112,6 +119,7 @@ export function updateWaves(state: GameState): void {
 export function sendWaveEarly(state: GameState, player: PlayerId): CommandResult {
   if (state.gameOver) return { ok: false, reason: "Game over" };
   if (state.wave.threatLeft > 0) return { ok: false, reason: "Wave still spawning" };
+  if (!isSpawningTime(state)) return { ok: false, reason: "Enemies come at night" };
   const skipped = Math.floor(state.wave.countdown / TICK_RATE);
   addGold(state, player, skipped * WAVES.earlySendGoldPerSecond);
   startWave(state);

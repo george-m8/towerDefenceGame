@@ -988,6 +988,88 @@ T1 shadowOffset and the SUN table
 | Cast shadows on diagonal or front neighbours look wrong (shading tops that should be lit) | Med | Done early (T3) and checked at several sun values, with a pure helper for which neighbours are reached |
 | Showing `.map-left` in the editor brings back game panels | Low | CSS shows only the Debug anchor in `body.editing` (T5) |
 
+## Day and night: long-shadows, game-clock, night-spawns
+
+Specs: [`SPEC-long-shadows.md`](../SPEC-long-shadows.md), [`SPEC-game-clock.md`](../SPEC-game-clock.md), [`SPEC-night-spawns.md`](../SPEC-night-spawns.md) (approved 2026-10-27). Tasks: [`tasks/night-spawns/todo.md`](night-spawns/todo.md). `edge-spawns` stays with `wave-director`.
+
+### Architecture decisions
+
+- **The sim owns the clock.** `state.clock` (`{ hour, day }`, or null) advances in `tick()`, so pausing and fast-forward come free and every client gets the server's time. Sunrise and sunset move from `DAY_NIGHT` (render) to `GAME_CLOCK` (sim config); the render table keeps only the look (arcs, twilight, darkness). The clock has no randomness, so determinism holds.
+- **One rule for the drawn hour.** `skyHour(state, ui)`: the game's clock, else the Debug clock, else none (full daylight). `ui.sun` stays the drawn sun, and `main.ts` sets it from the clock whenever the clock moves, so the Sun sliders are a preview that the game pulls back.
+- **Waves are gated, not rewritten.** `updateWaves` keeps today's rhythm and only runs in spawning time; only starting a wave is gated, so a wave already spawning at sunrise finishes. All the time is the same code with the gate always open.
+- **Options travel like map size.** `enemiesCome` goes in `GameOptions`, `ModeSettings`, the `create` message and the room (kept for restarts).
+- **Long shadows stay local.** `CASTERS` grows to the 24 offsets within 2 tiles; `castShade` already clips at any distance. Block heights are cached per frame so the extra neighbours don't cost 3x the lookups.
+
+### Dependency graph
+
+```
+T1 Shadows up to 2 tiles (maths)
+ └─ T2 Renderer: 2-tile margin, height cache, timing
+T3 Sim clock (config, clock.ts, tick)
+ ├─ T4 Clock online (snapshot, updates)
+ └─ T5 Sky and Debug from the game's clock (+ debugClock)
+     └─ T6 Night spawns in the sim (option, gated waves, nights survived)
+         ├─ T7 Solo setup choice and ?solo&night
+         ├─ T8 Online: enemiesCome on create, kept for restarts
+         └─ T9 HUD and game-over text
+             └─ T10 Docs
+```
+
+T1-T2 and T3 don't depend on each other; they're built in order anyway.
+
+### Checkpoints
+
+- **A (after T2):** long dawn and dusk shadows look right in a played Debug day; frame time within budget.
+- **B (after T7):** a solo game at night by hand: first wave about 20 s in, waves through the night, sunrise stops them, stragglers stay, next night carries on.
+- **C (after T9):** a co-op game at night; HUD and game-over text.
+
+### Risks
+
+| Risk | Impact | Mitigation |
+|---|---|---|
+| 24 neighbour checks per block slow drawing on big maps | Med | Per-frame height cache; a stub-canvas timing test before and after (T2); fall back to 1.5 tiles (8 + 12 neighbours) if over budget |
+| A countdown running on by day starts a wave after sunrise | Low | Only starting a wave is gated, in one place (a wave already spawning finishes, agreed); tests for sunrise during spawning, during the countdown and with send-early |
+| The clock drifts between server and client | Low | The client never runs it, only copies it from updates; float steps are the same on every machine |
+| Debug time-jumps (debugClock) skip sunrise handling | Low | Setting the hour goes through the same sunrise check (crossing sunrise ends the night) |
+| Restart or rejoin online loses the option | Low | Kept on the room like `size`; a restart test |
+| The by-day HUD stat confuses (no countdown) | Low | "At dusk" in place of the countdown; reviewed at Checkpoint C |
+
+## Day and night: town-lights, skip-to-night
+
+Specs: [`SPEC-town-lights.md`](../SPEC-town-lights.md), [`SPEC-skip-to-night.md`](../SPEC-skip-to-night.md) (approved 2026-10-27). Tasks: [`tasks/night-lights/todo.md`](night-lights/todo.md).
+
+### Architecture decisions
+
+- **A light map like the fog image.** `lightMap` works out one light value per tile for the view plus the largest light radius (pure, tested); the renderer turns it into a small image (one pixel per tile, alpha `darkness x (1 - light)`) and draws it scaled and smoothed over the map. One drawImage, however many walls there are. Off the map (beyond its edges) the night is drawn as now, flat.
+- **Sources from the state, every frame.** `lightSources(state)` lists built structures and units by kind from `LIGHTS`; only those within reach of the view are stamped. Nothing is cached: walls are cheap (radius 1.5), and units move.
+- **Only at night.** No light map while `darknessAt(hour)` is 0, so days cost nothing.
+- **Skip to night is a third vote.** `votes.skipToNight` sits beside `pause` and `fastForward`: same unanimous rule in `updateVotes`, same clearing on drop-out, same HUD vote label. When unanimous by day in a night game it calls `skipToNight(state)` (the clock to `NIGHT_SPAWNS.from`) and clears the votes. Votes are counted on events only, so a per-tick check clears skip votes once spawning time starts on its own.
+
+### Dependency graph
+
+```
+T1 Light sources and light map (pure)
+ └─ T2 Night drawn through the light map (+ timing)
+T3 Skip-to-night vote in the sim
+ ├─ T4 Online: the command
+ └─ T5 HUD button and Players mark
+     └─ T6 Docs
+```
+
+### Checkpoints
+
+- **A (after T2):** a night game by hand: the town glows by kind, units a little, scouts dark; lights come and go with dusk and dawn.
+- **B (after T5):** Skip to night solo and as a co-op vote in two tabs.
+
+### Risks
+
+| Risk | Impact | Mitigation |
+|---|---|---|
+| Smoothed upscaling bleeds light past the map edge or between the region and the flat night | Low | The region is clamped to the map; off-map night is drawn outside the map rectangle only |
+| Thousands of sources (walls) slow the light map | Med | Stamp only sources within reach of the view; benchmark at midnight on an XL map of walls (within 2ms of today's night) |
+| A vote left standing skips a later day by surprise | Low | Votes clear at the skip, when spawning time starts, and on drop-out (tested) |
+| A new vote field missed somewhere votes are built (restart, players) | Low | Typecheck finds every `votes` literal; restart test |
+
 ## Open questions
 
 None for `tower-aiming`. Each later module's questions are settled in its spec.

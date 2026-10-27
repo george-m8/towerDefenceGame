@@ -213,7 +213,10 @@ body {
   color: #888;
   cursor: default;
 }
-/* Pause and fast forward, joined into one box split by a line */
+.hud-action[hidden] {
+  display: none;
+}
+/* Pause, fast forward and Skip to night, joined into one box split by lines */
 .hud-segment {
   display: flex;
   padding: 0;

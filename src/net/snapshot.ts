@@ -78,6 +78,7 @@ export function toUpdate(state: GameState, sent: SentState): StateUpdate {
     cues: state.cues,
     players: state.players,
     wave: state.wave,
+    clock: state.clock,
     keeps: state.keeps,
     winner: state.winner,
     paused: state.paused,

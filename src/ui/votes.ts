@@ -1,3 +1,4 @@
+import { isSpawningTime } from "../sim/clock";
 import type { GameState, Player, PlayerId } from "../sim/types";
 
 type Vote = keyof Player["votes"];
@@ -16,4 +17,9 @@ export function voteLabel(state: GameState, vote: Vote, label: string): string {
 
 export function hasVoted(state: GameState, playerId: PlayerId, vote: Vote): boolean {
   return state.players[playerId]?.votes[vote] ?? false;
+}
+
+/** Whether Skip to night is offered: by day, in a game with enemies at night that's still on. */
+export function canSkipToNight(state: GameState): boolean {
+  return state.enemiesCome === "night" && !state.gameOver && !isSpawningTime(state);
 }

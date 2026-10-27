@@ -46,7 +46,10 @@ export function createOnlinePanel(root: HTMLElement, session: NetworkSession) {
       id: p.id,
       name: p.name + (p.id === session.playerId ? " (you)" : ""),
       away: !p.connected,
-      votes: (p.votes.pause ? " ||" : "") + (p.votes.fastForward ? " >>" : ""),
+      votes:
+        (p.votes.pause ? " ||" : "") +
+        (p.votes.fastForward ? " >>" : "") +
+        (p.votes.skipToNight ? " ☾" : ""),
     }));
     const key = JSON.stringify(rows);
     if (key === lastPlayers) return; // only touch the DOM when something changed
