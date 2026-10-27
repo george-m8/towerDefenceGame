@@ -59,6 +59,8 @@ Files: `src/ui/describe.ts`, `src/ui/hud.ts`, `src/styles.css`, `tests/ui/hud.te
 
 Built: the card is `position: fixed`, placed from the button's and picker's screen rectangles and clamped to the window; its arrow follows the button when the card is pushed up. Browser-checked: the guardhouse's card near the bottom of the picker.
 
+Added (George, during the build): Sell gets a card too (`sellCard`): what it pays back, that damaged builds pay less, clearing trees, X and drag.
+
 ## Task 5: One list or three tabs
 
 With `PICKER.oneRowMax` (9) or fewer buildable kinds offered (sell not counted), the picker has no tabs: one list with a section label before each section that has something in it, sell last. With more, the three tabs as today, with empty tabs hidden (the "Barracks coming" title goes). `1`, `2`, `3` open the picker on that tab, or scrolled to that section.

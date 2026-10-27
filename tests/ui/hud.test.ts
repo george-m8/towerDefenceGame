@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BUILD_TIME, PICKER, STRUCTURES } from "../../src/sim/config";
+import { BUILD_TIME, PICKER, SELL_REFUND, STRUCTURES, TREE_CLEAR_GOLD } from "../../src/sim/config";
 import type { StructureKind } from "../../src/sim/types";
 import { createGame } from "../../src/sim/game";
 import {
@@ -20,6 +20,7 @@ import {
   limitLabel,
   offeredTools,
   pickerCard,
+  sellCard,
   showsRotate,
   toggleHudStat,
 } from "../../src/ui/hud";
@@ -322,5 +323,15 @@ describe("Rotate button", () => {
     const ui = createUiState();
     rotateFacing(ui);
     expect(ui.facing).toBe("E");
+  });
+});
+
+describe("sellCard", () => {
+  it("says what selling pays back and that it clears trees", () => {
+    const card = sellCard();
+    expect(card.title).toContain("Sell");
+    expect(card.numbers.join("\n")).toContain(`${SELL_REFUND * 100}%`);
+    expect(card.traits).toContain(`${TREE_CLEAR_GOLD}g`);
+    expect(card.hints).toContain("X to pick it");
   });
 });

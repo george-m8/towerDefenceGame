@@ -3,7 +3,13 @@
 // (bottom right, side by side). Clicking the tool opens a menu above it to pick another;
 // clicking any stat box opens the stat menu, where each stat toggles on and off. Clicks
 // anywhere else pass through to the map.
-import { SELL_REFUND, STRUCTURES, TICK_RATE, type StructureStats } from "../sim/config";
+import {
+  SELL_REFUND,
+  STRUCTURES,
+  TICK_RATE,
+  TREE_CLEAR_GOLD,
+  type StructureStats,
+} from "../sim/config";
 import { buildTicksAt } from "../sim/building";
 import { discountAt, priceAt } from "../sim/enclosures";
 import { refundFor } from "../sim/economy";
@@ -20,7 +26,7 @@ import {
   type UiState,
 } from "./state";
 import { statList, type Stat, type StatId } from "./stats";
-import { buildHints, canRotate, describeKind, traits } from "./describe";
+import { buildHints, canRotate, describeKind, percent, traits } from "./describe";
 
 export interface HudContent {
   /** The selected tool, or null with none selected. */
@@ -108,6 +114,18 @@ export function pickerCard(state: GameState, player: PlayerId, kind: StructureKi
     numbers,
     traits: traits(kind).join(" · "),
     hints: buildHints(kind),
+  };
+}
+
+/** The Sell tool's card: what selling pays back, and what else it does. */
+export function sellCard(): PickerCard {
+  return {
+    title: "$ Sell",
+    cost: `${percent(SELL_REFUND)} back`,
+    description: "Take down one of your own builds for gold. Damaged builds pay back less.",
+    numbers: [`Pays ${percent(SELL_REFUND)} of what you paid, at full HP`],
+    traits: `Clears a tree for ${TREE_CLEAR_GOLD}g`,
+    hints: ["X to pick it", "Drag to sell along a line"],
   };
 }
 
@@ -246,8 +264,8 @@ export function createHud(root: HTMLElement, ui: UiState) {
   /** Shows the card beside a picker button, pointing at it, kept inside the window. */
   function showCard(button: HTMLButtonElement) {
     const tool = button.dataset.tool as UiState["tool"];
-    if (!isBuildTool(tool) || !cardState) return hideCard();
-    renderCard(card, pickerCard(cardState, ui.playerId, tool));
+    if (!tool || !cardState) return hideCard();
+    renderCard(card, isBuildTool(tool) ? pickerCard(cardState, ui.playerId, tool) : sellCard());
     card.hidden = false;
     const at = button.getBoundingClientRect();
     const box = picker.getBoundingClientRect();
