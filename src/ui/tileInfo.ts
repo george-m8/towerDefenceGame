@@ -39,6 +39,7 @@ import { livingLeader } from "../sim/enemies";
 import type {
   Unit,
   Enemy,
+  Facing,
   GameState,
   PlayerId,
   Point,
@@ -46,7 +47,7 @@ import type {
   StructureKind,
   Terrain,
 } from "../sim/types";
-import { describeKind, traits } from "./describe";
+import { canRotate, describeKind, traits } from "./describe";
 import { isBuildTool, type UiState } from "./state";
 
 const FACING_NAMES = { N: "north", E: "east", S: "south", W: "west" };
@@ -154,21 +155,34 @@ function enclosureLine(state: GameState, p: Point, viewer?: PlayerId): string | 
   return null;
 }
 
-/** What the selected build tool costs on this tile, e.g. "Wall here: 3g (50% off)". */
+/**
+ * What the selected build tool costs on this tile, and where it would be cheaper:
+ * "Wall here: 3g (50% off inside the keep's walls)", or "Wall here: 5g · 3g inside your keep's
+ * walls". A tool that turns adds its facing: "· facing north (R to rotate)".
+ */
 export function priceLine(
   state: GameState,
   kind: StructureKind,
   p: Point,
   viewer?: PlayerId,
+  facing?: Facing,
 ): string {
-  const name = (STRUCTURES[kind] as StructureStats).name;
-  if (!isExplored(state, p.x, p.y, viewer)) return `${name}: can't build on unexplored land`;
+  const stats: StructureStats = STRUCTURES[kind];
+  if (!isExplored(state, p.x, p.y, viewer)) return `${stats.name}: can't build on unexplored land`;
   const price = priceAt(state, kind, p.x, p.y, viewer);
   // Label with the enclosure's discount (rounding can make the gold saving look different).
   const discount = discountAt(state, p.x, p.y, viewer);
-  return discount > 0
-    ? `${name} here: ${price}g (${percent(discount)} off)`
-    : `${name} here: ${price}g`;
+  const where = enclosureAt(state, p.x, p.y) === KEEP ? "the keep's walls" : "walls";
+  const keepPrice = Math.max(1, Math.round(stats.cost * (1 - ENCLOSURE_DISCOUNT.keep)));
+  const line =
+    discount > 0
+      ? `${stats.name} here: ${price}g (${percent(discount)} off inside ${where})`
+      : keepPrice < price
+        ? `${stats.name} here: ${price}g · ${keepPrice}g inside your keep's walls`
+        : `${stats.name} here: ${price}g`;
+  return facing && canRotate(kind)
+    ? `${line} · facing ${FACING_NAMES[facing]} (R to rotate)`
+    : line;
 }
 
 function percent(fraction: number): string {
@@ -224,7 +238,8 @@ function enemyDoing(state: GameState, enemy: Enemy): string | null {
 export function hoverText(state: GameState, ui: UiState): string {
   if (!ui.hover) return "";
   const lines = describeTile(state, ui.hover, ui.playerId);
-  if (isBuildTool(ui.tool)) lines.unshift(priceLine(state, ui.tool, ui.hover, ui.playerId));
+  if (isBuildTool(ui.tool))
+    lines.unshift(priceLine(state, ui.tool, ui.hover, ui.playerId, ui.facing));
   return lines.join("\n");
 }
 

@@ -34,12 +34,14 @@ Built: an enemy's numbers in the Info box are its own (damage, speed and bounty 
 
 The price line names where the discount comes from, or what the price would be inside the keep's walls; with a turnable tool it adds the facing. The pointer label shows a discounted price beside the full one struck through, and a small faint `R ⟳` whenever the tool can be turned.
 
-- [ ] No discount on the tile: `Wall here: 5g · 3g inside your keep's walls` (for kinds the discount applies to)
-- [ ] With a discount: `Wall here: 3g (50% off inside the keep's walls)`, or "inside walls" for an outer enclosure
-- [ ] Turnable tool: `· facing north (R to rotate)` added
-- [ ] `pointerTags` carries the full price when discounted and a rotate flag; the label draws them (struck-through full price, faint `R ⟳`)
+- [x] No discount on the tile: `Wall here: 5g · 3g inside your keep's walls` (for kinds the discount applies to)
+- [x] With a discount: `Wall here: 3g (50% off inside the keep's walls)`, or "inside walls" for an outer enclosure
+- [x] Turnable tool: `· facing north (R to rotate)` added
+- [x] `pointerTags` carries the full price when discounted and a rotate flag; the label draws them (struck-through full price, faint `R ⟳`)
 
 Files: `src/ui/tileInfo.ts`, `src/ui/pointerLabel.ts`, `src/render/canvas.ts` (if the label is drawn there), `tests/ui/tileInfo.test.ts`, `tests/ui/pointerLabel.test.ts`. Size: M. Depends on: 1.
+
+Built: the label is HTML (`pointerLabel.ts`), not canvas, so `canvas.ts` wasn't touched. The "inside your keep's walls" price uses the keep discount on the full cost, so it's shown on every undiscounted tile, outer enclosures included only when they have no discount of their own.
 
 ## Checkpoint A: after Tasks 1-3
 

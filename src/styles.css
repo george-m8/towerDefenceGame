@@ -297,6 +297,27 @@ body {
 .pointer-time {
   color: #fff;
 }
+.pointer-price {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+/* The full price when this tile's is discounted. */
+.pointer-full {
+  color: #fff;
+  opacity: 0.6;
+  font-size: 0.7em;
+}
+/* A quiet hint that R turns the tool: small and faint, so it never competes with the price. */
+.pointer-rotate {
+  color: #fff;
+  opacity: 0.45;
+  font-size: 0.55em;
+}
+.pointer-full[hidden],
+.pointer-rotate[hidden] {
+  display: none;
+}
 
 .hud-stat.short {
   color: var(--paper);

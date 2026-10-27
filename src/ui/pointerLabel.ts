@@ -1,9 +1,12 @@
 // A small label floating above the block being placed: what it costs on that tile (green if you
-// can afford it, red if not), and below that how long it takes to build there (white).
+// can afford it, red if not; a discounted price beside the full one, struck through), a faint
+// "R ⟳" when the tool can be turned, and below that how long it takes to build there (white).
 import { blockHeight } from "../render/canvas";
+import { STRUCTURES } from "../sim/config";
 import { priceAt } from "../sim/enclosures";
 import type { GameState, Point } from "../sim/types";
 import { tileToScreen } from "./camera";
+import { canRotate } from "./describe";
 import { hudContent } from "./hud";
 import { isBuildTool, type UiState } from "./state";
 
@@ -14,6 +17,10 @@ export interface PointerTags {
   short: boolean;
   /** e.g. "4.5s" */
   time: string;
+  /** The full price when this tile's is discounted (shown struck through), else null. */
+  fullCost: string | null;
+  /** The tool turns with R: a faint hint shows. */
+  rotate: boolean;
 }
 
 /** What the label shows, or null when nothing is being placed on the map. */
@@ -21,7 +28,14 @@ export function pointerTags(state: GameState, ui: UiState): PointerTags | null {
   if (!isBuildTool(ui.tool) || !ui.hover) return null;
   const { short, time } = hudContent(state, ui);
   const price = priceAt(state, ui.tool, ui.hover.x, ui.hover.y, ui.playerId);
-  return { cost: `${price}g`, short, time: time ?? "" };
+  const full = STRUCTURES[ui.tool].cost;
+  return {
+    cost: `${price}g`,
+    short,
+    time: time ?? "",
+    fullCost: price < full ? `${full}g` : null,
+    rotate: canRotate(ui.tool),
+  };
 }
 
 /**
@@ -40,10 +54,20 @@ export function createPointerLabel(root: HTMLElement) {
   const label = document.createElement("div");
   label.className = "pointer-label";
   label.hidden = true;
+  const full = document.createElement("s");
+  full.className = "pointer-full";
   const cost = document.createElement("span");
+  const rotate = document.createElement("span");
+  rotate.className = "pointer-rotate";
+  rotate.textContent = "R ⟳";
+  rotate.title = "R to rotate";
   const time = document.createElement("span");
   time.className = "pointer-time";
-  label.append(cost, time);
+  // The price row: [full price struck through] price [R ⟳], with the build time below.
+  const price = document.createElement("span");
+  price.className = "pointer-price";
+  price.append(full, cost, rotate);
+  label.append(price, time);
   root.append(label);
 
   return {
@@ -52,7 +76,10 @@ export function createPointerLabel(root: HTMLElement) {
       const anchor = state ? labelAnchor(state, ui) : null;
       label.hidden = tags === null || anchor === null;
       if (!tags || !anchor) return;
+      full.hidden = tags.fullCost === null;
+      full.textContent = tags.fullCost ?? "";
       cost.textContent = tags.cost;
+      rotate.hidden = !tags.rotate;
       cost.className = tags.short ? "pointer-cost short" : "pointer-cost";
       time.textContent = tags.time;
       label.style.left = `${anchor.x}px`;
