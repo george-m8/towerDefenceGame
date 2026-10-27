@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { spawnUnit } from "../../src/sim/units";
 import { harvest, placeResource } from "../../src/sim/resources";
-import { RESOURCES, STRUCTURES } from "../../src/sim/config";
+import { ENEMY_KINDS, RESOURCES, STRUCTURES, UNIT_KINDS } from "../../src/sim/config";
 import { createGame } from "../../src/sim/game";
 import { placeStructure } from "../../src/sim/grid";
 import type { Enemy } from "../../src/sim/types";
@@ -235,5 +235,38 @@ describe("hoverText", () => {
     expect(hoverText(state, ui)).toBe("Open ground");
     ui.tool = "wall";
     expect(hoverText(state, ui)).toBe("Wall here: 5g\nOpen ground");
+  });
+});
+
+describe("hover details (beginner-help)", () => {
+  it("gives a tower its description, numbers and traits, and still the sell price", () => {
+    const state = createGame(1, { blankMap: true, fog: false });
+    placeStructure(state, "catapult", 20, 20, "N");
+    const lines = describeTile(state, { x: 20, y: 20 });
+    expect(lines).toContain(STRUCTURES.catapult.description);
+    expect(lines.join("\n")).toContain(`${STRUCTURES.catapult.tower.damage} dmg every`);
+    expect(lines.join("\n")).toContain("Splash damage");
+    expect(lines.join("\n")).toMatch(/Sells for \d+g/);
+  });
+
+  it("gives only the first enemy on a tile its full entry", () => {
+    const state = createGame(1, { blankMap: true, fog: false });
+    const first = spawnEnemy(state, 20, 20, { kind: "goblin" });
+    spawnEnemy(state, 20, 20, { kind: "zerg" });
+    const lines = describeTile(state, { x: 20, y: 20 });
+    expect(lines).toContain(ENEMY_KINDS.goblin.description);
+    expect(lines.join("\n")).toContain(`${first.damage} dmg every`);
+    expect(lines).not.toContain(ENEMY_KINDS.zerg.description);
+    expect(lines.join("\n")).toContain("Zerg, HP");
+  });
+
+  it("gives a unit its description, damage and armour", () => {
+    const state = createGame(1, { blankMap: true, fog: false, players: ["Ann"] });
+    spawnUnit(state, "paladin", 1, 20, 20);
+    const kind = UNIT_KINDS.paladin;
+    const text = describeTile(state, { x: 20, y: 20 }).join("\n");
+    expect(text).toContain(kind.description);
+    expect(text).toContain(`armour ${kind.armour}`);
+    expect(text).toContain(`${kind.damage} dmg every ${kind.attackInterval}s`);
   });
 });

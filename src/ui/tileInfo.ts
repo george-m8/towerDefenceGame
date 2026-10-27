@@ -46,6 +46,7 @@ import type {
   StructureKind,
   Terrain,
 } from "../sim/types";
+import { describeKind, traits } from "./describe";
 import { isBuildTool, type UiState } from "./state";
 
 const FACING_NAMES = { N: "north", E: "east", S: "south", W: "west" };
@@ -109,16 +110,19 @@ export function describeTile(state: GameState, p: Point, viewer?: PlayerId): str
     tier === IN_SIGHT
       ? state.enemies.filter((e) => Math.round(e.x) === p.x && Math.round(e.y) === p.y)
       : [];
-  for (const enemy of enemies.slice(0, 3)) {
+  for (const [i, enemy] of enemies.slice(0, 3).entries()) {
     const kind = ENEMY_KINDS[enemy.kind];
     const name =
       kind.variants.length > 1 ? `${kind.name} ${kind.variants[enemy.variant].name}` : kind.name;
     const doing = enemyDoing(state, enemy);
     lines.push(`${name}, HP ${Math.ceil(enemy.hp)} / ${enemy.maxHp}${doing ? `, ${doing}` : ""}`);
+    // Only the first gets the full entry, so a crowded tile stays short.
+    if (i === 0) lines.push(kind.description, enemyNumbers(enemy));
   }
   if (enemies.length > 3) lines.push(`...and ${enemies.length - 3} more`);
   // Units in sight: your own always are (they see), a rival's only where you can see.
   if (tier === IN_SIGHT) {
+    let detailed = false;
     for (const unit of state.units) {
       if (Math.round(unit.x) !== p.x || Math.round(unit.y) !== p.y) continue;
       const whose = playerName(state, unit.owner);
@@ -127,6 +131,8 @@ export function describeTile(state: GameState, p: Point, viewer?: PlayerId): str
         `${UNIT_KINDS[unit.kind].name} (${whose}'s), HP ${Math.ceil(unit.hp)} / ${unit.maxHp}` +
           (doing ? `, ${doing}` : ""),
       );
+      if (!detailed) lines.push(...unitDetails(unit));
+      detailed = true;
     }
   }
   const enclosure = enclosureLine(state, p, viewer);
@@ -181,22 +187,28 @@ function describeStructure(structure: Structure, placement?: string): string[] {
   const where = placement ? ` (${placement})` : "";
   const lines = [`${stats.name}${where}${facing}`];
   if (structure.maxHp > 0) lines.push(`HP ${Math.ceil(structure.hp)} / ${structure.maxHp}`);
-  if (stats.tower) {
-    const { range, minRange, damage, fireIntervalSeconds, splashRadius } = stats.tower;
-    const reach = minRange > 0 ? `${minRange}-${range}` : `${range}`;
-    const splash = splashRadius > 0 ? `, splash ${splashRadius}` : "";
-    lines.push(`Range ${reach}, ${damage} dmg / ${fireIntervalSeconds}s${splash}`);
-    const { arcDegrees, turnDegreesPerSecond } = stats.tower;
-    lines.push(
-      turnDegreesPerSecond > 0
-        ? `${arcDegrees}° arc, turns ${turnDegreesPerSecond}°/s`
-        : `${arcDegrees}° arc, fixed`,
-    );
-  }
-  if (stats.trap) lines.push(`${stats.trap.damage} dmg / ${stats.trap.fireIntervalSeconds}s`);
-  if (stats.income) lines.push(`+${stats.income.gold}g / ${stats.income.intervalSeconds}s`);
-  if (stats.sight) lines.push(`Sees ${stats.sight.inner} (land ${stats.sight.outer})`);
+  lines.push(stats.description);
+  // Its numbers, without the kind's full HP (the line above has this one's).
+  const { numbers } = describeKind({ type: "structure", kind: structure.kind });
+  lines.push(...numbers.filter((line) => !line.startsWith("HP ")));
+  const words = traits(structure.kind);
+  if (words.length > 0) lines.push(words.join(" · "));
   return lines;
+}
+
+/** This enemy's own numbers (its variant and wave change them): "5 dmg every 1s · speed 1.5". */
+function enemyNumbers(enemy: Enemy): string {
+  const kind = ENEMY_KINDS[enemy.kind];
+  const speed = Math.round(enemy.speed * 100) / 100;
+  return `${enemy.damage} dmg every ${kind.attackInterval}s · speed ${speed} · bounty ${enemy.bounty}g`;
+}
+
+/** A unit's description and numbers, without HP (its own line has that). */
+function unitDetails(unit: Unit): string[] {
+  const kind: UnitKind = UNIT_KINDS[unit.kind];
+  const [, ...numbers] = describeKind({ type: "unit", kind: unit.kind }).numbers;
+  const armour = kind.armour > 0 ? [`armour ${kind.armour}`] : [];
+  return [kind.description, [...armour, ...numbers].join(" · ")];
 }
 
 /** What an enemy is up to beyond walking: "sprinting", "digging", "with its chief". */

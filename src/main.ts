@@ -591,7 +591,8 @@ function frame(now: number) {
       panel.update(state);
       hud.update(state);
       pointerLabel.update(view, viewUi);
-      if (!infoBox.hidden) infoBox.textContent = hoverText(state, ui) || "Hover a tile for details";
+      if (!infoBox.hidden)
+        infoBox.textContent = hoverText(state, ui) || "Hover anything for details";
       gameOver.update(state, session.playerId);
       cues.update(state.cues);
       updateJournal(state, session.playerId, now);

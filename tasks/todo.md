@@ -21,12 +21,14 @@ Built: the description test lives in `tests/ui/describe.test.ts` with the rest. 
 
 The Info box uses `describeKind`: structures add their description and traits; the first enemy and unit on a tile get their description and numbers (others keep one line each). The journal's numbers come from `describeKind` too. The empty Info box says "Hover anything for details".
 
-- [ ] Hovering a tower lists today's lines plus its description and traits; "Sells for" stays
-- [ ] The first enemy on a tile shows name and variant, HP, description, damage, speed and its leader; a second and third are one line each; "...and N more" is unchanged
-- [ ] The first unit shows owner, HP, activity (as today), description, damage, range and armour
-- [ ] Journal entries show the same numbers as the Info box for the same kind
+- [x] Hovering a tower lists today's lines plus its description and traits; "Sells for" stays
+- [x] The first enemy on a tile shows name and variant, HP, description, damage, speed and its leader; a second and third are one line each; "...and N more" is unchanged
+- [x] The first unit shows owner, HP, activity (as today), description, damage, range and armour
+- [x] Journal entries show the same numbers as the Info box for the same kind
 
 Files: `src/ui/tileInfo.ts`, `src/ui/journalView.ts`, `src/main.ts` (empty text), `tests/ui/tileInfo.test.ts`. Size: M. Depends on: 1.
+
+Built: an enemy's numbers in the Info box are its own (damage, speed and bounty after its variant and wave), not the kind's. The journal's numbers line is `describeKind`'s, joined with ` · `.
 
 ## Task 3: Price line and pointer label
 
