@@ -1,13 +1,14 @@
 // The sun sliders (Debug menu): where the sun is across the sky, and how high its arc rises,
 // while they're shown over the map. Only the drawing changes; the game doesn't know.
 import { DEFAULT_SUN, type Sun } from "../render/sun";
+import { sunAt } from "../render/dayNight";
 import { SUN } from "../render/palette";
 import type { UiState } from "./state";
 
-/** Shows or hides the sliders. Hiding them puts the sun back where it was. */
+/** Shows or hides the sliders. Hiding them puts the sun back: where the clock has it, if it's on. */
 export function toggleSun(ui: UiState) {
   ui.showSun = !ui.showSun;
-  if (!ui.showSun) ui.sun = { ...DEFAULT_SUN };
+  if (!ui.showSun) ui.sun = ui.clock ? sunAt(ui.clock.hour) : { ...DEFAULT_SUN };
 }
 
 /** The Across slider's label: 0 at the left horizon, 1 at the right. */

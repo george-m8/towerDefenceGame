@@ -12,6 +12,7 @@ import { createPanel } from "./ui/panel";
 import { createHud } from "./ui/hud";
 import { createMapButtons, panelToggle } from "./ui/mapButtons";
 import { createSunSlider, toggleSun } from "./ui/sunSlider";
+import { advanceClock, createClockControls, toggleClock } from "./ui/clockControls";
 import { hoverText } from "./ui/tileInfo";
 import { bindInput } from "./ui/input";
 import { createUiState, showMessage } from "./ui/state";
@@ -160,6 +161,7 @@ const debugToggle = (label: string, option: DebugOption) => ({
   available: inGame,
 });
 const sunSlider = createSunSlider(element("#sun"), ui);
+const clockControls = createClockControls(element("#clock"), ui, () => sunSlider.sync());
 createMapButtons(element("#map-buttons"), {
   view: [
     panelToggle("Map", element("#minimap-box")),
@@ -183,6 +185,15 @@ createMapButtons(element("#map-buttons"), {
       isOn: () => ui.showSun,
       toggle: () => {
         toggleSun(ui);
+        sunSlider.sync();
+      },
+    },
+    {
+      label: "Day/night",
+      isOn: () => ui.clock !== null,
+      toggle: () => {
+        toggleClock(ui);
+        clockControls.sync();
         sunSlider.sync();
       },
     },
@@ -471,6 +482,12 @@ let lastFrame = performance.now();
 function frame(now: number) {
   const seconds = Math.min(0.1, (now - lastFrame) / 1000);
   lastFrame = now;
+  // The day and night clock runs on real time, paused game or not (it's only drawing).
+  if (ui.clock?.playing) {
+    advanceClock(ui, seconds);
+    clockControls.sync();
+    sunSlider.sync();
+  }
   if (editing && editorActive) {
     const { editor, toolbar } = editing;
     editor.update(now);

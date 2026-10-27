@@ -231,8 +231,8 @@ Status: `map-editor` built (2026-10-26). Hand-made content for the game: a **lev
 
 ## Day and night (2026-10-26)
 
-Status: step 1 built (2026-10-26).
+Status: step 1 built (2026-10-26); step 2, the cycle, built (2026-10-27).
 
 | Module | What it delivers | Depends on |
 |---|---|---|
-| `day-night` | Step 1: shadows follow a sun on a tilted arc (across the sky, and the arc's height), set from two sliders in the Debug menu (game and map editor); taller blocks shade lower neighbours on any side the shadow falls. Drawing only. Next: an automatic cycle, then night. Spec: [`SPEC-day-night.md`](SPEC-day-night.md). | core (raised blocks) |
+| `day-night` | Step 1: shadows follow a sun on a tilted arc (across the sky, and the arc's height), set from two sliders in the Debug menu (game and map editor); taller blocks shade lower neighbours on any side the shadow falls. Step 2: a day and night clock (Debug > Day/night, Time slider and Play) moves the sun through the day and darkens the night. Drawing only. Next: town lighting at night, then the clock in the game itself. Spec: [`SPEC-day-night.md`](SPEC-day-night.md). | core (raised blocks) |

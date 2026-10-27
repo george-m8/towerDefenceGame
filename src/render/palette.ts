@@ -34,6 +34,27 @@ export const SUN = {
   arcMax: 175,
 };
 
+/**
+ * The day and night cycle (see dayNight.ts), in hours on a 24-hour clock. The sun's arc runs in
+ * straight lines from `arcAtSunrise` through `arcAtNoon` to `arcAtSunset` (past 90°: long evening
+ * shadows leaning back). The light fades over `twilight` hours after sunset and returns over the
+ * same before sunrise. Night washes the map with `nightColour` (r, g, b) at up to `darkness`.
+ * A played clock runs a whole day in `secondsPerDay`; turning it on starts at `startHour`.
+ */
+export const DAY_NIGHT = {
+  sunrise: 6,
+  noon: 12,
+  sunset: 18,
+  arcAtSunrise: 20,
+  arcAtNoon: 90,
+  arcAtSunset: 160,
+  twilight: 1,
+  darkness: 0.6,
+  nightColour: "10, 16, 48",
+  secondsPerDay: 96,
+  startHour: 9,
+};
+
 /** Height of the strip drawn along the top of a wall-mounted tower. */
 export const BATTLEMENT_PX = 3;
 /** How solid a structure still being built is drawn. */
