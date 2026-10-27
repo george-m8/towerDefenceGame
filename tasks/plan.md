@@ -1077,7 +1077,7 @@ None for `tower-aiming`. Each later module's questions are settled in its spec.
 
 ## Beginner help: beginner-help
 
-Spec: [`SPEC-beginner-help.md`](../SPEC-beginner-help.md) (draft, 2026-10-27). Tasks: [`tasks/todo.md`](todo.md). First on the [roadmap](roadmap.md).
+Spec: [`SPEC-beginner-help.md`](../SPEC-beginner-help.md) (approved and built, 2026-10-27). Tasks: [`tasks/todo.md`](todo.md). First on the [roadmap](roadmap.md).
 
 ### Architecture decisions
 

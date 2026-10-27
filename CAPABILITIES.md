@@ -247,7 +247,7 @@ Build order (agreed 2026-10-27): `long-shadows` -> `game-clock` -> `night-spawns
 
 ## Next up (2026-10-27)
 
-Status: roadmap agreed (2026-10-27), specs drafted. Order and reasons: [`tasks/roadmap.md`](tasks/roadmap.md).
+Status: roadmap agreed (2026-10-27), specs drafted; `beginner-help` built (2026-10-27). Order and reasons: [`tasks/roadmap.md`](tasks/roadmap.md).
 
 | Module | What it delivers | Depends on |
 |---|---|---|

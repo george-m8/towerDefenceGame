@@ -1,6 +1,6 @@
 # Spec: beginner-help
 
-Status: APPROVED (2026-10-27)
+Status: BUILT (2026-10-27)
 Module: `beginner-help`, first on the roadmap ([`tasks/roadmap.md`](tasks/roadmap.md)) and in "Next up" in [`CAPABILITIES.md`](CAPABILITIES.md). Quality-of-life changes that make the game easier to pick up. Builds on the HUD and picker ([`src/ui/hud.ts`](src/ui/hud.ts)), hover info ([`src/ui/tileInfo.ts`](src/ui/tileInfo.ts)), `enclosures` ([`SPEC-enclosures.md`](SPEC-enclosures.md)) and `items-editor` ([`SPEC-items-editor.md`](SPEC-items-editor.md)).
 Last updated: 2026-10-27
 

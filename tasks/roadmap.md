@@ -4,8 +4,8 @@ George's next features, checked against the specs and plan so far, put in order.
 
 | # | Module | Spec | Status |
 |---|---|---|---|
-| 1 | `beginner-help` | [`SPEC-beginner-help.md`](../SPEC-beginner-help.md) | Draft, first to build |
-| 2 | `balance-files` | [`SPEC-balance-files.md`](../SPEC-balance-files.md) | Draft |
+| 1 | `beginner-help` | [`SPEC-beginner-help.md`](../SPEC-beginner-help.md) | Built (2026-10-27); tasks in [`todo.md`](todo.md) |
+| 2 | `balance-files` | [`SPEC-balance-files.md`](../SPEC-balance-files.md) | Draft, next |
 | 3 | `rebalance` | Task list from George's write-up (no spec) | After 2 |
 | 4 | `wave-director` (+ `edge-spawns`) | [`SPEC-wave-director.md`](../SPEC-wave-director.md) | Draft |
 | 5 | `line-of-sight` | [`SPEC-line-of-sight.md`](../SPEC-line-of-sight.md) (revised) | Draft |

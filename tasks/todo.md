@@ -115,13 +115,15 @@ Built: only `index.html` moved the panel; the editor never shows Keys (`body.edi
 
 ## Task 9: Docs
 
-- [ ] README: a short "Getting started" section matching what the game now shows (hover for details, R to rotate, cheaper inside walls)
-- [ ] SPEC.md "Since `beginner-help`"; SPEC-beginner-help status; roadmap, CAPABILITIES and plan statuses
-- [ ] Coverage for `src/sim/` stays at 80% or more
+- [x] README: a short "Getting started" section matching what the game now shows (hover for details, R to rotate, cheaper inside walls)
+- [x] SPEC.md "Since `beginner-help`"; SPEC-beginner-help status; roadmap, CAPABILITIES and plan statuses
+- [x] Coverage for `src/sim/` stays at 80% or more
 
 Files: `README.md`, `SPEC.md`, `SPEC-beginner-help.md`, `tasks/roadmap.md`, `CAPABILITIES.md`, `tasks/plan.md`. Size: S. Depends on: all.
 
+Built: coverage 97.7% for `src/sim/`, 80.3% for `tools/` (coverage only measures those two). Under `npm run coverage` the XL timing tests (units, pathing fields, sometimes guards and the clock) fail or time out because coverage slows the code they time, as noted in map-editor's Task 8; under `npm test` all 1067 pass.
+
 ## Checkpoint C: done
 
-- [ ] Every success criterion in the spec checked in the browser
+- [x] Every success criterion in the spec checked in the browser (headless Chrome over the extension: defaults, hover info, picker cards and one-list layout, Rotate button, price wording, sidebar)
 - [ ] Review with George before merge

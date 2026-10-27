@@ -18,6 +18,14 @@ npm run dev
 
 Then open http://localhost:5173, click (or press any key) past the title screen, pick who's playing (or add a **New player**, with a name and a picture: a 3x3 grid of map tiles you choose, or Shuffle for a random one. Players are saved on this device, the last one first; hovering one builds their picture up, ✎ changes one and ✕ removes one), then press **Solo**. To play with friends, see [Playing together](#playing-together).
 
+New to it? The game explains itself as you go:
+
+- **Hover anything** on the map (a tower, a building, an enemy, a unit) and the **Info** box (top right, under the minimap) says what it is, what it does and its numbers.
+- **Hover anything in the build picker** (`1`, or the Build box) for a card with its cost, what it does, its numbers and tips, before you buy it.
+- **Turn things before placing them** with `R`, or the Rotate button that appears beside the tool. The faint `R ⟳` by the price means the thing you're placing can be turned.
+- **Build inside your walls**: inside the keep's walls (the warm yellow shade) everything costs 50% less, inside other closed rings of walls 25% less. The price by the pointer shows the full price struck through when you're saving.
+- Your **gold** and **income** (gold per minute) are at the bottom right. Click either to choose which stats to show. The View menu shows and hides Map, Info and Keys; both are remembered on this device.
+
 ## How to play
 
 Enemies spawn from the red strip on the left edge and walk to your keep (`⛫`, 300 HP). An enemy that reaches the keep stays there and keeps hitting it until it's killed; at 0 HP the keep falls and the game ends. Waves never stop, and each one is bigger and tougher than the last.
@@ -240,13 +248,14 @@ Towers always shoot the enemy closest to the keep. Traps fire on a fixed timer f
 | Left click | Place (or sell) |
 | Left drag | Paint walls, spikes, bridges, gates, farmland, or sell/clear along the dragged tiles |
 | Right click or `Esc` | Clear the selected tool |
-| `R` | Rotate the facing of the tower or wall spikes you're placing |
+| `R`, or the Rotate button beside the tool | Rotate the facing of the tower, trap or building you're placing (only shown for things that turn) |
 | `Space` or Pause button | Pause / resume (you can still build while paused) |
 | `F` or `>>` button | Toggle fast forward (2x game speed) |
 | Skip to night button | By day, with enemies at night: skip to the early evening (17:00), when you're ready for enemies. No gold for it. A vote in co-op |
 | `` ` `` or Debug button | Open the Debug menu: test options, Show paths (arrows show where enemies will walk; red means "will attack this"), Sun slider (two sliders over the map: **Across** moves the sun from the left horizon to the right, **Arc** sets how its path leans: up to 90° over the top of the sky (90° straight overhead), past 90° over the bottom, so shadows fall behind blocks; shadows follow. Off puts the sun back), Day/night (a **Time** slider and **Play**: the sun rises on a shallow arc, is overhead at noon and leans back for long evening shadows, then night darkens the map and morning comes round again, a whole day in 96 seconds; off puts the daylight back. In a game at night, it shows the game's own time instead, and solo its slider moves it), and the Damage tool (offline: each click takes 35% of its full amount off the top thing on the tile, an enemy, unit, tower, structure, the keep or a tree/rock/bush, and at 0 it's destroyed or used up as in play, paying nobody; right-click or `Esc` ends it) |
 | `J` | Open or close the monster journal (`Esc` also closes it) |
-| Hover a tile | Show its details in the Info box, and a tower's range |
+| Hover a tile | Show its details in the Info box (what it is, what it does, its numbers), and a tower's range |
+| Hover a build picker item | Show its card: cost, what it does, numbers, traits and tips |
 | `W` `A` `S` `D` or arrow keys | Move the view around the map |
 | Mouse wheel, or `+` / `-` | Zoom in and out (the wheel zooms around the cursor) |
 | Minimap (top of the panel) | Click or drag to move the view there; the white box is what you're looking at |
