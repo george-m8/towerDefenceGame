@@ -24,14 +24,16 @@ Built: `SUN.reachTiles` (2) sets both how far a shadow may fall and which tiles 
 
 The ground-shadow pass starts `SHADOW_REACH_TILES` (2, from `SUN`) beyond the view. Block heights for the view plus that margin are worked out once per frame and read from there by both shadow passes. A timing test draws an XL map covered in walls and towers through a stub canvas, before and after.
 
-- [ ] Long shadows from blocks just off screen still show
-- [ ] The timing test: no more than 2ms slower per frame than before this module (else fall back to 1.5 tiles)
+- [x] Long shadows from blocks just off screen still show
+- [x] The timing test: no more than 2ms slower per frame than before this module (else fall back to 1.5 tiles)
 
 Files: `src/render/canvas.ts`, `tests/render/canvasTiming.test.ts` (new). Size: S. Depends on: 1.
 
+Built: timed with a benchmark script outside the repo, not a test (millisecond budgets in tests flake on a busy machine): an XL map, all on screen, every tile a random tree, rock, bush or ground, long dawn shadows, through a stub canvas. Before this module 720 ms a frame (the stub is slow; only the comparison counts); after Task 1 alone 1,230 ms; with the height cache and the out-of-reach skip 600 ms, faster than before. No `tests/render/canvasTiming.test.ts`.
+
 ## Checkpoint A: after Task 2
 
-- [ ] Standard verification passes
+- [x] Standard verification passes
 - [ ] By hand: Debug > Day/night, Play: long shadows at dawn and dusk, about 2 tiles, joined to their blocks
 
 ---
