@@ -1,6 +1,7 @@
 // The day and night cycle: where the sun is, and how light it is, for a time on a 24-hour clock.
 // The sun rises on a shallow arc, is about overhead at noon and leans well back by sunset; after
 // sunset the light fades into night, and comes back before sunrise.
+import { GAME_CLOCK } from "../sim/config";
 import { DAY_NIGHT } from "./palette";
 import type { Sun } from "./sun";
 
@@ -9,7 +10,9 @@ const clamp = (value: number, low: number, high: number) => Math.min(high, Math.
 
 /** Where the sun is at an hour of the day. Before sunrise and after sunset it's at the horizon. */
 export function sunAt(hour: number): Sun {
-  const { sunrise, noon, sunset, arcAtSunrise, arcAtNoon, arcAtSunset } = DAY_NIGHT;
+  const { sunrise, sunset } = GAME_CLOCK;
+  const { arcAtSunrise, arcAtNoon, arcAtSunset } = DAY_NIGHT;
+  const noon = (sunrise + sunset) / 2;
   const time = clamp(hour, sunrise, sunset);
   const arc =
     time <= noon
@@ -20,7 +23,8 @@ export function sunAt(hour: number): Sun {
 
 /** How light it is, from 1 (day) to 0 (night): it fades over the twilight after sunset and before sunrise. */
 export function daylight(hour: number): number {
-  const { sunrise, sunset, twilight } = DAY_NIGHT;
+  const { sunrise, sunset } = GAME_CLOCK;
+  const { twilight } = DAY_NIGHT;
   const morning = (hour - (sunrise - twilight)) / twilight;
   const evening = (sunset + twilight - hour) / twilight;
   return clamp(Math.min(morning, evening), 0, 1);

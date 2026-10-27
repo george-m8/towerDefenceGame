@@ -7,6 +7,7 @@ import {
   PVP,
   type MapSize,
 } from "./config";
+import { advanceClock, createClock } from "./clock";
 import { buildTicksAt, updateBuilding } from "./building";
 import { debugDamage } from "./debug";
 import { priceAt } from "./enclosures";
@@ -48,6 +49,8 @@ export interface GameOptions {
   map?: MapFile;
   /** An `.items` file: how many of each structure a player can have at once (default: no limits). */
   items?: ItemsFile;
+  /** Give the game a clock, the time of day (default off; night spawns turn it on). */
+  clock?: boolean;
 }
 
 export function createGame(seed: number, options: GameOptions = {}): GameState {
@@ -112,6 +115,7 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     keeps: layout.keeps.map((keep) => ({ ...keep, hp: keepHp, maxHp: keepHp, owner: null })),
     winner: null,
     wave: createWaveState(),
+    clock: options.clock ? createClock() : null,
     players: {},
     nextPlayerId: 1,
     tick: 0,
@@ -184,6 +188,7 @@ export function assignKeeps(state: GameState): void {
 export function tick(state: GameState): void {
   if (state.paused || state.gameOver) return;
   state.tick++;
+  advanceClock(state);
   updateEffects(state);
   updateCues(state);
   updateBuilding(state);

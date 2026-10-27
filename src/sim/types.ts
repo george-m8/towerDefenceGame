@@ -188,6 +188,12 @@ export interface FlowField {
   dist: number[];
 }
 
+/** The time of day: `hour` from 0 to 24, and the day it is (1 on the first, up at each sunrise). */
+export interface Clock {
+  hour: number;
+  day: number;
+}
+
 export interface WaveState {
   /** Waves started so far (0 before the first wave). */
   number: number;
@@ -257,6 +263,8 @@ export interface GameState {
   /** PvP: who won, once the game is over. */
   winner: PlayerId | null;
   wave: WaveState;
+  /** The time of day, in games that use it (night spawns); null otherwise. See sim/clock.ts. */
+  clock: Clock | null;
   players: Record<PlayerId, Player>;
   nextPlayerId: PlayerId;
   tick: number;

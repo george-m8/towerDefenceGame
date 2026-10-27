@@ -37,16 +37,14 @@ export const SUN = {
 };
 
 /**
- * The day and night cycle (see dayNight.ts), in hours on a 24-hour clock. The sun's arc runs in
+ * How the day and night cycle looks (see dayNight.ts; sunrise and sunset are the game clock's,
+ * GAME_CLOCK in sim/config.ts), in hours on a 24-hour clock. The sun's arc runs in
  * straight lines from `arcAtSunrise` through `arcAtNoon` to `arcAtSunset` (past 90°: long evening
  * shadows leaning back). The light fades over `twilight` hours after sunset and returns over the
  * same before sunrise. Night washes the map with `nightColour` (r, g, b) at up to `darkness`.
  * A played clock runs a whole day in `secondsPerDay`; turning it on starts at `startHour`.
  */
 export const DAY_NIGHT = {
-  sunrise: 6,
-  noon: 12,
-  sunset: 18,
   arcAtSunrise: 10,
   arcAtNoon: 90,
   arcAtSunset: 170,

@@ -44,11 +44,13 @@ Built: timed with a benchmark script outside the repo, not a test (millisecond b
 
 `GAME_CLOCK = { sunrise: 6, sunset: 18, dayMinutes: 5, nightMinutes: 3, startHour: 17 }` in `src/sim/config.ts` (sunrise and sunset move here from `DAY_NIGHT`; `dayNight.ts` reads them). `src/sim/clock.ts`: `createClock()`, `hoursPerTick(hour)`, `advanceClock(state)` (wraps at midnight, `day` up at sunrise), `isNight(hour)`, `setClockHour(state, hour)`. `GameState.clock` (null unless `GameOptions.clock`); `tick()` advances it.
 
-- [ ] A day and night take `dayMinutes + nightMinutes` of ticks at normal speed, split 5 / 3
-- [ ] Paused, the clock stops; fast-forward runs it faster; it wraps at midnight and `day` goes up at sunrise
-- [ ] Without the option, `state.clock` stays null; the determinism tests still match
+- [x] A day and night take `dayMinutes + nightMinutes` of ticks at normal speed, split 5 / 3
+- [x] Paused, the clock stops; fast-forward runs it faster; it wraps at midnight and `day` goes up at sunrise
+- [x] Without the option, `state.clock` stays null; the determinism tests still match
 
 Files: `src/sim/config.ts`, `src/sim/clock.ts` (new), `src/sim/types.ts`, `src/sim/game.ts`, `src/render/dayNight.ts`, `tests/sim/clock.test.ts` (new). Size: M. Depends on: none.
+
+Built: noon is worked out from sunrise and sunset (no setting of its own). Fast-forward needs nothing: it runs more ticks. Clock tests use an unbreakable keep, as a blank test map's keep falls to waves before a day is out.
 
 ## Task 4: The clock online
 

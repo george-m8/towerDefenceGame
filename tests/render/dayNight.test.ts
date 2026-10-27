@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { clockLabel, darknessAt, daylight, sunAt, wrapHour } from "../../src/render/dayNight";
 import { DAY_NIGHT } from "../../src/render/palette";
+import { GAME_CLOCK } from "../../src/sim/config";
 
-const { sunrise, noon, sunset } = DAY_NIGHT;
+const { sunrise, sunset } = GAME_CLOCK;
+const noon = (sunrise + sunset) / 2;
 /** Round the clock in quarter hours. */
 const day = Array.from({ length: 97 }, (_, i) => i / 4);
 
