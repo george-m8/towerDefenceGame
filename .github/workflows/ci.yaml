@@ -22,4 +22,4 @@ jobs:
       - name: Boot dev server
         run: |
           npm run dev &
-          npx wait-on http://localhost:3000 --timeout 60000
+          npx wait-on http://localhost:5173 --timeout 60000
