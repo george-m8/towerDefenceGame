@@ -56,7 +56,7 @@ Built: `NO_VOTES` (players.ts) is the one place a fresh set of votes comes from 
 
 The protocol's command parser accepts `voteSkipToNight`; a room applies it as a vote.
 
-- [ ] It parses (protocol test) and two players' votes in a room skip the night (room test)
+- [x] It parses (protocol test) and two players' votes in a room skip the night (room test)
 
 Files: `src/net/protocol.ts`, `tests/server/protocol.test.ts`, `tests/server/room.test.ts`. Size: S. Depends on: 3.
 
