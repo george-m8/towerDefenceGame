@@ -3,6 +3,7 @@ import { createCamera, type Camera } from "./camera";
 import type { Rotation } from "../render/rotation";
 import type { StatId } from "./stats";
 import { DEFAULT_SUN, type Sun } from "../render/sun";
+import type { Curtain } from "./curtain";
 
 export type Tool = StructureKind | "sell";
 
@@ -101,6 +102,8 @@ export interface UiState {
   openPicker: boolean;
   /** Arrow keys (or WASD) held down, for smooth panning. */
   panKeys: { left: boolean; right: boolean; up: boolean; down: boolean };
+  /** The fog curtain while a game is being swapped in (see curtain.ts), else null. */
+  curtain: Curtain | null;
 }
 
 export function createUiState(): UiState {
@@ -122,6 +125,7 @@ export function createUiState(): UiState {
     tab: "defence",
     openPicker: false,
     panKeys: { left: false, right: false, up: false, down: false },
+    curtain: null,
   };
 }
 

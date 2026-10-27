@@ -29,6 +29,8 @@ import {
   type MapChoice,
 } from "./ui/startScreen";
 import { showIntro } from "./ui/intro";
+import { createBackdrop, type Backdrop } from "./ui/backdrop";
+import { curtainAt, type CurtainPhase } from "./ui/curtain";
 import { createWebAudioEngine, unlockOnFirstGesture } from "./audio/engine";
 import { loadAudioSettings, saveAudioSettings } from "./audio/settings";
 import { createJournalView } from "./ui/journalView";
@@ -75,6 +77,10 @@ const onlineViews: { update(state: GameState | null): void }[] = [];
 /** The map editor (?editor), and whether it has the map (false while Play is running). */
 let editing: { editor: Editor; toolbar: ReturnType<typeof createToolbar> } | null = null;
 let editorActive = false;
+/** The game played out behind the intro and start screens, until a game starts (else null). */
+let backdrop: Backdrop | null = null;
+/** The fog curtain while a chosen game is swapped in for the backdrop (see ui/curtain.ts). */
+let curtain: CurtainPhase | null = null;
 
 /** Types of commands sent, oldest first, waiting for their results (to pick a sound). */
 const awaitingResults: string[] = [];
@@ -296,6 +302,7 @@ function followMusic() {
 
 /** Starts playing: offline, or in a room on the game server. */
 function startSession(intent: Exclude<PageIntent, { mode: "menu" }>) {
+  stopBackdrop();
   if (intent.mode === "offline") {
     const map = intent.map ? bundledMaps[intent.map] : undefined;
     const items = intent.items ? bundledItems[intent.items] : undefined;
@@ -348,6 +355,12 @@ function playableMaps(): MapChoice[] {
   return Object.entries(bundledMaps)
     .filter(([, map]) => map.mode === "endless" && validateMap(map).errors.length === 0)
     .map(([name, map]) => ({ name, title: map.title, size: map.size }));
+}
+
+/** Ends the game behind the menus, for good: a real game is starting. */
+function stopBackdrop() {
+  backdrop = null;
+  document.body.classList.remove("backdrop");
 }
 
 /** Shows refusals and plays the sound for each command's result. */
@@ -465,6 +478,9 @@ if (new URLSearchParams(location.search).has("editor")) {
   startSession({ mode: "join", room: intent.room, name: rememberedName() ?? "Player" });
 } else {
   // Direct room links and rejoins skip the intro; everyone else sees it before the menu.
+  // Behind both, a game plays itself out.
+  backdrop = createBackdrop();
+  document.body.classList.add("backdrop");
   // Dismissing the intro is the first gesture, so audio is unlocked by then.
   showIntro(element("#intro"), () => {
     void music.play("intro");
@@ -472,7 +488,13 @@ if (new URLSearchParams(location.search).has("editor")) {
       room: intent.room,
       maps: playableMaps(),
       items: itemsChoices(),
-      onChoose: startSession,
+      // The fog closes over the backdrop, and the game starts under it.
+      onChoose: (chosen) =>
+        (curtain = {
+          phase: "closing",
+          started: performance.now(),
+          then: () => startSession(chosen),
+        }),
     });
   });
 }
@@ -506,6 +528,14 @@ function frame(now: number) {
     editor.drawOverlay(canvas.getContext("2d")!, ui);
     minimap.update(state);
     toolbar.update(now);
+  } else if (backdrop) {
+    backdrop.frame(now, seconds);
+    const state = backdrop.session.state!;
+    fitCanvas(state.width, state.height);
+    ui.camera.zoom = 1;
+    centerOn(ui.camera, backdrop.focus.x, backdrop.focus.y);
+    updateCurtain(now);
+    renderer.render(state, ui);
   } else if (session) {
     session.frame(now);
     ui.playerId = session.playerId;
@@ -514,7 +544,6 @@ function frame(now: number) {
     if (state) {
       // Drawn through the view's turn (Q): the camera, minimap and renderer see a turned copy.
       const view = viewOf(state, ui.rotation);
-      const viewUi = turnedUi(state);
       fitCanvas(view.width, view.height);
       // A new map (first game, restart, or joining a room): start looking at the keep.
       // (PvP keeps are handed out at the start, so that counts as a new map too.)
@@ -528,6 +557,8 @@ function frame(now: number) {
         centredFor = mapKey;
       }
       panWithKeys(seconds);
+      updateCurtain(now);
+      const viewUi = turnedUi(state);
       const pending = session.pending.map((p) => ({
         ...p,
         ...toView(p, ui.rotation, state.width, state.height),
@@ -548,6 +579,26 @@ function frame(now: number) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+
+/**
+ * Moves the fog curtain on, just before a frame is drawn: closing over the backdrop, then (once
+ * the game it covers has its first frame) opening out on it, centred on the camera.
+ */
+function updateCurtain(now: number) {
+  if (!curtain) return;
+  if (curtain.phase === "covered") curtain = { phase: "opening", started: now };
+  const { curtain: drawn, done } = curtainAt(curtain, now, ui.camera);
+  ui.curtain = drawn;
+  if (!done) return;
+  if (curtain.phase === "closing") {
+    const { then } = curtain;
+    curtain = { phase: "covered" };
+    then();
+  } else {
+    curtain = null;
+    ui.curtain = null;
+  }
+}
 
 /** The UI as the turned view sees it: the hovered tile and the build facing, turned. */
 function turnedUi(state: GameState): typeof ui {
