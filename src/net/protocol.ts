@@ -89,6 +89,7 @@ type DynamicFields =
   | "cues"
   | "players"
   | "wave"
+  | "clock"
   | "keeps"
   | "winner"
   | "paused"

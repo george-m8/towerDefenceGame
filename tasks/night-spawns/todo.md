@@ -56,7 +56,7 @@ Built: noon is worked out from sunrise and sunset (no setting of its own). Fast-
 
 `clock` joins the update fields; the welcome snapshot and `applyUpdate` carry it.
 
-- [ ] A client's clock matches the server's after updates (`tests/net/view.test.ts`)
+- [x] A client's clock matches the server's after updates (`tests/net/view.test.ts`)
 
 Files: `src/net/protocol.ts`, `src/net/snapshot.ts`, `src/net/view.ts`, `tests/net/view.test.ts`. Size: S. Depends on: 3.
 
