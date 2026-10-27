@@ -24,14 +24,16 @@ Built: farmland lights like walls (a thin line), as the spec has every built str
 
 `drawNight` draws the darkness through the light map: a small canvas, one pixel per tile for the view plus the largest radius (clamped to the map), alpha `darkness x (1 - light)`, drawn scaled and smoothed; the warm tint over lit tiles the same way; off the map, flat night as now. No light map while it's light. Timed with the benchmark script at midnight on an XL map of walls.
 
-- [ ] At night the town lights the dark round it; by day nothing is drawn
-- [ ] Night frame time on the benchmark within 2ms of before
+- [x] At night the town lights the dark round it; by day nothing is drawn
+- [x] Night frame time on the benchmark within 2ms of before
 
 Files: `src/render/canvas.ts`. Size: S. Depends on: 1.
 
+Built: also `src/render/lights.ts` (`nightLight`). The first version, working out every light each frame, cost about 3 ms on an XL map zoomed right out with 13,000 walls (1 ms on a normal view): over budget. Now what's built is lit once per grid change (the whole map, cached by `gridVersion`) and each frame copies out the region and adds units: 0.3 ms zoomed right out, 0.03 ms on a normal view (benchmark script, real arrays; a test checks it matches the uncached map).
+
 ## Checkpoint A: after Task 2
 
-- [ ] Standard verification passes
+- [x] Standard verification passes
 - [ ] By hand, `?solo&night` (Debug Day/night to jump to midnight): keep, towers, buildings and walls glow by kind; units a little; scouts dark; lights come up at dusk and go at dawn
 
 ---

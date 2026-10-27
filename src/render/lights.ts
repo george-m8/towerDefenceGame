@@ -21,8 +21,8 @@ export interface Region {
   height: number;
 }
 
-/** Every light in the game: the keeps, built structures (not ruins) and units (not scouts). */
-export function lightSources(state: GameState): LightSource[] {
+/** The keeps' and built structures' lights (not ruins). */
+function builtSources(state: GameState): LightSource[] {
   const sources: LightSource[] = state.keeps.map((keep) => ({
     x: keep.x + keep.size / 2,
     y: keep.y + keep.size / 2,
@@ -34,12 +34,19 @@ export function lightSources(state: GameState): LightSource[] {
       sources.push({ x: structure.x + 0.5, y: structure.y + 0.5, ...light });
     }
   }
-  for (const unit of state.units) {
-    if (!LIGHTS.darkUnits.includes(unit.kind)) {
-      sources.push({ x: unit.x + 0.5, y: unit.y + 0.5, ...LIGHTS.units });
-    }
-  }
   return sources;
+}
+
+/** The units' lights (not scouts). */
+function unitSources(state: GameState): LightSource[] {
+  return state.units
+    .filter((unit) => !LIGHTS.darkUnits.includes(unit.kind))
+    .map((unit) => ({ x: unit.x + 0.5, y: unit.y + 0.5, ...LIGHTS.units }));
+}
+
+/** Every light in the game: the keeps, built structures (not ruins) and units (not scouts). */
+export function lightSources(state: GameState): LightSource[] {
+  return [...builtSources(state), ...unitSources(state)];
 }
 
 /**
@@ -47,8 +54,38 @@ export function lightSources(state: GameState): LightSource[] {
  * fading smoothly from the light's strength to nothing at its radius. Lights don't add up.
  */
 export function lightMap(sources: readonly LightSource[], region: Region): Float32Array {
+  return stampLights(new Float32Array(region.width * region.height), region, sources);
+}
+
+/** The whole map's light from what's built, by game: it only changes when the grid does. */
+const builtLight = new WeakMap<GameState, { gridVersion: number; map: Float32Array }>();
+
+/**
+ * The light map for a region of the game's map, as lightMap(lightSources(state), region), but
+ * quick: what's built is lit once per grid change, and only units are added each time.
+ */
+export function nightLight(state: GameState, region: Region): Float32Array {
+  let built = builtLight.get(state);
+  if (built?.gridVersion !== state.gridVersion) {
+    const whole = { x0: 0, y0: 0, width: state.width, height: state.height };
+    built = { gridVersion: state.gridVersion, map: lightMap(builtSources(state), whole) };
+    builtLight.set(state, built);
+  }
+  const map = new Float32Array(region.width * region.height);
+  for (let row = 0; row < region.height; row++) {
+    const from = (region.y0 + row) * state.width + region.x0;
+    map.set(built.map.subarray(from, from + region.width), row * region.width);
+  }
+  return stampLights(map, region, unitSources(state));
+}
+
+/** Adds lights to a region's light map, each tile keeping the brightest. */
+function stampLights(
+  map: Float32Array,
+  region: Region,
+  sources: readonly LightSource[],
+): Float32Array {
   const { x0, y0, width, height } = region;
-  const map = new Float32Array(width * height);
   for (const { x, y, radius, strength } of sources) {
     const left = Math.max(x0, Math.floor(x - radius));
     const right = Math.min(x0 + width - 1, Math.ceil(x + radius));

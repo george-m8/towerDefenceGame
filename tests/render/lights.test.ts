@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lightMap, lightSources, type LightSource } from "../../src/render/lights";
+import { lightMap, lightSources, nightLight, type LightSource } from "../../src/render/lights";
 import { LIGHTS } from "../../src/render/palette";
 import { spawnUnit } from "../../src/sim/units";
 import { buildAt, createGameWithoutWaves, finishBuilding } from "../sim/helpers";
@@ -77,5 +77,25 @@ describe("lightMap", () => {
     const map = lightMap([{ x: 3.5, y: 6.5, radius: 3, strength: 1 }], part);
     expect(map).toHaveLength(16);
     expect(map[1 * 4 + 0]).toBeGreaterThan(0);
+  });
+});
+
+describe("nightLight", () => {
+  it("matches the light map of every light, over any region, as things are built", () => {
+    const state = createGameWithoutWaves();
+    const keep = state.keeps[0];
+    buildAt(
+      state,
+      [
+        { x: keep.x - 4, y: keep.y },
+        { x: keep.x + 6, y: keep.y + 1 },
+      ],
+      "wall",
+    );
+    spawnUnit(state, "militia", 1, keep.x - 3, keep.y + 3);
+    const region = { x0: keep.x - 8, y0: keep.y - 6, width: 20, height: 15 };
+    expect(nightLight(state, region)).toEqual(lightMap(lightSources(state), region));
+    buildAt(state, [{ x: keep.x - 6, y: keep.y }], "watchtower");
+    expect(nightLight(state, region)).toEqual(lightMap(lightSources(state), region));
   });
 });
