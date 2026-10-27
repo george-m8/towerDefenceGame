@@ -4,6 +4,7 @@ Capability map: [`CAPABILITIES.md`](../CAPABILITIES.md)
 Current module spec: [`SPEC-map-editor.md`](../SPEC-map-editor.md) (editors)
 Task list (current module only): `tasks/todo.md`, written when the next module's spec is approved
 Finished modules: [`tasks/tile-layers/`](tile-layers/todo.md), [`tasks/tower-aiming/`](tower-aiming/todo.md), [`tasks/audio/`](audio/todo.md), [`tasks/map-gen/`](map-gen/todo.md), [`tasks/players/`](players/todo.md), [`tasks/game-server/`](game-server/todo.md) (awaiting the cross-machine probe and review), [`tasks/net-client/`](net-client/todo.md)
+Next up: [`roadmap.md`](roadmap.md) (2026-10-27)
 Previous plan (MVP, complete except a Firefox/Safari smoke test): [`tasks/mvp/`](mvp/plan.md)
 
 ## How this plan works
