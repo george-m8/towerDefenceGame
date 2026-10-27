@@ -208,7 +208,11 @@ describe("votes", () => {
     applyCommand(state, B, { type: "togglePause" });
     applyCommand(state, A, { type: "toggleFastForward" });
     setConnected(state, B, false);
-    expect(state.players[B].votes).toEqual({ pause: false, fastForward: false });
+    expect(state.players[B].votes).toEqual({
+      pause: false,
+      fastForward: false,
+      skipToNight: false,
+    });
     expect(state.paused).toBe(false);
     expect(state.speed).toBe(FAST_FORWARD_SPEED); // A is the only connected player now
 

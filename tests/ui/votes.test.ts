@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { applyCommand, createGame } from "../../src/sim/game";
 import { addPlayer, setConnected } from "../../src/sim/players";
-import { hasVoted, voteCount, voteLabel } from "../../src/ui/votes";
+import { canSkipToNight, hasVoted, voteCount, voteLabel } from "../../src/ui/votes";
+import { setClockHour } from "../../src/sim/clock";
 import { describeTile } from "../../src/ui/tileInfo";
 
 describe("vote labels", () => {
@@ -34,5 +35,30 @@ describe("Built by", () => {
     applyCommand(duo, 2, { type: "build", kind: "archer", x: 5, y: 5 });
     const lines = describeTile(duo, { x: 5, y: 5 });
     expect(lines.filter((l) => l === "Built by Bo")).toHaveLength(2);
+  });
+});
+
+describe("canSkipToNight", () => {
+  it("is offered by day in a game with enemies at night, not by night", () => {
+    const state = createGame(1, { blankMap: true, enemiesCome: "night" });
+    setClockHour(state, 12);
+    expect(canSkipToNight(state)).toBe(true);
+    setClockHour(state, 22);
+    expect(canSkipToNight(state)).toBe(false);
+  });
+
+  it("is never offered with enemies all the time, or once the game is over", () => {
+    expect(canSkipToNight(createGame(1, { blankMap: true }))).toBe(false);
+    const over = createGame(1, { blankMap: true, enemiesCome: "night" });
+    setClockHour(over, 12);
+    over.gameOver = true;
+    expect(canSkipToNight(over)).toBe(false);
+  });
+
+  it("shows the vote count in co-op, like Pause", () => {
+    const state = createGame(1, { blankMap: true, enemiesCome: "night", players: ["Ann", "Bo"] });
+    setClockHour(state, 12);
+    state.players[1].votes.skipToNight = true;
+    expect(voteLabel(state, "skipToNight", "Skip to night")).toBe("Skip to night 1/2");
   });
 });

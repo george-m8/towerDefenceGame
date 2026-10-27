@@ -53,6 +53,7 @@ import {
   PROJECTILES,
   BATTLEMENT_PX,
   DAY_NIGHT,
+  LIGHTS,
   SUN,
   BUILD_BORDER_PX,
   CONSTRUCTION_ALPHA,
@@ -82,6 +83,14 @@ import { textureSpecks, textureVariant, type TextureStyle } from "./textures";
 import { borderColour, borderTrace } from "./buildBorder";
 import { CASTERS, castShade, shadowOffset, sweptTile, type Block, type Sun } from "./sun";
 import { darknessAt, daylight, skyHour } from "./dayNight";
+import { nightLight } from "./lights";
+
+/** The furthest any light reaches, in tiles: how far round the view lights are looked for. */
+const MAX_LIGHT_RADIUS = Math.max(
+  LIGHTS.keep.radius,
+  LIGHTS.units.radius,
+  ...Object.values(LIGHTS.structures).map((light) => light.radius),
+);
 
 /** How dark blocks' shadows are in full daylight, on the ground and on lower blocks beside them. */
 const SHADOW_ALPHA = 0.3;
@@ -174,6 +183,8 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   const textureImages = new Map<string, HTMLCanvasElement>();
   /** False when zoomed too far out for textures to show. */
   let textured = true;
+  /** The night's light map as an image, one pixel a tile (see drawNight). */
+  const nightImage = document.createElement("canvas");
   /** Blocks' shadows this frame: fainter as the light fades (see dayNight.ts). */
   let shadow = `rgba(0, 0, 0, ${SHADOW_ALPHA})`;
   /**
@@ -337,14 +348,59 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     ctx!.fill();
   }
 
-  /** Night: a dark wash over the whole view, map and fog alike (previews go over it). */
-  function drawNight(darkness: number) {
+  /**
+   * Night: a dark wash over the whole view, map and fog alike (previews go over it), lifted round
+   * lights (the town, units) and warmed where they're brightest. On the map it's drawn from a
+   * light map, one pixel a tile, scaled up smoothly; beyond the map it's flat.
+   */
+  function drawNight(state: GameState, darkness: number) {
     if (darkness <= 0) return;
-    ctx!.save();
-    ctx!.setTransform(1, 0, 0, 1, 0, 0);
+    const reach = Math.ceil(MAX_LIGHT_RADIUS);
+    const x0 = Math.max(0, view.x0 - reach);
+    const y0 = Math.max(0, view.y0 - reach);
+    const region = {
+      x0,
+      y0,
+      width: Math.min(state.width - 1, view.x1 + reach) - x0 + 1,
+      height: Math.min(state.height - 1, view.y1 + reach) - y0 + 1,
+    };
+    const light = nightLight(state, region);
+    // Beyond the lit region (off the map): flat night. Everything but the region, by even-odd.
+    const far = 1e6;
+    const left = region.x0 * TILE_SIZE;
+    const top = region.y0 * TILE_SIZE;
+    const width = region.width * TILE_SIZE;
+    const height = region.height * TILE_SIZE;
     ctx!.fillStyle = `rgba(${DAY_NIGHT.nightColour}, ${darkness})`;
-    ctx!.fillRect(0, 0, canvas.width, canvas.height);
-    ctx!.restore();
+    ctx!.beginPath();
+    ctx!.rect(-far, -far, 2 * far, 2 * far);
+    ctx!.rect(left, top, width, height);
+    ctx!.fill("evenodd");
+    // On the region: darkness lifted by the light, then the warm glow.
+    const [nr, ng, nb] = DAY_NIGHT.nightColour.split(",").map(Number);
+    const [tr, tg, tb] = LIGHTS.tint.split(",").map(Number);
+    const warmth = (LIGHTS.tintStrength * darkness) / DAY_NIGHT.darkness;
+    const night = nightImage.getContext("2d")!;
+    nightImage.width = region.width;
+    nightImage.height = region.height;
+    const dark = night.createImageData(region.width, region.height);
+    const glow = night.createImageData(region.width, region.height);
+    for (let i = 0; i < light.length; i++) {
+      const p = i * 4;
+      dark.data[p] = nr;
+      dark.data[p + 1] = ng;
+      dark.data[p + 2] = nb;
+      dark.data[p + 3] = 255 * darkness * (1 - light[i]);
+      glow.data[p] = tr;
+      glow.data[p + 1] = tg;
+      glow.data[p + 2] = tb;
+      glow.data[p + 3] = 255 * warmth * light[i];
+    }
+    ctx!.imageSmoothingEnabled = true; // soft pools of light
+    for (const image of [dark, glow]) {
+      night.putImageData(image, 0, 0);
+      ctx!.drawImage(nightImage, left, top, width, height);
+    }
   }
 
   /** Adds a closed polygon to the path being built. */
@@ -958,7 +1014,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       if (ui.showFlow) drawFlow(state);
       drawEffects(state);
       drawFog(state, ui.curtain);
-      if (hour !== undefined) drawNight(darknessAt(hour));
+      if (hour !== undefined) drawNight(state, darknessAt(hour));
       drawPending(pending);
       drawRange(state, ui);
       drawGhost(state, ui);

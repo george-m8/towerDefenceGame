@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { STARTING_GOLD, TICK_RATE } from "../../src/sim/config";
+import { NIGHT_SPAWNS, STARTING_GOLD, TICK_RATE } from "../../src/sim/config";
 import type { ServerMessage } from "../../src/net/protocol";
 import { priceAt } from "../../src/sim/enclosures";
 import { topAt } from "../../src/sim/grid";
@@ -355,6 +355,26 @@ describe("enemies at night", () => {
     restartRoom(room, 9);
     expect(room.state.enemiesCome).toBe("night");
     expect(room.state.clock).not.toBeNull();
+  });
+
+  it("skips to night once both players have voted", () => {
+    const sent: Record<number, ServerMessage[]> = {};
+    const room = createRoom(
+      "SKIP",
+      7,
+      (id, m) => (sent[id] ??= []).push(m),
+      "endless",
+      "XS",
+      "night",
+    );
+    room.started = true;
+    const ann = join(room, "Ann");
+    const bo = join(room, "Bo");
+    room.state.clock!.hour = 12;
+    expect(applyRoomCommand(room, ann.playerId, 1, { type: "voteSkipToNight" }).ok).toBe(true);
+    expect(room.state.clock!.hour).toBe(12);
+    applyRoomCommand(room, bo.playerId, 1, { type: "voteSkipToNight" });
+    expect(room.state.clock!.hour).toBe(NIGHT_SPAWNS.from);
   });
 
   it("is all the time unless asked for", () => {

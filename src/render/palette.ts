@@ -1,4 +1,4 @@
-import type { EnemyKindId, EnemyVariant, ProjectileKind } from "../sim/config";
+import type { EnemyKindId, EnemyVariant, ProjectileKind, UnitKindId } from "../sim/config";
 import type { Facing, StructureKind, Terrain } from "../sim/types";
 import type { TextureStyle } from "./textures";
 
@@ -53,6 +53,59 @@ export const DAY_NIGHT = {
   nightColour: "10, 16, 48",
   secondsPerDay: 96,
   startHour: 9,
+};
+
+/** How far a light reaches (in tiles) and how much of the night's darkness it lifts (0-1). */
+export interface Light {
+  radius: number;
+  strength: number;
+}
+const TOWER_LIGHT: Light = { radius: 3, strength: 0.8 };
+const BUILDING_LIGHT: Light = { radius: 2.5, strength: 0.7 };
+/** Walls and the like: a thin lit line. */
+const LINE_LIGHT: Light = { radius: 1.5, strength: 0.5 };
+/**
+ * Light at night (see lights.ts): the keep, each built structure by kind (none: ruins) and units
+ * (`darkUnits` give none: scouts stay dark). `tint` (r, g, b) is the warm glow over lit ground,
+ * up to `tintStrength` where it's brightest.
+ */
+export const LIGHTS: {
+  keep: Light;
+  structures: Partial<Record<StructureKind, Light>>;
+  units: Light;
+  darkUnits: readonly UnitKindId[];
+  tint: string;
+  tintStrength: number;
+} = {
+  keep: { radius: 6, strength: 0.9 },
+  structures: {
+    wall: LINE_LIGHT,
+    gate: LINE_LIGHT,
+    floorSpikes: LINE_LIGHT,
+    wallSpikes: LINE_LIGHT,
+    bridge: LINE_LIGHT,
+    farmland: LINE_LIGHT,
+    archer: TOWER_LIGHT,
+    cannon: TOWER_LIGHT,
+    catapult: TOWER_LIGHT,
+    watchtower: TOWER_LIGHT,
+    house: BUILDING_LIGHT,
+    shop: BUILDING_LIGHT,
+    farmhouse: BUILDING_LIGHT,
+    timberYard: BUILDING_LIGHT,
+    mine: BUILDING_LIGHT,
+    foragerHut: BUILDING_LIGHT,
+    guardhouse: BUILDING_LIGHT,
+    archeryPost: BUILDING_LIGHT,
+    paladinHall: BUILDING_LIGHT,
+    scoutCamp: BUILDING_LIGHT,
+    barracks: BUILDING_LIGHT,
+    archeryRange: BUILDING_LIGHT,
+  },
+  units: { radius: 1, strength: 0.35 },
+  darkUnits: ["scout"],
+  tint: "255, 170, 80",
+  tintStrength: 0.2,
 };
 
 /** Height of the strip drawn along the top of a wall-mounted tower. */

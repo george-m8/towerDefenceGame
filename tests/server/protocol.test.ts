@@ -26,6 +26,7 @@ describe("parseClientMessage", () => {
     parses({ type: "start" });
     parses({ type: "start", fog: false });
     parses({ type: "command", seq: 0, command: { type: "togglePause" } });
+    parses({ type: "command", seq: 0, command: { type: "voteSkipToNight" } });
     parses({ type: "command", seq: 1, command: { type: "toggleFastForward" } });
     parses({ type: "command", seq: 2, command: { type: "sendWave" } });
     parses({ type: "command", seq: 3, command: { type: "sell", x: 0, y: 31 } });

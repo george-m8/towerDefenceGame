@@ -54,3 +54,16 @@ export function isSpawningTime(state: GameState): boolean {
 export function nightsSurvived(state: GameState): number {
   return state.clock ? state.clock.day - 1 : 0;
 }
+
+/** Skips the rest of the day to the early evening, when enemies come at night. */
+export function skipToNight(state: GameState): void {
+  if (state.enemiesCome === "night" && !isSpawningTime(state)) {
+    setClockHour(state, NIGHT_SPAWNS.from);
+  }
+}
+
+/** A standing vote to skip to night is spent once the evening has come (it clears at dusk). */
+export function clearSkipVotesAtDusk(state: GameState): void {
+  if (state.enemiesCome !== "night" || !isSpawningTime(state)) return;
+  for (const player of Object.values(state.players)) player.votes.skipToNight = false;
+}

@@ -7,7 +7,13 @@ import {
   PVP,
   type MapSize,
 } from "./config";
-import { advanceClock, createClock, setClockHour } from "./clock";
+import {
+  advanceClock,
+  clearSkipVotesAtDusk,
+  createClock,
+  isSpawningTime,
+  setClockHour,
+} from "./clock";
 import { buildTicksAt, updateBuilding } from "./building";
 import { debugDamage } from "./debug";
 import { priceAt } from "./enclosures";
@@ -202,6 +208,7 @@ export function tick(state: GameState): void {
   if (state.paused || state.gameOver) return;
   state.tick++;
   advanceClock(state);
+  clearSkipVotesAtDusk(state);
   updateEffects(state);
   updateCues(state);
   updateBuilding(state);
@@ -240,6 +247,12 @@ export function applyCommand(
       return { ok: true };
     case "toggleFastForward":
       player.votes.fastForward = !player.votes.fastForward;
+      updateVotes(state);
+      return { ok: true };
+    case "voteSkipToNight":
+      if (state.enemiesCome !== "night") return { ok: false, reason: "No night to skip to" };
+      if (isSpawningTime(state)) return { ok: false, reason: "It's already night" };
+      player.votes.skipToNight = !player.votes.skipToNight;
       updateVotes(state);
       return { ok: true };
     case "build": {

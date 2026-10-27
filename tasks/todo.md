@@ -83,7 +83,7 @@ Built: in dev, Open asks the server for the list (`GET /__maps`), so a map saved
 `P` or Play starts a local single-player game on the map with today's settings; Back to editor returns with the design and undo history intact. Play is blocked while there are errors.
 
 - [x] Browser: play a map, go back; the design is unchanged and undo still works (headless)
-- [ ] Browser, by hand: lose a game on a map (Restart replays it), then go back
+- [x] Browser, by hand: lose a game on a map (Restart replays it), then go back
 
 Files: `src/main.ts`, `src/editor/editor.ts`. Size: M. Depends on: 2, 5.
 

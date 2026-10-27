@@ -1034,6 +1034,42 @@ T1-T2 and T3 don't depend on each other; they're built in order anyway.
 | Restart or rejoin online loses the option | Low | Kept on the room like `size`; a restart test |
 | The by-day HUD stat confuses (no countdown) | Low | "At dusk" in place of the countdown; reviewed at Checkpoint C |
 
+## Day and night: town-lights, skip-to-night
+
+Specs: [`SPEC-town-lights.md`](../SPEC-town-lights.md), [`SPEC-skip-to-night.md`](../SPEC-skip-to-night.md) (approved 2026-10-27). Tasks: [`tasks/night-lights/todo.md`](night-lights/todo.md).
+
+### Architecture decisions
+
+- **A light map like the fog image.** `lightMap` works out one light value per tile for the view plus the largest light radius (pure, tested); the renderer turns it into a small image (one pixel per tile, alpha `darkness x (1 - light)`) and draws it scaled and smoothed over the map. One drawImage, however many walls there are. Off the map (beyond its edges) the night is drawn as now, flat.
+- **Sources from the state, every frame.** `lightSources(state)` lists built structures and units by kind from `LIGHTS`; only those within reach of the view are stamped. Nothing is cached: walls are cheap (radius 1.5), and units move.
+- **Only at night.** No light map while `darknessAt(hour)` is 0, so days cost nothing.
+- **Skip to night is a third vote.** `votes.skipToNight` sits beside `pause` and `fastForward`: same unanimous rule in `updateVotes`, same clearing on drop-out, same HUD vote label. When unanimous by day in a night game it calls `skipToNight(state)` (the clock to `NIGHT_SPAWNS.from`) and clears the votes. Votes are counted on events only, so a per-tick check clears skip votes once spawning time starts on its own.
+
+### Dependency graph
+
+```
+T1 Light sources and light map (pure)
+ └─ T2 Night drawn through the light map (+ timing)
+T3 Skip-to-night vote in the sim
+ ├─ T4 Online: the command
+ └─ T5 HUD button and Players mark
+     └─ T6 Docs
+```
+
+### Checkpoints
+
+- **A (after T2):** a night game by hand: the town glows by kind, units a little, scouts dark; lights come and go with dusk and dawn.
+- **B (after T5):** Skip to night solo and as a co-op vote in two tabs.
+
+### Risks
+
+| Risk | Impact | Mitigation |
+|---|---|---|
+| Smoothed upscaling bleeds light past the map edge or between the region and the flat night | Low | The region is clamped to the map; off-map night is drawn outside the map rectangle only |
+| Thousands of sources (walls) slow the light map | Med | Stamp only sources within reach of the view; benchmark at midnight on an XL map of walls (within 2ms of today's night) |
+| A vote left standing skips a later day by surprise | Low | Votes clear at the skip, when spawning time starts, and on drop-out (tested) |
+| A new vote field missed somewhere votes are built (restart, players) | Low | Typecheck finds every `votes` literal; restart test |
+
 ## Open questions
 
 None for `tower-aiming`. Each later module's questions are settled in its spec.

@@ -205,6 +205,7 @@ function parseCommand(data: unknown): OnlineCommand | null {
   switch (data.type) {
     case "togglePause":
     case "toggleFastForward":
+    case "voteSkipToNight":
     case "sendWave":
       return { type: data.type };
     case "sell":
