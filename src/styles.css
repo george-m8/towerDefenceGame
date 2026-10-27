@@ -600,10 +600,8 @@ a.button {
   align-items: center;
   justify-content: center;
   padding: 16px;
-  background-color: var(--desktop);
-  /* The classic 50% grey desktop dither. */
-  background-image: radial-gradient(var(--ink) 0.5px, transparent 0.6px);
-  background-size: 3px 3px;
+  /* Dimmed, like the dialogs, so the game playing behind it shows through. */
+  background: rgba(0, 0, 0, 0.35);
   cursor: pointer;
 }
 
@@ -1161,6 +1159,13 @@ body.editing .pointer-label {
   display: block;
   font-size: 16px;
   opacity: 0.7;
+}
+
+/* The game playing itself behind the intro and start screens (ui/backdrop.ts): only to watch,
+   so none of the map's controls show. */
+body.backdrop .map-left,
+body.backdrop .map-side {
+  display: none !important;
 }
 
 /* The items editor (?items-editor; SPEC-items-editor.md): a window over an empty map, a row per

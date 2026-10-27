@@ -28,6 +28,7 @@ import {
   type MapChoice,
 } from "./ui/startScreen";
 import { showIntro } from "./ui/intro";
+import { createBackdrop, type Backdrop } from "./ui/backdrop";
 import { createWebAudioEngine, unlockOnFirstGesture } from "./audio/engine";
 import { loadAudioSettings, saveAudioSettings } from "./audio/settings";
 import { createJournalView } from "./ui/journalView";
@@ -74,6 +75,8 @@ const onlineViews: { update(state: GameState | null): void }[] = [];
 /** The map editor (?editor), and whether it has the map (false while Play is running). */
 let editing: { editor: Editor; toolbar: ReturnType<typeof createToolbar> } | null = null;
 let editorActive = false;
+/** The game played out behind the intro and start screens, until a game starts (else null). */
+let backdrop: Backdrop | null = null;
 
 /** Types of commands sent, oldest first, waiting for their results (to pick a sound). */
 const awaitingResults: string[] = [];
@@ -285,6 +288,7 @@ function followMusic() {
 
 /** Starts playing: offline, or in a room on the game server. */
 function startSession(intent: Exclude<PageIntent, { mode: "menu" }>) {
+  stopBackdrop();
   if (intent.mode === "offline") {
     const map = intent.map ? bundledMaps[intent.map] : undefined;
     const items = intent.items ? bundledItems[intent.items] : undefined;
@@ -337,6 +341,12 @@ function playableMaps(): MapChoice[] {
   return Object.entries(bundledMaps)
     .filter(([, map]) => map.mode === "endless" && validateMap(map).errors.length === 0)
     .map(([name, map]) => ({ name, title: map.title, size: map.size }));
+}
+
+/** Ends the game behind the menus, for good: a real game is starting. */
+function stopBackdrop() {
+  backdrop = null;
+  document.body.classList.remove("backdrop");
 }
 
 /** Shows refusals and plays the sound for each command's result. */
@@ -454,6 +464,9 @@ if (new URLSearchParams(location.search).has("editor")) {
   startSession({ mode: "join", room: intent.room, name: rememberedName() ?? "Player" });
 } else {
   // Direct room links and rejoins skip the intro; everyone else sees it before the menu.
+  // Behind both, a game plays itself out.
+  backdrop = createBackdrop();
+  document.body.classList.add("backdrop");
   // Dismissing the intro is the first gesture, so audio is unlocked by then.
   showIntro(element("#intro"), () => {
     void music.play("intro");
@@ -489,6 +502,13 @@ function frame(now: number) {
     editor.drawOverlay(canvas.getContext("2d")!, ui);
     minimap.update(state);
     toolbar.update(now);
+  } else if (backdrop) {
+    backdrop.frame(now, seconds);
+    const state = backdrop.session.state!;
+    fitCanvas(state.width, state.height);
+    ui.camera.zoom = 1;
+    centerOn(ui.camera, backdrop.focus.x, backdrop.focus.y);
+    renderer.render(state, ui);
   } else if (session) {
     session.frame(now);
     ui.playerId = session.playerId;
