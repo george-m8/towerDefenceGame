@@ -108,10 +108,12 @@ Built: the choice shows for solo Endless now; Task 8 offers it to a room's host.
 
 `enemiesCome` on `create` (validated; a bad value is refused), stored on the room, used by `createGame` and kept by restarts. The co-op setup sends it.
 
-- [ ] A room created at night plays at night for every player, and after a restart
-- [ ] A bad value is refused (protocol test)
+- [x] A room created at night plays at night for every player, and after a restart
+- [x] A bad value is refused (protocol test)
 
 Files: `src/net/protocol.ts`, `server/room.ts`, `server/rooms.ts`, `server/connection.ts`, `tests/server/room.test.ts`. Size: M. Depends on: 6.
+
+Built: also `src/net/networkSession.ts` (the create intent sends it) and `src/ui/startScreen.ts` (the host sees the choice). Only "night" is sent, like `fog: false`.
 
 ## Task 9: HUD and game-over text
 

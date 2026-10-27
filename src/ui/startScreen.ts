@@ -324,7 +324,7 @@ function chooseGame(
       }
       options.onChoose(
         game === "endless"
-          ? { mode: "create", name, size, ...fogOff }
+          ? { mode: "create", name, size, ...fogOff, ...night }
           : { mode: "create", name, game, size, ...fogOff },
       );
     },
@@ -509,8 +509,8 @@ function showSettingsScreen(
   const solo = !options.online && mode === "endless";
   const offerMaps = solo && options.maps.length > 0;
   const offerItems = solo && options.items.length > 0;
-  // Waves (and so when they come) are Endless only.
-  const offerNight = solo && mode === "endless";
+  // Waves (and so when they come) are Endless only, solo or in a room.
+  const offerNight = mode === "endless";
   const name = GAME_MODES.find((m) => m.mode === mode)!.name;
   const option = (value: string, text: string, chosen: string) =>
     `<option value="${escapeHtml(value)}" ${value === chosen ? "selected" : ""}>${escapeHtml(text)}</option>`;
