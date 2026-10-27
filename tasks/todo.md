@@ -41,12 +41,12 @@ The price line names where the discount comes from, or what the price would be i
 
 Files: `src/ui/tileInfo.ts`, `src/ui/pointerLabel.ts`, `src/render/canvas.ts` (if the label is drawn there), `tests/ui/tileInfo.test.ts`, `tests/ui/pointerLabel.test.ts`. Size: M. Depends on: 1.
 
-Built: the label is HTML (`pointerLabel.ts`), not canvas, so `canvas.ts` wasn't touched. The "inside your keep's walls" price uses the keep discount on the full cost, so it's shown on every undiscounted tile, outer enclosures included only when they have no discount of their own.
+Built: the label is HTML (`pointerLabel.ts`), so `canvas.ts` wasn't touched. Browser-checked (Checkpoint A): wall, archer and keep-enclosure hover lines, the struck-through price and the faint `R ⟳`.
 
 ## Checkpoint A: after Tasks 1-3
 
-- [ ] All tests pass; typecheck and build clean
-- [ ] Browser: hover a tower, an enemy and a unit; place a wall inside and outside the keep's walls; select an archer and see the faint `R ⟳`
+- [x] All tests pass; typecheck and build clean
+- [x] Browser: hover a tower, an enemy and a unit; place a wall inside and outside the keep's walls; select an archer and see the faint `R ⟳`
 
 ## Task 4: Tooltip cards in the build picker
 

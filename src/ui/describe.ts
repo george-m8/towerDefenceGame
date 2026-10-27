@@ -102,7 +102,7 @@ function enemyNumbers(kind: EnemyKind): string[] {
 }
 
 function sightLine(sight: SightStats): string {
-  return `Sees ${sight.inner} tiles (land ${sight.outer})`;
+  return `Sees ${sight.inner} tile${sight.inner === 1 ? "" : "s"} (land ${sight.outer})`;
 }
 
 /** Gold a minute from `gold` every `seconds`, to one decimal place at most. */
