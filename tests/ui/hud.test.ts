@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { BUILD_TIME, STRUCTURES } from "../../src/sim/config";
+import { BUILD_TIME, PICKER, STRUCTURES } from "../../src/sim/config";
+import type { StructureKind } from "../../src/sim/types";
 import { createGame } from "../../src/sim/game";
 import {
   TOOLS,
   createUiState,
   hasBuildTools,
+  pickerLayout,
   tabForKey,
   toolsInTab,
   type BuildTab,
@@ -15,6 +17,7 @@ import {
   hudContent,
   hudStats,
   limitLabel,
+  offeredTools,
   pickerCard,
   toggleHudStat,
 } from "../../src/ui/hud";
@@ -279,5 +282,27 @@ describe("pickerCard", () => {
       items: withLimit(newItems("Few"), "cannon", 5),
     });
     expect(pickerCard(state, 1, "cannon").cost).toBe(`${STRUCTURES.cannon.cost}g · 0/5`);
+  });
+});
+
+describe("one list or three tabs", () => {
+  it("uses one list up to PICKER.oneRowMax kinds, tabs past it", () => {
+    expect(pickerLayout(PICKER.oneRowMax)).toBe("row");
+    expect(pickerLayout(PICKER.oneRowMax + 1)).toBe("tabs");
+  });
+
+  it("counts what the items file offers, by tab, sell not counted", () => {
+    const all = createGame(1, { blankMap: true, fog: false });
+    const buildable = TOOLS.filter((t) => t.tool !== "sell");
+    expect(offeredTools(all)).toHaveLength(buildable.length);
+    let items = newItems("Few");
+    for (const t of buildable)
+      if (t.tool !== "wall" && t.tool !== "house") {
+        items = withLimit(items, t.tool as StructureKind, 0);
+      }
+    const few = createGame(1, { blankMap: true, fog: false, items });
+    expect(offeredTools(few)).toEqual(["wall", "house"]);
+    expect(offeredTools(few, "offence")).toEqual([]);
+    expect(pickerLayout(offeredTools(few).length)).toBe("row");
   });
 });

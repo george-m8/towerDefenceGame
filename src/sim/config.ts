@@ -45,6 +45,10 @@ export const DEBUG_DAMAGE = 0.35;
 
 export const BUILD_TIME = { maxSeconds: 10, fullDistance: 40 };
 
+/** The build picker shows everything in one list, by section, when a game offers this many
+ * buildable kinds or fewer (an items file can rule kinds out); more than that, three tabs. */
+export const PICKER = { oneRowMax: 9 };
+
 export interface TowerStats {
   range: number; // tiles, measured centre to centre
   minRange: number;

@@ -63,11 +63,13 @@ Built: the card is `position: fixed`, placed from the button's and picker's scre
 
 With `PICKER.oneRowMax` (9) or fewer buildable kinds offered (sell not counted), the picker has no tabs: one list with a section label before each section that has something in it, sell last. With more, the three tabs as today, with empty tabs hidden (the "Barracks coming" title goes). `1`, `2`, `3` open the picker on that tab, or scrolled to that section.
 
-- [ ] `pickerLayout(offered)`: 9 gives `"row"`, 10 gives `"tabs"`; offered counts follow the items file
-- [ ] A tab with nothing offered is hidden
-- [ ] Browser: `?solo&items=arrows-only` shows one list; a game with no items file shows tabs
+- [x] `pickerLayout(offered)`: 9 gives `"row"`, 10 gives `"tabs"`; offered counts follow the items file
+- [x] A tab with nothing offered is hidden
+- [x] Browser: `?solo&items=arrows-only` shows one list; a game with no items file shows tabs
 
 Files: `src/sim/config.ts` (`PICKER`), `src/ui/state.ts`, `src/ui/hud.ts`, `src/styles.css`, `tests/ui/hud.test.ts`. Size: M. Depends on: none.
+
+Built: `offeredTools(state, tab?)` in `hud.ts` counts what's offered. If the open tab has nothing offered, the picker switches to the first tab that has. `1`/`2`/`3` just open the picker in one-list mode (with 9 or fewer items it never needs scrolling). Browser-checked with `?solo&items=arrows-only`: Defence (wall, archer), Civic (house 0/2), Sell.
 
 ## Task 6: Rotate button
 

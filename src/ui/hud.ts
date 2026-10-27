@@ -10,14 +10,7 @@ import { refundFor } from "../sim/economy";
 import { ownedCount, topAt } from "../sim/grid";
 import type { GameState, PlayerId, StructureKind } from "../sim/types";
 import { ARROW_SYMBOLS, GLYPHS, glyphFor } from "../render/palette";
-import {
-  BUILD_TABS,
-  TOOLS,
-  hasBuildTools,
-  isBuildTool,
-  type BuildTab,
-  type UiState,
-} from "./state";
+import { BUILD_TABS, TOOLS, isBuildTool, pickerLayout, type BuildTab, type UiState } from "./state";
 import { statList, type Stat, type StatId } from "./stats";
 import { buildHints, describeKind, traits } from "./describe";
 
@@ -75,6 +68,13 @@ export function limitLabel(state: GameState, player: PlayerId, kind: StructureKi
 /** Whether the game lets this kind be built at all (an items file can rule it out). */
 export function allowed(state: GameState, kind: StructureKind): boolean {
   return state.limits[kind] !== 0;
+}
+
+/** The build tools this game offers (sell not counted), in the picker's order. */
+export function offeredTools(state: GameState, tab?: BuildTab): StructureKind[] {
+  return TOOLS.filter((t) => tab === undefined || t.tab === tab)
+    .map((t) => t.tool)
+    .filter((tool): tool is StructureKind => isBuildTool(tool) && allowed(state, tool));
 }
 
 /** What a build picker item's tooltip card says, top to bottom. */
@@ -168,14 +168,19 @@ export function createHud(root: HTMLElement, ui: UiState) {
         <div class="build-tabs" role="tablist">
           ${BUILD_TABS.map(
             (t) => `
-            <button class="build-tab" role="tab" data-tab="${t.tab}"
-              ${hasBuildTools(t.tab) ? "" : 'disabled title="Barracks coming"'}>
+            <button class="build-tab" role="tab" data-tab="${t.tab}">
               ${t.name} <kbd>${t.label}</kbd>
             </button>`,
           ).join("")}
         </div>
         ${TOOLS.map(
-          (t) => `
+          (t, i) => `
+          ${
+            // One-list layout: a section label before each tab's first tool.
+            t.tab !== "all" && TOOLS[i - 1]?.tab !== t.tab
+              ? `<p class="picker-section" data-section="${t.tab}" hidden>${BUILD_TABS.find((b) => b.tab === t.tab)!.name}</p>`
+              : ""
+          }
           <button class="tool" data-tool="${t.tool}" data-tab="${t.tab}">
             <span class="glyph">${isBuildTool(t.tool) ? GLYPHS[t.tool] : "$"}</span>
             <span class="name">${isBuildTool(t.tool) ? STRUCTURES[t.tool].name : "Sell"}</span>
@@ -241,6 +246,8 @@ export function createHud(root: HTMLElement, ui: UiState) {
   }
   picker.addEventListener("pointerleave", hideCard);
   const tabButtons = [...picker.querySelectorAll<HTMLButtonElement>(".build-tab")];
+  const tabBar = picker.querySelector<HTMLElement>(".build-tabs")!;
+  const sections = [...picker.querySelectorAll<HTMLElement>("[data-section]")];
   for (const button of tabButtons) {
     button.addEventListener("click", () => {
       ui.tab = button.dataset.tab as BuildTab;
@@ -363,8 +370,19 @@ export function createHud(root: HTMLElement, ui: UiState) {
         card.hidden = true;
         return;
       }
+      // Few kinds offered: one list with section labels; otherwise tabs, minus the empty ones.
+      const row = pickerLayout(offeredTools(state).length) === "row";
+      tabBar.hidden = row;
+      const withTools = BUILD_TABS.filter((t) => offeredTools(state, t.tab).length > 0);
+      if (!row && withTools.length > 0 && !withTools.some((t) => t.tab === ui.tab)) {
+        ui.tab = withTools[0].tab;
+      }
       for (const button of tabButtons) {
+        button.hidden = !withTools.some((t) => t.tab === button.dataset.tab);
         button.setAttribute("aria-selected", String(button.dataset.tab === ui.tab));
+      }
+      for (const label of sections) {
+        label.hidden = !row || offeredTools(state, label.dataset.section as BuildTab).length === 0;
       }
       for (const button of toolButtons) {
         const tool = button.dataset.tool as UiState["tool"];
@@ -380,7 +398,7 @@ export function createHud(root: HTMLElement, ui: UiState) {
         const tab = button.dataset.tab;
         // An items file can rule a kind out (not offered) or cap it (shows "2/5").
         const offered = !isBuildTool(tool) || allowed(state, tool);
-        button.hidden = !offered || (tab !== "all" && tab !== ui.tab);
+        button.hidden = !offered || (!row && tab !== "all" && tab !== ui.tab);
         if (isBuildTool(tool)) {
           const count = button.querySelector<HTMLElement>(".limit")!;
           const text = limitLabel(state, ui.playerId, tool) ?? "";

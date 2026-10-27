@@ -1,3 +1,4 @@
+import { PICKER } from "../sim/config";
 import type { Facing, PlayerId, Point, StructureKind } from "../sim/types";
 import { createCamera, type Camera } from "./camera";
 import type { Rotation } from "../render/rotation";
@@ -65,6 +66,11 @@ export function toolsInTab(tab: BuildTab): ToolDef[] {
 /** Whether a tab has anything to build (Offence is empty until barracks exist). */
 export function hasBuildTools(tab: BuildTab): boolean {
   return TOOLS.some((t) => t.tab === tab);
+}
+
+/** One list (few kinds offered) or three tabs (see PICKER). Sell isn't counted. */
+export function pickerLayout(offered: number): "row" | "tabs" {
+  return offered <= PICKER.oneRowMax ? "row" : "tabs";
 }
 
 export function tabForKey(code: string): BuildTab | undefined {

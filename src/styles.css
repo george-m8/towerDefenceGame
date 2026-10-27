@@ -131,9 +131,21 @@ body {
   background: var(--ink);
 }
 
-.build-tab:disabled {
-  opacity: 0.4;
-  cursor: default;
+.build-tab[hidden],
+.build-tabs[hidden] {
+  display: none;
+}
+/* One-list picker: a small label before each section. */
+.picker-section {
+  margin: 6px 0 2px;
+  font-size: 16px;
+  opacity: 0.7;
+}
+.picker-section:first-of-type {
+  margin-top: 0;
+}
+.picker-section[hidden] {
+  display: none;
 }
 
 .build-tab kbd {
