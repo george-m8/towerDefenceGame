@@ -1,7 +1,9 @@
+import { PICKER } from "../sim/config";
 import type { Facing, PlayerId, Point, StructureKind } from "../sim/types";
 import { createCamera, type Camera } from "./camera";
 import type { Rotation } from "../render/rotation";
 import type { StatId } from "./stats";
+import { defaultViewPrefs } from "./viewPrefs";
 import { DEFAULT_SUN, type Sun } from "../render/sun";
 import type { Curtain } from "./curtain";
 
@@ -67,6 +69,11 @@ export function hasBuildTools(tab: BuildTab): boolean {
   return TOOLS.some((t) => t.tab === tab);
 }
 
+/** One list (few kinds offered) or three tabs (see PICKER). Sell isn't counted. */
+export function pickerLayout(offered: number): "row" | "tabs" {
+  return offered <= PICKER.oneRowMax ? "row" : "tabs";
+}
+
 export function tabForKey(code: string): BuildTab | undefined {
   return BUILD_TABS.find((t) => t.key === code)?.tab;
 }
@@ -121,7 +128,7 @@ export function createUiState(): UiState {
     playerId: 1,
     camera: createCamera(),
     rotation: 0,
-    hudStats: ["gold"],
+    hudStats: defaultViewPrefs().hudStats,
     tab: "defence",
     openPicker: false,
     panKeys: { left: false, right: false, up: false, down: false },

@@ -114,6 +114,15 @@ body {
   gap: 4px;
   margin-bottom: 4px;
 }
+/* In a scrolling picker the tabs stay put at the top. */
+.hud-picker > .build-tabs {
+  position: sticky;
+  top: -8px; /* the picker's padding */
+  z-index: 1;
+  margin: -8px -8px 4px;
+  padding: 8px 8px 4px;
+  background: var(--paper);
+}
 
 .build-tab {
   flex: 1;
@@ -131,9 +140,21 @@ body {
   background: var(--ink);
 }
 
-.build-tab:disabled {
-  opacity: 0.4;
-  cursor: default;
+.build-tab[hidden],
+.build-tabs[hidden] {
+  display: none;
+}
+/* One-list picker: a small label before each section. */
+.picker-section {
+  margin: 6px 0 2px;
+  font-size: 16px;
+  opacity: 0.7;
+}
+.picker-section:first-of-type {
+  margin-top: 0;
+}
+.picker-section[hidden] {
+  display: none;
 }
 
 .build-tab kbd {
@@ -297,6 +318,27 @@ body {
 .pointer-time {
   color: #fff;
 }
+.pointer-price {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+/* The full price when this tile's is discounted. */
+.pointer-full {
+  color: #fff;
+  opacity: 0.6;
+  font-size: 0.7em;
+}
+/* A quiet hint that R turns the tool: small and faint, so it never competes with the price. */
+.pointer-rotate {
+  color: #fff;
+  opacity: 0.45;
+  font-size: 0.55em;
+}
+.pointer-full[hidden],
+.pointer-rotate[hidden] {
+  display: none;
+}
 
 .hud-stat.short {
   color: var(--paper);
@@ -315,6 +357,16 @@ body {
   cursor: pointer;
   pointer-events: auto;
 }
+/* Rotate (R): beside the tool box while the tool turns. Big enough to tap. */
+.hud-rotate {
+  min-width: 64px;
+}
+.hud-rotate kbd {
+  font: inherit;
+  font-size: 0.7em;
+  padding: 0 3px;
+  border: 1px solid currentColor;
+}
 .hud-tool:active {
   color: var(--paper);
   background: var(--ink);
@@ -324,6 +376,10 @@ body {
   left: 0;
   bottom: calc(100% + 12px);
   width: 300px;
+  /* Never past the top of the window (below the View/Settings buttons): scroll instead. The
+     picker's bottom sits about 70px up (the HUD's margin, its box and the gap). */
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
   padding: 8px;
   font-size: 24px;
   background: var(--paper);
@@ -333,6 +389,54 @@ body {
 }
 .hud-picker[hidden] {
   display: none;
+}
+/* A build picker item's tooltip: what it is and does, beside the picker, pointing at the item. */
+.picker-card {
+  position: fixed;
+  z-index: 5;
+  width: 320px;
+  padding: 8px 10px;
+  font-size: 18px;
+  line-height: 1.25;
+  color: var(--ink);
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+  pointer-events: none;
+}
+.picker-card[hidden] {
+  display: none;
+}
+.picker-card::before {
+  content: "";
+  position: absolute;
+  left: -10px;
+  top: calc(var(--card-arrow, 24px) - 8px);
+  border: 8px solid transparent;
+  border-left: 0;
+  border-right: 10px solid var(--ink);
+}
+.picker-card p {
+  margin: 0;
+}
+.picker-card .card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 22px;
+}
+.picker-card .card-description {
+  margin: 4px 0;
+}
+.picker-card .card-traits {
+  margin-top: 4px;
+  font-weight: bold;
+}
+.picker-card .card-hint {
+  opacity: 0.7;
+}
+.picker-card .card-hint::before {
+  content: "· ";
 }
 
 .dialog {
@@ -656,7 +760,7 @@ a.button {
   }
 }
 
-/* Top left of the map: the View and Settings buttons, and the Controls panel below them */
+/* Top left of the map: the View, Journal, Settings and Debug buttons */
 .map-left {
   position: absolute;
   top: 12px;
@@ -685,6 +789,9 @@ a.button {
   margin: 0;
   padding: 0;
   border: none;
+}
+.controls-box .help + .help {
+  margin-top: 6px;
 }
 
 /* Messages (a refused build, "PAUSED"), along the top middle of the map */
@@ -764,6 +871,10 @@ a.button {
 }
 .info-box {
   min-height: 3em;
+  /* Never down over the HUD's stats: below the minimap (~225px) and above the HUD (~85px). A
+     crowded tile's last lines are cut off rather than covering the gold. */
+  max-height: calc(100vh - 320px);
+  overflow: hidden;
   white-space: pre-line;
 }
 

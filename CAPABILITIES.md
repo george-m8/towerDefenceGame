@@ -247,10 +247,11 @@ Build order (agreed 2026-10-27): `long-shadows` -> `game-clock` -> `night-spawns
 
 ## Next up (2026-10-27)
 
-Status: roadmap agreed (2026-10-27), specs drafted. Order and reasons: [`tasks/roadmap.md`](tasks/roadmap.md).
+Status: roadmap agreed (2026-10-27), specs drafted; `beginner-help` built (2026-10-27). Order and reasons: [`tasks/roadmap.md`](tasks/roadmap.md).
 
 | Module | What it delivers | Depends on |
 |---|---|---|
+| `beginner-help` | Info and income shown by default; hover info (description, numbers, hints) for every structure, unit and enemy, on the map and in the build picker; the picker in one list when few things are allowed; a Rotate button and R hint; the enclosure discount explained. Spec: [`SPEC-beginner-help.md`](SPEC-beginner-help.md). | HUD, tileInfo, enclosures, items-editor |
 | `balance-files` | Every game number in `state.balance` instead of module constants, with global multipliers on top. `.balance` files (`balance/`), a tweak panel in the Debug menu, and a Balance choice on the settings step. Spec: [`SPEC-balance-files.md`](SPEC-balance-files.md). | items-editor (file pattern) |
 | `rebalance` | George's write-up as new defaults, easy and hard presets, the build-time curve by distance, fog sight numbers, and enemy armour. A task list, no spec. | balance-files |
 | `wave-director` | Waves built from group templates on a threat budget, one kind per group more often, leaders with followers, and the **Enemies enter: spawn zone / all round the map** option (this is `edge-spawns`). Marine groups from the sea. Spec: [`SPEC-wave-director.md`](SPEC-wave-director.md). | enemy-kinds, enemy-pathing, balance-files |
@@ -259,4 +260,4 @@ Status: roadmap agreed (2026-10-27), specs drafted. Order and reasons: [`tasks/r
 | `scout-shadowing` | With nothing left to explore, scouts shadow enemy groups at a safe distance. | field-units, wave-director |
 | `moats`, `build-zone` | Postponed; ideas in [`SPEC-moats.md`](SPEC-moats.md) and [`SPEC-build-zone.md`](SPEC-build-zone.md). | - |
 
-Build order: `balance-files` -> `rebalance` -> `wave-director` -> `line-of-sight` -> `siege-towers` -> `scout-shadowing`. This moves `wave-director` ahead of `enemy-targeting`, which it doesn't depend on.
+Build order: `beginner-help` -> `balance-files` -> `rebalance` -> `wave-director` -> `line-of-sight` -> `siege-towers` -> `scout-shadowing`. This moves `wave-director` ahead of `enemy-targeting`, which it doesn't depend on.

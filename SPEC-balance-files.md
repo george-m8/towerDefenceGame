@@ -1,7 +1,7 @@
 # Spec: balance-files
 
 Status: DRAFT (awaiting review)
-Module: `balance-files`, first on the roadmap ([`tasks/roadmap.md`](tasks/roadmap.md)) and in "Next up" in [`CAPABILITIES.md`](CAPABILITIES.md). It follows the pattern of Chris's `.map` and `.items` editors ([`SPEC-map-editor.md`](SPEC-map-editor.md), [`SPEC-items-editor.md`](SPEC-items-editor.md)).
+Module: `balance-files`, second on the roadmap (after `beginner-help`) ([`tasks/roadmap.md`](tasks/roadmap.md)) and in "Next up" in [`CAPABILITIES.md`](CAPABILITIES.md). It follows the pattern of Chris's `.map` and `.items` editors ([`SPEC-map-editor.md`](SPEC-map-editor.md), [`SPEC-items-editor.md`](SPEC-items-editor.md)).
 Last updated: 2026-10-27
 
 ## Assumptions (correct these before approval)

@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { BUILD_TIME, STRUCTURES } from "../../src/sim/config";
+import { BUILD_TIME, PICKER, SELL_REFUND, STRUCTURES, TREE_CLEAR_GOLD } from "../../src/sim/config";
+import type { StructureKind } from "../../src/sim/types";
 import { createGame } from "../../src/sim/game";
 import {
   TOOLS,
   createUiState,
   hasBuildTools,
+  pickerLayout,
+  rotateFacing,
   tabForKey,
   toolsInTab,
   type BuildTab,
@@ -15,6 +18,10 @@ import {
   hudContent,
   hudStats,
   limitLabel,
+  offeredTools,
+  pickerCard,
+  sellCard,
+  showsRotate,
   toggleHudStat,
 } from "../../src/ui/hud";
 import { newItems, withLimit } from "../../src/sim/itemsFile";
@@ -97,8 +104,11 @@ describe("hudContent", () => {
 });
 
 describe("the stat boxes", () => {
-  it("show gold by default, and every stat turned on, in the menu's order", () => {
+  it("show gold, income and the wave by default, and every stat turned on, in the menu's order", () => {
     const { state, ui } = setup();
+    expect(hudStats(state, ui).map((s) => s.id)).toEqual(["gold", "income", "wave"]);
+    toggleHudStat(ui, "income");
+    toggleHudStat(ui, "wave");
     expect(hudStats(state, ui)).toEqual([{ id: "gold", label: "Gold", value: "250" }]);
     toggleHudStat(ui, "seed");
     toggleHudStat(ui, "keep");
@@ -109,6 +119,8 @@ describe("the stat boxes", () => {
 
   it("always keep one on", () => {
     const { state, ui } = setup();
+    toggleHudStat(ui, "income");
+    toggleHudStat(ui, "wave");
     toggleHudStat(ui, "gold");
     expect(ui.hudStats).toEqual(["gold"]);
     expect(hudStats(state, ui).map((s) => s.id)).toEqual(["gold"]);
@@ -245,5 +257,83 @@ describe("build limits in the picker", () => {
     expect(limitLabel(state, 1, "house")).toBeNull();
     expect(allowed(state, "house")).toBe(false);
     expect(allowed(state, "archer")).toBe(true);
+  });
+});
+
+describe("pickerCard", () => {
+  it("gives a tower its glyph, name, cost, description, numbers, traits and hints", () => {
+    const state = createGame(1, { blankMap: true, fog: false });
+    const card = pickerCard(state, 1, "cannon");
+    expect(card.title).toContain(STRUCTURES.cannon.name);
+    expect(card.cost).toBe(`${STRUCTURES.cannon.cost}g`);
+    expect(card.description).toBe(STRUCTURES.cannon.description);
+    expect(card.numbers.join("\n")).toContain(`${STRUCTURES.cannon.tower.damage} dmg every`);
+    expect(card.traits).toContain("Splash damage");
+    expect(card.hints.join("\n")).toContain("off inside your keep's walls");
+  });
+
+  it("gives a spawner its unit, and a trap its damage", () => {
+    const state = createGame(1, { blankMap: true, fog: false });
+    expect(pickerCard(state, 1, "barracks").numbers.join("\n")).toContain(
+      `up to ${STRUCTURES.barracks.spawner.quota} at once`,
+    );
+    expect(pickerCard(state, 1, "floorSpikes").numbers.join("\n")).toContain(
+      `${STRUCTURES.floorSpikes.trap.damage} dmg every`,
+    );
+    expect(pickerCard(state, 1, "archer").hints).toContain("R to rotate");
+  });
+
+  it("shows a limit beside the cost", () => {
+    const state = createGame(1, {
+      blankMap: true,
+      fog: false,
+      items: withLimit(newItems("Few"), "cannon", 5),
+    });
+    expect(pickerCard(state, 1, "cannon").cost).toBe(`${STRUCTURES.cannon.cost}g · 0/5`);
+  });
+});
+
+describe("one list or three tabs", () => {
+  it("uses one list up to PICKER.oneRowMax kinds, tabs past it", () => {
+    expect(pickerLayout(PICKER.oneRowMax)).toBe("row");
+    expect(pickerLayout(PICKER.oneRowMax + 1)).toBe("tabs");
+  });
+
+  it("counts what the items file offers, by tab, sell not counted", () => {
+    const all = createGame(1, { blankMap: true, fog: false });
+    const buildable = TOOLS.filter((t) => t.tool !== "sell");
+    expect(offeredTools(all)).toHaveLength(buildable.length);
+    let items = newItems("Few");
+    for (const t of buildable)
+      if (t.tool !== "wall" && t.tool !== "house") {
+        items = withLimit(items, t.tool as StructureKind, 0);
+      }
+    const few = createGame(1, { blankMap: true, fog: false, items });
+    expect(offeredTools(few)).toEqual(["wall", "house"]);
+    expect(offeredTools(few, "offence")).toEqual([]);
+    expect(pickerLayout(offeredTools(few).length)).toBe("row");
+  });
+});
+
+describe("Rotate button", () => {
+  it("shows for tools that turn, and turns the facing as R does", () => {
+    expect(showsRotate("archer")).toBe(true);
+    expect(showsRotate("guardhouse")).toBe(true);
+    expect(showsRotate("cannon")).toBe(false);
+    expect(showsRotate("sell")).toBe(false);
+    expect(showsRotate(null)).toBe(false);
+    const ui = createUiState();
+    rotateFacing(ui);
+    expect(ui.facing).toBe("E");
+  });
+});
+
+describe("sellCard", () => {
+  it("says what selling pays back and that it clears trees", () => {
+    const card = sellCard();
+    expect(card.title).toContain("Sell");
+    expect(card.numbers.join("\n")).toContain(`${SELL_REFUND * 100}%`);
+    expect(card.traits).toContain(`${TREE_CLEAR_GOLD}g`);
+    expect(card.hints).toContain("X to pick it");
   });
 });

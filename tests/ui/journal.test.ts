@@ -14,6 +14,7 @@ import {
   saveJournal,
   variantSummary,
 } from "../../src/ui/journal";
+import { describeKind } from "../../src/ui/describe";
 
 function memoryStorage() {
   const map = new Map<string, string>();
@@ -117,7 +118,7 @@ describe("entries", () => {
     expect(entryLines("goblin", journal)).toEqual([
       "Goblin (g)",
       ENEMY_KINDS.goblin.description,
-      "HP 20 · speed 1.5 · hits 5 every 1s · bounty 2",
+      describeKind({ type: "enemy", kind: "goblin" }).numbers.join(" · "),
       "Appears from wave 1 · first seen on wave 3",
       "grunt: the standard one",
       "runt (small): weaker, faster, hits softer",

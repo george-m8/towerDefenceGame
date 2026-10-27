@@ -14,6 +14,7 @@ import { createMapButtons, panelToggle } from "./ui/mapButtons";
 import { createSunSlider, toggleSun } from "./ui/sunSlider";
 import { advanceClock, createClockControls, followSky, toggleClock } from "./ui/clockControls";
 import { hoverText } from "./ui/tileInfo";
+import { loadViewPrefs, saveViewPrefs, type ViewPrefs } from "./ui/viewPrefs";
 import { bindInput } from "./ui/input";
 import { createUiState, showMessage } from "./ui/state";
 import { createPointerControls } from "./ui/pointerControls";
@@ -156,6 +157,25 @@ const panel = createPanel(
   dispatch,
 );
 const infoBox = element("#info-box");
+const minimapBox = element("#minimap-box");
+// The View panels and HUD stats this device last chose (new players: Map, Info, gold and income).
+const viewPrefs = loadViewPrefs(deviceStorage());
+minimapBox.hidden = !viewPrefs.panels.map;
+infoBox.hidden = !viewPrefs.panels.info;
+keysBox.hidden = !viewPrefs.panels.keys;
+ui.hudStats = viewPrefs.hudStats;
+let savedView = JSON.stringify(viewPrefs);
+/** Saves the View panels and HUD stats when they've changed (checked each frame; it's cheap). */
+function rememberView() {
+  const now: ViewPrefs = {
+    panels: { map: !minimapBox.hidden, info: !infoBox.hidden, keys: !keysBox.hidden },
+    hudStats: ui.hudStats,
+  };
+  const json = JSON.stringify(now);
+  if (json === savedView) return;
+  savedView = json;
+  saveViewPrefs(deviceStorage(), now);
+}
 /** In a game, not the editor: the Debug rows that change the game. */
 const inGame = () => !editorActive;
 /** A Debug menu row for a game debug option (offline only; online refuses it). */
@@ -181,7 +201,7 @@ const clockControls = createClockControls(
 let skyFollowed: number | null = null;
 createMapButtons(element("#map-buttons"), {
   view: [
-    panelToggle("Map", element("#minimap-box")),
+    panelToggle("Map", minimapBox),
     panelToggle("Info", infoBox),
     panelToggle("Keys", keysBox),
     // Only in an online game, where the room, invite link and players are shown.
@@ -590,8 +610,10 @@ function frame(now: number) {
       minimap.update(view);
       panel.update(state);
       hud.update(state);
+      rememberView();
       pointerLabel.update(view, viewUi);
-      if (!infoBox.hidden) infoBox.textContent = hoverText(state, ui) || "Hover a tile for details";
+      if (!infoBox.hidden)
+        infoBox.textContent = hoverText(state, ui) || "Hover anything for details";
       gameOver.update(state, session.playerId);
       cues.update(state.cues);
       updateJournal(state, session.playerId, now);

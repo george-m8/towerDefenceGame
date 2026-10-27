@@ -1,6 +1,7 @@
 // The game's buttons in the HUD, beside the tool: Pause, fast forward and (by day, with enemies
-// at night) Skip to night: votes in co-op. Also the Keys panel over the map (shown from View), and the status line at the top
-// of the map: the last message (a refused build...) or that the game is paused.
+// at night) Skip to night: votes in co-op. Also the Keys panel (in the sidebar with Map and Info,
+// shown from View), and the status line at the top of the map: the last message (a refused
+// build...) or that the game is paused.
 import type { Command, GameState } from "../sim/types";
 import type { UiState } from "./state";
 import { canSkipToNight, hasVoted, voteLabel } from "./votes";
@@ -20,6 +21,7 @@ export function createPanel(
   `;
   keys.innerHTML = `
     <p class="help">Space pause · F fast · R rotate · \` debug · J journal · Esc cancel · drag to paint · WASD or arrows move · wheel or +/- zoom</p>
+    <p class="help">Shaded: cheaper building inside walls</p>
   `;
   const pauseButton = root.querySelector<HTMLButtonElement>('[data-action="pause"]')!;
   const fastForwardButton = root.querySelector<HTMLButtonElement>('[data-action="fastForward"]')!;
