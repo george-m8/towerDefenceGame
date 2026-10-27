@@ -969,6 +969,22 @@ export function bandOf(
 /** Roster order; an enemy's index here is its id on the wire. */
 export const ENEMY_KIND_ORDER = Object.keys(ENEMY_KINDS) as EnemyKindId[];
 
+/**
+ * The game's clock (games that use one), in hours on a 24-hour clock: the day runs from
+ * `sunrise` to `sunset` in `dayMinutes` of game time, the night in `nightMinutes`. A game starts at
+ * `startHour`: early evening, so in a night game the first enemies come soon.
+ */
+export const GAME_CLOCK = {
+  sunrise: 6,
+  sunset: 18,
+  dayMinutes: 5,
+  nightMinutes: 3,
+  startHour: 17,
+};
+
+/** Night spawns: with enemies at night, waves run from `from` (early evening) until sunrise. */
+export const NIGHT_SPAWNS = { from: 17 };
+
 export const WAVES = {
   countdownSeconds: 20, // before wave 1, and after each wave finishes spawning
   spawnIntervalSeconds: 0.5,

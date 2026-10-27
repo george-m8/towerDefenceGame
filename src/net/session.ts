@@ -4,6 +4,7 @@ import { applyCommand, createGame, tick } from "../sim/game";
 import type { ItemsFile } from "../sim/itemsFile";
 import type { MapFile } from "../sim/mapFile";
 import type {
+  EnemiesCome,
   Command,
   CommandResult,
   Facing,
@@ -49,9 +50,16 @@ export function createLocalSession(
   newSeed: () => number = () => Date.now() >>> 0,
   /**
    * `fog: false` is the ?fog=off dev switch; `size` is the map size picked at the start; `map`
-   * is a `.map` file to play (the map editor's Play); `items` an `.items` file's build limits.
+   * is a `.map` file to play (the map editor's Play); `items` an `.items` file's build limits;
+   * `enemiesCome` when enemies come (at night, or all the time).
    */
-  options: { fog?: boolean; size?: MapSize; map?: MapFile; items?: ItemsFile } = {},
+  options: {
+    fog?: boolean;
+    size?: MapSize;
+    map?: MapFile;
+    items?: ItemsFile;
+    enemiesCome?: EnemiesCome;
+  } = {},
 ): Session {
   let state = createGame(seed, options);
   let lastTime: number | null = null;

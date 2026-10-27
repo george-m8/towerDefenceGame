@@ -4,7 +4,14 @@ import { randomBytes } from "node:crypto";
 import { DEFAULT_MAP_SIZE, STARTING_GOLD, TICK_RATE, type MapSize } from "../src/sim/config";
 import { applyCommand, assignKeeps, createGame, tick } from "../src/sim/game";
 import { addPlayer, setConnected, updateVotes } from "../src/sim/players";
-import type { Command, CommandResult, GameMode, GameState, PlayerId } from "../src/sim/types";
+import type {
+  EnemiesCome,
+  Command,
+  CommandResult,
+  GameMode,
+  GameState,
+  PlayerId,
+} from "../src/sim/types";
 import { isDebugCommand } from "../src/sim/types";
 import { uniqueName, type LobbyInfo, type ServerMessage } from "../src/net/protocol";
 import { sentStateOf, toClientState, toUpdate, type SentState } from "../src/net/snapshot";
@@ -32,6 +39,8 @@ export interface Room {
   fog: boolean;
   /** The map size the room was created with; restarts keep it. */
   size: MapSize;
+  /** When enemies come, as the room was created with; restarts keep it. */
+  enemiesCome: EnemiesCome;
 }
 
 export type JoinResult =
@@ -44,8 +53,9 @@ export function createRoom(
   send: SendFn,
   mode: GameMode = "endless",
   size: MapSize = DEFAULT_MAP_SIZE,
+  enemiesCome: EnemiesCome = "always",
 ): Room {
-  const state = createGame(seed, { players: [], mode, size });
+  const state = createGame(seed, { players: [], mode, size, enemiesCome });
   return {
     code,
     state,
@@ -58,6 +68,7 @@ export function createRoom(
     started: false,
     fog: true,
     size,
+    enemiesCome,
   };
 }
 
@@ -184,7 +195,13 @@ export function advanceRoom(room: Room, elapsedMs: number): void {
 export function restartRoom(room: Room, seed: number): CommandResult {
   const old = room.state;
   if (!old.gameOver) return { ok: false, reason: "The game isn't over" };
-  const state = createGame(seed, { players: [], fog: room.fog, mode: old.mode, size: room.size });
+  const state = createGame(seed, {
+    players: [],
+    fog: room.fog,
+    mode: old.mode,
+    size: room.size,
+    enemiesCome: room.enemiesCome,
+  });
   for (const player of Object.values(old.players)) {
     state.players[player.id] = {
       ...player,

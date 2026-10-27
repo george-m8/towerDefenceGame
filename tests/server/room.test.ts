@@ -337,6 +337,32 @@ describe("map size", () => {
   });
 });
 
+describe("enemies at night", () => {
+  it("is set when the room is created and kept on restart", () => {
+    const sent: Record<number, ServerMessage[]> = {};
+    const room = createRoom(
+      "NITE",
+      7,
+      (id, m) => (sent[id] ??= []).push(m),
+      "endless",
+      "XS",
+      "night",
+    );
+    expect(room.state.enemiesCome).toBe("night");
+    expect(room.state.clock).not.toBeNull();
+    join(room, "Ann");
+    room.state.gameOver = true;
+    restartRoom(room, 9);
+    expect(room.state.enemiesCome).toBe("night");
+    expect(room.state.clock).not.toBeNull();
+  });
+
+  it("is all the time unless asked for", () => {
+    const { room } = testRoom();
+    expect(room.state.enemiesCome).toBe("always");
+  });
+});
+
 describe("debug commands online", () => {
   it("are refused", () => {
     const { room } = testRoom();

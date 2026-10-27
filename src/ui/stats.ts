@@ -1,7 +1,9 @@
 // The game's stats (gold, income, keep, waves...) as label and value, for the sidebar and the
-// HUD's stat box. PvP has no waves: it shows the rival's keep and the mode instead.
+// HUD's stat box. PvP has no waves: it shows the rival's keep and the mode instead. With enemies
+// at night, the wave stat shows the night too, and by day the next wave is "At dusk".
 import { TICK_RATE } from "../sim/config";
 import { incomePerMinute } from "../sim/economy";
+import { isSpawningTime } from "../sim/clock";
 import type { GameState, PlayerId } from "../sim/types";
 
 export type StatId = "gold" | "income" | "keep" | "wave" | "next" | "rival" | "mode" | "seed";
@@ -28,12 +30,19 @@ export function statList(state: GameState, playerId: PlayerId): Stat[] {
     );
   } else {
     const spawning = state.wave.threatLeft > 0;
+    const night = state.enemiesCome === "night" && state.clock ? state.clock.day : null;
     stats.push(
-      { id: "wave", label: "Wave", value: String(state.wave.number) },
+      night === null
+        ? { id: "wave", label: "Wave", value: String(state.wave.number) }
+        : { id: "wave", label: "Night", value: `${night} · wave ${state.wave.number}` },
       {
         id: "next",
         label: "Next",
-        value: spawning ? "incoming!" : `${Math.ceil(state.wave.countdown / TICK_RATE)}s`,
+        value: spawning
+          ? "incoming!"
+          : !isSpawningTime(state)
+            ? "At dusk"
+            : `${Math.ceil(state.wave.countdown / TICK_RATE)}s`,
       },
     );
   }

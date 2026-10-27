@@ -188,6 +188,12 @@ export interface FlowField {
   dist: number[];
 }
 
+/** The time of day: `hour` from 0 to 24, and the day it is (1 on the first, up at each sunrise). */
+export interface Clock {
+  hour: number;
+  day: number;
+}
+
 export interface WaveState {
   /** Waves started so far (0 before the first wave). */
   number: number;
@@ -201,6 +207,9 @@ export interface WaveState {
 
 /** Endless: hold one shared keep against waves. PvP: two players, a keep each, no waves. */
 export type GameMode = "endless" | "pvp";
+
+/** When enemies come (Endless): all the time, as ever, or only at night (with a clock). */
+export type EnemiesCome = "always" | "night";
 
 /**
  * Test options, from the Debug menu: keeps that take no damage, and gold that never runs out
@@ -257,6 +266,10 @@ export interface GameState {
   /** PvP: who won, once the game is over. */
   winner: PlayerId | null;
   wave: WaveState;
+  /** The time of day, in games that use it (night spawns); null otherwise. See sim/clock.ts. */
+  clock: Clock | null;
+  /** When enemies come: all the time, or only at night (waves only in spawning time). */
+  enemiesCome: EnemiesCome;
   players: Record<PlayerId, Player>;
   nextPlayerId: PlayerId;
   tick: number;
@@ -295,13 +308,15 @@ export type Command =
   | { type: "debugUnit"; kind: UnitKindId; x: number; y: number }
   /** Dev only (offline): knocks DEBUG_DAMAGE of its full amount off the top thing on (x, y). */
   | { type: "debugDamage"; x: number; y: number }
+  /** Dev only (offline): sets the game's clock to an hour (games with a clock). */
+  | { type: "debugClock"; hour: number }
   | { type: "sendWave" }
   | { type: "sell"; x: number; y: number };
 
 /** Commands for testing: offline only, refused online. */
 export type DebugCommand = Extract<
   Command,
-  { type: "debugSpawn" | "debugOption" | "debugFog" | "debugUnit" | "debugDamage" }
+  { type: "debugSpawn" | "debugOption" | "debugFog" | "debugUnit" | "debugDamage" | "debugClock" }
 >;
 
 export function isDebugCommand(command: Command): command is DebugCommand {
@@ -310,6 +325,7 @@ export function isDebugCommand(command: Command): command is DebugCommand {
     command.type === "debugOption" ||
     command.type === "debugFog" ||
     command.type === "debugUnit" ||
+    command.type === "debugClock" ||
     command.type === "debugDamage"
   );
 }

@@ -78,6 +78,17 @@ describe("applyUpdate", () => {
     expect(view.players[1].gold).toBe(server.players[1].gold);
   });
 
+  it("keeps a client's clock with the server's, from the welcome on", () => {
+    const server = createGame(6, { clock: true });
+    const view = fromClientState(overTheWire(toClientState(server)));
+    expect(view.clock).toEqual(server.clock);
+    const sent = sentStateOf(server);
+    for (let t = 0; t < 100; t++) tick(server);
+    applyUpdate(view, overTheWire(toUpdate(server, sent)));
+    expect(view.clock).toEqual(server.clock);
+    expect(view.clock!.hour).not.toBe(createGame(6, { clock: true }).clock!.hour);
+  });
+
   it("keeps a client identical to the server through builds, fighting, sales and losses", () => {
     const server = createGame(6, { players: ["Ann", "Bo"] });
     const view = fromClientState(overTheWire(toClientState(server)));

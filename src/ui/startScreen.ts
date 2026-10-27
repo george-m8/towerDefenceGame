@@ -12,7 +12,7 @@ import {
 } from "./picture";
 import { createPictureView, roomAbove } from "./pictureCanvas";
 import { loadPlayers, putPlayer, removePlayer, savePlayers, type Profile } from "./profiles";
-import type { GameMode } from "../sim/types";
+import type { EnemiesCome, GameMode } from "../sim/types";
 import { DEFAULT_MAP_SIZE, MAP_SIZES, type MapSize } from "../sim/config";
 
 /** The game modes, as the mode screen offers them. */
@@ -308,9 +308,10 @@ function chooseGame(
     maps: options.maps ?? [],
     items: options.items ?? [],
     onBack,
-    onChoose: (game, size, map, items, fog) => {
-      // Only "off" is sent: fog of war is on unless asked otherwise.
+    onChoose: (game, size, map, items, fog, enemiesCome) => {
+      // Only "off" is sent: fog of war is on unless asked otherwise. Likewise only "night".
       const fogOff = fog ? {} : { fog: false as const };
+      const night = enemiesCome === "night" ? { enemiesCome: "night" as const } : {};
       root.hidden = true;
       if (!online) {
         return options.onChoose({
@@ -318,11 +319,12 @@ function chooseGame(
           ...(map ? { map } : { size }),
           ...(items ? { items } : {}),
           ...fogOff,
+          ...night,
         });
       }
       options.onChoose(
         game === "endless"
-          ? { mode: "create", name, size, ...fogOff }
+          ? { mode: "create", name, size, ...fogOff, ...night }
           : { mode: "create", name, game, size, ...fogOff },
       );
     },
@@ -425,6 +427,8 @@ interface ModeSettings {
   items: string;
   /** Fog of war (on to start with). */
   fog: boolean;
+  /** When enemies come (Endless): all the time (to start with), or at night. */
+  enemiesCome: EnemiesCome;
 }
 
 /**
@@ -444,9 +448,16 @@ function showModeScreen(
       map: string | undefined,
       items: string | undefined,
       fog: boolean,
+      enemiesCome: EnemiesCome,
     ) => void;
   },
-  settings: ModeSettings = { size: DEFAULT_MAP_SIZE, map: "", items: "", fog: true },
+  settings: ModeSettings = {
+    size: DEFAULT_MAP_SIZE,
+    map: "",
+    items: "",
+    fog: true,
+    enemiesCome: "always",
+  },
 ) {
   root.innerHTML = `
     <div class="window dialog-window start-window">
@@ -498,6 +509,8 @@ function showSettingsScreen(
   const solo = !options.online && mode === "endless";
   const offerMaps = solo && options.maps.length > 0;
   const offerItems = solo && options.items.length > 0;
+  // Waves (and so when they come) are Endless only, solo or in a room.
+  const offerNight = mode === "endless";
   const name = GAME_MODES.find((m) => m.mode === mode)!.name;
   const option = (value: string, text: string, chosen: string) =>
     `<option value="${escapeHtml(value)}" ${value === chosen ? "selected" : ""}>${escapeHtml(text)}</option>`;
@@ -540,6 +553,15 @@ function showSettingsScreen(
         <button class="size-choice" role="radio" data-fog="on">On</button>
         <button class="size-choice" role="radio" data-fog="off">Off</button>
       </div>
+      ${
+        offerNight
+          ? `<div class="map-sizes" role="radiogroup" aria-label="Enemies come">
+        <span title="At night: waves from early evening until sunrise; days are for building">Enemies come</span>
+        <button class="size-choice" role="radio" data-enemies="always">All the time</button>
+        <button class="size-choice" role="radio" data-enemies="night">At night</button>
+      </div>`
+          : ""
+      }
       <div class="choices together">
         <button class="button" data-action="back">Back</button>
         <button class="button" data-action="start">Start</button>
@@ -548,6 +570,7 @@ function showSettingsScreen(
   `;
   const sizes = root.querySelector<HTMLElement>('[aria-label="Map size"]')!;
   const fogButtons = [...root.querySelectorAll<HTMLButtonElement>("[data-fog]")];
+  const enemiesButtons = [...root.querySelectorAll<HTMLButtonElement>("[data-enemies]")];
   const sizeButtons = [...sizes.querySelectorAll<HTMLButtonElement>("[data-size]")];
   const mapSelect = root.querySelector<HTMLSelectElement>('select[name="map"]');
   const itemsSelect = root.querySelector<HTMLSelectElement>('select[name="items"]');
@@ -557,6 +580,9 @@ function showSettingsScreen(
     }
     for (const b of fogButtons) {
       b.setAttribute("aria-checked", String((b.dataset.fog === "on") === settings.fog));
+    }
+    for (const b of enemiesButtons) {
+      b.setAttribute("aria-checked", String(b.dataset.enemies === settings.enemiesCome));
     }
     // A hand-made map has its own size, so the size only matters for a generated one.
     sizes.hidden = settings.map !== "";
@@ -570,6 +596,12 @@ function showSettingsScreen(
   for (const b of fogButtons) {
     b.addEventListener("click", () => {
       settings.fog = b.dataset.fog === "on";
+      show();
+    });
+  }
+  for (const b of enemiesButtons) {
+    b.addEventListener("click", () => {
+      settings.enemiesCome = b.dataset.enemies as EnemiesCome;
       show();
     });
   }
@@ -590,6 +622,7 @@ function showSettingsScreen(
       offerMaps ? settings.map || undefined : undefined,
       offerItems ? settings.items || undefined : undefined,
       settings.fog,
+      offerNight ? settings.enemiesCome : "always",
     ),
   );
   start.focus();

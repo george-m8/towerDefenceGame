@@ -20,14 +20,16 @@ export const ARC_SEGMENTS = 16;
 
 /**
  * The sun, for blocks' shadows (see sun.ts). No shadow is longer than `maxLength` times its
- * block's height: `tallestBlock` (the keep's corners, in pixels) times it must stay under a tile,
- * so a shadow only reaches the tiles next to its block. `across` and `arc` are where the sun is
+ * block's height: `tallestBlock` (the keep's corners, in pixels) times it must stay under
+ * `reachTiles` tiles, the furthest a shadow can fall from its block (and so how far round each
+ * block, and past the view, shadows are looked for). `across` and `arc` are where the sun is
  * when nobody sets it (high on the left, so shadows fall right); `arcMin` and `arcMax` are the
  * Arc slider's ends (past 90° the sun crosses the bottom of the sky, and shadows fall behind).
  */
 export const SUN = {
-  maxLength: 1.25,
+  maxLength: 2.5,
   tallestBlock: 15,
+  reachTiles: 2,
   across: 0.33,
   arc: 80,
   arcMin: 5,
@@ -35,19 +37,17 @@ export const SUN = {
 };
 
 /**
- * The day and night cycle (see dayNight.ts), in hours on a 24-hour clock. The sun's arc runs in
+ * How the day and night cycle looks (see dayNight.ts; sunrise and sunset are the game clock's,
+ * GAME_CLOCK in sim/config.ts), in hours on a 24-hour clock. The sun's arc runs in
  * straight lines from `arcAtSunrise` through `arcAtNoon` to `arcAtSunset` (past 90°: long evening
  * shadows leaning back). The light fades over `twilight` hours after sunset and returns over the
  * same before sunrise. Night washes the map with `nightColour` (r, g, b) at up to `darkness`.
  * A played clock runs a whole day in `secondsPerDay`; turning it on starts at `startHour`.
  */
 export const DAY_NIGHT = {
-  sunrise: 6,
-  noon: 12,
-  sunset: 18,
-  arcAtSunrise: 20,
+  arcAtSunrise: 10,
   arcAtNoon: 90,
-  arcAtSunset: 160,
+  arcAtSunset: 170,
   twilight: 1,
   darkness: 0.6,
   nightColour: "10, 16, 48",
