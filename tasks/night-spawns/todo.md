@@ -119,13 +119,15 @@ Built: also `src/net/networkSession.ts` (the create intent sends it) and `src/ui
 
 With enemies at night: the Wave stat reads "Night 2 · Wave 7"; by day the next-wave stat reads "At dusk"; game over reads "You survived 3 nights (reached wave 9) and held out for 24:10." All the time: unchanged.
 
-- [ ] HUD and game-over text as above, from pure functions with tests
+- [x] HUD and game-over text as above, from pure functions with tests
 
 Files: `src/ui/stats.ts`, `src/ui/gameOver.ts`, `tests/ui/stats.test.ts` (new). Size: S. Depends on: 6.
 
+Built: the stat is labelled "Night" with the value "2 · wave 7", so the HUD reads "Night 2 · wave 7". The game-over time keeps today's "24m 10s" format. `endlessSummary` is in `gameOver.ts`.
+
 ## Checkpoint C: after Task 9
 
-- [ ] Standard verification passes
+- [x] Standard verification passes
 - [ ] By hand: a co-op game at night (two tabs); the HUD by day and night; the game-over text
 
 ## Task 10: Docs

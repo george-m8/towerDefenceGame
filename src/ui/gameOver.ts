@@ -1,4 +1,5 @@
 import { TICK_RATE } from "../sim/config";
+import { nightsSurvived } from "../sim/clock";
 import { playerName } from "../sim/players";
 import type { GameState, PlayerId } from "../sim/types";
 
@@ -27,7 +28,17 @@ export function createGameOverDialog(root: HTMLElement, onRestart: () => void) {
         return;
       }
       title.textContent = "The keep has fallen.";
-      summary.textContent = `You reached wave ${state.wave.number} and held out for ${time}. Map seed ${state.seed}.`;
+      summary.textContent = endlessSummary(state, time);
     },
   };
+}
+
+/** How an Endless game went: the nights survived (with enemies at night) and the wave reached. */
+export function endlessSummary(state: GameState, time: string): string {
+  const seed = `Map seed ${state.seed}.`;
+  if (state.enemiesCome !== "night") {
+    return `You reached wave ${state.wave.number} and held out for ${time}. ${seed}`;
+  }
+  const nights = nightsSurvived(state);
+  return `You survived ${nights} night${nights === 1 ? "" : "s"} (reached wave ${state.wave.number}) and held out for ${time}. ${seed}`;
 }
