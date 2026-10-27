@@ -431,6 +431,11 @@ export interface UnitKind {
   chase?: number;
   /** Ranged units: the projectile drawn for each shot (melee units have none). */
   projectile?: ProjectileKind;
+  /**
+   * Carries a torch: lights the dark round it at night (LIGHTS.torch). Soldiers and workers do;
+   * stealthy units (scouts) don't, so they stay dark out in the night.
+   */
+  torch?: boolean;
 }
 
 export const UNIT_KINDS = {
@@ -438,6 +443,7 @@ export const UNIT_KINDS = {
   militia: {
     glyph: "i",
     name: "Militia",
+    torch: true,
     hp: 30,
     armour: 0,
     damage: 4,
@@ -451,6 +457,7 @@ export const UNIT_KINDS = {
   swordsman: {
     glyph: "/",
     name: "Swordsman",
+    torch: true,
     hp: 60,
     armour: 1,
     damage: 8,
@@ -464,6 +471,7 @@ export const UNIT_KINDS = {
   archer: {
     glyph: ")",
     name: "Archer",
+    torch: true,
     hp: 35,
     armour: 0,
     damage: 6,
@@ -478,6 +486,7 @@ export const UNIT_KINDS = {
   paladin: {
     glyph: "]",
     name: "Paladin",
+    torch: true,
     hp: 120,
     armour: 4,
     damage: 5,
@@ -504,6 +513,7 @@ export const UNIT_KINDS = {
   soldier: {
     glyph: "&",
     name: "Soldier",
+    torch: true,
     hp: 70,
     armour: 2,
     damage: 10,
@@ -516,6 +526,7 @@ export const UNIT_KINDS = {
   ranger: {
     glyph: "}",
     name: "Ranger",
+    torch: true,
     hp: 40,
     armour: 0,
     damage: 7,
@@ -532,6 +543,7 @@ export const UNIT_KINDS = {
   lumberjack: {
     glyph: "j",
     name: "Lumberjack",
+    torch: true,
     hp: 15,
     armour: 0,
     damage: 1,
@@ -546,6 +558,7 @@ export const UNIT_KINDS = {
   miner: {
     glyph: "p",
     name: "Miner",
+    torch: true,
     hp: 18,
     armour: 1,
     damage: 1,
@@ -560,6 +573,7 @@ export const UNIT_KINDS = {
   forager: {
     glyph: "f",
     name: "Forager",
+    torch: true,
     hp: 12,
     armour: 0,
     damage: 1,

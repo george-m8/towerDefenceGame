@@ -88,7 +88,7 @@ import { nightLight } from "./lights";
 /** The furthest any light reaches, in tiles: how far round the view lights are looked for. */
 const MAX_LIGHT_RADIUS = Math.max(
   LIGHTS.keep.radius,
-  LIGHTS.units.radius,
+  LIGHTS.torch.radius,
   ...Object.values(LIGHTS.structures).map((light) => light.radius),
 );
 

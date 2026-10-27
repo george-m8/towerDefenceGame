@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { lightMap, lightSources, nightLight, type LightSource } from "../../src/render/lights";
 import { LIGHTS } from "../../src/render/palette";
 import { spawnUnit } from "../../src/sim/units";
+import { UNIT_KINDS, type UnitKind } from "../../src/sim/config";
 import { buildAt, createGameWithoutWaves, finishBuilding } from "../sim/helpers";
 
 /** The light source at a tile's centre, if any. */
@@ -35,14 +36,29 @@ describe("lightSources", () => {
     expect(LIGHTS.structures.ruin).toBeUndefined();
   });
 
-  it("lights units a little, but not scouts", () => {
+  it("lights units that carry a torch (soldiers, workers), but not scouts", () => {
     const state = createGameWithoutWaves();
     const keep = state.keeps[0];
     spawnUnit(state, "militia", 1, keep.x - 3, keep.y);
+    spawnUnit(state, "lumberjack", 1, keep.x - 3, keep.y + 1);
     spawnUnit(state, "scout", 1, keep.x - 3, keep.y + 2);
     const sources = lightSources(state);
-    expect(sourceAt(sources, keep.x - 3, keep.y)).toMatchObject(LIGHTS.units);
+    expect(sourceAt(sources, keep.x - 3, keep.y)).toMatchObject(LIGHTS.torch);
+    expect(sourceAt(sources, keep.x - 3, keep.y + 1)).toMatchObject(LIGHTS.torch);
     expect(sourceAt(sources, keep.x - 3, keep.y + 2)).toBeUndefined();
+  });
+
+  it("gives every unit kind a torch but the stealthy scout", () => {
+    for (const [kind, stats] of Object.entries(UNIT_KINDS) as [string, UnitKind][]) {
+      expect([kind, stats.torch === true]).toEqual([kind, kind !== "scout"]);
+    }
+  });
+
+  it("makes a torch light the tiles round its carrier, not just its own", () => {
+    const region = { x0: 0, y0: 0, width: 9, height: 9 };
+    const map = lightMap([{ x: 4.5, y: 4.5, ...LIGHTS.torch }], region);
+    expect(map[4 * 9 + 5]).toBeGreaterThan(0.3);
+    expect(map[4 * 9 + 6]).toBeGreaterThan(0);
   });
 });
 

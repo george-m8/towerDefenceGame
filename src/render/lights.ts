@@ -1,6 +1,7 @@
 // Light at night (SPEC-town-lights.md): the keep, built structures and units light the darkness
 // round them, by kind (LIGHTS). A light map holds one value per tile, the brightest light
 // reaching it, which the renderer draws smoothed over the map.
+import { kindOf } from "../sim/units";
 import { isBuilt } from "../sim/grid";
 import type { GameState } from "../sim/types";
 import { LIGHTS } from "./palette";
@@ -37,14 +38,14 @@ function builtSources(state: GameState): LightSource[] {
   return sources;
 }
 
-/** The units' lights (not scouts). */
+/** The torches units carry (those with `torch`: soldiers and workers, not scouts). */
 function unitSources(state: GameState): LightSource[] {
   return state.units
-    .filter((unit) => !LIGHTS.darkUnits.includes(unit.kind))
-    .map((unit) => ({ x: unit.x + 0.5, y: unit.y + 0.5, ...LIGHTS.units }));
+    .filter((unit) => kindOf(unit).torch)
+    .map((unit) => ({ x: unit.x + 0.5, y: unit.y + 0.5, ...LIGHTS.torch }));
 }
 
-/** Every light in the game: the keeps, built structures (not ruins) and units (not scouts). */
+/** Every light in the game: the keeps, built structures (not ruins) and units' torches. */
 export function lightSources(state: GameState): LightSource[] {
   return [...builtSources(state), ...unitSources(state)];
 }

@@ -1,4 +1,4 @@
-import type { EnemyKindId, EnemyVariant, ProjectileKind, UnitKindId } from "../sim/config";
+import type { EnemyKindId, EnemyVariant, ProjectileKind } from "../sim/config";
 import type { Facing, StructureKind, Terrain } from "../sim/types";
 import type { TextureStyle } from "./textures";
 
@@ -65,15 +65,14 @@ const BUILDING_LIGHT: Light = { radius: 2.5, strength: 0.7 };
 /** Walls and the like: a thin lit line. */
 const LINE_LIGHT: Light = { radius: 1.5, strength: 0.5 };
 /**
- * Light at night (see lights.ts): the keep, each built structure by kind (none: ruins) and units
- * (`darkUnits` give none: scouts stay dark). `tint` (r, g, b) is the warm glow over lit ground,
- * up to `tintStrength` where it's brightest.
+ * Light at night (see lights.ts): the keep, each built structure by kind (none: ruins), and the
+ * torch every unit with `torch` (UNIT_KINDS) carries. `tint` (r, g, b) is the warm glow over lit
+ * ground, up to `tintStrength` where it's brightest.
  */
 export const LIGHTS: {
   keep: Light;
   structures: Partial<Record<StructureKind, Light>>;
-  units: Light;
-  darkUnits: readonly UnitKindId[];
+  torch: Light;
   tint: string;
   tintStrength: number;
 } = {
@@ -102,8 +101,7 @@ export const LIGHTS: {
     barracks: BUILDING_LIGHT,
     archeryRange: BUILDING_LIGHT,
   },
-  units: { radius: 1, strength: 0.35 },
-  darkUnits: ["scout"],
+  torch: { radius: 2.5, strength: 0.65 },
   tint: "255, 170, 80",
   tintStrength: 0.2,
 };
