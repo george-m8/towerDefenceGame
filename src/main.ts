@@ -61,7 +61,7 @@ import { newItems, type ItemsFile } from "./sim/itemsFile";
 import { newMap } from "./editor/model";
 import { validateMap, type MapFile } from "./sim/mapFile";
 import { createToolbar } from "./editor/toolbar";
-import type { Command, DebugOption, GameState, PlayerId } from "./sim/types";
+import type { Command, DebugOption, EnemiesCome, GameState, PlayerId } from "./sim/types";
 
 const element = <T extends HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
 
@@ -319,7 +319,7 @@ function startSession(intent: Exclude<PageIntent, { mode: "menu" }>) {
   if (intent.mode === "offline") {
     const map = intent.map ? bundledMaps[intent.map] : undefined;
     const items = intent.items ? bundledItems[intent.items] : undefined;
-    session = soloSession(map, items, intent.size, fog && intent.fog !== false);
+    session = soloSession(map, items, intent.size, fog && intent.fog !== false, intent.enemiesCome);
   } else {
     network = createNetworkSession(
       serverUrl(location),
@@ -352,10 +352,11 @@ function soloSession(
   items: ItemsFile | undefined,
   size?: MapSize,
   withFog = fog,
+  enemiesCome?: EnemiesCome,
 ): Session {
   return map
-    ? createLocalSession(map.seed, () => map.seed, { fog: withFog, map, items })
-    : createLocalSession(Date.now() >>> 0, undefined, { fog: withFog, size, items });
+    ? createLocalSession(map.seed, () => map.seed, { fog: withFog, map, items, enemiesCome })
+    : createLocalSession(Date.now() >>> 0, undefined, { fog: withFog, size, items, enemiesCome });
 }
 
 /** The items files in items/, for the mode screen. */

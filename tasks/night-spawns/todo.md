@@ -92,14 +92,16 @@ Built: no `state.nights` field: `nightsSurvived(state)` is `clock.day - 1`, sinc
 
 The Endless settings step gets **Enemies come: All the time / At night** (laid out like Fog of war); `ModeSettings.enemiesCome` reaches `createGame`. `?solo&night` starts a solo night game.
 
-- [ ] Choosing At night starts a game at 17:00 with night spawns; All the time as now
-- [ ] `?solo&night` does the same (join intent test)
+- [x] Choosing At night starts a game at 17:00 with night spawns; All the time as now
+- [x] `?solo&night` does the same (join intent test)
 
 Files: `src/ui/startScreen.ts`, `src/net/join.ts`, `src/main.ts`, `tests/net/join.test.ts`. Size: S. Depends on: 6.
 
+Built: the choice shows for solo Endless now; Task 8 offers it to a room's host. Restart keeps it (the local session reuses its options). `src/net/session.ts` passes it to `createGame`.
+
 ## Checkpoint B: after Task 7
 
-- [ ] Standard verification passes
+- [x] Standard verification passes
 - [ ] By hand, `?solo&night`: first wave about 20 s in; waves through the night; sunrise stops spawning and stragglers stay; the next night carries on; Debug Day/night jumps the game's time
 
 ## Task 8: Online: the host's choice

@@ -8,16 +8,23 @@ export type PageIntent =
   | { mode: "menu"; room?: string }
   /**
    * `map`: a map in maps/ to play (by name), instead of a generated one. `items`: an items file
-   * in items/ (by name) limiting what can be built.
+   * in items/ (by name) limiting what can be built. `enemiesCome: "night"`: enemies at night.
    */
-  | { mode: "offline"; size?: MapSize; map?: string; items?: string; fog?: false }
+  | {
+      mode: "offline";
+      size?: MapSize;
+      map?: string;
+      items?: string;
+      fog?: false;
+      enemiesCome?: "night";
+    }
   | JoinIntent;
 
 /**
  * `?create&name=Ann` creates a room (`&game=pvp` for PvP) and `?room=ABCD&name=Bo` joins one;
  * `?solo` plays offline. `&size=L` picks the map size when playing solo or creating a room;
  * `&map=river-crossing` plays maps/river-crossing.map solo, and `&items=towers-only` plays solo
- * with the limits in items/towers-only.items.
+ * with the limits in items/towers-only.items; `&night` plays solo with enemies at night.
  * Anything else, or a missing name, opens the start screen (with the room code filled in).
  */
 export function readJoinIntent(search: string): PageIntent {
@@ -32,6 +39,7 @@ export function readJoinIntent(search: string): PageIntent {
       ...(size ? { size } : {}),
       ...(map && MAP_NAME_PATTERN.test(map) ? { map } : {}),
       ...(items && MAP_NAME_PATTERN.test(items) ? { items } : {}),
+      ...(params.has("night") ? { enemiesCome: "night" as const } : {}),
     };
   }
   const room = params.get("room")?.toUpperCase();
