@@ -5,6 +5,7 @@ import { STRUCTURES, TERRAIN } from "../sim/config";
 import { terrainOf } from "../sim/mapFile";
 import { COLOURS, GLYPHS, STRUCTURE_COLOURS, TERRAIN_STYLES } from "../render/palette";
 import { BUILD_TABS, TOOLS, type BuildTab, type UiState } from "../ui/state";
+import { createKeyLabels } from "../ui/keyLabels";
 import { MAP_ITEMS, itemName, toolName, type Editor, type MapItem } from "./editor";
 import { CAN_SAVE, type FileActions } from "./files";
 
@@ -40,9 +41,14 @@ export function createToolbar(
   files: FileActions,
   actions: ToolbarActions,
 ) {
-  const tabs: { tab: PickerTab; name: string; label: string }[] = [
-    ...BUILD_TABS.map(({ tab, name, label }) => ({ tab, name, label })),
-    { tab: "map", name: "Map", label: "4" },
+  // The game's tabs show whatever their action is bound to; Map's 4 is the editor's own key.
+  const tabs: { tab: PickerTab; name: string; kbd: string }[] = [
+    ...BUILD_TABS.map(({ tab, name, action }) => ({
+      tab,
+      name,
+      kbd: `<kbd data-action="${action}"></kbd>`,
+    })),
+    { tab: "map", name: "Map", kbd: "<kbd>4</kbd>" },
   ];
   root.innerHTML = `
     <div class="overlay-box editor-title" data-field="title"></div>
@@ -54,7 +60,7 @@ export function createToolbar(
             ${tabs
               .map(
                 (t) =>
-                  `<button class="build-tab" role="tab" data-tab="${t.tab}">${t.name} <kbd>${t.label}</kbd></button>`,
+                  `<button class="build-tab" role="tab" data-tab="${t.tab}">${t.name} ${t.kbd}</button>`,
               )
               .join("")}
           </div>
@@ -78,7 +84,7 @@ export function createToolbar(
             </button>`;
           }).join("")}
           <button class="tool" data-tool="sell" data-tab="all">
-            <span class="glyph">✕</span><span class="name">Eraser</span><span></span><kbd>X</kbd>
+            <span class="glyph">✕</span><span class="name">Eraser</span><span></span><kbd data-action="sell"></kbd>
           </button>
         </div>
         <button class="hud-box hud-tool" data-field="tool" title="Choose a tool (1-4)">
@@ -106,6 +112,7 @@ export function createToolbar(
     </div>
   `;
   const field = (name: string) => root.querySelector<HTMLElement>(`[data-field="${name}"]`)!;
+  const keyLabels = createKeyLabels(root);
   const picker = field("picker");
   const button = (action: string) =>
     root.querySelector<HTMLButtonElement>(`[data-action="${action}"]`);
@@ -168,12 +175,13 @@ export function createToolbar(
     /** Called every frame while editing. */
     update(now: number) {
       // 1-3 (the game's keys) and 4 (the editor's) open the picker on their tab.
-      if (ui.openPicker || editor.openMapTab) {
+      keyLabels.sync(ui);
+      if (ui.pickerRequest === "open" || editor.openMapTab) {
         showTab(editor.openMapTab ? "map" : ui.tab);
-        ui.openPicker = false;
         editor.openMapTab = false;
         picker.hidden = false;
-      }
+      } else if (ui.pickerRequest === "close") picker.hidden = true;
+      ui.pickerRequest = null;
       const map = editor.map;
       const dirty = files.dirty(map);
       const where = files.name ? `maps/${files.name}.map` : "not saved yet";

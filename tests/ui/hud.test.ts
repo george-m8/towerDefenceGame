@@ -8,10 +8,11 @@ import {
   hasBuildTools,
   pickerLayout,
   rotateFacing,
-  tabForKey,
+  tabForAction,
   toolsInTab,
   type BuildTab,
 } from "../../src/ui/state";
+import { KEYBOARD, keyAction } from "../../src/ui/controls";
 import {
   allowed,
   heldTime,
@@ -225,16 +226,22 @@ describe("build tabs", () => {
   });
 
   it("open on 1, 2 and 3, each with something to build", () => {
-    expect(["Digit1", "Digit2", "Digit3"].map(tabForKey)).toEqual(["defence", "civic", "offence"]);
+    const tabs = ["Digit1", "Digit2", "Digit3"].map((code) =>
+      tabForAction(keyAction(KEYBOARD, code)!),
+    );
+    expect(tabs).toEqual(["defence", "civic", "offence"]);
     expect(hasBuildTools("defence")).toBe(true);
     expect(hasBuildTools("civic")).toBe(true);
     expect(hasBuildTools("offence")).toBe(true);
   });
 
   it("only sell keeps a key; the old tool keys pick nothing", () => {
-    expect(TOOLS.filter((t) => t.key).map((t) => [t.tool, t.key])).toEqual([["sell", "KeyX"]]);
+    expect(TOOLS.filter((t) => t.action).map((t) => [t.tool, t.action])).toEqual([
+      ["sell", "sell"],
+    ]);
+    expect(keyAction(KEYBOARD, "KeyX")).toBe("sell");
     for (const code of ["Digit4", "Digit7", "Digit0", "KeyT", "KeyG", "KeyB"]) {
-      expect(TOOLS.find((t) => t.key === code)).toBeUndefined();
+      expect(keyAction(KEYBOARD, code)).toBeUndefined();
     }
   });
 

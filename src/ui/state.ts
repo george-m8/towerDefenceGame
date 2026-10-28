@@ -5,6 +5,7 @@ import type { Rotation } from "../render/rotation";
 import type { StatId } from "./stats";
 import { defaultViewPrefs } from "./viewPrefs";
 import { DEFAULT_SUN, type Sun } from "../render/sun";
+import { DEFAULT_SCHEMES, type Action, type Device, type Schemes } from "./controls";
 
 export type Tool = StructureKind | "sell";
 
@@ -12,22 +13,21 @@ export function isBuildTool(tool: Tool | null): tool is StructureKind {
   return tool !== null && tool !== "sell";
 }
 
-/** The build picker's tabs, opened by clicking or with 1, 2, 3. */
+/** The build picker's tabs, opened by clicking or with their action (1, 2, 3 on a keyboard). */
 export type BuildTab = "defence" | "civic" | "offence";
 
-export const BUILD_TABS: { tab: BuildTab; name: string; key: string; label: string }[] = [
-  { tab: "defence", name: "Defence", key: "Digit1", label: "1" },
-  { tab: "civic", name: "Civic", key: "Digit2", label: "2" },
-  { tab: "offence", name: "Offence", key: "Digit3", label: "3" },
+export const BUILD_TABS: { tab: BuildTab; name: string; action: Action }[] = [
+  { tab: "defence", name: "Defence", action: "buildDefence" },
+  { tab: "civic", name: "Civic", action: "buildCivic" },
+  { tab: "offence", name: "Offence", action: "buildOffence" },
 ];
 
 export interface ToolDef {
   tool: Tool;
   /** Which tab it's in; "all" shows on every tab (sell). */
   tab: BuildTab | "all";
-  /** A key that picks it (KeyboardEvent.code). Only sell has one: tools are picked by click. */
-  key?: string;
-  label?: string;
+  /** An action that picks it (see controls.ts). Only sell has one: tools are picked by click. */
+  action?: Action;
   /** Click-and-drag places along the dragged tiles. */
   paintable: boolean;
 }
@@ -55,7 +55,7 @@ export const TOOLS: ToolDef[] = [
   { tool: "scoutCamp", tab: "offence", paintable: false },
   { tool: "barracks", tab: "offence", paintable: false },
   { tool: "archeryRange", tab: "offence", paintable: false },
-  { tool: "sell", tab: "all", key: "KeyX", label: "X", paintable: true },
+  { tool: "sell", tab: "all", action: "sell", paintable: true },
 ];
 
 /** The tools shown on a tab, in order (sell last, on every tab). */
@@ -73,8 +73,8 @@ export function pickerLayout(offered: number): "row" | "tabs" {
   return offered <= PICKER.oneRowMax ? "row" : "tabs";
 }
 
-export function tabForKey(code: string): BuildTab | undefined {
-  return BUILD_TABS.find((t) => t.key === code)?.tab;
+export function tabForAction(action: Action): BuildTab | undefined {
+  return BUILD_TABS.find((t) => t.action === action)?.tab;
 }
 
 export interface UiState {
@@ -86,6 +86,8 @@ export interface UiState {
   showFlow: boolean;
   /** Debug: the sun slider shown over the map. */
   showSun: boolean;
+  /** Debug: the controller test shown over the map (padTest.ts). */
+  showPadTest: boolean;
   /** Where the sun is, for shadows (see render/sun.ts). */
   sun: Sun;
   /** Debug: the day and night clock (render/dayNight.ts), or null when it's off. */
@@ -104,10 +106,19 @@ export interface UiState {
   hudStats: StatId[];
   /** The build picker tab showing. */
   tab: BuildTab;
-  /** Set by 1/2/3 to ask the HUD to open the picker on `tab`; the HUD clears it. */
-  openPicker: boolean;
+  /**
+   * Asks the HUD to open the picker on `tab` (1/2/3, or a pad stepping through tools) or close
+   * it (a pad placing or cancelling, with no mouse to click elsewhere); the HUD clears it.
+   */
+  pickerRequest: "open" | "close" | null;
+  /** Whether the build menu is open (the HUD keeps this), so a pad's A picks rather than places. */
+  pickerOpen: boolean;
   /** Arrow keys (or WASD) held down, for smooth panning. */
   panKeys: { left: boolean; right: boolean; up: boolean; down: boolean };
+  /** What the player last used: the HUD shows its buttons (controls.ts). */
+  device: Device;
+  /** Each device's bindings, faces and feel, with the player's remaps. */
+  schemes: Schemes;
 }
 
 export function createUiState(): UiState {
@@ -118,6 +129,7 @@ export function createUiState(): UiState {
     messageUntil: 0,
     showFlow: false,
     showSun: false,
+    showPadTest: false,
     sun: { ...DEFAULT_SUN },
     clock: null,
     debugDamage: false,
@@ -127,15 +139,20 @@ export function createUiState(): UiState {
     rotation: 0,
     hudStats: defaultViewPrefs().hudStats,
     tab: "defence",
-    openPicker: false,
+    pickerRequest: null,
+    pickerOpen: false,
     panKeys: { left: false, right: false, up: false, down: false },
+    device: "keyboard",
+    schemes: DEFAULT_SCHEMES,
   };
 }
 
 const ROTATION: Facing[] = ["N", "E", "S", "W"];
 
-export function rotateFacing(ui: UiState) {
-  ui.facing = ROTATION[(ROTATION.indexOf(ui.facing) + 1) % ROTATION.length];
+/** Turns the facing a quarter clockwise, or anticlockwise with `turns` -1. */
+export function rotateFacing(ui: UiState, turns: 1 | -1 = 1) {
+  const at = ROTATION.indexOf(ui.facing) + turns + ROTATION.length;
+  ui.facing = ROTATION[at % ROTATION.length];
 }
 
 const MESSAGE_MS = 2000;

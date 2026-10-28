@@ -2,7 +2,7 @@ import { GRID_HEIGHT, GRID_WIDTH, type MapSize } from "./sim/config";
 import { createRenderer } from "./render/canvas";
 import { toView, turnFacing, turnView, viewOf } from "./render/rotation";
 import { GLYPH_FONT, TERRAIN_STYLES } from "./render/palette";
-import { centerOn, panBy, setViewport, tilePixels, zoomBy } from "./ui/camera";
+import { centerOn, setViewport, tilePixels, zoomBy } from "./ui/camera";
 import { ZOOM_STEP } from "./ui/input";
 import { createMinimap } from "./ui/minimap";
 import { fogFromUrl, readJoinIntent, serverUrl, tokenKey, type PageIntent } from "./net/join";
@@ -12,11 +12,13 @@ import { createPanel } from "./ui/panel";
 import { createHud } from "./ui/hud";
 import { createMapButtons, panelToggle } from "./ui/mapButtons";
 import { createSunSlider, toggleSun } from "./ui/sunSlider";
+import { createPadTest } from "./ui/padTest";
 import { advanceClock, createClockControls, followSky, toggleClock } from "./ui/clockControls";
 import { hoverText } from "./ui/tileInfo";
 import { loadViewPrefs, saveViewPrefs, type ViewPrefs } from "./ui/viewPrefs";
 import { bindInput } from "./ui/input";
 import { createUiState, showMessage } from "./ui/state";
+import { loadRemaps, withRemaps } from "./ui/controls";
 import { createPointerControls } from "./ui/pointerControls";
 import { createPointerLabel } from "./ui/pointerLabel";
 import { loadPointerSettings, pointerCursor, savePointerSettings } from "./ui/pointer";
@@ -71,6 +73,8 @@ import type { Command, DebugOption, EnemiesCome, GameState, PlayerId } from "./s
 const element = <T extends HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
 
 const ui = createUiState();
+// Each device's buttons, with any this player rebound (controls.ts).
+ui.schemes = withRemaps(loadRemaps(deviceStorage()));
 const storage = tabStorage();
 /** Read once at load: the address bar loses the flag when a room code replaces it. */
 const fog = fogFromUrl(location.search);
@@ -105,8 +109,6 @@ const renderer = createRenderer(canvas);
 void document.fonts.load(GLYPH_FONT);
 void document.fonts.load(GLYPH_FONT, TERRAIN_STYLES.tree.glyph); // the upper-plane glyphs' file
 const minimap = createMinimap(element<HTMLCanvasElement>("#minimap"), ui);
-/** Arrow-key panning speed, in screen pixels per second (so it feels the same at any zoom). */
-const PAN_PIXELS_PER_SECOND = 900;
 /** The map the camera was last centred for, so a new game re-centres on its keep. */
 let centredFor = "";
 
@@ -195,6 +197,7 @@ const debugToggle = (label: string, option: DebugOption) => ({
   available: inGame,
 });
 const sunSlider = createSunSlider(element("#sun"), ui);
+const padTest = createPadTest(element("#pad-test"), ui);
 const clockControls = createClockControls(
   element("#clock"),
   ui,
@@ -225,6 +228,11 @@ createMapButtons(element("#map-buttons"), {
       available: inGame,
     },
     { label: "Show paths", isOn: () => ui.showFlow, toggle: () => (ui.showFlow = !ui.showFlow) },
+    {
+      label: "Controller test",
+      isOn: () => ui.showPadTest,
+      toggle: () => (ui.showPadTest = !ui.showPadTest),
+    },
     {
       label: "Sun slider",
       isOn: () => ui.showSun,
@@ -264,6 +272,7 @@ createMapButtons(element("#map-buttons"), {
   ],
   settings: element("#settings"),
   journal: () => journalView.toggle(),
+  keyboard: () => ui.schemes.keyboard,
 });
 const gameOver = createGameOverDialog(
   element("#game-over"),
@@ -278,7 +287,7 @@ const gameOver = createGameOverDialog(
     onLevels: () => location.assign("?levels"),
   },
 );
-bindInput(
+const input = bindInput(
   canvas,
   ui,
   dispatch,
@@ -624,7 +633,7 @@ function frame(now: number) {
       else centerOn(ui.camera, state.width / 2, state.height / 2);
       centredFor = "editor";
     }
-    panWithKeys(seconds);
+    input.frame(seconds);
     renderer.render(state, ui);
     editor.drawOverlay(canvas.getContext("2d")!, ui);
     minimap.update(state);
@@ -657,7 +666,7 @@ function frame(now: number) {
         centerOn(ui.camera, keep.x + keep.size / 2, keep.y + keep.size / 2);
         centredFor = mapKey;
       }
-      panWithKeys(seconds);
+      input.frame(seconds);
       updateCurtain(now);
       const viewUi = turnedUi(state);
       const pending = session.pending.map((p) => ({
@@ -678,6 +687,7 @@ function frame(now: number) {
       updateJournal(state, session.playerId, now);
     }
   }
+  padTest.update();
   followMusic();
   requestAnimationFrame(frame);
 }
@@ -715,15 +725,6 @@ function turnedUi(state: GameState): typeof ui {
     hover: ui.hover && toView(ui.hover, ui.rotation, state.width, state.height),
     facing: turnFacing(ui.facing, ui.rotation),
   };
-}
-
-/** Moves the view while arrow keys (or WASD) are held. */
-function panWithKeys(seconds: number) {
-  const { left, right, up, down } = ui.panKeys;
-  const step = (PAN_PIXELS_PER_SECOND * seconds) / tilePixels(ui.camera);
-  const dx = (right ? 1 : 0) - (left ? 1 : 0);
-  const dy = (down ? 1 : 0) - (up ? 1 : 0);
-  if (dx || dy) panBy(ui.camera, dx * step, dy * step);
 }
 
 /** sessionStorage (per tab, so each tab is its own player), or memory if it's unavailable. */
