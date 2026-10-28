@@ -26,6 +26,7 @@ import {
   type UiState,
 } from "./state";
 import { statList, type Stat, type StatId } from "./stats";
+import { toolNumbers } from "./pickerKeys";
 import { buildHints, canRotate, describeKind, percent, traits } from "./describe";
 
 export interface HudContent {
@@ -196,14 +197,6 @@ export function createHud(root: HTMLElement, ui: UiState) {
   root.innerHTML = `
     <div class="hud-left">
       <div class="hud-picker tools" data-field="picker" hidden>
-        <div class="build-tabs" role="tablist">
-          ${BUILD_TABS.map(
-            (t) => `
-            <button class="build-tab" role="tab" data-tab="${t.tab}">
-              ${t.name} <kbd>${t.label}</kbd>
-            </button>`,
-          ).join("")}
-        </div>
         ${TOOLS.map(
           (t, i) => `
           ${
@@ -212,13 +205,28 @@ export function createHud(root: HTMLElement, ui: UiState) {
               ? `<p class="picker-section" data-section="${t.tab}" hidden>${BUILD_TABS.find((b) => b.tab === t.tab)!.name}</p>`
               : ""
           }
+          ${
+            // A subtitle before each group's first tool (Walls, Towers; Static, Exploring).
+            t.group && TOOLS[i - 1]?.group !== t.group
+              ? `<p class="picker-group" data-group="${t.group}" data-group-tab="${t.tab}" hidden>${t.group}</p>`
+              : ""
+          }
           <button class="tool" data-tool="${t.tool}" data-tab="${t.tab}">
             <span class="glyph">${isBuildTool(t.tool) ? GLYPHS[t.tool] : "$"}</span>
             <span class="name">${isBuildTool(t.tool) ? STRUCTURES[t.tool].name : "Sell"}</span>
             <span class="cost">${isBuildTool(t.tool) ? `${STRUCTURES[t.tool].cost}g` : `${SELL_REFUND * 100}%`}</span>
-            ${t.label ? `<kbd>${t.label}</kbd>` : '<span class="limit"></span>'}
+            ${t.label ? `<kbd>${t.label}</kbd>` : '<span class="keys"><span class="limit"></span><kbd class="number" hidden></kbd></span>'}
           </button>`,
         ).join("")}
+        <!-- At the bottom, by the tool button, so they stay put whichever tab is open. -->
+        <div class="build-tabs at-bottom" role="tablist">
+          ${BUILD_TABS.map(
+            (t) => `
+            <button class="build-tab" role="tab" data-tab="${t.tab}">
+              ${t.name} <kbd>${t.label}</kbd>
+            </button>`,
+          ).join("")}
+        </div>
       </div>
       <div class="picker-card" data-field="card" role="tooltip" hidden></div>
       <button class="hud-box hud-tool" data-field="tool" title="Choose what to build">
@@ -288,6 +296,7 @@ export function createHud(root: HTMLElement, ui: UiState) {
   const tabButtons = [...picker.querySelectorAll<HTMLButtonElement>(".build-tab")];
   const tabBar = picker.querySelector<HTMLElement>(".build-tabs")!;
   const sections = [...picker.querySelectorAll<HTMLElement>("[data-section]")];
+  const groups = [...picker.querySelectorAll<HTMLElement>("[data-group]")];
   for (const button of tabButtons) {
     button.addEventListener("click", () => {
       ui.tab = button.dataset.tab as BuildTab;
@@ -298,7 +307,8 @@ export function createHud(root: HTMLElement, ui: UiState) {
   // Each box opens and closes its menu (and closes the other one); picking something, or
   // clicking anywhere else, closes it.
   toolBox.addEventListener("click", () => {
-    picker.hidden = !picker.hidden;
+    ui.pickerOpen = !ui.pickerOpen;
+    picker.hidden = !ui.pickerOpen;
     statPicker.hidden = true;
     toolBox.blur(); // so Space only ever toggles pause
   });
@@ -308,6 +318,7 @@ export function createHud(root: HTMLElement, ui: UiState) {
     if (!box) return;
     statPicker.hidden = !statPicker.hidden;
     picker.hidden = true;
+    ui.pickerOpen = false;
     box.blur();
   });
   for (const button of toolButtons) {
@@ -315,12 +326,16 @@ export function createHud(root: HTMLElement, ui: UiState) {
       const tool = button.dataset.tool as UiState["tool"];
       ui.tool = ui.tool === tool ? null : tool;
       picker.hidden = true;
+      ui.pickerOpen = false;
       button.blur();
     });
   }
   document.addEventListener("pointerdown", (e) => {
     const target = e.target as HTMLElement;
-    if (!target.closest(".hud-left")) picker.hidden = true;
+    if (!target.closest(".hud-left")) {
+      picker.hidden = true;
+      ui.pickerOpen = false;
+    }
     if (!target.closest(".hud-right")) statPicker.hidden = true;
   });
 
@@ -401,11 +416,10 @@ export function createHud(root: HTMLElement, ui: UiState) {
       time.textContent = shownTime?.text ?? "";
       updateStatBoxes(hudStats(state, ui), hud.short);
       if (!statPicker.hidden) updateStatPicker(state);
-      if (ui.openPicker) {
-        // 1, 2 or 3 was pressed: open the picker on that tab.
-        ui.openPicker = false;
-        picker.hidden = false;
-        statPicker.hidden = true;
+      if (picker.hidden === ui.pickerOpen) {
+        // Opened or closed from the keyboard (1, 2, 3, a number, Esc).
+        picker.hidden = !ui.pickerOpen;
+        if (ui.pickerOpen) statPicker.hidden = true;
       }
       cardState = state;
       if (picker.hidden) {
@@ -424,7 +438,23 @@ export function createHud(root: HTMLElement, ui: UiState) {
         button.setAttribute("aria-selected", String(button.dataset.tab === ui.tab));
       }
       for (const label of sections) {
-        label.hidden = !row || offeredTools(state, label.dataset.section as BuildTab).length === 0;
+        const tab = label.dataset.section as BuildTab;
+        label.hidden = !row || offeredTools(state, tab).length === 0;
+        // In one list, the section the number keys pick from (1, 2, 3 choose it).
+        label.classList.toggle("current", tab === ui.tab);
+      }
+      const numbers = new Map(
+        BUILD_TABS.flatMap((t) => [...toolNumbers(offeredTools(state, t.tab))]),
+      );
+      for (const label of groups) {
+        const tab = label.dataset.groupTab as BuildTab;
+        const anyOffered = TOOLS.some(
+          (t) =>
+            t.group === label.dataset.group &&
+            t.tab === tab &&
+            allowed(state, t.tool as StructureKind),
+        );
+        label.hidden = !anyOffered || (!row && tab !== ui.tab);
       }
       for (const button of toolButtons) {
         const tool = button.dataset.tool as UiState["tool"];
@@ -445,6 +475,10 @@ export function createHud(root: HTMLElement, ui: UiState) {
           const count = button.querySelector<HTMLElement>(".limit")!;
           const text = limitLabel(state, ui.playerId, tool) ?? "";
           if (count.textContent !== text) count.textContent = text;
+          const number = button.querySelector<HTMLElement>(".number")!;
+          const key = numbers.get(tool) ?? "";
+          if (number.textContent !== key) number.textContent = key;
+          number.hidden = key === "";
         }
       }
     },

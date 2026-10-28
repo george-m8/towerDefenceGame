@@ -22,14 +22,32 @@
           <div id="sun" class="overlay-box sun-slider" hidden></div>
           <div id="clock" class="overlay-box clock-controls" hidden></div>
         </div>
+        <div id="full-map" class="full-map" hidden>
+          <canvas
+            id="full-map-canvas"
+            title="Click or drag to move the view; zoom in to go back"
+          ></canvas>
+          <button class="button full-map-close" data-action="close-full-map" title="Close (Esc)">
+            ×
+          </button>
+        </div>
         <div class="map-side">
           <div id="minimap-box" class="minimap-box">
             <canvas id="minimap" title="Click or drag to move the view"></canvas>
             <div class="zoom-controls">
               <button class="button" data-zoom="out" title="Zoom out (-)">-</button>
               <button class="button" data-zoom="in" title="Zoom in (+)">+</button>
-              <button class="button" data-zoom="fit" title="Zoom out as far as it goes: the map from edge to edge">Fit</button>
+              <button
+                class="button"
+                data-zoom="fit"
+                title="Zoom out as far as it goes: the map from edge to edge"
+              >
+                Fit
+              </button>
               <button class="button" data-turn title="Flip the view round (Q)">⇅</button>
+              <button class="button" data-action="open-full-map" title="The whole map, full screen">
+                ⤢
+              </button>
             </div>
           </div>
           <div id="info-box" class="overlay-box info-box"></div>

@@ -109,7 +109,7 @@ export function createToolbar(
   const picker = field("picker");
   const button = (action: string) =>
     root.querySelector<HTMLButtonElement>(`[data-action="${action}"]`);
-  let tab: PickerTab = "defence";
+  let tab: PickerTab = "towers";
 
   const showTab = (next: PickerTab) => {
     tab = next;

@@ -1,8 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { BUILD_TIME, PICKER, SELL_REFUND, STRUCTURES, TREE_CLEAR_GOLD } from "../../src/sim/config";
+import {
+  BUILD_TIME,
+  PICKER,
+  SELL_REFUND,
+  STRUCTURES,
+  TREE_CLEAR_GOLD,
+  type StructureStats,
+} from "../../src/sim/config";
 import type { StructureKind } from "../../src/sim/types";
 import { createGame } from "../../src/sim/game";
 import {
+  BUILD_TABS,
   TOOLS,
   createUiState,
   hasBuildTools,
@@ -196,19 +204,25 @@ describe("build tabs", () => {
   const tools = (tab: BuildTab) => toolsInTab(tab).map((t) => t.tool);
 
   it("put each tool in its tab, with sell on every tab", () => {
-    expect(tools("defence")).toEqual([
+    expect(tools("towers")).toEqual([
       "wall",
+      "gate",
+      "bridge",
+      "watchtower",
       "archer",
       "cannon",
       "catapult",
       "floorSpikes",
       "wallSpikes",
-      "bridge",
-      "watchtower",
-      "gate",
+      "sell",
+    ]);
+    expect(tools("units")).toEqual([
       "guardhouse",
       "archeryPost",
       "paladinHall",
+      "scoutCamp",
+      "barracks",
+      "archeryRange",
       "sell",
     ]);
     expect(tools("civic")).toEqual([
@@ -216,19 +230,42 @@ describe("build tabs", () => {
       "shop",
       "farmhouse",
       "farmland",
+      "foragerHut",
       "timberYard",
       "mine",
-      "foragerHut",
       "sell",
     ]);
-    expect(tools("offence")).toEqual(["scoutCamp", "barracks", "archeryRange", "sell"]);
+  });
+
+  it("group tools under subtitles: walls and towers, static and exploring units", () => {
+    const groups = (tab: BuildTab) => [
+      ...new Set(TOOLS.filter((t) => t.tab === tab).map((t) => t.group)),
+    ];
+    expect(groups("towers")).toEqual(["Walls", "Towers"]);
+    expect(groups("units")).toEqual(["Static", "Exploring"]);
+    expect(groups("civic")).toEqual([undefined]);
+    // A group's tools sit together, so each subtitle is shown once.
+    for (const tab of BUILD_TABS) {
+      const inTab = TOOLS.filter((t) => t.tab === tab.tab).map((t) => t.group);
+      const runs = inTab.filter((g, i) => i === 0 || inTab[i - 1] !== g);
+      expect(runs).toEqual([...new Set(inTab)]);
+    }
+  });
+
+  it("put every buildable kind in exactly one tab", () => {
+    const kinds = TOOLS.filter((t) => t.tool !== "sell").map((t) => t.tool);
+    expect(new Set(kinds).size).toBe(kinds.length);
+    for (const kind of Object.keys(STRUCTURES) as StructureKind[]) {
+      if ((STRUCTURES[kind] as StructureStats).buildable === false) continue;
+      expect(kinds).toContain(kind);
+    }
   });
 
   it("open on 1, 2 and 3, each with something to build", () => {
-    expect(["Digit1", "Digit2", "Digit3"].map(tabForKey)).toEqual(["defence", "civic", "offence"]);
-    expect(hasBuildTools("defence")).toBe(true);
+    expect(["Digit1", "Digit2", "Digit3"].map(tabForKey)).toEqual(["towers", "units", "civic"]);
+    expect(hasBuildTools("towers")).toBe(true);
+    expect(hasBuildTools("units")).toBe(true);
     expect(hasBuildTools("civic")).toBe(true);
-    expect(hasBuildTools("offence")).toBe(true);
   });
 
   it("only sell keeps a key; the old tool keys pick nothing", () => {
@@ -310,7 +347,7 @@ describe("one list or three tabs", () => {
       }
     const few = createGame(1, { blankMap: true, fog: false, items });
     expect(offeredTools(few)).toEqual(["wall", "house"]);
-    expect(offeredTools(few, "offence")).toEqual([]);
+    expect(offeredTools(few, "units")).toEqual([]);
     expect(pickerLayout(offeredTools(few).length)).toBe("row");
   });
 });
