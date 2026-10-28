@@ -28,15 +28,15 @@ Files: `src/ui/state.ts`, `src/ui/hud.ts`, `src/styles.css`, `src/editor/toolbar
 
 The tab bar moves below the item list, sticky at the bottom, and the picker grows upwards from a fixed bottom edge.
 
-- [ ] Switching between Towers, Units and Civic leaves the tab bar in the same place on screen
-- [ ] With the picker scrolling (short window), the tabs stay visible at the bottom and don't cover the last item
-- [ ] The one-list layout is unchanged
+- [x] Switching between Towers, Units and Civic leaves the tab bar in the same place on screen
+- [x] With the picker scrolling (short window), the tabs stay visible at the bottom and don't cover the last item
+- [x] The one-list layout is unchanged
 
 Files: `src/ui/hud.ts`, `src/styles.css`. Size: S. Depends on: 2.
 
 ## Checkpoint A: after Tasks 1-3
-- [ ] Standard verification passes
-- [ ] By hand: gate on a keep wall, and the refusals; the new tabs and subtitles; tab bar stays still
+- [x] Standard verification passes
+- [x] By hand: gate on a keep wall, and the refusals; the new tabs and subtitles; tab bar stays still
 - [ ] Review with George before the keyboard work
 
 ## Task 4: Picker open state and item numbers

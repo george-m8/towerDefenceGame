@@ -197,11 +197,13 @@ export function priceLine(
       : keepPrice < price
         ? `${stats.name} here: ${price}g · ${keepPrice}g inside your keep's walls`
         : `${stats.name} here: ${price}g`;
-  // A gate on a wall sells the wall first.
+  // A gate on a wall sells the wall first (the keep's free walls refund nothing: not shown).
   const replaced = replacedBy(state, kind, p.x, p.y);
-  const line = replaced
-    ? `${priced} · ${STRUCTURES[replaced.kind].name.toLowerCase()} refunds ${refundFor(replaced)}g`
-    : priced;
+  const refund = replaced ? refundFor(replaced) : 0;
+  const line =
+    replaced && refund > 0
+      ? `${priced} · ${STRUCTURES[replaced.kind].name.toLowerCase()} refunds ${refund}g`
+      : priced;
   return facing && canRotate(kind)
     ? `${line} · facing ${FACING_NAMES[facing]} (R to rotate)`
     : line;

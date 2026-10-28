@@ -196,14 +196,6 @@ export function createHud(root: HTMLElement, ui: UiState) {
   root.innerHTML = `
     <div class="hud-left">
       <div class="hud-picker tools" data-field="picker" hidden>
-        <div class="build-tabs" role="tablist">
-          ${BUILD_TABS.map(
-            (t) => `
-            <button class="build-tab" role="tab" data-tab="${t.tab}">
-              ${t.name} <kbd>${t.label}</kbd>
-            </button>`,
-          ).join("")}
-        </div>
         ${TOOLS.map(
           (t, i) => `
           ${
@@ -225,6 +217,15 @@ export function createHud(root: HTMLElement, ui: UiState) {
             ${t.label ? `<kbd>${t.label}</kbd>` : '<span class="limit"></span>'}
           </button>`,
         ).join("")}
+        <!-- At the bottom, by the tool button, so they stay put whichever tab is open. -->
+        <div class="build-tabs at-bottom" role="tablist">
+          ${BUILD_TABS.map(
+            (t) => `
+            <button class="build-tab" role="tab" data-tab="${t.tab}">
+              ${t.name} <kbd>${t.label}</kbd>
+            </button>`,
+          ).join("")}
+        </div>
       </div>
       <div class="picker-card" data-field="card" role="tooltip" hidden></div>
       <button class="hud-box hud-tool" data-field="tool" title="Choose what to build">

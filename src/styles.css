@@ -123,10 +123,18 @@ body {
   padding: 8px 8px 4px;
   background: var(--paper);
 }
+/* The game's picker has its tabs at the bottom, by the tool button: they stay put there. */
+.hud-picker > .build-tabs.at-bottom {
+  top: auto;
+  bottom: -8px;
+  margin: 4px -8px -8px;
+  padding: 4px 8px 8px;
+}
 
 .build-tab {
   flex: 1;
-  padding: 2px 6px;
+  padding: 2px 4px;
+  white-space: nowrap; /* "Towers 1" on one line */
   font: inherit;
   color: var(--ink);
   background: var(--paper);

@@ -119,5 +119,7 @@ describe("a gate on a wall", () => {
       `wall refunds ${refundFor(wall)}g`,
     );
     expect(priceLine(state, "gate", { x: 20, y: 20 }, 1)).not.toContain("refunds");
+    placeStructure(state, "wall", 12, 10, "N", null).paid = 0; // a free keep wall
+    expect(priceLine(state, "gate", { x: 12, y: 10 }, 1)).not.toContain("refunds");
   });
 });
