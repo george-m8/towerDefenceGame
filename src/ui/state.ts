@@ -110,7 +110,9 @@ export interface UiState {
   hudStats: StatId[];
   /** The build picker tab showing. */
   tab: BuildTab;
-  /** Set by 1/2/3 to ask the HUD to open the picker on `tab`; the HUD clears it. */
+  /** Whether the game's build picker is open (the HUD shows it; number keys pick from it). */
+  pickerOpen: boolean;
+  /** The map editor: set by 1/2/3 to ask its toolbar to open on `tab`; the toolbar clears it. */
   openPicker: boolean;
   /** Arrow keys (or WASD) held down, for smooth panning. */
   panKeys: { left: boolean; right: boolean; up: boolean; down: boolean };
@@ -133,6 +135,7 @@ export function createUiState(): UiState {
     rotation: 0,
     hudStats: defaultViewPrefs().hudStats,
     tab: "towers",
+    pickerOpen: false,
     openPicker: false,
     panKeys: { left: false, right: false, up: false, down: false },
   };

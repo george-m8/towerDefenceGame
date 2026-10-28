@@ -4,6 +4,8 @@ import { screenToTile, zoomAt, zoomBy } from "./camera";
 import { pickTile } from "../render/canvas";
 import { fromView, lastViewOf, turnView } from "../render/rotation";
 import { TOOLS, hasBuildTools, rotateFacing, tabForKey, type UiState } from "./state";
+import { offeredTools } from "./hud";
+import { pickerKey } from "./pickerKeys";
 
 /** Keys that act on a running game, so they do nothing in the map editor. */
 export const GAME_ONLY_KEYS = ["Space", "KeyF", "KeyJ", "KeyE", "KeyU", "KeyM", "KeyQ"];
@@ -86,6 +88,26 @@ export function bindInput(
     );
   }
 
+  /** Applies a key to the game's build picker; false if the picker had no use for it. */
+  function applyPickerKey(code: string): boolean {
+    const state = getState();
+    if (!state) return false;
+    const action = pickerKey({ open: ui.pickerOpen, tab: ui.tab }, code, (tab) =>
+      offeredTools(state, tab),
+    );
+    if (!action) return false;
+    if (action.type === "open") {
+      ui.tab = action.tab;
+      ui.pickerOpen = true;
+    } else if (action.type === "pick") {
+      ui.tool = action.tool;
+      ui.pickerOpen = false;
+    } else if (action.type === "close") {
+      ui.pickerOpen = false;
+    }
+    return true;
+  }
+
   window.addEventListener("keydown", (e) => {
     // Typing a name or room code must not trigger game shortcuts.
     if (e.target instanceof HTMLInputElement) return;
@@ -120,14 +142,16 @@ export function bindInput(
       turnView(ui, getState(), 2); // Q flips the view round (180°)
     } else if (e.code === "KeyJ" && keys) {
       keys.journal();
+    } else if (playing() && !e.metaKey && !e.ctrlKey && applyPickerKey(e.code)) {
+      // The build picker took it: 1-3 open a tab, then a number picks, Esc closes.
     } else if (e.code === "Escape") {
       // Closing a window comes first; otherwise Escape drops the current tool.
       if (!keys?.escape()) {
         ui.tool = null;
         ui.debugDamage = false;
       }
-    } else if (tabForKey(e.code) && hasBuildTools(tabForKey(e.code)!)) {
-      // 1, 2, 3 open the build picker on Defence, Civic or Offence.
+    } else if (!playing() && tabForKey(e.code) && hasBuildTools(tabForKey(e.code)!)) {
+      // The map editor: 1, 2, 3 open its picker on that tab.
       ui.tab = tabForKey(e.code)!;
       ui.openPicker = true;
     } else {

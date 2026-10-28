@@ -43,9 +43,9 @@ Files: `src/ui/hud.ts`, `src/styles.css`. Size: S. Depends on: 2.
 
 `ui.pickerOpen` becomes the source of truth for the build picker (the HUD reads and writes it; clicking the tool box, picking, or clicking away all set it). A pure `toolNumbers(offered)` numbers each tab's offered items 1-9, 0, none past the 10th; the numbers show as a `<kbd>` on each item. One-list sections number from 1 each. Sell keeps X.
 
-- [ ] `toolNumbers`: 12 tools give 1-9, 0 and two blanks; tools not offered are skipped; sell is never numbered
-- [ ] Every offered item in the picker shows its number; one-list sections each start at 1
-- [ ] Opening and closing by mouse works as before, now through `ui.pickerOpen`
+- [x] `toolNumbers`: 12 tools give 1-9, 0 and two blanks; tools not offered are skipped; sell is never numbered
+- [x] Every offered item in the picker shows its number; one-list sections each start at 1
+- [x] Opening and closing by mouse works as before, now through `ui.pickerOpen`
 
 Files: `src/ui/state.ts`, `src/ui/hud.ts`, `tests/ui/hud.test.ts`. Size: S. Depends on: 3.
 
@@ -53,16 +53,16 @@ Files: `src/ui/state.ts`, `src/ui/hud.ts`, `tests/ui/hud.test.ts`. Size: S. Depe
 
 A pure `pickerKey(ui, code, offered)` returns what a key does; `input.ts` applies it. Closed: `1`-`3` open that tab (or highlight that section in the one-list layout), other digits nothing. Open: `1`-`0` pick that item, put it in hand, and close; a number with no item does nothing. `Esc` closes the picker if open (tool stays), else drops the tool (after any window). Game only, not with Cmd/Ctrl, not while typing.
 
-- [ ] `pickerKey` cases: closed + `Digit1` opens Towers; open + `Digit1` picks the tab's first item and closes; open + `Digit3` on a 2-item tab does nothing; open + `Escape` closes and keeps the tool; closed + `Escape` drops the tool
-- [ ] In the browser `1 1` gives a wall, `1 2` a gate, `2 1` a guardhouse, `3 1` a house; a mouse-opened tab takes numbers too
-- [ ] The one-list layout highlights the chosen section and numbers within it
+- [x] `pickerKey` cases: closed + `Digit1` opens Towers; open + `Digit1` picks the tab's first item and closes; open + `Digit3` on a 2-item tab does nothing; open + `Escape` closes and keeps the tool; closed + `Escape` drops the tool
+- [x] In the browser `1 1` gives a wall, `1 2` a gate, `2 1` a guardhouse, `3 1` a house; a mouse-opened tab takes numbers too
+- [x] The one-list layout highlights the chosen section and numbers within it
 
 Files: `src/ui/state.ts` (or a small `src/ui/pickerKeys.ts`), `src/ui/input.ts`, `src/ui/hud.ts`, `tests/ui/pickerKeys.test.ts` (new). Size: M. Depends on: 4.
 
 ## Checkpoint B: after Tasks 4-5
-- [ ] Standard verification passes
-- [ ] By hand: build a short wall, gate and tower line from the keyboard only; Esc twice backs right out
-- [ ] Map editor keys still work
+- [x] Standard verification passes
+- [x] By hand: build a short wall, gate and tower line from the keyboard only; Esc twice backs right out
+- [x] Map editor keys still work
 
 ## Task 6: Full-screen map
 
