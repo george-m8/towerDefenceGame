@@ -5,7 +5,15 @@ import type { Rotation } from "../render/rotation";
 import type { StatId } from "./stats";
 import { defaultViewPrefs } from "./viewPrefs";
 import { DEFAULT_SUN, type Sun } from "../render/sun";
-import { DEFAULT_SCHEMES, type Action, type Device, type Schemes } from "./controls";
+import {
+  DEFAULT_SCHEMES,
+  KEYBOARD,
+  keyAction,
+  type Action,
+  type Device,
+  type KeyboardScheme,
+  type Schemes,
+} from "./controls";
 
 export type Tool = StructureKind | "sell";
 
@@ -13,19 +21,25 @@ export function isBuildTool(tool: Tool | null): tool is StructureKind {
   return tool !== null && tool !== "sell";
 }
 
-/** The build picker's tabs, opened by clicking or with their action (1, 2, 3 on a keyboard). */
-export type BuildTab = "defence" | "civic" | "offence";
+/**
+ * The build picker's tabs, opened by clicking or with their action (1, 2, 3 on a keyboard):
+ * Towers (static defences and the walls they stand on), Units (buildings that send units out)
+ * and Civic (the town).
+ */
+export type BuildTab = "towers" | "units" | "civic";
 
 export const BUILD_TABS: { tab: BuildTab; name: string; action: Action }[] = [
-  { tab: "defence", name: "Defence", action: "buildDefence" },
+  { tab: "towers", name: "Towers", action: "buildTowers" },
+  { tab: "units", name: "Units", action: "buildUnits" },
   { tab: "civic", name: "Civic", action: "buildCivic" },
-  { tab: "offence", name: "Offence", action: "buildOffence" },
 ];
 
 export interface ToolDef {
   tool: Tool;
   /** Which tab it's in; "all" shows on every tab (sell). */
   tab: BuildTab | "all";
+  /** The small subtitle it's listed under in its tab, if the tab has any. */
+  group?: string;
   /** An action that picks it (see controls.ts). Only sell has one: tools are picked by click. */
   action?: Action;
   /** Click-and-drag places along the dragged tiles. */
@@ -33,28 +47,29 @@ export interface ToolDef {
 }
 
 export const TOOLS: ToolDef[] = [
-  { tool: "wall", tab: "defence", paintable: true },
-  { tool: "archer", tab: "defence", paintable: false },
-  { tool: "cannon", tab: "defence", paintable: false },
-  { tool: "catapult", tab: "defence", paintable: false },
-  { tool: "floorSpikes", tab: "defence", paintable: true },
-  { tool: "wallSpikes", tab: "defence", paintable: true },
-  { tool: "bridge", tab: "defence", paintable: true },
-  { tool: "watchtower", tab: "defence", paintable: false },
-  { tool: "gate", tab: "defence", paintable: true },
-  { tool: "guardhouse", tab: "defence", paintable: false },
-  { tool: "archeryPost", tab: "defence", paintable: false },
-  { tool: "paladinHall", tab: "defence", paintable: false },
+  { tool: "wall", tab: "towers", group: "Walls", paintable: true },
+  { tool: "gate", tab: "towers", group: "Walls", paintable: true },
+  { tool: "bridge", tab: "towers", group: "Walls", paintable: true },
+  { tool: "watchtower", tab: "towers", group: "Walls", paintable: false },
+  { tool: "archer", tab: "towers", group: "Towers", paintable: false },
+  { tool: "cannon", tab: "towers", group: "Towers", paintable: false },
+  { tool: "catapult", tab: "towers", group: "Towers", paintable: false },
+  { tool: "floorSpikes", tab: "towers", group: "Towers", paintable: true },
+  { tool: "wallSpikes", tab: "towers", group: "Towers", paintable: true },
+  // Static units guard the tiles in front of their building; exploring ones go out.
+  { tool: "guardhouse", tab: "units", group: "Static", paintable: false },
+  { tool: "archeryPost", tab: "units", group: "Static", paintable: false },
+  { tool: "paladinHall", tab: "units", group: "Static", paintable: false },
+  { tool: "scoutCamp", tab: "units", group: "Exploring", paintable: false },
+  { tool: "barracks", tab: "units", group: "Exploring", paintable: false },
+  { tool: "archeryRange", tab: "units", group: "Exploring", paintable: false },
   { tool: "house", tab: "civic", paintable: false },
   { tool: "shop", tab: "civic", paintable: false },
   { tool: "farmhouse", tab: "civic", paintable: false },
   { tool: "farmland", tab: "civic", paintable: true },
+  { tool: "foragerHut", tab: "civic", paintable: false },
   { tool: "timberYard", tab: "civic", paintable: false },
   { tool: "mine", tab: "civic", paintable: false },
-  { tool: "foragerHut", tab: "civic", paintable: false },
-  { tool: "scoutCamp", tab: "offence", paintable: false },
-  { tool: "barracks", tab: "offence", paintable: false },
-  { tool: "archeryRange", tab: "offence", paintable: false },
   { tool: "sell", tab: "all", action: "sell", paintable: true },
 ];
 
@@ -63,7 +78,7 @@ export function toolsInTab(tab: BuildTab): ToolDef[] {
   return TOOLS.filter((t) => t.tab === tab || t.tab === "all");
 }
 
-/** Whether a tab has anything to build (Offence is empty until barracks exist). */
+/** Whether a tab has anything to build. */
 export function hasBuildTools(tab: BuildTab): boolean {
   return TOOLS.some((t) => t.tab === tab);
 }
@@ -75,6 +90,12 @@ export function pickerLayout(offered: number): "row" | "tabs" {
 
 export function tabForAction(action: Action): BuildTab | undefined {
   return BUILD_TABS.find((t) => t.action === action)?.tab;
+}
+
+/** The tab a key opens (1, 2, 3 unless the player rebound them), if any. */
+export function tabForKey(code: string, keyboard: KeyboardScheme = KEYBOARD): BuildTab | undefined {
+  const action = keyAction(keyboard, code);
+  return action && tabForAction(action);
 }
 
 export interface UiState {
@@ -106,13 +127,10 @@ export interface UiState {
   hudStats: StatId[];
   /** The build picker tab showing. */
   tab: BuildTab;
-  /**
-   * Asks the HUD to open the picker on `tab` (1/2/3, or a pad stepping through tools) or close
-   * it (a pad placing or cancelling, with no mouse to click elsewhere); the HUD clears it.
-   */
-  pickerRequest: "open" | "close" | null;
-  /** Whether the build menu is open (the HUD keeps this), so a pad's A picks rather than places. */
+  /** Whether the game's build picker is open (the HUD shows it; number keys and a pad pick from it). */
   pickerOpen: boolean;
+  /** The map editor: set by 1/2/3 to ask its toolbar to open on `tab`; the toolbar clears it. */
+  openPicker: boolean;
   /** Arrow keys (or WASD) held down, for smooth panning. */
   panKeys: { left: boolean; right: boolean; up: boolean; down: boolean };
   /** What the player last used: the HUD shows its buttons (controls.ts). */
@@ -138,9 +156,9 @@ export function createUiState(): UiState {
     camera: createCamera(),
     rotation: 0,
     hudStats: defaultViewPrefs().hudStats,
-    tab: "defence",
-    pickerRequest: null,
+    tab: "towers",
     pickerOpen: false,
+    openPicker: false,
     panKeys: { left: false, right: false, up: false, down: false },
     device: "keyboard",
     schemes: DEFAULT_SCHEMES,

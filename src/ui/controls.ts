@@ -16,9 +16,9 @@ export type Action =
   | "sell"
   /** Sell in hand, or back to what was in hand before it. */
   | "toggleSell"
-  | "buildDefence"
+  | "buildTowers"
+  | "buildUnits"
   | "buildCivic"
-  | "buildOffence"
   | "zoomIn"
   | "zoomOut"
   | "panLeft"
@@ -60,9 +60,9 @@ export const ACTIONS: Action[] = [
   "cancel",
   "sell",
   "toggleSell",
-  "buildDefence",
+  "buildTowers",
+  "buildUnits",
   "buildCivic",
-  "buildOffence",
   "zoomIn",
   "zoomOut",
   "panLeft",
@@ -200,9 +200,9 @@ export const KEYBOARD: KeyboardScheme = {
     journal: ["KeyJ"],
     cancel: ["Escape"],
     sell: ["KeyX"],
-    buildDefence: ["Digit1"],
-    buildCivic: ["Digit2"],
-    buildOffence: ["Digit3"],
+    buildTowers: ["Digit1"],
+    buildUnits: ["Digit2"],
+    buildCivic: ["Digit3"],
     zoomIn: ["Equal", "NumpadAdd"],
     zoomOut: ["Minus", "NumpadSubtract"],
     panLeft: ["KeyA", "ArrowLeft"],

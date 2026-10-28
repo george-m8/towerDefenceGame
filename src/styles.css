@@ -123,6 +123,17 @@ body {
   padding: 8px 8px 4px;
   background: var(--paper);
 }
+/* The game's picker has its tabs at the bottom, by the tool button: they stay put there. */
+.hud-picker > .build-tabs.at-bottom {
+  top: auto;
+  bottom: -8px;
+  margin: 4px -8px -8px;
+  padding: 4px 8px 8px;
+}
+.build-tabs.at-bottom .build-tab {
+  padding: 2px 4px;
+  white-space: nowrap; /* "Towers 1" on one line */
+}
 
 .build-tab {
   flex: 1;
@@ -156,6 +167,17 @@ body {
 .picker-section[hidden] {
   display: none;
 }
+/* A group's subtitle inside a tab (Walls, Towers; Static, Exploring): smaller and quieter. */
+.picker-group {
+  margin: 4px 0 0;
+  font-size: 13px;
+  opacity: 0.55;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.picker-group[hidden] {
+  display: none;
+}
 
 .build-tab kbd {
   font: inherit;
@@ -167,6 +189,23 @@ body {
   font: inherit;
   text-align: center;
   border: 1px solid currentColor;
+}
+/* A build item's limit ("2/5") and its number key, side by side in the last column. */
+.tool .keys {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+}
+.tool .number {
+  min-width: 1.2em;
+}
+.tool .number[hidden] {
+  display: none;
+}
+/* One-list picker: the section the number keys pick from. */
+.picker-section.current {
+  opacity: 1;
+  text-decoration: underline;
 }
 
 .map-window {
@@ -988,6 +1027,33 @@ a.button {
   cursor: pointer;
   image-rendering: pixelated;
   touch-action: none;
+}
+/* The full-screen map: the minimap's pixel map, filling the map area, over the game. */
+.full-map {
+  position: absolute;
+  inset: 0;
+  z-index: 9; /* over the HUD and sidebar, under windows (.dialog) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--paper);
+}
+.full-map[hidden] {
+  display: none;
+}
+#full-map-canvas {
+  display: block;
+  border: 1px solid var(--ink);
+  cursor: pointer;
+  image-rendering: pixelated;
+  touch-action: none;
+}
+.full-map-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  min-width: 0;
+  padding: 0 10px;
 }
 .zoom-controls {
   display: flex;

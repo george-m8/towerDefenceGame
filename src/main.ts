@@ -18,7 +18,7 @@ import { hoverText } from "./ui/tileInfo";
 import { loadViewPrefs, saveViewPrefs, type ViewPrefs } from "./ui/viewPrefs";
 import { bindInput } from "./ui/input";
 import { createUiState, showMessage } from "./ui/state";
-import { loadRemaps, withRemaps } from "./ui/controls";
+import { keyAction, loadRemaps, withRemaps } from "./ui/controls";
 import { createPointerControls } from "./ui/pointerControls";
 import { createPointerLabel } from "./ui/pointerLabel";
 import { loadPointerSettings, pointerCursor, savePointerSettings } from "./ui/pointer";
@@ -109,6 +109,37 @@ const renderer = createRenderer(canvas);
 void document.fonts.load(GLYPH_FONT);
 void document.fonts.load(GLYPH_FONT, TERRAIN_STYLES.tree.glyph); // the upper-plane glyphs' file
 const minimap = createMinimap(element<HTMLCanvasElement>("#minimap"), ui);
+/** The full-screen map (the enlarge button on the minimap): the same pixel map, filling the map. */
+const fullMapBox = element("#full-map");
+/** Space round the full-screen map, in CSS pixels, so the × button and its border show. */
+const FULL_MAP_MARGIN = 56;
+const fullMap = createMinimap(element<HTMLCanvasElement>("#full-map-canvas"), ui, () => ({
+  width: fullMapBox.clientWidth - 2 * FULL_MAP_MARGIN,
+  height: fullMapBox.clientHeight - 2 * FULL_MAP_MARGIN,
+}));
+const setFullMap = (open: boolean) => (fullMapBox.hidden = !open);
+element("[data-action='open-full-map']").addEventListener("click", (e) => {
+  setFullMap(true);
+  (e.currentTarget as HTMLElement).blur(); // so Space only ever toggles pause
+});
+element("[data-action='close-full-map']").addEventListener("click", () => setFullMap(false));
+// Zooming in goes back to the normal view: the wheel (or a pinch) lands centred on the tile
+// under the pointer, a step closer; + closes it as it zooms. Zooming out does nothing here.
+fullMapBox.addEventListener(
+  "wheel",
+  (e) => {
+    e.preventDefault();
+    if (e.deltaY >= 0) return;
+    const tile = fullMap.tileAt(e.clientX, e.clientY);
+    centerOn(ui.camera, tile.x, tile.y);
+    zoomBy(ui.camera, ZOOM_STEP);
+    setFullMap(false);
+  },
+  { passive: false },
+);
+window.addEventListener("keydown", (e) => {
+  if (keyAction(ui.schemes.keyboard, e.code) === "zoomIn") setFullMap(false);
+});
 /** The map the camera was last centred for, so a new game re-centres on its keep. */
 let centredFor = "";
 
@@ -294,8 +325,15 @@ const input = bindInput(
   () => session?.state ?? (editorActive ? editing!.editor.state : null),
   {
     playing: () => !editorActive,
-    journal: () => journalView.toggle(),
+    journal: () => {
+      setFullMap(false); // the journal opens over the game, not over the big map
+      journalView.toggle();
+    },
     escape: () => {
+      if (!fullMapBox.hidden) {
+        setFullMap(false);
+        return true;
+      }
       if (!journalView.isOpen) return false;
       journalView.close();
       return true;
@@ -637,6 +675,7 @@ function frame(now: number) {
     renderer.render(state, ui);
     editor.drawOverlay(canvas.getContext("2d")!, ui);
     minimap.update(state);
+    if (!fullMapBox.hidden) fullMap.update(state);
     toolbar.update(now);
   } else if (backdrop) {
     backdrop.frame(now, seconds);
@@ -676,6 +715,7 @@ function frame(now: number) {
       }));
       renderer.render(view, viewUi, pending);
       minimap.update(view);
+      if (!fullMapBox.hidden) fullMap.update(view);
       panel.update(state);
       hud.update(state);
       rememberView();

@@ -6,6 +6,7 @@ import { fromView, lastViewOf, toView, turnView } from "../render/rotation";
 import { GAME_ONLY_ACTIONS, keyAction, type Action } from "./controls";
 import { createGamepads, createStepState, glide, stepStick, type PadFrame } from "./gamepad";
 import { offeredTools } from "./hud";
+import { pickerKey } from "./pickerKeys";
 import {
   BUILD_TABS,
   TOOLS,
@@ -13,6 +14,7 @@ import {
   pickerLayout,
   rotateFacing,
   tabForAction,
+  tabForKey,
   type Tool,
   type UiState,
 } from "./state";
@@ -126,6 +128,29 @@ export function bindInput(
     );
   }
 
+  /** Applies a key to the game's build picker; false if the picker had no use for it. */
+  function applyPickerKey(code: string): boolean {
+    const state = getState();
+    if (!state) return false;
+    const action = pickerKey(
+      { open: ui.pickerOpen, tab: ui.tab },
+      code,
+      (tab) => offeredTools(state, tab),
+      (key) => tabForKey(key, ui.schemes.keyboard),
+    );
+    if (!action) return false;
+    if (action.type === "open") {
+      ui.tab = action.tab;
+      ui.pickerOpen = true;
+    } else if (action.type === "pick") {
+      ui.tool = action.tool;
+      ui.pickerOpen = false;
+    } else if (action.type === "close") {
+      ui.pickerOpen = false;
+    }
+    return true;
+  }
+
   /** Drops the tool in hand (Esc, right click, a pad's cancel). */
   function dropTool() {
     ui.tool = null;
@@ -165,7 +190,7 @@ export function bindInput(
     const at = ui.tool === null ? (step > 0 ? -1 : 0) : tools.indexOf(ui.tool);
     ui.tool = tools[(at + step + tools.length) % tools.length];
     ui.debugDamage = false;
-    ui.pickerRequest = "open";
+    ui.pickerOpen = true;
   }
 
   /** Moves the build menu to the next (or previous) tab with something to build, and opens it. */
@@ -176,7 +201,7 @@ export function bindInput(
     if (tabs.length === 0) return;
     const at = tabs.indexOf(ui.tab);
     ui.tab = tabs[(at + step + tabs.length) % tabs.length];
-    ui.pickerRequest = "open";
+    ui.pickerOpen = true;
   }
 
   /** Does what an action does, whichever device it came from. Pan and place are held: not here. */
@@ -186,7 +211,9 @@ export function bindInput(
     if (tab) {
       if (!hasBuildTools(tab)) return;
       ui.tab = tab;
-      ui.pickerRequest = "open";
+      // The game's picker, or (with the editor's map) the editor's toolbar.
+      if (playing()) ui.pickerOpen = true;
+      else ui.openPicker = true;
       return;
     }
     switch (action) {
@@ -222,11 +249,11 @@ export function bindInput(
       case "cancel":
         // The build menu closes first (keeping what's in hand), then a window; otherwise it
         // drops the current tool.
-        if (ui.pickerOpen) ui.pickerRequest = "close";
+        if (ui.pickerOpen) ui.pickerOpen = false;
         else if (!keys?.escape()) dropTool();
         return;
       case "menu":
-        ui.pickerRequest = ui.pickerOpen ? "close" : "open";
+        ui.pickerOpen = !ui.pickerOpen;
         return;
       case "prevTab":
         return stepTab(-1);
@@ -251,6 +278,11 @@ export function bindInput(
   window.addEventListener("keydown", (e) => {
     // Typing a name or room code must not trigger game shortcuts.
     if (e.target instanceof HTMLInputElement) return;
+    // The build picker first: 1-3 open a tab, then a number picks, Esc closes.
+    if (playing() && !e.metaKey && !e.ctrlKey && applyPickerKey(e.code)) {
+      ui.device = "keyboard";
+      return;
+    }
     // Not with Cmd or Ctrl held, so browser shortcuts (Cmd+S, Ctrl+W) don't pan the map.
     const action = keyAction(ui.schemes.keyboard, e.code);
     if (!action) return;
@@ -349,8 +381,8 @@ export function bindInput(
       if (action !== "place") perform(action);
       // A click: with the build menu open it picks what's chosen there (and closes it); with
       // nothing in hand it opens the menu; otherwise it uses what's in hand.
-      else if (ui.pickerOpen) ui.pickerRequest = "close";
-      else if (ui.tool === null && !ui.debugDamage) ui.pickerRequest = "open";
+      else if (ui.pickerOpen) ui.pickerOpen = false;
+      else if (ui.tool === null && !ui.debugDamage) ui.pickerOpen = true;
       else {
         const p = padTarget();
         if (p) pressAt(p);

@@ -17,7 +17,7 @@ const HELP: [Action, string][] = [
   ["toggleSell", "sell"],
   ["debugMenu", "debug"],
   ["journal", "journal"],
-  ["cancel", "cancel"],
+  ["cancel", "close menu / drop tool"],
 ];
 
 /** The Keys panel's first line for the device in use: buttons, then how to point and move. */
@@ -26,7 +26,8 @@ export function helpLine(ui: UiState): string {
   const buttons = HELP.filter(([action]) => key(action)).map(([a, what]) => `${key(a)} ${what}`);
   const scheme = ui.schemes[ui.device];
   if (scheme.device === "keyboard") {
-    buttons.push("drag to paint", "WASD or arrows move", "wheel or +/- zoom");
+    buttons.unshift(`${key("buildTowers")}-${key("buildCivic")} then 1-0 build`);
+    buttons.push("drag to paint", "WASD or arrows move", "wheel or +/- zoom", "⤢ full-screen map");
   } else {
     const { cursorStick, panStick } = scheme.feel;
     buttons.push(

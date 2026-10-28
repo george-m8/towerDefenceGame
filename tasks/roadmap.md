@@ -4,8 +4,9 @@ George's next features, checked against the specs and plan so far, put in order.
 
 | # | Module | Spec | Status |
 |---|---|---|---|
-| 1 | `beginner-help` | [`SPEC-beginner-help.md`](../SPEC-beginner-help.md) | Built (2026-10-27); tasks in [`todo.md`](todo.md) |
-| 2 | `balance-files` | [`SPEC-balance-files.md`](../SPEC-balance-files.md) | Draft, next |
+| 1 | `beginner-help` | [`SPEC-beginner-help.md`](../specs/SPEC-beginner-help.md) | Built (2026-10-27); tasks in [`todo.md`](todo.md) |
+| 1b | `qol-update` | [`SPEC-qol-update.md`](../specs/SPEC-qol-update.md) | Built (2026-10-28); tasks in [`qol-update/todo.md`](qol-update/todo.md) |
+| 2 | `balance-files` | [`SPEC-balance-files.md`](../specs/SPEC-balance-files.md) | Draft, after 1b |
 | 3 | `rebalance` | Task list from George's write-up (no spec) | After 2 |
 | 4 | `wave-director` (+ `edge-spawns`) | [`SPEC-wave-director.md`](../SPEC-wave-director.md) | Draft |
 | 5 | `line-of-sight` | [`SPEC-line-of-sight.md`](../SPEC-line-of-sight.md) (revised) | Draft |
@@ -40,6 +41,13 @@ Small quality-of-life changes for new players and testers, before the bigger wor
 - "R to rotate" on screen (a quiet hint, always shown), with a Rotate button beside the tool.
 - The Keys panel joins Map and Info in one sidebar; picker items get tooltip cards with short trait words ("Splash damage", "Can't hit enemies right next to it").
 - The enclosure discount spelled out in the picker, the Info box and the price label ("3g inside your keep's walls").
+
+### 1b. `qol-update`: quicker building and a bigger map (added 2026-10-28)
+Small changes, slotted in before `balance-files` because they don't touch game numbers. Spec: [`SPEC-qol-update.md`](../specs/SPEC-qol-update.md).
+- **Gates on walls:** the Gate tool turns your own wall into a gate in one click (the wall is refunded as if sold). Refused if a tower stands on it.
+- **New tabs:** Towers (with Walls and Towers subtitles), Units (Static and Exploring), Civic, at the bottom of the picker by the tool button so they stay put.
+- **Full-screen map:** an enlarge button on the minimap opens the same simple pixel map full-window. It stays open until × or Esc, or a zoom in (which lands on the tile under the pointer).
+- **Build shortcuts:** 1/2/3 open Towers/Units/Civic, then 1-9, 0 picks an item (`1 1` = wall). Esc closes the picker, then drops the tool. Items past the 10th have no number.
 
 ### 2. `balance-files`: tweakable numbers before any new weapons
 The aim is that nothing new gets hard-coded. Every tower, enemy, unit, wave and economy number can be tweaked in game and saved.

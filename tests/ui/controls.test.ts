@@ -31,7 +31,7 @@ function memoryStorage() {
 describe("controls", () => {
   it("binds the keyboard's keys to actions", () => {
     expect(keyAction(KEYBOARD, "Space")).toBe("pause");
-    expect(keyAction(KEYBOARD, "Digit1")).toBe("buildDefence");
+    expect(keyAction(KEYBOARD, "Digit1")).toBe("buildTowers");
     expect(keyAction(KEYBOARD, "ArrowLeft")).toBe("panLeft");
     expect(keyAction(KEYBOARD, "KeyA")).toBe("panLeft");
     expect(keyAction(KEYBOARD, "KeyZ")).toBeUndefined();
@@ -167,10 +167,11 @@ describe("controls", () => {
       const ui = createUiState();
       expect(helpLine(ui)).toContain("Space pause");
       expect(helpLine(ui)).toContain("wheel or +/- zoom");
+      expect(helpLine(ui)).toMatch(/^1-3 then 1-0 build · /);
       ui.device = "switch";
       const line = helpLine(ui);
       expect(line).toContain("A place or pick (hold to paint)");
-      expect(line).toContain("B cancel");
+      expect(line).toContain("B close menu / drop tool");
       expect(line).toContain("X build menu");
       expect(line).toContain("left stick point");
       expect(line).toContain("d-pad a tile at a time");

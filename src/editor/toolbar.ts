@@ -116,7 +116,7 @@ export function createToolbar(
   const picker = field("picker");
   const button = (action: string) =>
     root.querySelector<HTMLButtonElement>(`[data-action="${action}"]`);
-  let tab: PickerTab = "defence";
+  let tab: PickerTab = "towers";
 
   const showTab = (next: PickerTab) => {
     tab = next;
@@ -176,12 +176,12 @@ export function createToolbar(
     update(now: number) {
       // 1-3 (the game's keys) and 4 (the editor's) open the picker on their tab.
       keyLabels.sync(ui);
-      if (ui.pickerRequest === "open" || editor.openMapTab) {
+      if (ui.openPicker || editor.openMapTab) {
         showTab(editor.openMapTab ? "map" : ui.tab);
+        ui.openPicker = false;
         editor.openMapTab = false;
         picker.hidden = false;
-      } else if (ui.pickerRequest === "close") picker.hidden = true;
-      ui.pickerRequest = null;
+      }
       const map = editor.map;
       const dirty = files.dirty(map);
       const where = files.name ? `maps/${files.name}.map` : "not saved yet";
