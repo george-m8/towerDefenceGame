@@ -212,6 +212,12 @@ export function createHud(root: HTMLElement, ui: UiState) {
               ? `<p class="picker-section" data-section="${t.tab}" hidden>${BUILD_TABS.find((b) => b.tab === t.tab)!.name}</p>`
               : ""
           }
+          ${
+            // A subtitle before each group's first tool (Walls, Towers; Static, Exploring).
+            t.group && TOOLS[i - 1]?.group !== t.group
+              ? `<p class="picker-group" data-group="${t.group}" data-group-tab="${t.tab}" hidden>${t.group}</p>`
+              : ""
+          }
           <button class="tool" data-tool="${t.tool}" data-tab="${t.tab}">
             <span class="glyph">${isBuildTool(t.tool) ? GLYPHS[t.tool] : "$"}</span>
             <span class="name">${isBuildTool(t.tool) ? STRUCTURES[t.tool].name : "Sell"}</span>
@@ -288,6 +294,7 @@ export function createHud(root: HTMLElement, ui: UiState) {
   const tabButtons = [...picker.querySelectorAll<HTMLButtonElement>(".build-tab")];
   const tabBar = picker.querySelector<HTMLElement>(".build-tabs")!;
   const sections = [...picker.querySelectorAll<HTMLElement>("[data-section]")];
+  const groups = [...picker.querySelectorAll<HTMLElement>("[data-group]")];
   for (const button of tabButtons) {
     button.addEventListener("click", () => {
       ui.tab = button.dataset.tab as BuildTab;
@@ -425,6 +432,16 @@ export function createHud(root: HTMLElement, ui: UiState) {
       }
       for (const label of sections) {
         label.hidden = !row || offeredTools(state, label.dataset.section as BuildTab).length === 0;
+      }
+      for (const label of groups) {
+        const tab = label.dataset.groupTab as BuildTab;
+        const anyOffered = TOOLS.some(
+          (t) =>
+            t.group === label.dataset.group &&
+            t.tab === tab &&
+            allowed(state, t.tool as StructureKind),
+        );
+        label.hidden = !anyOffered || (!row && tab !== ui.tab);
       }
       for (const button of toolButtons) {
         const tool = button.dataset.tool as UiState["tool"];

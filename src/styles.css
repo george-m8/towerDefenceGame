@@ -156,6 +156,17 @@ body {
 .picker-section[hidden] {
   display: none;
 }
+/* A group's subtitle inside a tab (Walls, Towers; Static, Exploring): smaller and quieter. */
+.picker-group {
+  margin: 4px 0 0;
+  font-size: 13px;
+  opacity: 0.55;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.picker-group[hidden] {
+  display: none;
+}
 
 .build-tab kbd {
   font: inherit;

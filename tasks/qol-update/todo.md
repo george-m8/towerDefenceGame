@@ -18,9 +18,9 @@ Files: `src/sim/grid.ts`, `src/sim/game.ts`, `src/sim/economy.ts` (if the helper
 
 `BuildTab` becomes `towers | units | civic` (keys 1, 2, 3); `ToolDef` gains a `group` subtitle; `TOOLS` is reordered to the spec's table (Civic: forager hut before timber yard). The picker shows a small subtitle above each group, hidden when its items are all ruled out; the one-list layout shows subtitles under the tab headings. The items editor and editor toolbar follow.
 
-- [ ] `toolsInTab` gives the spec's table for each tab, in order; every buildable kind is in exactly one tab and group; `Digit1`-`Digit3` map to towers, units, civic
-- [ ] Subtitles show in the picker (tabs and one-list layouts); a group with nothing offered hides its subtitle (`?solo&items=arrows-only`)
-- [ ] Items editor and map editor toolbar show the new tabs; `tests/editor/keys.test.ts` stays green
+- [x] `toolsInTab` gives the spec's table for each tab, in order; every buildable kind is in exactly one tab and group; `Digit1`-`Digit3` map to towers, units, civic
+- [x] Subtitles show in the picker (tabs and one-list layouts); a group with nothing offered hides its subtitle (`?solo&items=arrows-only`)
+- [x] Items editor and map editor toolbar show the new tabs; `tests/editor/keys.test.ts` stays green
 
 Files: `src/ui/state.ts`, `src/ui/hud.ts`, `src/styles.css`, `src/editor/toolbar.ts`, `tests/ui/hud.test.ts` (plus the `toolsInTab` lines in `tests/sim/guards.test.ts`, `tests/sim/resources.test.ts`). Size: M. Depends on: none.
 
