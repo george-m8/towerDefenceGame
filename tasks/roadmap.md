@@ -5,7 +5,7 @@ George's next features, checked against the specs and plan so far, put in order.
 | # | Module | Spec | Status |
 |---|---|---|---|
 | 1 | `beginner-help` | [`SPEC-beginner-help.md`](../specs/SPEC-beginner-help.md) | Built (2026-10-27); tasks in [`todo.md`](todo.md) |
-| 1b | `qol-update` | [`SPEC-qol-update.md`](../specs/SPEC-qol-update.md) | Approved, planned, next (2026-10-28); tasks in [`qol-update/todo.md`](qol-update/todo.md) |
+| 1b | `qol-update` | [`SPEC-qol-update.md`](../specs/SPEC-qol-update.md) | Built (2026-10-28); tasks in [`qol-update/todo.md`](qol-update/todo.md) |
 | 2 | `balance-files` | [`SPEC-balance-files.md`](../specs/SPEC-balance-files.md) | Draft, after 1b |
 | 3 | `rebalance` | Task list from George's write-up (no spec) | After 2 |
 | 4 | `wave-director` (+ `edge-spawns`) | [`SPEC-wave-director.md`](../SPEC-wave-director.md) | Draft |

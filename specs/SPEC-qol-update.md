@@ -1,6 +1,6 @@
 # Spec: qol-update
 
-Status: APPROVED (2026-10-28)
+Status: BUILT (2026-10-28)
 Module: `qol-update`, next on the roadmap ([`tasks/roadmap.md`](../tasks/roadmap.md)). Small quality-of-life changes to building and the minimap. Builds on the build picker ([`src/ui/hud.ts`](../src/ui/hud.ts), [`src/ui/state.ts`](../src/ui/state.ts)), the keyboard ([`src/ui/input.ts`](../src/ui/input.ts)), the minimap ([`src/ui/minimap.ts`](../src/ui/minimap.ts)) and building rules ([`src/sim/grid.ts`](../src/sim/grid.ts), [`src/sim/game.ts`](../src/sim/game.ts)).
 Last updated: 2026-10-28
 

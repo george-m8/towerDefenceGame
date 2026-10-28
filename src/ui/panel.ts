@@ -20,7 +20,7 @@ export function createPanel(
     </div>
   `;
   keys.innerHTML = `
-    <p class="help">Space pause · F fast · R rotate · \` debug · J journal · Esc cancel · drag to paint · WASD or arrows move · wheel or +/- zoom</p>
+    <p class="help">1-3 then 1-0 build · Esc close menu / drop tool · Space pause · F fast · R rotate · \` debug · J journal · drag to paint · WASD or arrows move · wheel or +/- zoom · ⤢ full-screen map</p>
     <p class="help">Shaded: cheaper building inside walls</p>
   `;
   const pauseButton = root.querySelector<HTMLButtonElement>('[data-action="pause"]')!;

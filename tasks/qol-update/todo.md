@@ -85,13 +85,13 @@ Files: `src/ui/input.ts`, `src/main.ts`, `src/ui/minimap.ts`. Size: S. Depends o
 
 ## Task 8: Keys panel and docs
 
-- [ ] The Keys panel lists "1-3 then 1-0 build", "Esc close menu / drop tool", and the enlarge button
-- [ ] `README.md` controls and `docs/CAPABILITIES.md` describe gates on walls, the new tabs, the shortcuts and the full-screen map
-- [ ] Roadmap row `1b` marked built
+- [x] The Keys panel lists "1-3 then 1-0 build", "Esc close menu / drop tool", and the enlarge button
+- [x] `README.md` controls and `docs/CAPABILITIES.md` describe gates on walls, the new tabs, the shortcuts and the full-screen map
+- [x] Roadmap row `1b` marked built
 
 Files: `src/ui/panel.ts`, `README.md`, `docs/CAPABILITIES.md`, `tasks/roadmap.md`. Size: S. Depends on: 1-7.
 
 ## Checkpoint C: complete
-- [ ] Standard verification passes
+- [x] Standard verification passes
 - [ ] Every success criterion in the spec checked by hand, including online Co-op gate-on-wall for both players
 - [ ] Review with George before merge
