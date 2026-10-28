@@ -18,7 +18,7 @@ import { buildTicksAt, updateBuilding } from "./building";
 import { debugDamage } from "./debug";
 import { priceAt } from "./enclosures";
 import { spawnEnemy, updateEnemies } from "./enemies";
-import { EMPTY, KEEP_TILE, canBuild, placeStructure } from "./grid";
+import { EMPTY, KEEP_TILE, canBuild, placeStructure, replacedBy } from "./grid";
 import { awardBounties, claimChest, collectIncome, sellStructure } from "./economy";
 import { addCue, updateCues } from "./cues";
 import { updateEffects } from "./effects";
@@ -278,6 +278,9 @@ export function applyCommand(
       if (!check.ok) return check;
       // The price depends on the enclosure here before this build changes the grid.
       const price = priceAt(state, command.kind, command.x, command.y, playerId);
+      // A gate on a wall: the wall is sold first (its tower, if any, was refused above).
+      const replaced = replacedBy(state, command.kind, command.x, command.y);
+      if (replaced) sellStructure(state, playerId, command.x, command.y);
       if (!state.debug.infiniteGold) player.gold -= price; // free with infinite gold
       const built = placeStructure(
         state,

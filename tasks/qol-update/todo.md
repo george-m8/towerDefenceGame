@@ -8,9 +8,9 @@ Standard verification for every task: `npm run typecheck && npm test && npm run 
 
 With the Gate tool, a click (or paint) on your own wall with no tower on it refunds the wall as if sold and places a gate with its normal build time. One helper finds the wall a build would replace; `canBuild`, the `build` command and the price line all use it.
 
-- [ ] A gate on your own wall (built or unfinished) succeeds; gold changes by exactly `refundFor(wall) - priceAt(gate)`; the base is a gate with `buildLeft` set; painting a row of walls turns them all
-- [ ] Refused with "Sell the tower first" (tower on it), "That wall belongs to <name>" (rival), "Can't put a gate on a ruin", and "Not enough gold" counting the refund; any other kind on a wall is still "Tile is occupied"
-- [ ] The price line on a wall tile reads e.g. "Gate 15g (wall refunds 2g)"; the determinism test still passes
+- [x] A gate on your own wall (built or unfinished) succeeds; gold changes by exactly `refundFor(wall) - priceAt(gate)`; the base is a gate with `buildLeft` set; painting a row of walls turns them all
+- [x] Refused with "Sell the tower first" (tower on it), "That wall belongs to <name>" (rival), "Can't put a gate on a ruin", and "Not enough gold" counting the refund; any other kind on a wall is still "Tile is occupied"
+- [x] The price line on a wall tile adds e.g. "· wall refunds 2g"; the determinism test still passes
 
 Files: `src/sim/grid.ts`, `src/sim/game.ts`, `src/sim/economy.ts` (if the helper lives there), `src/ui/tileInfo.ts`, `tests/sim/gateOnWall.test.ts` (new). Size: M. Depends on: none.
 

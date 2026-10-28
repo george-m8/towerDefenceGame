@@ -1,12 +1,20 @@
-import { SELL_REFUND, STRUCTURES, TICK_RATE, TREE_CLEAR_GOLD, type StructureStats } from "./config";
-import { enemyOccupies, isBuilt, isKeepTile, removeStructure, terrainAt, topAt } from "./grid";
+import { STRUCTURES, TICK_RATE, TREE_CLEAR_GOLD, type StructureStats } from "./config";
+import {
+  enemyOccupies,
+  isBuilt,
+  isKeepTile,
+  refundFor,
+  removeStructure,
+  terrainAt,
+  topAt,
+} from "./grid";
 import { addCue } from "./cues";
 import { addBurst } from "./effects";
 import { isExplored } from "./fog";
 import { addGold, playerName } from "./players";
 import { farmIncomePerMinute } from "./farms";
 import { clearResource } from "./resources";
-import type { CommandResult, GameState, PlayerId, Structure } from "./types";
+import type { CommandResult, GameState, PlayerId } from "./types";
 
 /** Removes dead enemies and pays each bounty to the player who struck the killing blow. */
 export function awardBounties(state: GameState): void {
@@ -64,13 +72,7 @@ export function sellStructure(
   return { ok: true };
 }
 
-export function refundFor(structure: Structure): number {
-  const condition = structure.maxHp > 0 ? structure.hp / structure.maxHp : 1;
-  const stats: StructureStats = STRUCTURES[structure.kind];
-  // Half of what was actually paid, so a discounted build can't be sold for more than it cost.
-  const fullValue = stats.salvageGold ?? (structure.paid ?? stats.cost) * SELL_REFUND;
-  return Math.floor(fullValue * condition);
-}
+export { refundFor } from "./grid";
 
 /** The sell tool on bare terrain: trees are cleared for timber; rock stays. */
 function clearTerrain(state: GameState, player: PlayerId, x: number, y: number): CommandResult {

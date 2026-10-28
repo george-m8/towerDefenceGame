@@ -32,6 +32,7 @@ import {
   isSpawnTile,
   keepAt,
   mountAt,
+  replacedBy,
   terrainAt,
   topAt,
 } from "../sim/grid";
@@ -190,12 +191,17 @@ export function priceLine(
   const discount = discountAt(state, p.x, p.y, viewer);
   const where = enclosureAt(state, p.x, p.y) === KEEP ? "the keep's walls" : "walls";
   const keepPrice = Math.max(1, Math.round(stats.cost * (1 - ENCLOSURE_DISCOUNT.keep)));
-  const line =
+  const priced =
     discount > 0
       ? `${stats.name} here: ${price}g (${percent(discount)} off inside ${where})`
       : keepPrice < price
         ? `${stats.name} here: ${price}g · ${keepPrice}g inside your keep's walls`
         : `${stats.name} here: ${price}g`;
+  // A gate on a wall sells the wall first.
+  const replaced = replacedBy(state, kind, p.x, p.y);
+  const line = replaced
+    ? `${priced} · ${STRUCTURES[replaced.kind].name.toLowerCase()} refunds ${refundFor(replaced)}g`
+    : priced;
   return facing && canRotate(kind)
     ? `${line} · facing ${FACING_NAMES[facing]} (R to rotate)`
     : line;

@@ -28,8 +28,8 @@ Building and getting around should take fewer clicks, and the build menu should 
 
 ### Gates on walls
 
-- With the Gate tool, clicking (or painting over) one of **your own walls** with nothing mounted on it replaces it with a gate.
-- The wall is refunded as if sold (half what was paid, scaled by its condition), then the gate is paid for and placed with its usual build time. The price label shows the net cost on a wall tile, e.g. "Gate 15g (wall refunds 2g)".
+- With the Gate tool, clicking (or painting over) one of **your own walls** (or a shared one, such as the keep ring in Endless and Co-op, which you can sell today) with nothing mounted on it replaces it with a gate.
+- The wall is refunded as if sold (half what was paid, scaled by its condition), then the gate is paid for and placed with its usual build time. The price label adds the refund on a wall tile, e.g. "Gate here: 15g · wall refunds 2g".
 - Refused with a message, as other refusals are:
   - a tower on the wall: "Sell the tower first"
   - a rival's wall: "That wall belongs to <name>"
