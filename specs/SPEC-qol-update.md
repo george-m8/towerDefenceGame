@@ -147,7 +147,7 @@ Vitest, written first:
 - **Tabs:** `toolsInTab` gives the table above for each tab; every buildable kind is in exactly one tab and one subtitle; `Digit1`-`Digit3` map to towers, units, civic; a subtitle with nothing offered is hidden.
 - **Numbering:** offered tools number 1-9, 0, then blanks past ten; tools not offered are skipped; sell never numbered; one-list sections number from 1 each.
 - **Keys:** a pure helper (e.g. `pickerKey(ui, code, offered)`) returns what to do: closed + `Digit1` opens Towers; open + `Digit1` picks the tab's first item and closes; open + a number with no item does nothing; `Escape` open closes and keeps the tool; `Escape` closed drops the tool.
-- **Full-screen scale:** the whole-number scale for a map and window size (e.g. 42x28 in 1280x800 gives 30), never below 1.
+- **Full-screen scale:** the whole-number scale for a map and window size (e.g. 42x28 in 1280x800 gives 28), never below 1.
 - Browser, by hand: switch tabs and see the tab bar stay still; `1 1` then click places a wall; `1 2` on a wall makes a gate; open the big map, click to move the view, then close it with ×, `Esc`, and a wheel zoom (landing where the pointer was); online Co-op, gate on wall works for both players.
 
 ## Boundaries

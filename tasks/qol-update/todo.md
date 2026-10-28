@@ -68,9 +68,9 @@ Files: `src/ui/state.ts` (or a small `src/ui/pickerKeys.ts`), `src/ui/input.ts`,
 
 An enlarge button on the minimap box opens a full-window overlay with its own canvas, drawn by a second `createMinimap` at the largest whole-number scale that fits (pure `fullMapScale(mapW, mapH, winW, winH)`, never below 1). It updates live, follows Q, and click or drag moves the view and keeps it open. × or `Esc` (through the main Escape hook, with the journal) closes it; opening the journal or settings closes it first.
 
-- [ ] `fullMapScale`: 42x28 in 1280x800 gives 30; a map bigger than the window gives 1
-- [ ] Opens from the button; shows the flat pixel map with fog, tints, enemies and chests as pixels, and the view outline; updates live
-- [ ] Click moves the view and it stays open; × and `Esc` close it
+- [x] `fullMapScale`: 42x28 in 1280x800 gives 28; a map bigger than the window gives 1
+- [x] Opens from the button; shows the flat pixel map with fog, tints, enemies and chests as pixels, and the view outline; updates live
+- [x] Click moves the view and it stays open; × and `Esc` close it
 
 Files: `index.html`, `src/styles.css`, `src/main.ts`, `src/ui/minimap.ts`, `tests/ui/minimap.test.ts` (new or existing). Size: M. Depends on: none.
 
@@ -78,8 +78,8 @@ Files: `index.html`, `src/styles.css`, `src/main.ts`, `src/ui/minimap.ts`, `test
 
 Wheel up over the big map centres the view on the tile under the pointer, then closes it. `+` (and a pinch) closes it too. Wheel down does nothing.
 
-- [ ] Wheel up over a spot lands the normal view centred there, zoomed one step
-- [ ] `+` / `NumpadAdd` while open closes it; `-` and wheel down leave it open
+- [x] Wheel up over a spot lands the normal view centred there, zoomed one step
+- [x] `+` / `NumpadAdd` while open closes it; `-` and wheel down leave it open
 
 Files: `src/ui/input.ts`, `src/main.ts`, `src/ui/minimap.ts`. Size: S. Depends on: 6.
 

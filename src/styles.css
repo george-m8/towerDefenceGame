@@ -955,6 +955,33 @@ a.button {
   image-rendering: pixelated;
   touch-action: none;
 }
+/* The full-screen map: the minimap's pixel map, filling the map area, over the game. */
+.full-map {
+  position: absolute;
+  inset: 0;
+  z-index: 9; /* over the HUD and sidebar, under windows (.dialog) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--paper);
+}
+.full-map[hidden] {
+  display: none;
+}
+#full-map-canvas {
+  display: block;
+  border: 1px solid var(--ink);
+  cursor: pointer;
+  image-rendering: pixelated;
+  touch-action: none;
+}
+.full-map-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  min-width: 0;
+  padding: 0 10px;
+}
 .zoom-controls {
   display: flex;
   gap: 6px;
