@@ -9,7 +9,7 @@ The game can be played with a game pad, and the HUD shows the buttons of whateve
 
 ## The pattern
 
-- **Actions** (`src/ui/controls.ts`): the game acts only on `Action`s (`pause`, `rotate`, `buildDefence`, `place`, `nextTool`...), never on key codes or button numbers.
+- **Actions** (`src/ui/controls.ts`): the game acts only on `Action`s (`pause`, `rotate`, `buildTowers`, `place`, `nextTool`...), never on key codes or button numbers.
 - **Schemes:** one per device (`keyboard`, `xbox`, `playstation`, `switch`). Each scheme has:
   - `bindings`: action → keys (`KeyboardEvent.code`) or pad buttons (standard-mapping indices, which go by position). The first binding is the one shown.
   - `faces`: how each pad button is shown (text, full name, colour).
