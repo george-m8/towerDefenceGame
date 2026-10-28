@@ -310,6 +310,12 @@ export function applyCommand(
       if (!state.clock) return { ok: false, reason: "This game has no clock" };
       setClockHour(state, command.hour);
       return { ok: true };
+    case "debugWin":
+      if (state.lastWave === null) return { ok: false, reason: "Only a level can be won" };
+      if (state.gameOver) return { ok: false, reason: "The game is over" };
+      state.gameOver = true;
+      state.won = true;
+      return { ok: true };
     case "debugUnit":
       return spawnUnit(state, command.kind, playerId, command.x, command.y)
         ? { ok: true }

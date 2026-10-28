@@ -317,6 +317,8 @@ export type Command =
   | { type: "debugDamage"; x: number; y: number }
   /** Dev only (offline): sets the game's clock to an hour (games with a clock). */
   | { type: "debugClock"; hour: number }
+  /** Dev only (offline): wins a campaign level on the spot, with the keep as it is. */
+  | { type: "debugWin" }
   | { type: "sendWave" }
   /** Votes to skip the rest of the day to the early evening (games with enemies at night). */
   | { type: "voteSkipToNight" }
@@ -325,7 +327,16 @@ export type Command =
 /** Commands for testing: offline only, refused online. */
 export type DebugCommand = Extract<
   Command,
-  { type: "debugSpawn" | "debugOption" | "debugFog" | "debugUnit" | "debugDamage" | "debugClock" }
+  {
+    type:
+      | "debugSpawn"
+      | "debugOption"
+      | "debugFog"
+      | "debugUnit"
+      | "debugDamage"
+      | "debugClock"
+      | "debugWin";
+  }
 >;
 
 export function isDebugCommand(command: Command): command is DebugCommand {
@@ -335,7 +346,8 @@ export function isDebugCommand(command: Command): command is DebugCommand {
     command.type === "debugFog" ||
     command.type === "debugUnit" ||
     command.type === "debugClock" ||
-    command.type === "debugDamage"
+    command.type === "debugDamage" ||
+    command.type === "debugWin"
   );
 }
 

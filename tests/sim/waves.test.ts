@@ -10,7 +10,7 @@ import {
 } from "../../src/sim/config";
 import { applyCommand, createGame, tick } from "../../src/sim/game";
 import { pickWaveGroup, sendWaveEarly, waveThreatBudget } from "../../src/sim/waves";
-import type { GameState } from "../../src/sim/types";
+import { isDebugCommand, type GameState } from "../../src/sim/types";
 
 const countdownTicks = WAVES.countdownSeconds * TICK_RATE;
 const intervalTicks = WAVES.spawnIntervalSeconds * TICK_RATE;
@@ -219,5 +219,17 @@ describe("a campaign level's last wave", () => {
     expect(state.lastWave).toBeNull();
     state.wave.number = 40;
     expect(sendWaveEarly(state, 1).ok).toBe(true);
+  });
+
+  it("can be skipped with debugWin, which wins the level there and then", () => {
+    const state = createGame(3, { blankMap: true, fog: false, lastWave: 5 });
+    expect(isDebugCommand({ type: "debugWin" })).toBe(true);
+    expect(applyCommand(state, 1, { type: "debugWin" })).toEqual({ ok: true });
+    expect(state.gameOver).toBe(true);
+    expect(state.won).toBe(true);
+    expect(applyCommand(state, 1, { type: "debugWin" }).ok).toBe(false);
+    const endless = createGame(3, { blankMap: true, fog: false });
+    expect(applyCommand(endless, 1, { type: "debugWin" }).ok).toBe(false);
+    expect(endless.gameOver).toBe(false);
   });
 });
