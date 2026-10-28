@@ -1110,3 +1110,42 @@ T5, T7 and T8 don't depend on T1 and can go in any order.
 | Picker cards cover buttons or run off screen on small windows | Med | The card is placed beside the hovered button and clamped to the viewport; checked at 1280x720 and narrow |
 | Moving the Keys panel breaks the editor's layout | Low | Its own task; checked in game and editor |
 | Saved preferences hide Info for testers who turned it off long ago | Low | Only choices made after this ships are saved (a new storage key) |
+
+## Quality of life: qol-update
+
+Spec: [`SPEC-qol-update.md`](../specs/SPEC-qol-update.md) (approved 2026-10-28). Tasks: [`tasks/qol-update/todo.md`](qol-update/todo.md). Next on the [roadmap](roadmap.md) (1b).
+
+### Architecture decisions
+
+- **Gate on wall is a `canBuild` rule, not a new command.** `canBuild` accepts a gate on the player's own wall with nothing mounted; the `build` case in `game.ts` refunds and removes that wall before placing the gate. Server, replays and the protocol stay as they are, and online and offline agree.
+- **The refund is worked out once.** A pure helper (`replacedWall(state, player, kind, x, y)` or similar) returns the wall a build would replace, so `canBuild` (gold check), the `build` command and the price line all use the same refund.
+- **Tabs and subtitles are data.** `BuildTab` becomes `towers | units | civic`; each `ToolDef` gains a `group` (subtitle). The HUD, the items editor and the editor toolbar render from `BUILD_TABS` and `TOOLS`, so the regroup is one table change plus rendering of subtitles.
+- **Picker state lives in `UiState`.** `ui.pickerOpen` replaces the DOM-only `hidden` as the source of truth, so `input.ts` can pick numbered items. Key handling is a pure function (`pickerKey`) returning an action, tested without a DOM.
+- **One minimap drawing, two canvases.** `createMinimap` is reused for the full-screen map with a different canvas and scale (largest whole number that fits the window). No second renderer.
+- **Big map closes through the existing Escape hook**, alongside the journal, so window priority stays in one place.
+
+### Dependency graph
+
+```
+T1 Gate on wall (sim + price line)        independent
+T2 New tabs, subtitles, order
+ └─ T3 Tabs at the bottom                 (Checkpoint A after T1-T3)
+     └─ T4 pickerOpen + item numbers
+         └─ T5 Number keys and Esc        (Checkpoint B)
+T6 Full-screen map: open, draw, close     independent
+ └─ T7 Zoom closes it, lands on the pointer
+T8 Keys panel and docs (after all)        (Checkpoint C)
+```
+
+T1 and T6 don't depend on the picker work and can go in any order.
+
+### Risks
+
+| Risk | Impact | Mitigation |
+|---|---|---|
+| Gate-on-wall refund and price disagree between `canBuild`, the command and the label | Med | One helper for the replaced wall and its refund, used by all three; test the gold change exactly |
+| Removing a wall mid-wave reroutes enemies through the new (unbuilt) gate | Low | Intended: a gate lets enemies through. Same as selling the wall today |
+| Renaming tab ids breaks the editors or tests that name `defence`/`offence` | Low | Compiler finds every use (`BuildTab` is a union); tests updated in T2 |
+| Sticky-bottom tabs overlap the last item when the picker scrolls | Low | Hand check with a full Towers tab at 1280x720 |
+| Digit keys clash with the map editor's own keys | Low | Picker keys only when `playing()`; the editor keys test stays green |
+| Full-screen map is blurry on high-density screens | Low | Canvas drawn at device pixels, whole-number scale, `pixelated` |
