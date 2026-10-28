@@ -5,6 +5,15 @@ import type { Rotation } from "../render/rotation";
 import type { StatId } from "./stats";
 import { defaultViewPrefs } from "./viewPrefs";
 import { DEFAULT_SUN, type Sun } from "../render/sun";
+import {
+  DEFAULT_SCHEMES,
+  KEYBOARD,
+  keyAction,
+  type Action,
+  type Device,
+  type KeyboardScheme,
+  type Schemes,
+} from "./controls";
 
 export type Tool = StructureKind | "sell";
 
@@ -13,15 +22,16 @@ export function isBuildTool(tool: Tool | null): tool is StructureKind {
 }
 
 /**
- * The build picker's tabs, opened by clicking or with 1, 2, 3: Towers (static defences and the
- * walls they stand on), Units (buildings that send units out) and Civic (the town).
+ * The build picker's tabs, opened by clicking or with their action (1, 2, 3 on a keyboard):
+ * Towers (static defences and the walls they stand on), Units (buildings that send units out)
+ * and Civic (the town).
  */
 export type BuildTab = "towers" | "units" | "civic";
 
-export const BUILD_TABS: { tab: BuildTab; name: string; key: string; label: string }[] = [
-  { tab: "towers", name: "Towers", key: "Digit1", label: "1" },
-  { tab: "units", name: "Units", key: "Digit2", label: "2" },
-  { tab: "civic", name: "Civic", key: "Digit3", label: "3" },
+export const BUILD_TABS: { tab: BuildTab; name: string; action: Action }[] = [
+  { tab: "towers", name: "Towers", action: "buildTowers" },
+  { tab: "units", name: "Units", action: "buildUnits" },
+  { tab: "civic", name: "Civic", action: "buildCivic" },
 ];
 
 export interface ToolDef {
@@ -30,9 +40,8 @@ export interface ToolDef {
   tab: BuildTab | "all";
   /** The small subtitle it's listed under in its tab, if the tab has any. */
   group?: string;
-  /** A key that picks it (KeyboardEvent.code). Only sell has one: tools are picked by click. */
-  key?: string;
-  label?: string;
+  /** An action that picks it (see controls.ts). Only sell has one: tools are picked by click. */
+  action?: Action;
   /** Click-and-drag places along the dragged tiles. */
   paintable: boolean;
 }
@@ -61,7 +70,7 @@ export const TOOLS: ToolDef[] = [
   { tool: "foragerHut", tab: "civic", paintable: false },
   { tool: "timberYard", tab: "civic", paintable: false },
   { tool: "mine", tab: "civic", paintable: false },
-  { tool: "sell", tab: "all", key: "KeyX", label: "X", paintable: true },
+  { tool: "sell", tab: "all", action: "sell", paintable: true },
 ];
 
 /** The tools shown on a tab, in order (sell last, on every tab). */
@@ -79,8 +88,14 @@ export function pickerLayout(offered: number): "row" | "tabs" {
   return offered <= PICKER.oneRowMax ? "row" : "tabs";
 }
 
-export function tabForKey(code: string): BuildTab | undefined {
-  return BUILD_TABS.find((t) => t.key === code)?.tab;
+export function tabForAction(action: Action): BuildTab | undefined {
+  return BUILD_TABS.find((t) => t.action === action)?.tab;
+}
+
+/** The tab a key opens (1, 2, 3 unless the player rebound them), if any. */
+export function tabForKey(code: string, keyboard: KeyboardScheme = KEYBOARD): BuildTab | undefined {
+  const action = keyAction(keyboard, code);
+  return action && tabForAction(action);
 }
 
 export interface UiState {
@@ -92,6 +107,8 @@ export interface UiState {
   showFlow: boolean;
   /** Debug: the sun slider shown over the map. */
   showSun: boolean;
+  /** Debug: the controller test shown over the map (padTest.ts). */
+  showPadTest: boolean;
   /** Where the sun is, for shadows (see render/sun.ts). */
   sun: Sun;
   /** Debug: the day and night clock (render/dayNight.ts), or null when it's off. */
@@ -110,12 +127,16 @@ export interface UiState {
   hudStats: StatId[];
   /** The build picker tab showing. */
   tab: BuildTab;
-  /** Whether the game's build picker is open (the HUD shows it; number keys pick from it). */
+  /** Whether the game's build picker is open (the HUD shows it; number keys and a pad pick from it). */
   pickerOpen: boolean;
   /** The map editor: set by 1/2/3 to ask its toolbar to open on `tab`; the toolbar clears it. */
   openPicker: boolean;
   /** Arrow keys (or WASD) held down, for smooth panning. */
   panKeys: { left: boolean; right: boolean; up: boolean; down: boolean };
+  /** What the player last used: the HUD shows its buttons (controls.ts). */
+  device: Device;
+  /** Each device's bindings, faces and feel, with the player's remaps. */
+  schemes: Schemes;
 }
 
 export function createUiState(): UiState {
@@ -126,6 +147,7 @@ export function createUiState(): UiState {
     messageUntil: 0,
     showFlow: false,
     showSun: false,
+    showPadTest: false,
     sun: { ...DEFAULT_SUN },
     clock: null,
     debugDamage: false,
@@ -138,13 +160,17 @@ export function createUiState(): UiState {
     pickerOpen: false,
     openPicker: false,
     panKeys: { left: false, right: false, up: false, down: false },
+    device: "keyboard",
+    schemes: DEFAULT_SCHEMES,
   };
 }
 
 const ROTATION: Facing[] = ["N", "E", "S", "W"];
 
-export function rotateFacing(ui: UiState) {
-  ui.facing = ROTATION[(ROTATION.indexOf(ui.facing) + 1) % ROTATION.length];
+/** Turns the facing a quarter clockwise, or anticlockwise with `turns` -1. */
+export function rotateFacing(ui: UiState, turns: 1 | -1 = 1) {
+  const at = ROTATION.indexOf(ui.facing) + turns + ROTATION.length;
+  ui.facing = ROTATION[at % ROTATION.length];
 }
 
 const MESSAGE_MS = 2000;

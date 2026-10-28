@@ -647,6 +647,15 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     ctx!.restore();
   }
 
+  /** A white edge round the tile under the pointer, on top of whatever's on it (raised blocks too). */
+  function drawHoverEdge(state: GameState, ui: UiState) {
+    if (!ui.hover) return;
+    ctx!.save();
+    ctx!.translate(0, -blockHeight(state, ui.hover.x, ui.hover.y));
+    outlineTile(ui.hover, COLOURS.hoverEdge);
+    ctx!.restore();
+  }
+
   function drawGhostAt(state: GameState, ui: UiState) {
     if (!ui.tool || !ui.hover) return;
     const { x, y } = ui.hover;
@@ -1008,8 +1017,12 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       drawFog(state);
       if (hour !== undefined) drawNight(state, darknessAt(hour));
       drawPending(pending);
-      drawRange(state, ui);
-      drawGhost(state, ui);
+      // While the build menu is open, what's chosen in it isn't on the map yet: no ghost or range.
+      if (!ui.pickerOpen) {
+        drawRange(state, ui);
+        drawGhost(state, ui);
+      }
+      drawHoverEdge(state, ui);
       hpBars.endFrame();
     },
   };

@@ -574,6 +574,23 @@ body {
   touch-action: none;
 }
 
+/* A pad's pointer arrow over the map, while its stick points (input.ts); its tip is the point. */
+.pad-pointer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+.pad-pointer[hidden] {
+  display: none;
+}
+.pad-pointer path {
+  fill: #fff;
+  stroke: #000;
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+}
+
 /* Online play: the room, invite link and players, a panel down the right of the map. */
 .online[hidden] {
   display: none;
@@ -870,6 +887,62 @@ a.button {
 }
 .clock-controls[hidden] {
   display: none;
+}
+
+/* The controller test (Debug menu): the pad's buttons, laid out like a pad, lit while held */
+.pad-test {
+  width: 280px;
+}
+.pad-test p {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pad-test-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-template-rows: repeat(4, 24px);
+  gap: 4px;
+  margin: 6px 0;
+}
+.pad-test-grid[hidden] {
+  display: none;
+}
+.pad-test-button {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--ink);
+  /* Analog buttons (triggers) fill from the bottom as they're pulled. */
+  background: linear-gradient(to top, var(--desktop) var(--pull, 0%), var(--paper) var(--pull, 0%));
+}
+.pad-test-button.down,
+.pad-test-stick.down {
+  color: var(--paper);
+  background: var(--ink);
+}
+.pad-test-sticks {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 6px;
+}
+.pad-test-stick {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--ink);
+  border-radius: 50%;
+}
+.pad-test-stick i {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: var(--ink);
+}
+.pad-test-stick.down i {
+  background: var(--paper);
 }
 .map-toggle {
   box-shadow:

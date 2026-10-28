@@ -25,10 +25,12 @@ export function pickerKey(
   picker: { open: boolean; tab: BuildTab },
   code: string,
   offered: (tab: BuildTab) => StructureKind[],
+  /** The tab a key opens: 1, 2, 3 by default (the player may have rebound them). */
+  tabFor: (code: string) => BuildTab | undefined = tabForKey,
 ): PickerAction | null {
   if (code === "Escape") return picker.open ? { type: "close" } : null;
   if (!picker.open) {
-    const tab = tabForKey(code);
+    const tab = tabFor(code);
     return tab && offered(tab).length > 0 ? { type: "open", tab } : null;
   }
   const index = digitIndex(code);

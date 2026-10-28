@@ -28,6 +28,7 @@ import {
 import { statList, type Stat, type StatId } from "./stats";
 import { toolNumbers } from "./pickerKeys";
 import { buildHints, canRotate, describeKind, percent, traits } from "./describe";
+import { createKeyLabels, keyText } from "./keyLabels";
 
 export interface HudContent {
   /** The selected tool, or null with none selected. */
@@ -215,7 +216,7 @@ export function createHud(root: HTMLElement, ui: UiState) {
             <span class="glyph">${isBuildTool(t.tool) ? GLYPHS[t.tool] : "$"}</span>
             <span class="name">${isBuildTool(t.tool) ? STRUCTURES[t.tool].name : "Sell"}</span>
             <span class="cost">${isBuildTool(t.tool) ? `${STRUCTURES[t.tool].cost}g` : `${SELL_REFUND * 100}%`}</span>
-            ${t.label ? `<kbd>${t.label}</kbd>` : '<span class="keys"><span class="limit"></span><kbd class="number" hidden></kbd></span>'}
+            ${t.action ? `<kbd data-action="${t.action}"></kbd>` : '<span class="keys"><span class="limit"></span><kbd class="number" hidden></kbd></span>'}
           </button>`,
         ).join("")}
         <!-- At the bottom, by the tool button, so they stay put whichever tab is open. -->
@@ -223,7 +224,7 @@ export function createHud(root: HTMLElement, ui: UiState) {
           ${BUILD_TABS.map(
             (t) => `
             <button class="build-tab" role="tab" data-tab="${t.tab}">
-              ${t.name} <kbd>${t.label}</kbd>
+              ${t.name} <kbd data-action="${t.action}"></kbd>
             </button>`,
           ).join("")}
         </div>
@@ -233,8 +234,8 @@ export function createHud(root: HTMLElement, ui: UiState) {
         <span class="hud-glyph" data-field="glyph"></span>
         <span data-field="name"></span>
       </button>
-      <button class="hud-box hud-tool hud-rotate" data-field="rotate" title="Rotate (R)" hidden>
-        <span data-field="arrow"></span> <kbd>R</kbd>
+      <button class="hud-box hud-tool hud-rotate" data-field="rotate" title="Rotate" hidden>
+        <span data-field="arrow"></span> <kbd data-action="rotate"></kbd>
       </button>
       <div class="hud-box hud-cost" data-field="cost"></div>
       <div class="hud-box hud-cost" data-field="time" title="Time to build here"></div>
@@ -246,6 +247,7 @@ export function createHud(root: HTMLElement, ui: UiState) {
     </div>
   `;
   const field = (name: string) => root.querySelector<HTMLElement>(`[data-field="${name}"]`)!;
+  const keyLabels = createKeyLabels(root);
   const toolBox = field("tool");
   const picker = field("picker");
   const glyph = field("glyph");
@@ -287,6 +289,8 @@ export function createHud(root: HTMLElement, ui: UiState) {
   function hideCard() {
     card.hidden = true;
   }
+  /** The tool whose card a pad is showing: with no mouse, the one chosen in the menu shows. */
+  let padCardFor: UiState["tool"] = null;
   for (const button of toolButtons) {
     button.addEventListener("pointerenter", () => showCard(button));
     button.addEventListener("focus", () => showCard(button));
@@ -400,6 +404,8 @@ export function createHud(root: HTMLElement, ui: UiState) {
     update(state: GameState | null) {
       root.hidden = state === null;
       if (!state) return;
+      keyLabels.sync(ui);
+      rotate.title = `Rotate (${keyText(ui, "rotate")})`;
       const hud = hudContent(state, ui);
       const damaging = ui.debugDamage && ui.tool === null;
       glyph.textContent = damaging ? "✸" : (hud.tool?.glyph ?? "+");
@@ -424,6 +430,7 @@ export function createHud(root: HTMLElement, ui: UiState) {
       cardState = state;
       if (picker.hidden) {
         card.hidden = true;
+        padCardFor = null;
         return;
       }
       // Few kinds offered: one list with section labels; otherwise tabs, minus the empty ones.
@@ -478,8 +485,14 @@ export function createHud(root: HTMLElement, ui: UiState) {
           const number = button.querySelector<HTMLElement>(".number")!;
           const key = numbers.get(tool) ?? "";
           if (number.textContent !== key) number.textContent = key;
-          number.hidden = key === "";
+          number.hidden = key === "" || ui.device !== "keyboard"; // number keys are the keyboard's
         }
+      }
+      if (ui.device !== "keyboard" && ui.tool !== padCardFor) {
+        padCardFor = ui.tool;
+        const chosen = toolButtons.find((b) => b.dataset.tool === ui.tool && !b.hidden);
+        if (chosen) showCard(chosen);
+        else hideCard();
       }
     },
   };
