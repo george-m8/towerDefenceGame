@@ -254,6 +254,13 @@ createMapButtons(element("#map-buttons"), {
       },
       available: inGame,
     },
+    {
+      // Wins the level being played there and then, for its stars (by the keep's health).
+      label: "Instawin level",
+      isOn: () => false,
+      toggle: () => dispatch({ type: "debugWin" }),
+      available: () => inGame() && session?.state?.lastWave != null && !session.state.gameOver,
+    },
   ],
   settings: element("#settings"),
   journal: () => journalView.toggle(),
@@ -553,13 +560,11 @@ if (new URLSearchParams(location.search).has("editor")) {
   // A reload of a room this tab is already in: go straight back in as the same player.
   startSession({ mode: "join", room: intent.room, name: rememberedName() ?? "Player" });
 } else {
-  // Direct room links and rejoins skip the intro; everyone else sees it before the menu.
-  // Behind both, a game plays itself out.
+  // Direct room links, rejoins and Levels (back from a campaign level) skip the intro; everyone
+  // else sees it before the menu. Behind both, a game plays itself out.
   backdrop = createBackdrop();
   document.body.classList.add("backdrop");
-  // Dismissing the intro is the first gesture, so audio is unlocked by then.
-  showIntro(element("#intro"), () => {
-    void music.play("intro");
+  const openMenu = () =>
     showStartScreen(element("#start"), {
       room: intent.room,
       maps: playableMaps(),
@@ -574,7 +579,17 @@ if (new URLSearchParams(location.search).has("editor")) {
           then: () => startSession(chosen),
         }),
     });
-  });
+  if (intent.levels) {
+    // No gesture yet on this page: the menu music waits for one (unlockOnFirstGesture).
+    void music.play("menu");
+    openMenu();
+  } else {
+    // Dismissing the intro is the first gesture, so audio is unlocked by then.
+    showIntro(element("#intro"), () => {
+      void music.play("intro");
+      openMenu();
+    });
+  }
 }
 
 let lastFrame = performance.now();
