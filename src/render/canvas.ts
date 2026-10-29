@@ -63,6 +63,7 @@ import {
   TERRAIN_STYLES,
   TERRAIN_TEXTURES,
   KEEP_TEXTURE,
+  FOG_TEXTURE,
   STRUCTURE_TEXTURES,
   DAMAGED_WALL_TEXTURE,
   WALL_DAMAGED_BELOW,
@@ -75,7 +76,7 @@ import {
   DOOR_ALPHA,
   KEEP_GLYPH,
 } from "./palette";
-import { fogImage } from "./fog";
+import { fogImage, fogSpans, type FogLevel } from "./fog";
 import { createHpBarTracker } from "./hpBars";
 import { burstPixels, burstWaiting } from "./burst";
 import { textureSpecks, textureVariant, type TextureStyle } from "./textures";
@@ -218,6 +219,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     tier: Uint8Array;
     image: HTMLCanvasElement;
     lift: number;
+    levels: (FogLevel | undefined)[];
   } | null = null;
 
   function drawTile(x: number, y: number, bg: string, glyph?: string, fg?: string) {
@@ -468,7 +470,11 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   /** A tile's texture over its flat colour, unless zoomed too far out to see it. */
   function drawTexture(x: number, y: number, style: TextureStyle) {
     if (!textured) return;
-    const variant = textureVariant(x, y);
+    ctx!.drawImage(textureImage(style, textureVariant(x, y)), x * TILE_SIZE, y * TILE_SIZE);
+  }
+
+  /** One variant of a texture, drawn the first time it's wanted. */
+  function textureImage(style: TextureStyle, variant: number): HTMLCanvasElement {
     const key = `${style}:${variant}`;
     let image = textureImages.get(key);
     if (!image) {
@@ -481,7 +487,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       }
       textureImages.set(key, image);
     }
-    ctx!.drawImage(image, x * TILE_SIZE, y * TILE_SIZE);
+    return image;
   }
 
   /**
@@ -509,7 +515,8 @@ export function createRenderer(canvas: HTMLCanvasElement) {
    * Fog of war, over everything drawn so far: a white mist raised like the blocks, thin and low
    * over seen land, solid and high over unexplored land, stepping down in see-through bands
    * along its edge. Enemies and effects out of sight are left out before this, not covered by
-   * it. The fog image is only rebuilt when sight changes.
+   * it. The fog image is only rebuilt when sight changes. Wisps of mist drift over each fog
+   * tile's top, as see-through as its fog.
    */
   function drawFog(state: GameState) {
     if (!state.fog) return;
@@ -518,6 +525,27 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     ctx!.imageSmoothingEnabled = false; // hard tile edges
     ctx!.drawImage(fog.image, 0, -fog.lift, state.width * TILE_SIZE, fog.image.height);
     ctx!.imageSmoothingEnabled = true;
+    if (textured) drawMist(state, fog.levels);
+  }
+
+  /** The mist texture on the visible fog tops, cut short where higher fog in front hides it. */
+  function drawMist(state: GameState, levels: (FogLevel | undefined)[]) {
+    // One row past the view: its fog is raised into the view's bottom row.
+    const y1 = Math.min(state.height - 1, view.y1 + 1);
+    for (let y = view.y0; y <= y1; y++) {
+      for (let x = view.x0; x <= view.x1; x++) {
+        const level = levels[y * state.width + x];
+        if (!level) continue;
+        const front = y + 1 < state.height ? (levels[(y + 1) * state.width + x]?.height ?? 0) : 0;
+        const { top } = fogSpans(y, level.height, front);
+        const shown = top.bottom - top.top;
+        if (shown <= 0) continue;
+        ctx!.globalAlpha = level.opacity;
+        const image = textureImage(FOG_TEXTURE, textureVariant(x, y));
+        ctx!.drawImage(image, 0, 0, TILE_SIZE, shown, x * TILE_SIZE, top.top, TILE_SIZE, shown);
+      }
+    }
+    ctx!.globalAlpha = 1;
   }
 
   /** Chests in one row, drawn with that row so blocks in front hide them. */
