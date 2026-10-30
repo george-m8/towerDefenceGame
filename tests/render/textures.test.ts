@@ -16,7 +16,7 @@ const STYLES: TextureStyle[] = [
   "crackedStone",
   "ruinedStone",
   "planks",
-  "mist",
+  "haze",
 ];
 
 describe("textureSpecks", () => {
@@ -95,15 +95,13 @@ describe("ruined stone", () => {
   });
 });
 
-describe("mist", () => {
-  it("drifts in faint horizontal wisps, each with a crest above it", () => {
+describe("haze", () => {
+  it("dithers in a checker: no two grains touch side by side", () => {
     for (let v = 0; v < TEXTURE_VARIANTS; v++) {
-      const specks = textureSpecks("mist", v);
-      const wisps = specks.filter((s) => s.colour === "rgba(120, 135, 160, 0.14)");
-      const crests = specks.filter((s) => s.colour === "rgba(255, 255, 255, 0.6)");
-      expect(wisps.length).toBeGreaterThan(0);
-      expect(crests.length).toBe(wisps.length);
-      for (const w of wisps) expect(w.w).toBeGreaterThan(w.h);
+      const specks = textureSpecks("haze", v);
+      expect(specks.length).toBeGreaterThan(0);
+      const at = new Set(specks.map((s) => `${s.x},${s.y}`));
+      for (const s of specks) expect(at.has(`${s.x + s.w},${s.y}`)).toBe(false);
     }
   });
 });

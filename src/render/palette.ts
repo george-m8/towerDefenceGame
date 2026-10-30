@@ -385,7 +385,7 @@ export const TERRAIN_TEXTURES: Record<Terrain, TextureStyle> = {
 /** The keep's stone walls. */
 export const KEEP_TEXTURE: TextureStyle = "stone";
 /** Wisps over the fog of war's top. */
-export const FOG_TEXTURE: TextureStyle = "mist";
+export const FOG_TEXTURE: TextureStyle = "haze";
 /** Structures drawn textured; the rest are flat colour. */
 export const STRUCTURE_TEXTURES: Partial<Record<StructureKind, TextureStyle>> = {
   wall: "stone",

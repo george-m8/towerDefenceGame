@@ -515,7 +515,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
    * Fog of war, over everything drawn so far: a white mist raised like the blocks, thin and low
    * over seen land, solid and high over unexplored land, stepping down in see-through bands
    * along its edge. Enemies and effects out of sight are left out before this, not covered by
-   * it. The fog image is only rebuilt when sight changes. Wisps of mist drift over each fog
+   * it. The fog image is only rebuilt when sight changes. A dithered haze lies over each fog
    * tile's top, as see-through as its fog.
    */
   function drawFog(state: GameState) {
@@ -525,11 +525,11 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     ctx!.imageSmoothingEnabled = false; // hard tile edges
     ctx!.drawImage(fog.image, 0, -fog.lift, state.width * TILE_SIZE, fog.image.height);
     ctx!.imageSmoothingEnabled = true;
-    if (textured) drawMist(state, fog.levels);
+    if (textured) drawHaze(state, fog.levels);
   }
 
-  /** The mist texture on the visible fog tops, cut short where higher fog in front hides it. */
-  function drawMist(state: GameState, levels: (FogLevel | undefined)[]) {
+  /** The haze texture on the visible fog tops, cut short where higher fog in front hides it. */
+  function drawHaze(state: GameState, levels: (FogLevel | undefined)[]) {
     // One row past the view: its fog is raised into the view's bottom row.
     const y1 = Math.min(state.height - 1, view.y1 + 1);
     for (let y = view.y0; y <= y1; y++) {
