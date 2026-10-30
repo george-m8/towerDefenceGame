@@ -15,6 +15,8 @@ const STYLES: TextureStyle[] = [
   "stone",
   "crackedStone",
   "ruinedStone",
+  "planks",
+  "haze",
 ];
 
 describe("textureSpecks", () => {
@@ -89,6 +91,17 @@ describe("ruined stone", () => {
       if (s.colour !== "rgba(0, 0, 0, 0.38)") continue;
       expect(s.y % 5).toBe(0);
       expect(s.h).toBe(5);
+    }
+  });
+});
+
+describe("haze", () => {
+  it("dithers in a checker: no two grains touch side by side", () => {
+    for (let v = 0; v < TEXTURE_VARIANTS; v++) {
+      const specks = textureSpecks("haze", v);
+      expect(specks.length).toBeGreaterThan(0);
+      const at = new Set(specks.map((s) => `${s.x},${s.y}`));
+      for (const s of specks) expect(at.has(`${s.x + s.w},${s.y}`)).toBe(false);
     }
   });
 });
