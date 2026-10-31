@@ -21,11 +21,20 @@ function camera() {
 }
 
 describe("camera", () => {
-  it("fits the whole map at the smallest zoom", () => {
+  it("zooms out only until the map spans the view from side to side", () => {
     const cam = camera();
-    expect(fitZoom(cam)).toBe(Math.min(800 / (100 * TILE_SIZE), 400 / (50 * TILE_SIZE)));
+    expect(fitZoom(cam)).toBe(800 / (100 * TILE_SIZE));
     zoomBy(cam, 0.0001);
     expect(cam.zoom).toBe(fitZoom(cam));
+    // A view much wider than the map is high: still edge to edge, scrolling up and down.
+    setViewport(cam, 1600, 300, 100, 50);
+    expect(cam.zoom).toBe(1600 / (100 * TILE_SIZE));
+    expect(visibleTiles(cam)).toMatchObject({ x0: 0, x1: 99 });
+    // Asking for a zoom too far out (a new game's 1) is held to the limit, centred as asked.
+    cam.zoom = 0.1;
+    centerOn(cam, 50, 25);
+    expect(cam.zoom).toBe(fitZoom(cam));
+    expect(screenToTile(cam, 800, 150).y).toBeCloseTo(25);
     zoomBy(cam, 1000);
     expect(cam.zoom).toBe(MAX_ZOOM);
   });

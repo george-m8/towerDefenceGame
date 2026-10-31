@@ -32,6 +32,7 @@ import {
   isSpawnTile,
   keepAt,
   mountAt,
+  replacedBy,
   terrainAt,
   topAt,
 } from "../sim/grid";
@@ -39,6 +40,7 @@ import { livingLeader } from "../sim/enemies";
 import type {
   Unit,
   Enemy,
+  Facing,
   GameState,
   PlayerId,
   Point,
@@ -46,6 +48,7 @@ import type {
   StructureKind,
   Terrain,
 } from "../sim/types";
+import { canRotate, describeKind, traits } from "./describe";
 import { isBuildTool, type UiState } from "./state";
 
 const FACING_NAMES = { N: "north", E: "east", S: "south", W: "west" };
@@ -62,7 +65,19 @@ const TERRAIN_DESCRIPTIONS: Record<Terrain, string> = {
 };
 
 /** Human-readable lines describing what is on a tile, for the hover info box. */
-export function describeTile(state: GameState, p: Point, viewer?: PlayerId): string[] {
+/**
+ * With a tool selected the box stays short (`brief`): what's on the tile by name and HP, without
+ * descriptions or numbers. Building, the price line above says where it's cheaper, so the
+ * enclosure line and sell price go too; selling keeps the sell price.
+ */
+export type Brief = "build" | "sell";
+
+export function describeTile(
+  state: GameState,
+  p: Point,
+  viewer?: PlayerId,
+  brief?: Brief,
+): string[] {
   if (!inBounds(state, p.x, p.y)) return [];
   const tier = tierAt(state, p.x, p.y, viewer);
   if (tier === UNEXPLORED) return ["Unexplored"];
@@ -78,12 +93,16 @@ export function describeTile(state: GameState, p: Point, viewer?: PlayerId): str
     const base = baseAt(state, p.x, p.y);
     if (mount)
       lines.push(
-        ...describeStructure(mount, base ? "on wall" : "ground"),
+        ...describeStructure(mount, base ? "on wall" : "ground", brief),
         ...builtBy(state, mount),
       );
     if (base)
-      lines.push(...describeStructure(base), ...farmLines(state, base), ...builtBy(state, base));
-    lines.push(`Sells for ${refundFor(top)}g`);
+      lines.push(
+        ...describeStructure(base, undefined, brief),
+        ...farmLines(state, base),
+        ...builtBy(state, base),
+      );
+    if (brief !== "build") lines.push(`Sells for ${refundFor(top)}g`);
   } else if (isSpawnTile(state, p.x, p.y)) {
     lines.push("Spawn zone");
   } else {
@@ -109,16 +128,19 @@ export function describeTile(state: GameState, p: Point, viewer?: PlayerId): str
     tier === IN_SIGHT
       ? state.enemies.filter((e) => Math.round(e.x) === p.x && Math.round(e.y) === p.y)
       : [];
-  for (const enemy of enemies.slice(0, 3)) {
+  for (const [i, enemy] of enemies.slice(0, 3).entries()) {
     const kind = ENEMY_KINDS[enemy.kind];
     const name =
       kind.variants.length > 1 ? `${kind.name} ${kind.variants[enemy.variant].name}` : kind.name;
     const doing = enemyDoing(state, enemy);
     lines.push(`${name}, HP ${Math.ceil(enemy.hp)} / ${enemy.maxHp}${doing ? `, ${doing}` : ""}`);
+    // Only the first gets the full entry, so a crowded tile stays short.
+    if (i === 0 && !brief) lines.push(kind.description, enemyNumbers(enemy));
   }
   if (enemies.length > 3) lines.push(`...and ${enemies.length - 3} more`);
   // Units in sight: your own always are (they see), a rival's only where you can see.
   if (tier === IN_SIGHT) {
+    let detailed = false;
     for (const unit of state.units) {
       if (Math.round(unit.x) !== p.x || Math.round(unit.y) !== p.y) continue;
       const whose = playerName(state, unit.owner);
@@ -127,9 +149,11 @@ export function describeTile(state: GameState, p: Point, viewer?: PlayerId): str
         `${UNIT_KINDS[unit.kind].name} (${whose}'s), HP ${Math.ceil(unit.hp)} / ${unit.maxHp}` +
           (doing ? `, ${doing}` : ""),
       );
+      if (!detailed && !brief) lines.push(...unitDetails(unit));
+      detailed = true;
     }
   }
-  const enclosure = enclosureLine(state, p, viewer);
+  const enclosure = brief === "build" ? null : enclosureLine(state, p, viewer);
   if (enclosure) lines.push(enclosure);
   if (tier !== IN_SIGHT) lines.push("Out of sight: enemies here aren't shown");
   return lines;
@@ -148,21 +172,41 @@ function enclosureLine(state: GameState, p: Point, viewer?: PlayerId): string | 
   return null;
 }
 
-/** What the selected build tool costs on this tile, e.g. "Wall here: 3g (50% off)". */
+/**
+ * What the selected build tool costs on this tile, and where it would be cheaper:
+ * "Wall here: 3g (50% off inside the keep's walls)", or "Wall here: 5g · 3g inside your keep's
+ * walls". A tool that turns adds its facing: "· facing north (R to rotate)".
+ */
 export function priceLine(
   state: GameState,
   kind: StructureKind,
   p: Point,
   viewer?: PlayerId,
+  facing?: Facing,
 ): string {
-  const name = (STRUCTURES[kind] as StructureStats).name;
-  if (!isExplored(state, p.x, p.y, viewer)) return `${name}: can't build on unexplored land`;
+  const stats: StructureStats = STRUCTURES[kind];
+  if (!isExplored(state, p.x, p.y, viewer)) return `${stats.name}: can't build on unexplored land`;
   const price = priceAt(state, kind, p.x, p.y, viewer);
   // Label with the enclosure's discount (rounding can make the gold saving look different).
   const discount = discountAt(state, p.x, p.y, viewer);
-  return discount > 0
-    ? `${name} here: ${price}g (${percent(discount)} off)`
-    : `${name} here: ${price}g`;
+  const where = enclosureAt(state, p.x, p.y) === KEEP ? "the keep's walls" : "walls";
+  const keepPrice = Math.max(1, Math.round(stats.cost * (1 - ENCLOSURE_DISCOUNT.keep)));
+  const priced =
+    discount > 0
+      ? `${stats.name} here: ${price}g (${percent(discount)} off inside ${where})`
+      : keepPrice < price
+        ? `${stats.name} here: ${price}g · ${keepPrice}g inside your keep's walls`
+        : `${stats.name} here: ${price}g`;
+  // A gate on a wall sells the wall first (the keep's free walls refund nothing: not shown).
+  const replaced = replacedBy(state, kind, p.x, p.y);
+  const refund = replaced ? refundFor(replaced) : 0;
+  const line =
+    replaced && refund > 0
+      ? `${priced} · ${STRUCTURES[replaced.kind].name.toLowerCase()} refunds ${refund}g`
+      : priced;
+  return facing && canRotate(kind)
+    ? `${line} · facing ${FACING_NAMES[facing]} (R to rotate)`
+    : line;
 }
 
 function percent(fraction: number): string {
@@ -175,28 +219,35 @@ function builtBy(state: GameState, structure: Structure): string[] {
   return [`Built by ${playerName(state, structure.owner)}`];
 }
 
-function describeStructure(structure: Structure, placement?: string): string[] {
+function describeStructure(structure: Structure, placement?: string, brief?: Brief): string[] {
   const stats: StructureStats = STRUCTURES[structure.kind];
   const facing = structure.facing ? `, facing ${FACING_NAMES[structure.facing]}` : "";
   const where = placement ? ` (${placement})` : "";
   const lines = [`${stats.name}${where}${facing}`];
   if (structure.maxHp > 0) lines.push(`HP ${Math.ceil(structure.hp)} / ${structure.maxHp}`);
-  if (stats.tower) {
-    const { range, minRange, damage, fireIntervalSeconds, splashRadius } = stats.tower;
-    const reach = minRange > 0 ? `${minRange}-${range}` : `${range}`;
-    const splash = splashRadius > 0 ? `, splash ${splashRadius}` : "";
-    lines.push(`Range ${reach}, ${damage} dmg / ${fireIntervalSeconds}s${splash}`);
-    const { arcDegrees, turnDegreesPerSecond } = stats.tower;
-    lines.push(
-      turnDegreesPerSecond > 0
-        ? `${arcDegrees}° arc, turns ${turnDegreesPerSecond}°/s`
-        : `${arcDegrees}° arc, fixed`,
-    );
-  }
-  if (stats.trap) lines.push(`${stats.trap.damage} dmg / ${stats.trap.fireIntervalSeconds}s`);
-  if (stats.income) lines.push(`+${stats.income.gold}g / ${stats.income.intervalSeconds}s`);
-  if (stats.sight) lines.push(`Sees ${stats.sight.inner} (land ${stats.sight.outer})`);
+  if (brief) return lines;
+  lines.push(stats.description);
+  // Its numbers, without the kind's full HP (the line above has this one's).
+  const { numbers } = describeKind({ type: "structure", kind: structure.kind });
+  lines.push(...numbers.filter((line) => !line.startsWith("HP ")));
+  const words = traits(structure.kind);
+  if (words.length > 0) lines.push(words.join(" · "));
   return lines;
+}
+
+/** This enemy's own numbers (its variant and wave change them): "5 dmg every 1s · speed 1.5". */
+function enemyNumbers(enemy: Enemy): string {
+  const kind = ENEMY_KINDS[enemy.kind];
+  const speed = Math.round(enemy.speed * 100) / 100;
+  return `${enemy.damage} dmg every ${kind.attackInterval}s · speed ${speed} · bounty ${enemy.bounty}g`;
+}
+
+/** A unit's description and numbers, without HP (its own line has that). */
+function unitDetails(unit: Unit): string[] {
+  const kind: UnitKind = UNIT_KINDS[unit.kind];
+  const [, ...numbers] = describeKind({ type: "unit", kind: unit.kind }).numbers;
+  const armour = kind.armour > 0 ? [`armour ${kind.armour}`] : [];
+  return [kind.description, [...armour, ...numbers].join(" · ")];
 }
 
 /** What an enemy is up to beyond walking: "sprinting", "digging", "with its chief". */
@@ -211,8 +262,10 @@ function enemyDoing(state: GameState, enemy: Enemy): string | null {
 /** What the info boxes show: the price of the selected tool here, then the tile's details. */
 export function hoverText(state: GameState, ui: UiState): string {
   if (!ui.hover) return "";
-  const lines = describeTile(state, ui.hover, ui.playerId);
-  if (isBuildTool(ui.tool)) lines.unshift(priceLine(state, ui.tool, ui.hover, ui.playerId));
+  const brief = ui.tool === null ? undefined : isBuildTool(ui.tool) ? "build" : "sell";
+  const lines = describeTile(state, ui.hover, ui.playerId, brief);
+  if (isBuildTool(ui.tool))
+    lines.unshift(priceLine(state, ui.tool, ui.hover, ui.playerId, ui.facing));
   return lines.join("\n");
 }
 

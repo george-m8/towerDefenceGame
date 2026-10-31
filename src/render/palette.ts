@@ -176,6 +176,8 @@ export const COLOURS = {
   spawnGlyph: "#8a3a3a",
   keep: "#6b6b6b",
   keepGlyph: "#ffffff",
+  /** The white edge round the tile under the pointer, always shown. */
+  hoverEdge: "#ffffff",
   ghostOk: "rgba(255, 255, 255, 0.35)",
   ghostBad: "rgba(255, 60, 60, 0.45)",
   ghostSell: "rgba(255, 210, 60, 0.55)",
@@ -382,6 +384,8 @@ export const TERRAIN_TEXTURES: Record<Terrain, TextureStyle> = {
 };
 /** The keep's stone walls. */
 export const KEEP_TEXTURE: TextureStyle = "stone";
+/** Wisps over the fog of war's top. */
+export const FOG_TEXTURE: TextureStyle = "haze";
 /** Structures drawn textured; the rest are flat colour. */
 export const STRUCTURE_TEXTURES: Partial<Record<StructureKind, TextureStyle>> = {
   wall: "stone",

@@ -1,5 +1,6 @@
 // The start pages: who's playing (pick a saved player or add one), then play solo, create a
-// room, or join one by code. Playing solo or creating a room goes on to the game mode screen.
+// room, or join one by code. Playing solo or creating a room goes on to the game mode screen;
+// solo, Campaign goes on to the level select screen.
 import { ROOM_CODE_LENGTH } from "../net/protocol";
 import type { PageIntent } from "../net/join";
 import {
@@ -11,6 +12,7 @@ import {
   type Picture,
 } from "./picture";
 import { createPictureView, roomAbove } from "./pictureCanvas";
+import { LEVEL_GRID, MAX_STARS, levelSlots, loadProgress, recordStars } from "./campaign";
 import { loadPlayers, putPlayer, removePlayer, savePlayers, type Profile } from "./profiles";
 import type { EnemiesCome, GameMode } from "../sim/types";
 import { DEFAULT_MAP_SIZE, MAP_SIZES, type MapSize } from "../sim/config";
@@ -34,14 +36,12 @@ export const GAME_MODES: { mode: GameMode; name: string; description: string; on
     },
   ];
 
-/** Modes still to come: shown on the mode screen, above the real ones, but not playable yet. */
-export const COMING_MODES: { name: string; description: string }[] = [
-  {
-    name: "Campaign",
-    description:
-      "A run of hand-made levels, each with its own map, waves and buildings to work with.",
-  },
-];
+/** Campaign, above the other modes: solo only for now, and only once there are levels. */
+export const CAMPAIGN = {
+  name: "Campaign",
+  description:
+    "A run of hand-made levels, each with its own map, waves and buildings to work with.",
+};
 
 /** localStorage, or null where it's blocked. */
 function deviceStorage(): Storage | null {
@@ -50,6 +50,12 @@ function deviceStorage(): Storage | null {
   } catch {
     return null;
   }
+}
+
+/** Saves stars won on a campaign level, for the player picked last on this device. */
+export function saveLevelStars(level: string, stars: number) {
+  const player = rememberedName();
+  if (player) recordStars(deviceStorage(), player, level, stars);
 }
 
 /** The player picked last on this device, if any (for rejoining a room on reload). */
@@ -70,17 +76,33 @@ export interface ItemsChoice {
   title: string;
 }
 
+/** A campaign level (a folder in levels/), as the level select screen shows it, in order. */
+export interface LevelChoice {
+  name: string;
+  title: string;
+  /** Its map, simplified: rows of picture tile ids (see levelFile.ts). */
+  icon: string[][];
+}
+
 type StartOptions = {
   room?: string;
   /** Hand-made Endless maps to offer solo, besides a generated one. */
   maps?: MapChoice[];
   /** Items files (build limits) to offer solo, besides none. */
   items?: ItemsChoice[];
+  /** The campaign's levels, in order. */
+  levels?: LevelChoice[];
+  /** Go straight to the level select screen, as the player picked last (back from a level). */
+  openLevels?: boolean;
   onChoose: (intent: Exclude<PageIntent, { mode: "menu" }>) => void;
 };
 
 /** How big a picture's tiles are wherever a player is shown on the start screens (px). */
 const PICK_CELL = 36;
+/** How wide a level's icon is on the level select screen, whatever its tiles (px). */
+const LEVEL_ICON_SIZE = 96;
+/** The most room an icon's canvas leaves above its tiles: a 3x3 icon's, the biggest tiles (px). */
+const LEVEL_ICON_ROOM = roomAbove(LEVEL_ICON_SIZE / 3);
 
 /** The New player card's icon: a dashed square, a picture's size, with a plus. */
 const NEW_PLAYER_ICON = `<span class="picture-new" style="--size:${PICK_CELL * 3}px;--above:${roomAbove(PICK_CELL)}px" aria-hidden="true">+</span>`;
@@ -90,7 +112,24 @@ const NEW_PLAYER_ICON = `<span class="picture-new" style="--size:${PICK_CELL * 3
  * once with the player's choice.
  */
 export function showStartScreen(root: HTMLElement, options: StartOptions) {
+  const player = loadPlayers(deviceStorage())[0];
+  if (options.openLevels && player && options.levels?.length) {
+    const back = () => showPlayScreen(root, options, player);
+    return showLevelScreen(
+      root,
+      player,
+      options.levels,
+      () => chooseGame(root, options, player, false, back),
+      (level) => playLevel(root, options, level),
+    );
+  }
   showPlayerScreen(root, options);
+}
+
+/** Starts a campaign level. */
+function playLevel(root: HTMLElement, options: StartOptions, level: string) {
+  root.hidden = true;
+  options.onChoose({ mode: "offline", level });
 }
 
 /**
@@ -273,10 +312,18 @@ function playingAsHtml(name: string): string {
       </div>`;
 }
 
-/** A picture that lies flat until `button` is hovered (or tabbed to), then is built up. */
-function buildOnHover(button: HTMLButtonElement, picture: Picture) {
-  const view = createPictureView(picture, PICK_CELL);
-  button.prepend(view.canvas);
+/**
+ * A picture that lies flat until `button` is hovered (or tabbed to), then is built up. It goes at
+ * the start of `holder` (the button itself, to start with).
+ */
+function buildOnHover(
+  button: HTMLButtonElement,
+  picture: Picture,
+  cell = PICK_CELL,
+  holder: HTMLElement = button,
+) {
+  const view = createPictureView(picture, cell);
+  holder.prepend(view.canvas);
   button.addEventListener("pointerenter", () => view.raise(true));
   button.addEventListener("pointerleave", () => view.raise(button.matches(":focus-visible")));
   button.addEventListener("focus", () => view.raise(button.matches(":focus-visible")));
@@ -303,11 +350,20 @@ function chooseGame(
   onBack: () => void,
 ) {
   const { name } = player;
+  const levels = options.levels ?? [];
+  const again = () => chooseGame(root, options, player, online, onBack);
   showModeScreen(root, {
     online,
     maps: options.maps ?? [],
     items: options.items ?? [],
     onBack,
+    onCampaign:
+      online || levels.length === 0
+        ? null
+        : () =>
+            showLevelScreen(root, player, levels, again, (level) =>
+              playLevel(root, options, level),
+            ),
     onChoose: (game, size, map, items, fog, enemiesCome) => {
       // Only "off" is sent: fog of war is on unless asked otherwise. Likewise only "night".
       const fogOff = fog ? {} : { fog: false as const };
@@ -442,6 +498,8 @@ function showModeScreen(
     maps: MapChoice[];
     items: ItemsChoice[];
     onBack: () => void;
+    /** Opens the level select screen; null while Campaign can't be played here. */
+    onCampaign: (() => void) | null;
     onChoose: (
       mode: GameMode,
       size: MapSize,
@@ -463,14 +521,11 @@ function showModeScreen(
     <div class="window dialog-window start-window">
       <p class="dialog-title">Game mode</p>
       <div class="modes">
-        ${COMING_MODES.map(
-          (m) => `
-          <button class="mode-card" disabled>
-            <strong>${m.name}</strong>
-            <span>${m.description}</span>
-            <em>Coming soon.</em>
-          </button>`,
-        ).join("")}
+        <button class="mode-card" ${options.onCampaign ? 'data-action="campaign"' : "disabled"}>
+          <strong>${CAMPAIGN.name}</strong>
+          <span>${CAMPAIGN.description}</span>
+          ${options.onCampaign ? "" : "<em>Coming soon.</em>"}
+        </button>
         ${GAME_MODES.filter((m) => options.online || !m.online)
           .map(
             (m) => `
@@ -491,8 +546,83 @@ function showModeScreen(
       showSettingsScreen(root, card.dataset.mode as GameMode, options, settings),
     );
   }
+  if (options.onCampaign) {
+    root.querySelector('[data-action="campaign"]')!.addEventListener("click", options.onCampaign);
+  }
   root.querySelector('[data-action="back"]')!.addEventListener("click", options.onBack);
-  root.querySelector<HTMLButtonElement>("[data-mode]:not([disabled])")?.focus();
+  root.querySelector<HTMLButtonElement>(".mode-card:not([disabled])")?.focus();
+}
+
+/**
+ * The level select screen: a grid of levels, each its picture (built up on hover, like a
+ * player's), its stars and its name. Locked levels are greyed out, with no name or stars, and so
+ * are the slots no level has yet. Picking an unlocked level plays it; Back returns to the modes.
+ */
+function showLevelScreen(
+  root: HTMLElement,
+  player: Profile,
+  levels: LevelChoice[],
+  onBack: () => void,
+  onChoose: (level: string) => void,
+) {
+  const slots = levelSlots(
+    levels.map((l) => l.name),
+    loadProgress(deviceStorage(), player.name),
+  );
+  const level = (name: string) => levels.find((l) => l.name === name)!;
+  const title = (name: string) => level(name).title;
+  const stars = (won: number) =>
+    Array.from(
+      { length: MAX_STARS },
+      (_, i) => `<span class="level-star${i < won ? " won" : ""}">★</span>`,
+    ).join("");
+  root.innerHTML = `
+    <div class="window dialog-window start-window level-select">
+      <p class="dialog-title">${CAMPAIGN.name}</p>
+      <div class="level-grid" style="--columns:${LEVEL_GRID.columns}">
+        ${slots
+          .map((slot, i) =>
+            slot.unlocked
+              ? `<button class="level-pick" data-level="${escapeHtml(slot.name!)}">
+                <span class="level-stars" aria-label="${slot.stars} of ${MAX_STARS} stars">${stars(slot.stars)}</span>
+                <span class="level-name">${escapeHtml(title(slot.name!))}</span>
+              </button>`
+              : `<button class="level-pick locked" disabled aria-label="Level ${i + 1}, locked">
+                <span class="level-stars" aria-hidden="true">${stars(0)}</span>
+                <span class="level-name" aria-hidden="true">?</span>
+              </button>`,
+          )
+          .join("")}
+      </div>
+      <div class="choices">
+        <button class="button" data-action="back">Back</button>
+      </div>
+    </div>
+  `;
+  const buttons = [...root.querySelectorAll<HTMLButtonElement>(".level-pick")];
+  buttons.forEach((b, i) => {
+    // A level's picture is its icon, its map simplified; a locked one's stays flat (and greyed
+    // out), and a slot with no level yet is bare ground.
+    const { name } = slots[i];
+    const icon = name ? level(name).icon.flat() : Array<string>(PICTURE_CELLS).fill("land:ground");
+    const cell = LEVEL_ICON_SIZE / Math.round(Math.sqrt(icon.length));
+    // Every icon's tiles are the same size across, but a canvas leaves room above and beside
+    // them for its tiles' height, less the smaller they are: in a box the size of the biggest,
+    // at its foot, they all line up.
+    const box = document.createElement("span");
+    box.className = "level-icon";
+    box.style.width = `${LEVEL_ICON_SIZE + LEVEL_ICON_ROOM}px`;
+    box.style.height = `${LEVEL_ICON_SIZE + LEVEL_ICON_ROOM}px`;
+    b.prepend(box);
+    if (slots[i].unlocked) {
+      buildOnHover(b, icon, cell, box);
+      b.addEventListener("click", () => onChoose(name!));
+    } else {
+      box.append(createPictureView(icon, cell).canvas);
+    }
+  });
+  root.querySelector('[data-action="back"]')!.addEventListener("click", onBack);
+  root.hidden = false;
 }
 
 /**

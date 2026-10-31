@@ -16,12 +16,21 @@
         <div id="hud" class="hud" hidden></div>
         <div class="map-left">
           <div id="map-buttons" class="map-buttons"></div>
-          <div id="panel" class="overlay-box controls-box" hidden></div>
         </div>
         <p id="status" class="status-line" hidden></p>
         <div class="sky-controls">
           <div id="sun" class="overlay-box sun-slider" hidden></div>
           <div id="clock" class="overlay-box clock-controls" hidden></div>
+          <div id="pad-test" class="overlay-box pad-test" hidden></div>
+        </div>
+        <div id="full-map" class="full-map" hidden>
+          <canvas
+            id="full-map-canvas"
+            title="Click or drag to move the view; zoom in to go back"
+          ></canvas>
+          <button class="button full-map-close" data-action="close-full-map" title="Close (Esc)">
+            ×
+          </button>
         </div>
         <div class="map-side">
           <div id="minimap-box" class="minimap-box">
@@ -29,11 +38,21 @@
             <div class="zoom-controls">
               <button class="button" data-zoom="out" title="Zoom out (-)">-</button>
               <button class="button" data-zoom="in" title="Zoom in (+)">+</button>
-              <button class="button" data-zoom="fit" title="Show the whole map">Fit</button>
+              <button
+                class="button"
+                data-zoom="fit"
+                title="Zoom out as far as it goes: the map from edge to edge"
+              >
+                Fit
+              </button>
               <button class="button" data-turn title="Flip the view round (Q)">⇅</button>
+              <button class="button" data-action="open-full-map" title="The whole map, full screen">
+                ⤢
+              </button>
             </div>
           </div>
-          <div id="info-box" class="overlay-box info-box" hidden></div>
+          <div id="info-box" class="overlay-box info-box"></div>
+          <div id="panel" class="overlay-box controls-box" hidden></div>
           <div id="online" class="overlay-box online" hidden></div>
         </div>
         <div id="settings" class="dialog settings-dialog" hidden>
@@ -44,6 +63,7 @@
             <button class="button" data-action="close-settings">Close</button>
           </div>
         </div>
+        <canvas id="curtain" class="curtain" hidden></canvas>
         <div id="game-over" class="dialog" hidden></div>
         <div id="waiting" class="dialog" hidden></div>
         <div id="start" class="dialog" hidden></div>

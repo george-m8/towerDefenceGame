@@ -9,10 +9,19 @@ import { TILE_SIZE } from "./palette";
  * with flecks of gold glinting in it. Ripple: water. Stone: cut stone blocks laid in offset
  * rows, like the keep's walls. Cracked stone: the same blocks, chipped and cracked (a wall
  * that's been badly hit). Ruined stone: the same blocks, crumbling: some knocked out, mortar
- * worn away, and cracks. Planks: upright wooden boards held by two iron bands (gates).
+ * worn away, and cracks. Planks: upright wooden boards held by two iron bands (gates). Haze: a
+ * checker dither in faint bands, over the fog of war's top.
  */
 export type TextureStyle =
-  "speckle" | "pebbles" | "ore" | "ripple" | "stone" | "crackedStone" | "ruinedStone" | "planks";
+  | "speckle"
+  | "pebbles"
+  | "ore"
+  | "ripple"
+  | "stone"
+  | "crackedStone"
+  | "ruinedStone"
+  | "planks"
+  | "haze";
 
 /** One speck, in pixels within the tile. */
 export interface Speck {
@@ -32,6 +41,8 @@ const LIGHT = "rgba(255, 255, 255, 0.07)";
 const DARK = "rgba(0, 0, 0, 0.14)";
 const PEBBLE = "rgba(255, 240, 210, 0.12)";
 const RIPPLE = "rgba(255, 255, 255, 0.12)";
+/** Haze: a cool grey, as white would vanish on the fog's off-white checker. */
+const HAZE = "rgba(130, 145, 170, 0.1)";
 const MORTAR = "rgba(0, 0, 0, 0.3)";
 /** Where a ruined block has fallen out. */
 const HOLE = "rgba(0, 0, 0, 0.38)";
@@ -53,6 +64,7 @@ export function textureSpecks(style: TextureStyle, variant: number): Speck[] {
   if (style === "crackedStone") return crackedStoneSpecks(random);
   if (style === "ruinedStone") return ruinedStoneSpecks(random);
   if (style === "planks") return plankSpecks(random);
+  if (style === "haze") return hazeSpecks(random);
   if (style === "ripple") {
     // Short light dashes, a few per tile, spread down it.
     for (let row = 1; row < GRAINS; row += 3) {
@@ -199,6 +211,23 @@ function plankSpecks(random: () => number): Speck[] {
     const x = Math.floor(random() * TILE_SIZE);
     if (x % PLANK_PX === PLANK_PX - 1) continue; // not on a seam
     specks.push({ x, y: Math.floor(random() * (TILE_SIZE - 3)), w: 1, h: 3, colour: DARK });
+  }
+  return specks;
+}
+
+/**
+ * A checker of faint grains in two or three horizontal bands, a few grains tall, like an old
+ * dithered fog. The checker is fixed to the tile so bands line up across neighbours.
+ */
+function hazeSpecks(random: () => number): Speck[] {
+  const specks: Speck[] = [];
+  for (let top = Math.floor(random() * 3); top < GRAINS; top += 4 + Math.floor(random() * 2)) {
+    const rows = 1 + Math.floor(random() * 2);
+    for (let gy = top; gy < Math.min(GRAINS, top + rows); gy++) {
+      for (let gx = gy % 2; gx < GRAINS; gx += 2) {
+        specks.push({ x: gx * GRAIN_PX, y: gy * GRAIN_PX, w: GRAIN_PX, h: GRAIN_PX, colour: HAZE });
+      }
+    }
   }
   return specks;
 }

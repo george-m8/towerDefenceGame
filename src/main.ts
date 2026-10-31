@@ -2,7 +2,7 @@ import { GRID_HEIGHT, GRID_WIDTH, type MapSize } from "./sim/config";
 import { createRenderer } from "./render/canvas";
 import { toView, turnFacing, turnView, viewOf } from "./render/rotation";
 import { GLYPH_FONT, TERRAIN_STYLES } from "./render/palette";
-import { centerOn, panBy, setViewport, tilePixels, zoomBy } from "./ui/camera";
+import { centerOn, setViewport, tilePixels, zoomBy } from "./ui/camera";
 import { ZOOM_STEP } from "./ui/input";
 import { createMinimap } from "./ui/minimap";
 import { fogFromUrl, readJoinIntent, serverUrl, tokenKey, type PageIntent } from "./net/join";
@@ -12,10 +12,13 @@ import { createPanel } from "./ui/panel";
 import { createHud } from "./ui/hud";
 import { createMapButtons, panelToggle } from "./ui/mapButtons";
 import { createSunSlider, toggleSun } from "./ui/sunSlider";
+import { createPadTest } from "./ui/padTest";
 import { advanceClock, createClockControls, followSky, toggleClock } from "./ui/clockControls";
 import { hoverText } from "./ui/tileInfo";
+import { loadViewPrefs, saveViewPrefs, type ViewPrefs } from "./ui/viewPrefs";
 import { bindInput } from "./ui/input";
 import { createUiState, showMessage } from "./ui/state";
+import { keyAction, loadRemaps, withRemaps } from "./ui/controls";
 import { createPointerControls } from "./ui/pointerControls";
 import { createPointerLabel } from "./ui/pointerLabel";
 import { loadPointerSettings, pointerCursor, savePointerSettings } from "./ui/pointer";
@@ -24,13 +27,15 @@ import { createOnlinePanel } from "./ui/players";
 import { createWaitingRoom } from "./ui/waitingRoom";
 import {
   rememberedName,
+  saveLevelStars,
   showStartScreen,
   type ItemsChoice,
+  type LevelChoice,
   type MapChoice,
 } from "./ui/startScreen";
 import { showIntro } from "./ui/intro";
 import { createBackdrop, type Backdrop } from "./ui/backdrop";
-import { curtainAt, type CurtainPhase } from "./ui/curtain";
+import { createCurtainPainter, curtainAt, type CurtainPhase } from "./ui/curtain";
 import { createWebAudioEngine, unlockOnFirstGesture } from "./audio/engine";
 import { loadAudioSettings, saveAudioSettings } from "./audio/settings";
 import { createJournalView } from "./ui/journalView";
@@ -54,22 +59,28 @@ import { liveVoiceCount } from "./audio/synth";
 import { showNotice } from "./ui/notice";
 import bundledMaps from "virtual:maps";
 import bundledItems from "virtual:items";
+import bundledLevels from "virtual:levels";
 import { createEditor, keepWalls, type Editor } from "./editor/editor";
 import { createFileActions } from "./editor/files";
 import { createItemsEditor } from "./editor/itemsEditor";
 import { newItems, type ItemsFile } from "./sim/itemsFile";
 import { newMap } from "./editor/model";
 import { validateMap, type MapFile } from "./sim/mapFile";
+import { mapIcon, type LevelWin } from "./sim/levelFile";
 import { createToolbar } from "./editor/toolbar";
 import type { Command, DebugOption, EnemiesCome, GameState, PlayerId } from "./sim/types";
 
 const element = <T extends HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
 
 const ui = createUiState();
+// Each device's buttons, with any this player rebound (controls.ts).
+ui.schemes = withRemaps(loadRemaps(deviceStorage()));
 const storage = tabStorage();
 /** Read once at load: the address bar loses the flag when a room code replaces it. */
 const fog = fogFromUrl(location.search);
 let session: Session | null = null;
+/** The campaign level being played, if one is. */
+let playingLevel: { name: string; win: LevelWin } | null = null;
 /** The online session, for its waiting room (null offline). */
 let network: NetworkSession | null = null;
 /** Online-only parts of the page, updated every frame. */
@@ -81,6 +92,8 @@ let editorActive = false;
 let backdrop: Backdrop | null = null;
 /** The fog curtain while a chosen game is swapped in for the backdrop (see ui/curtain.ts). */
 let curtain: CurtainPhase | null = null;
+const curtainCanvas = element<HTMLCanvasElement>("#curtain");
+const curtainPainter = createCurtainPainter(curtainCanvas);
 
 /** Types of commands sent, oldest first, waiting for their results (to pick a sound). */
 const awaitingResults: string[] = [];
@@ -96,8 +109,37 @@ const renderer = createRenderer(canvas);
 void document.fonts.load(GLYPH_FONT);
 void document.fonts.load(GLYPH_FONT, TERRAIN_STYLES.tree.glyph); // the upper-plane glyphs' file
 const minimap = createMinimap(element<HTMLCanvasElement>("#minimap"), ui);
-/** Arrow-key panning speed, in screen pixels per second (so it feels the same at any zoom). */
-const PAN_PIXELS_PER_SECOND = 900;
+/** The full-screen map (the enlarge button on the minimap): the same pixel map, filling the map. */
+const fullMapBox = element("#full-map");
+/** Space round the full-screen map, in CSS pixels, so the × button and its border show. */
+const FULL_MAP_MARGIN = 56;
+const fullMap = createMinimap(element<HTMLCanvasElement>("#full-map-canvas"), ui, () => ({
+  width: fullMapBox.clientWidth - 2 * FULL_MAP_MARGIN,
+  height: fullMapBox.clientHeight - 2 * FULL_MAP_MARGIN,
+}));
+const setFullMap = (open: boolean) => (fullMapBox.hidden = !open);
+element("[data-action='open-full-map']").addEventListener("click", (e) => {
+  setFullMap(true);
+  (e.currentTarget as HTMLElement).blur(); // so Space only ever toggles pause
+});
+element("[data-action='close-full-map']").addEventListener("click", () => setFullMap(false));
+// Zooming in goes back to the normal view: the wheel (or a pinch) lands centred on the tile
+// under the pointer, a step closer; + closes it as it zooms. Zooming out does nothing here.
+fullMapBox.addEventListener(
+  "wheel",
+  (e) => {
+    e.preventDefault();
+    if (e.deltaY >= 0) return;
+    const tile = fullMap.tileAt(e.clientX, e.clientY);
+    centerOn(ui.camera, tile.x, tile.y);
+    zoomBy(ui.camera, ZOOM_STEP);
+    setFullMap(false);
+  },
+  { passive: false },
+);
+window.addEventListener("keydown", (e) => {
+  if (keyAction(ui.schemes.keyboard, e.code) === "zoomIn") setFullMap(false);
+});
 /** The map the camera was last centred for, so a new game re-centres on its keep. */
 let centredFor = "";
 
@@ -123,7 +165,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-zoom]")
   button.addEventListener("click", () => {
     button.blur();
     const action = button.dataset.zoom;
-    // "fit" zooms all the way out; the camera clamps it to the whole map.
+    // "fit" zooms all the way out; the camera clamps it to the map's width.
     zoomBy(ui.camera, action === "in" ? ZOOM_STEP : action === "out" ? 1 / ZOOM_STEP : 0);
   });
 }
@@ -156,6 +198,25 @@ const panel = createPanel(
   dispatch,
 );
 const infoBox = element("#info-box");
+const minimapBox = element("#minimap-box");
+// The View panels and HUD stats this device last chose (new players: Map, Info, gold and income).
+const viewPrefs = loadViewPrefs(deviceStorage());
+minimapBox.hidden = !viewPrefs.panels.map;
+infoBox.hidden = !viewPrefs.panels.info;
+keysBox.hidden = !viewPrefs.panels.keys;
+ui.hudStats = viewPrefs.hudStats;
+let savedView = JSON.stringify(viewPrefs);
+/** Saves the View panels and HUD stats when they've changed (checked each frame; it's cheap). */
+function rememberView() {
+  const now: ViewPrefs = {
+    panels: { map: !minimapBox.hidden, info: !infoBox.hidden, keys: !keysBox.hidden },
+    hudStats: ui.hudStats,
+  };
+  const json = JSON.stringify(now);
+  if (json === savedView) return;
+  savedView = json;
+  saveViewPrefs(deviceStorage(), now);
+}
 /** In a game, not the editor: the Debug rows that change the game. */
 const inGame = () => !editorActive;
 /** A Debug menu row for a game debug option (offline only; online refuses it). */
@@ -167,6 +228,7 @@ const debugToggle = (label: string, option: DebugOption) => ({
   available: inGame,
 });
 const sunSlider = createSunSlider(element("#sun"), ui);
+const padTest = createPadTest(element("#pad-test"), ui);
 const clockControls = createClockControls(
   element("#clock"),
   ui,
@@ -181,7 +243,7 @@ const clockControls = createClockControls(
 let skyFollowed: number | null = null;
 createMapButtons(element("#map-buttons"), {
   view: [
-    panelToggle("Map", element("#minimap-box")),
+    panelToggle("Map", minimapBox),
     panelToggle("Info", infoBox),
     panelToggle("Keys", keysBox),
     // Only in an online game, where the room, invite link and players are shown.
@@ -197,6 +259,11 @@ createMapButtons(element("#map-buttons"), {
       available: inGame,
     },
     { label: "Show paths", isOn: () => ui.showFlow, toggle: () => (ui.showFlow = !ui.showFlow) },
+    {
+      label: "Controller test",
+      isOn: () => ui.showPadTest,
+      toggle: () => (ui.showPadTest = !ui.showPadTest),
+    },
     {
       label: "Sun slider",
       isOn: () => ui.showSun,
@@ -226,23 +293,47 @@ createMapButtons(element("#map-buttons"), {
       },
       available: inGame,
     },
+    {
+      // Wins the level being played there and then, for its stars (by the keep's health).
+      label: "Instawin level",
+      isOn: () => false,
+      toggle: () => dispatch({ type: "debugWin" }),
+      available: () => inGame() && session?.state?.lastWave != null && !session.state.gameOver,
+    },
   ],
   settings: element("#settings"),
   journal: () => journalView.toggle(),
+  keyboard: () => ui.schemes.keyboard,
 });
-const gameOver = createGameOverDialog(element("#game-over"), () => {
-  session?.restart();
-  ui.tool = null;
-});
-bindInput(
+const gameOver = createGameOverDialog(
+  element("#game-over"),
+  () => {
+    session?.restart();
+    ui.tool = null;
+  },
+  {
+    onWon: (stars) => {
+      if (playingLevel) saveLevelStars(playingLevel.name, stars);
+    },
+    onLevels: () => location.assign("?levels"),
+  },
+);
+const input = bindInput(
   canvas,
   ui,
   dispatch,
   () => session?.state ?? (editorActive ? editing!.editor.state : null),
   {
     playing: () => !editorActive,
-    journal: () => journalView.toggle(),
+    journal: () => {
+      setFullMap(false); // the journal opens over the game, not over the big map
+      journalView.toggle();
+    },
     escape: () => {
+      if (!fullMapBox.hidden) {
+        setFullMap(false);
+        return true;
+      }
       if (!journalView.isOpen) return false;
       journalView.close();
       return true;
@@ -316,7 +407,19 @@ function followMusic() {
 /** Starts playing: offline, or in a room on the game server. */
 function startSession(intent: Exclude<PageIntent, { mode: "menu" }>) {
   stopBackdrop();
-  if (intent.mode === "offline") {
+  const level = intent.mode === "offline" && intent.level ? bundledLevels[intent.level] : undefined;
+  if (level && intent.mode === "offline") {
+    // A campaign level brings its own map, limits, fog, day and night, and last wave.
+    const { map, items, level: setup } = level;
+    playingLevel = { name: intent.level!, win: setup.win };
+    session = createLocalSession(map.seed, () => map.seed, {
+      fog: fog && setup.fog,
+      map,
+      items,
+      enemiesCome: setup.dayNight.enemiesCome,
+      lastWave: setup.win.waves,
+    });
+  } else if (intent.mode === "offline") {
     const map = intent.map ? bundledMaps[intent.map] : undefined;
     const items = intent.items ? bundledItems[intent.items] : undefined;
     session = soloSession(map, items, intent.size, fog && intent.fog !== false, intent.enemiesCome);
@@ -362,6 +465,19 @@ function soloSession(
 /** The items files in items/, for the mode screen. */
 function itemsChoices(): ItemsChoice[] {
   return Object.entries(bundledItems).map(([name, items]) => ({ name, title: items.title }));
+}
+
+/** The campaign's levels whose maps have nothing wrong with them, in order. */
+function campaignLevels(): LevelChoice[] {
+  return Object.entries(bundledLevels)
+    .filter(
+      ([, { level, map }]) => level.mode === "endless" && validateMap(map).errors.length === 0,
+    )
+    .map(([name, { level, map }]) => ({
+      name,
+      title: level.title,
+      icon: level.icon ?? mapIcon(map),
+    }));
 }
 
 /** The hand-made Endless maps in maps/ with nothing wrong with them, for the mode screen. */
@@ -491,17 +607,17 @@ if (new URLSearchParams(location.search).has("editor")) {
   // A reload of a room this tab is already in: go straight back in as the same player.
   startSession({ mode: "join", room: intent.room, name: rememberedName() ?? "Player" });
 } else {
-  // Direct room links and rejoins skip the intro; everyone else sees it before the menu.
-  // Behind both, a game plays itself out.
+  // Direct room links, rejoins and Levels (back from a campaign level) skip the intro; everyone
+  // else sees it before the menu. Behind both, a game plays itself out.
   backdrop = createBackdrop();
   document.body.classList.add("backdrop");
-  // Dismissing the intro is the first gesture, so audio is unlocked by then.
-  showIntro(element("#intro"), () => {
-    void music.play("intro");
+  const openMenu = () =>
     showStartScreen(element("#start"), {
       room: intent.room,
       maps: playableMaps(),
       items: itemsChoices(),
+      levels: campaignLevels(),
+      openLevels: intent.levels,
       // The fog closes over the backdrop, and the game starts under it.
       onChoose: (chosen) =>
         (curtain = {
@@ -510,7 +626,17 @@ if (new URLSearchParams(location.search).has("editor")) {
           then: () => startSession(chosen),
         }),
     });
-  });
+  if (intent.levels) {
+    // No gesture yet on this page: the menu music waits for one (unlockOnFirstGesture).
+    void music.play("menu");
+    openMenu();
+  } else {
+    // Dismissing the intro is the first gesture, so audio is unlocked by then.
+    showIntro(element("#intro"), () => {
+      void music.play("intro");
+      openMenu();
+    });
+  }
 }
 
 let lastFrame = performance.now();
@@ -545,10 +671,11 @@ function frame(now: number) {
       else centerOn(ui.camera, state.width / 2, state.height / 2);
       centredFor = "editor";
     }
-    panWithKeys(seconds);
+    input.frame(seconds);
     renderer.render(state, ui);
     editor.drawOverlay(canvas.getContext("2d")!, ui);
     minimap.update(state);
+    if (!fullMapBox.hidden) fullMap.update(state);
     toolbar.update(now);
   } else if (backdrop) {
     backdrop.frame(now, seconds);
@@ -578,7 +705,7 @@ function frame(now: number) {
         centerOn(ui.camera, keep.x + keep.size / 2, keep.y + keep.size / 2);
         centredFor = mapKey;
       }
-      panWithKeys(seconds);
+      input.frame(seconds);
       updateCurtain(now);
       const viewUi = turnedUi(state);
       const pending = session.pending.map((p) => ({
@@ -588,15 +715,19 @@ function frame(now: number) {
       }));
       renderer.render(view, viewUi, pending);
       minimap.update(view);
+      if (!fullMapBox.hidden) fullMap.update(view);
       panel.update(state);
       hud.update(state);
+      rememberView();
       pointerLabel.update(view, viewUi);
-      if (!infoBox.hidden) infoBox.textContent = hoverText(state, ui) || "Hover a tile for details";
-      gameOver.update(state, session.playerId);
+      if (!infoBox.hidden)
+        infoBox.textContent = hoverText(state, ui) || "Hover anything for details";
+      gameOver.update(state, session.playerId, playingLevel?.win ?? null);
       cues.update(state.cues);
       updateJournal(state, session.playerId, now);
     }
   }
+  padTest.update();
   followMusic();
   requestAnimationFrame(frame);
 }
@@ -604,13 +735,17 @@ requestAnimationFrame(frame);
 
 /**
  * Moves the fog curtain on, just before a frame is drawn: closing over the backdrop, then (once
- * the game it covers has its first frame) opening out on it, centred on the camera.
+ * the game it covers has its first frame) opening out on it. It's a sheet over the whole map
+ * window, HUD and all; while it's covered (waiting for a room) it stays as last drawn.
  */
 function updateCurtain(now: number) {
   if (!curtain) return;
   if (curtain.phase === "covered") curtain = { phase: "opening", started: now };
-  const { curtain: drawn, done } = curtainAt(curtain, now, ui.camera);
-  ui.curtain = drawn;
+  curtainCanvas.hidden = false;
+  const { clientWidth: width, clientHeight: height } = curtainCanvas;
+  const cell = tilePixels(ui.camera);
+  const { radius, done } = curtainAt(curtain, now, width, height, cell);
+  curtainPainter.draw(radius, cell);
   if (!done) return;
   if (curtain.phase === "closing") {
     const { then } = curtain;
@@ -618,7 +753,7 @@ function updateCurtain(now: number) {
     then();
   } else {
     curtain = null;
-    ui.curtain = null;
+    curtainCanvas.hidden = true;
   }
 }
 
@@ -630,15 +765,6 @@ function turnedUi(state: GameState): typeof ui {
     hover: ui.hover && toView(ui.hover, ui.rotation, state.width, state.height),
     facing: turnFacing(ui.facing, ui.rotation),
   };
-}
-
-/** Moves the view while arrow keys (or WASD) are held. */
-function panWithKeys(seconds: number) {
-  const { left, right, up, down } = ui.panKeys;
-  const step = (PAN_PIXELS_PER_SECOND * seconds) / tilePixels(ui.camera);
-  const dx = (right ? 1 : 0) - (left ? 1 : 0);
-  const dy = (down ? 1 : 0) - (up ? 1 : 0);
-  if (dx || dy) panBy(ui.camera, dx * step, dy * step);
 }
 
 /** sessionStorage (per tab, so each tab is its own player), or memory if it's unavailable. */

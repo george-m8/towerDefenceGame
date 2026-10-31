@@ -63,6 +63,7 @@ import {
   TERRAIN_STYLES,
   TERRAIN_TEXTURES,
   KEEP_TEXTURE,
+  FOG_TEXTURE,
   STRUCTURE_TEXTURES,
   DAMAGED_WALL_TEXTURE,
   WALL_DAMAGED_BELOW,
@@ -75,8 +76,7 @@ import {
   DOOR_ALPHA,
   KEEP_GLYPH,
 } from "./palette";
-import { fogImage } from "./fog";
-import { curtainTier, type Curtain } from "../ui/curtain";
+import { fogImage, fogSpans, type FogLevel } from "./fog";
 import { createHpBarTracker } from "./hpBars";
 import { burstPixels, burstWaiting } from "./burst";
 import { textureSpecks, textureVariant, type TextureStyle } from "./textures";
@@ -214,12 +214,12 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     const row = y - y0;
     return col >= 0 && row >= 0 && col < width && row < height ? data[row * width + col] : 0;
   }
-  /** The fog image and what it was made from: the sight, and the curtain's radius if any. */
+  /** The fog image and the sight it was made from. */
   let fog: {
     tier: Uint8Array;
-    radius: number | null;
     image: HTMLCanvasElement;
     lift: number;
+    levels: (FogLevel | undefined)[];
   } | null = null;
 
   function drawTile(x: number, y: number, bg: string, glyph?: string, fg?: string) {
@@ -470,7 +470,11 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   /** A tile's texture over its flat colour, unless zoomed too far out to see it. */
   function drawTexture(x: number, y: number, style: TextureStyle) {
     if (!textured) return;
-    const variant = textureVariant(x, y);
+    ctx!.drawImage(textureImage(style, textureVariant(x, y)), x * TILE_SIZE, y * TILE_SIZE);
+  }
+
+  /** One variant of a texture, drawn the first time it's wanted. */
+  function textureImage(style: TextureStyle, variant: number): HTMLCanvasElement {
     const key = `${style}:${variant}`;
     let image = textureImages.get(key);
     if (!image) {
@@ -483,7 +487,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       }
       textureImages.set(key, image);
     }
-    ctx!.drawImage(image, x * TILE_SIZE, y * TILE_SIZE);
+    return image;
   }
 
   /**
@@ -511,21 +515,37 @@ export function createRenderer(canvas: HTMLCanvasElement) {
    * Fog of war, over everything drawn so far: a white mist raised like the blocks, thin and low
    * over seen land, solid and high over unexplored land, stepping down in see-through bands
    * along its edge. Enemies and effects out of sight are left out before this, not covered by
-   * it. The fog image is only rebuilt when sight changes. While a game is being swapped in, the
-   * curtain's fog goes over it too (all of it, with fog of war off).
+   * it. The fog image is only rebuilt when sight changes. A dithered haze lies over each fog
+   * tile's top, as see-through as its fog.
    */
-  function drawFog(state: GameState, curtain: Curtain | null) {
-    if (!state.fog && !curtain) return;
+  function drawFog(state: GameState) {
+    if (!state.fog) return;
     const tier = getSight(state, viewer);
-    // Rebuilt for every whole tile the curtain moves, not every frame.
-    const radius = curtain && Math.round(curtain.radius);
-    if (fog?.tier !== tier || fog.radius !== radius) {
-      const drawn = curtain ? curtainTier(tier, state.width, state.height, curtain) : tier;
-      fog = { tier, radius, ...fogImage(drawn, state.width, state.height) };
-    }
+    if (fog?.tier !== tier) fog = { tier, ...fogImage(tier, state.width, state.height) };
     ctx!.imageSmoothingEnabled = false; // hard tile edges
     ctx!.drawImage(fog.image, 0, -fog.lift, state.width * TILE_SIZE, fog.image.height);
     ctx!.imageSmoothingEnabled = true;
+    if (textured) drawHaze(state, fog.levels);
+  }
+
+  /** The haze texture on the visible fog tops, cut short where higher fog in front hides it. */
+  function drawHaze(state: GameState, levels: (FogLevel | undefined)[]) {
+    // One row past the view: its fog is raised into the view's bottom row.
+    const y1 = Math.min(state.height - 1, view.y1 + 1);
+    for (let y = view.y0; y <= y1; y++) {
+      for (let x = view.x0; x <= view.x1; x++) {
+        const level = levels[y * state.width + x];
+        if (!level) continue;
+        const front = y + 1 < state.height ? (levels[(y + 1) * state.width + x]?.height ?? 0) : 0;
+        const { top } = fogSpans(y, level.height, front);
+        const shown = top.bottom - top.top;
+        if (shown <= 0) continue;
+        ctx!.globalAlpha = level.opacity;
+        const image = textureImage(FOG_TEXTURE, textureVariant(x, y));
+        ctx!.drawImage(image, 0, 0, TILE_SIZE, shown, x * TILE_SIZE, top.top, TILE_SIZE, shown);
+      }
+    }
+    ctx!.globalAlpha = 1;
   }
 
   /** Chests in one row, drawn with that row so blocks in front hide them. */
@@ -652,6 +672,15 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     ctx!.save();
     ctx!.translate(0, -blockHeight(state, ui.hover.x, ui.hover.y));
     drawGhostAt(state, ui);
+    ctx!.restore();
+  }
+
+  /** A white edge round the tile under the pointer, on top of whatever's on it (raised blocks too). */
+  function drawHoverEdge(state: GameState, ui: UiState) {
+    if (!ui.hover) return;
+    ctx!.save();
+    ctx!.translate(0, -blockHeight(state, ui.hover.x, ui.hover.y));
+    outlineTile(ui.hover, COLOURS.hoverEdge);
     ctx!.restore();
   }
 
@@ -1013,11 +1042,15 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       drawKeepHp(state);
       if (ui.showFlow) drawFlow(state);
       drawEffects(state);
-      drawFog(state, ui.curtain);
+      drawFog(state);
       if (hour !== undefined) drawNight(state, darknessAt(hour));
       drawPending(pending);
-      drawRange(state, ui);
-      drawGhost(state, ui);
+      // While the build menu is open, what's chosen in it isn't on the map yet: no ghost or range.
+      if (!ui.pickerOpen) {
+        drawRange(state, ui);
+        drawGhost(state, ui);
+      }
+      drawHoverEdge(state, ui);
       hpBars.endFrame();
     },
   };

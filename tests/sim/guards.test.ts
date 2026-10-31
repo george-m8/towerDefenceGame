@@ -39,12 +39,12 @@ describe("guard buildings", () => {
     }
   });
 
-  it("are placed facing a direction, from the Defence tab", () => {
+  it("are placed facing a direction, from the Units tab", () => {
     const state = createGameWithoutWaves();
     for (const [kind] of buildings) {
       const stats: StructureStats = STRUCTURES[kind];
       expect(stats.directional).toBe(true);
-      expect(toolsInTab("defence").map((t) => t.tool)).toContain(kind);
+      expect(toolsInTab("units").map((t) => t.tool)).toContain(kind);
     }
     expect(
       applyCommand(state, 1, { type: "build", kind: "guardhouse", x: 10, y: 10, facing: "W" }),

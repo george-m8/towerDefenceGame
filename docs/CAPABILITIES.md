@@ -244,3 +244,21 @@ Status: `day-night` steps 1 and 2 built (2026-10-26/27). Map extended 2026-10-27
 | `edge-spawns` | A setup option, **Enemies enter: spawn zone / all round the map**. It's `wave-director`'s edge spawns (slices 3-4), which change how enclosures and fog measure reachability, so it stays there (after `enemy-targeting`). The setup screen leaves room for the option. | wave-director |
 
 Build order (agreed 2026-10-27): `long-shadows` -> `game-clock` -> `night-spawns`. `edge-spawns` with `wave-director`. Later: the day and night cycle as a look-only option for other modes (it's in the Debug menu for now), and town lighting at night.
+
+## Next up (2026-10-27)
+
+Status: roadmap agreed (2026-10-27), specs drafted; `beginner-help` built (2026-10-27). Order and reasons: [`tasks/roadmap.md`](tasks/roadmap.md).
+
+| Module | What it delivers | Depends on |
+|---|---|---|
+| `beginner-help` | Info and income shown by default; hover info (description, numbers, hints) for every structure, unit and enemy, on the map and in the build picker; the picker in one list when few things are allowed; a Rotate button and R hint; the enclosure discount explained. Spec: [`SPEC-beginner-help.md`](SPEC-beginner-help.md). | HUD, tileInfo, enclosures, items-editor |
+| `qol-update` | A gate goes straight onto your wall (refunding it); Towers, Units and Civic tabs with subtitles, along the bottom of the picker; number keys to build (`1 1` is a wall); a full-screen pixel map. Spec: [`SPEC-qol-update.md`](../specs/SPEC-qol-update.md). Built (2026-10-28). | HUD, minimap, grid |
+| `balance-files` | Every game number in `state.balance` instead of module constants, with global multipliers on top. `.balance` files (`balance/`), a tweak panel in the Debug menu, and a Balance choice on the settings step. Spec: [`SPEC-balance-files.md`](SPEC-balance-files.md). | items-editor (file pattern) |
+| `rebalance` | George's write-up as new defaults, easy and hard presets, the build-time curve by distance, fog sight numbers, and enemy armour. A task list, no spec. | balance-files |
+| `wave-director` | Waves built from group templates on a threat budget, one kind per group more often, leaders with followers, and the **Enemies enter: spawn zone / all round the map** option (this is `edge-spawns`). Marine groups from the sea. Spec: [`SPEC-wave-director.md`](SPEC-wave-director.md). | enemy-kinds, enemy-pathing, balance-files |
+| `line-of-sight` | Lobbed weapons fire over walls; direct fire depends on height; a preview of the tiles a tower can hit while placing and on hover. Spec: [`SPEC-line-of-sight.md`](SPEC-line-of-sight.md) (revised). | tower-aiming |
+| `siege-towers` | Ballista (pierces), crossbow (ignores armour), burning oil (wall-mounted, burns), caltrops (slow); wall spikes removed. Spec: [`SPEC-siege-towers.md`](SPEC-siege-towers.md). | line-of-sight, balance-files |
+| `scout-shadowing` | With nothing left to explore, scouts shadow enemy groups at a safe distance. | field-units, wave-director |
+| `moats`, `build-zone` | Postponed; ideas in [`SPEC-moats.md`](SPEC-moats.md) and [`SPEC-build-zone.md`](SPEC-build-zone.md). | - |
+
+Build order: `beginner-help` -> `qol-update` -> `balance-files` -> `rebalance` -> `wave-director` -> `line-of-sight` -> `siege-towers` -> `scout-shadowing`. This moves `wave-director` ahead of `enemy-targeting`, which it doesn't depend on.

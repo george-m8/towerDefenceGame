@@ -1,0 +1,22 @@
+{
+  "format": "keep-defence-level",
+  "version": 1,
+  "title": "Starter",
+  "icon": [
+    ["land:river", "land:river", "land:tree"],
+    ["enemy:goblin", "land:ground", "keep"],
+    ["land:sea", "land:sea", "land:sea"]
+  ],
+  "mode": "endless",
+  "win": {
+    "waves": 5,
+    "stars": {
+      "2": 50,
+      "3": 100
+    }
+  },
+  "fog": false,
+  "dayNight": {
+    "enemiesCome": "night"
+  }
+}

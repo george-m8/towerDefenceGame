@@ -18,7 +18,7 @@ import { buildTicksAt, updateBuilding } from "./building";
 import { debugDamage } from "./debug";
 import { priceAt } from "./enclosures";
 import { spawnEnemy, updateEnemies } from "./enemies";
-import { EMPTY, KEEP_TILE, canBuild, placeStructure } from "./grid";
+import { EMPTY, KEEP_TILE, canBuild, placeStructure, replacedBy } from "./grid";
 import { awardBounties, claimChest, collectIncome, sellStructure } from "./economy";
 import { addCue, updateCues } from "./cues";
 import { updateEffects } from "./effects";
@@ -67,6 +67,8 @@ export interface GameOptions {
   clock?: boolean;
   /** When enemies come (Endless only): all the time (default), or at night, with a clock. */
   enemiesCome?: EnemiesCome;
+  /** A campaign level's last wave: beating it wins (default none: waves go on). */
+  lastWave?: number;
 }
 
 export function createGame(seed: number, options: GameOptions = {}): GameState {
@@ -142,6 +144,8 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     speed: 1,
     wanderChance: ENEMY.wanderChance,
     gameOver: false,
+    lastWave: options.lastWave ?? null,
+    won: false,
     debug: { infiniteKeep: false, infiniteGold: false },
     limits: { ...options.items?.limits },
     rngState: seed,
@@ -230,7 +234,21 @@ export function tick(state: GameState): void {
       state.winner = state.keeps.find((keep) => keep.hp > 0)?.owner ?? null;
     }
     addCue(state, "gameOver");
+  } else if (!state.gameOver && lastWaveBeaten(state)) {
+    state.gameOver = true;
+    state.won = true;
   }
+}
+
+/** Whether a level's last wave has all come and every enemy is dead. */
+function lastWaveBeaten(state: GameState): boolean {
+  const { lastWave, wave } = state;
+  return (
+    lastWave !== null &&
+    wave.number >= lastWave &&
+    wave.threatLeft === 0 &&
+    state.enemies.length === 0
+  );
 }
 
 export function applyCommand(
@@ -260,6 +278,9 @@ export function applyCommand(
       if (!check.ok) return check;
       // The price depends on the enclosure here before this build changes the grid.
       const price = priceAt(state, command.kind, command.x, command.y, playerId);
+      // A gate on a wall: the wall is sold first (its tower, if any, was refused above).
+      const replaced = replacedBy(state, command.kind, command.x, command.y);
+      if (replaced) sellStructure(state, playerId, command.x, command.y);
       if (!state.debug.infiniteGold) player.gold -= price; // free with infinite gold
       const built = placeStructure(
         state,
@@ -291,6 +312,12 @@ export function applyCommand(
     case "debugClock":
       if (!state.clock) return { ok: false, reason: "This game has no clock" };
       setClockHour(state, command.hour);
+      return { ok: true };
+    case "debugWin":
+      if (state.lastWave === null) return { ok: false, reason: "Only a level can be won" };
+      if (state.gameOver) return { ok: false, reason: "The game is over" };
+      state.gameOver = true;
+      state.won = true;
       return { ok: true };
     case "debugUnit":
       return spawnUnit(state, command.kind, playerId, command.x, command.y)

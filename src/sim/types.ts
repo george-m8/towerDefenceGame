@@ -280,6 +280,13 @@ export interface GameState {
   /** Chance (0-1) at each tile that an enemy wanders off the path. Starts at ENEMY.wanderChance. */
   wanderChance: number;
   gameOver: boolean;
+  /**
+   * A campaign level's last wave: no wave starts after it, and once it has all come and been
+   * beaten with the keep still standing, the level is won. Null in other games (waves go on).
+   */
+  lastWave: number | null;
+  /** Whether the level was won (the game is over, the keep standing): see lastWave. */
+  won: boolean;
   rngState: number;
   /** False turns fog of war off: every tile is in sight. */
   fog: boolean;
@@ -310,6 +317,8 @@ export type Command =
   | { type: "debugDamage"; x: number; y: number }
   /** Dev only (offline): sets the game's clock to an hour (games with a clock). */
   | { type: "debugClock"; hour: number }
+  /** Dev only (offline): wins a campaign level on the spot, with the keep as it is. */
+  | { type: "debugWin" }
   | { type: "sendWave" }
   /** Votes to skip the rest of the day to the early evening (games with enemies at night). */
   | { type: "voteSkipToNight" }
@@ -318,7 +327,16 @@ export type Command =
 /** Commands for testing: offline only, refused online. */
 export type DebugCommand = Extract<
   Command,
-  { type: "debugSpawn" | "debugOption" | "debugFog" | "debugUnit" | "debugDamage" | "debugClock" }
+  {
+    type:
+      | "debugSpawn"
+      | "debugOption"
+      | "debugFog"
+      | "debugUnit"
+      | "debugDamage"
+      | "debugClock"
+      | "debugWin";
+  }
 >;
 
 export function isDebugCommand(command: Command): command is DebugCommand {
@@ -328,7 +346,8 @@ export function isDebugCommand(command: Command): command is DebugCommand {
     command.type === "debugFog" ||
     command.type === "debugUnit" ||
     command.type === "debugClock" ||
-    command.type === "debugDamage"
+    command.type === "debugDamage" ||
+    command.type === "debugWin"
   );
 }
 
