@@ -131,4 +131,4 @@ Built: coverage 97.7% for `src/sim/`, 80.3% for `tools/` (coverage only measures
 ## Checkpoint C: done
 
 - [x] Every success criterion in the spec checked in the browser (headless Chrome over the extension: defaults, hover info, picker cards and one-list layout, Rotate button, price wording, sidebar)
-- [ ] Review with George before merge
+- [x] Review with George before merge
