@@ -106,6 +106,43 @@ const dispatch = (command: Command) => {
 };
 const canvas = element<HTMLCanvasElement>("#map");
 const renderer = createRenderer(canvas);
+/**
+ * The 3D view (?3d in the address): games are drawn isometric on a WebGL canvas under the map
+ * canvas, which draws what goes over it (effects, bars, the ghost) and still takes the pointer.
+ * The editor and the backdrop stay flat.
+ */
+const canvas3d = new URLSearchParams(location.search).has("3d")
+  ? document.createElement("canvas")
+  : null;
+let renderer3d: ReturnType<typeof import("./render/three").createRenderer3d> | null = null;
+if (canvas3d) {
+  canvas3d.id = "map3d";
+  canvas3d.hidden = true;
+  canvas.before(canvas3d);
+  // Loaded only for the 3D view, so the flat game doesn't download three.js. Flat until it's in.
+  void import("./render/three").then(({ createRenderer3d }) => {
+    renderer3d = createRenderer3d(canvas3d);
+  });
+}
+/** Draws a game in 3D if that's on, else flat. */
+function renderGame(
+  state: GameState,
+  viewUi: typeof ui,
+  pending: Parameters<typeof renderer.render>[2],
+) {
+  if (!renderer3d || !canvas3d) {
+    renderer.render(state, viewUi, pending);
+    return;
+  }
+  canvas3d.hidden = false;
+  renderer3d.render(state, viewUi);
+  renderer.renderOverlay(state, viewUi, pending);
+}
+/** Flat drawing (the editor, the backdrop): the 3D view hides and the camera goes flat. */
+function useFlatView() {
+  ui.camera.iso = false;
+  if (canvas3d) canvas3d.hidden = true;
+}
 // Nothing on the page uses the map's font, so ask for it; the map draws in it once it's here.
 void document.fonts.load(GLYPH_FONT);
 void document.fonts.load(GLYPH_FONT, TERRAIN_STYLES.tree.glyph); // the upper-plane glyphs' file
@@ -672,6 +709,7 @@ function frame(now: number) {
     sunSlider.sync();
   }
   if (editing && editorActive) {
+    useFlatView();
     const { editor, toolbar } = editing;
     editor.update(now);
     const state = editor.state;
@@ -691,6 +729,7 @@ function frame(now: number) {
     if (!fullMapBox.hidden) fullMap.update(state);
     toolbar.update(now);
   } else if (backdrop) {
+    useFlatView();
     backdrop.frame(now, seconds);
     const state = backdrop.session.state!;
     fitCanvas(state.width, state.height);
@@ -706,6 +745,7 @@ function frame(now: number) {
     if (state) {
       // Drawn through the view's turn (Q): the camera, minimap and renderer see a turned copy.
       const view = viewOf(state, ui.rotation);
+      ui.camera.iso = renderer3d !== null;
       fitCanvas(view.width, view.height);
       // A new map (first game, restart, or joining a room): start looking at the keep.
       // (PvP keeps are handed out at the start, so that counts as a new map too.)
@@ -727,7 +767,7 @@ function frame(now: number) {
         ...toView(p, ui.rotation, state.width, state.height),
         ...(p.facing ? { facing: turnFacing(p.facing, ui.rotation) } : {}),
       }));
-      renderer.render(view, viewUi, pending);
+      renderGame(view, viewUi, pending);
       minimap.update(view);
       if (!fullMapBox.hidden) fullMap.update(view);
       panel.update(state);

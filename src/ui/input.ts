@@ -92,6 +92,11 @@ export function bindInput(
   function tileAt(sx: number, sy: number): Point {
     const p = screenToTile(ui.camera, sx, sy);
     const state = getState();
+    // Iso (the 3D view), the ground under the point, for now: raised tops don't pick yet.
+    if (ui.camera.iso) {
+      const tile = { x: Math.floor(p.x), y: Math.floor(p.y) };
+      return state && ui.rotation ? fromView(tile, ui.rotation, state.width, state.height) : tile;
+    }
     if (!state || ui.rotation === 0) return pickTile(state, p.x, p.y);
     const picked = pickTile(lastViewOf(state, ui.rotation), p.x, p.y);
     return fromView(picked, ui.rotation, state.width, state.height);

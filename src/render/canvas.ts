@@ -41,10 +41,24 @@ import type {
 } from "../sim/types";
 import type { PendingBuild } from "../net/session";
 import { isBuildTool, type UiState } from "../ui/state";
-import { tilePixels, visibleTiles, type VisibleTiles } from "../ui/camera";
+import {
+  ISO,
+  tilePixels,
+  tileToScreen,
+  visibleTiles,
+  type Camera,
+  type VisibleTiles,
+} from "../ui/camera";
 import { minimapColour } from "../ui/minimap";
 import { KEEP, NONE, getEnclosures } from "../sim/enclosures";
-import { SEEN, canSeeEnemiesAt, forEachSightTile, getSight, isExplored } from "../sim/fog";
+import {
+  IN_SIGHT,
+  SEEN,
+  canSeeEnemiesAt,
+  forEachSightTile,
+  getSight,
+  isExplored,
+} from "../sim/fog";
 import {
   AIM_LINE_TILES,
   ARROWS,
@@ -65,6 +79,7 @@ import {
   TERRAIN_STYLES,
   TERRAIN_TEXTURES,
   KEEP_TEXTURE,
+  FOG,
   FOG_TEXTURE,
   STRUCTURE_TEXTURES,
   DAMAGED_WALL_TEXTURE,
@@ -186,6 +201,13 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   let hover: Point | null = null;
   let now = 0;
   const hpBars = createHpBarTracker();
+  /** False while painting the flat map for the 3D view: bars change too often to bake in. */
+  let barsShown = true;
+  /**
+   * Over the 3D view (renderOverlay): the camera, the game and the screen's pixel ratio, so
+   * map-pixel drawing goes through the iso transform and bars stand upright over things.
+   */
+  let iso: { cam: Camera; state: GameState; dpr: number } | null = null;
   /** Tile textures, drawn once each ("style:variant"). */
   const textureImages = new Map<string, HTMLCanvasElement>();
   /** False when zoomed too far out for textures to show. */
@@ -679,7 +701,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   function drawGhost(state: GameState, ui: UiState) {
     if (!ui.tool || !ui.hover) return;
     ctx!.save();
-    ctx!.translate(0, -blockHeight(state, ui.hover.x, ui.hover.y));
+    liftBy(blockHeight(state, ui.hover.x, ui.hover.y));
     drawGhostAt(state, ui);
     ctx!.restore();
   }
@@ -688,7 +710,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   function drawHoverEdge(state: GameState, ui: UiState) {
     if (!ui.hover) return;
     ctx!.save();
-    ctx!.translate(0, -blockHeight(state, ui.hover.x, ui.hover.y));
+    liftBy(blockHeight(state, ui.hover.x, ui.hover.y));
     outlineTile(ui.hover, COLOURS.hoverEdge);
     ctx!.restore();
   }
@@ -1107,6 +1129,11 @@ export function createRenderer(canvas: HTMLCanvasElement) {
 
   /** A health bar over a tile; `front` colours what's left (always at least a sliver). */
   function drawHpBar(x: number, y: number, fraction: number, front = COLOURS.hpFront) {
+    if (!barsShown) return;
+    if (iso) {
+      drawUprightBar(x, y, fraction, front);
+      return;
+    }
     const left = x * TILE_SIZE + 2;
     const top = y * TILE_SIZE;
     const barWidth = TILE_SIZE - 4;
@@ -1125,7 +1152,170 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     }
   }
 
+  /**
+   * Lifts what's drawn next by a block's height (in map pixels): up the screen on the flat map,
+   * and up off the ground over the 3D view.
+   */
+  function liftBy(height: number) {
+    if (!iso) {
+      ctx!.translate(0, -height);
+      return;
+    }
+    const m = ctx!.getTransform();
+    const up = (height / TILE_SIZE) * ISO.heightScale * ISO.lift * tilePixels(iso.cam) * iso.dpr;
+    ctx!.setTransform(m.a, m.b, m.c, m.d, m.e, m.f - up);
+  }
+
+  /** Map pixels to the screen through the iso view: the ground plane is an affine map. */
+  function isoTransform(cam: Camera, dpr: number) {
+    const origin = tileToScreen(cam, 0, 0);
+    const east = tileToScreen(cam, 1, 0);
+    const south = tileToScreen(cam, 0, 1);
+    const k = dpr / TILE_SIZE;
+    ctx!.setTransform(
+      (east.x - origin.x) * k,
+      (east.y - origin.y) * k,
+      (south.x - origin.x) * k,
+      (south.y - origin.y) * k,
+      origin.x * dpr,
+      origin.y * dpr,
+    );
+  }
+
+  /** A health bar over the 3D view: upright on screen, over the top of what it's for. */
+  function drawUprightBar(x: number, y: number, fraction: number, front: string) {
+    const { cam, state, dpr } = iso!;
+    const tileX = Math.round(x);
+    const tileY = Math.round(y);
+    const standing = blockHeight(state, tileX, tileY) > 0 ? 0.25 : 1;
+    const height = (blockHeight(state, tileX, tileY) / TILE_SIZE) * ISO.heightScale + standing;
+    const at = tileToScreen(cam, x + 0.5, y + 0.5, height);
+    const width = Math.max(12, tilePixels(cam) * 0.9);
+    const m = ctx!.getTransform();
+    ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx!.fillStyle = COLOURS.hpBack;
+    ctx!.fillRect(at.x - width / 2, at.y, width, 3);
+    ctx!.fillStyle = front;
+    ctx!.fillRect(at.x - width / 2, at.y, Math.max(1, width * fraction), 3);
+    ctx!.setTransform(m);
+  }
+
+  /** Each keep's HP over the 3D view, upright over its middle. */
+  function drawUprightKeepHp(state: GameState, cam: Camera, dpr: number) {
+    ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx!.font = `${Math.round(Math.max(12, tilePixels(cam) * 0.8))}px ${GLYPH_FONTS}`;
+    ctx!.lineWidth = 3;
+    ctx!.lineJoin = "round";
+    ctx!.strokeStyle = "rgba(0, 0, 0, 0.7)";
+    ctx!.fillStyle = COLOURS.keepGlyph;
+    for (const keep of state.keeps) {
+      const centre = keep.size / 2;
+      const top = (blockHeight(state, keep.x, keep.y) / TILE_SIZE) * ISO.heightScale;
+      const at = tileToScreen(cam, keep.x + centre, keep.y + centre, top + 0.6);
+      const text = String(Math.ceil(keep.hp));
+      ctx!.strokeText(text, at.x, at.y);
+      ctx!.fillText(text, at.x, at.y);
+    }
+    ctx!.lineWidth = 1;
+  }
+
   return {
+    /**
+     * The whole map drawn flat, every tile, at `pixelsPerTile`: for the 3D view's ground and
+     * block tops. No bars (they're drawn over the 3D view), no shadows or lift; fog as a tint.
+     */
+    renderFlat(state: GameState, viewer_: PlayerId, pixelsPerTile: number) {
+      viewer = viewer_;
+      hover = null;
+      now = performance.now();
+      const width = state.width * pixelsPerTile;
+      const height = state.height * pixelsPerTile;
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+      const scale = pixelsPerTile / TILE_SIZE;
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      view = { x0: 0, y0: 0, x1: state.width - 1, y1: state.height - 1 };
+      textured = pixelsPerTile >= TEXTURE_MIN_TILE_PX;
+      barsShown = false;
+      const showOwners = Object.keys(state.players).length > 1;
+      for (let y = 0; y < state.height; y++) {
+        for (let x = 0; x < state.width; x++) {
+          drawTileContents(state, x, y, showOwners);
+          drawEnclosureTint(state, x, y, 0);
+        }
+      }
+      drawDoors(state);
+      barsShown = true;
+      if (!state.fog) return;
+      const tiers = getSight(state, viewer);
+      ctx.fillStyle = FOG.colour;
+      for (let i = 0; i < tiers.length; i++) {
+        if (tiers[i] === IN_SIGHT) continue;
+        ctx.globalAlpha = tiers[i] === SEEN ? FOG.seen.opacity : 1;
+        const x = i % state.width;
+        const y = (i - x) / state.width;
+        ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      }
+      ctx.globalAlpha = 1;
+    },
+
+    /**
+     * What goes over the 3D view, on a see-through canvas: effects, builds on the way, the
+     * ghost and range, the hover edge, raiders' paths and flags through the iso transform, and
+     * health bars and keeps' HP upright.
+     */
+    renderOverlay(state: GameState, ui: UiState, pending: readonly PendingBuild[] = []) {
+      viewer = ui.playerId;
+      hover = ui.hover;
+      now = performance.now();
+      const cam = ui.camera;
+      const dpr = canvas.width / cam.viewWidth;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      iso = { cam, state, dpr };
+      isoTransform(cam, dpr);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      view = visibleTiles(cam);
+      if (ui.showFlow) drawFlow(state);
+      drawEffects(state);
+      drawPending(pending);
+      if (!ui.pickerOpen) {
+        drawRange(state, ui);
+        drawGhost(state, ui);
+      }
+      drawHoverEdge(state, ui);
+      const raid = state.players[viewer]?.raid;
+      const own = raid ? state.enemies.find((e) => e.id === raid.enemyId) : undefined;
+      if (raid) {
+        drawRaidPaths(state);
+        if (ui.raidTarget && raid.enemyId !== null)
+          outlineTile(ui.raidTarget, playerColour(viewer));
+        drawPathFlags(raid.plan, playerColour(viewer), own);
+      }
+      if (own) drawOwnRing(own);
+      // Health bars, upright over what they're for.
+      for (const structure of Object.values(state.structures)) {
+        const { x, y } = structure;
+        if (x < view.x0 || x > view.x1 || y < view.y0 || y > view.y1) continue;
+        if (!isExplored(state, x, y, viewer)) continue;
+        drawBars(structure, structure);
+      }
+      for (const unit of state.units) {
+        if (canSeeEnemiesAt(state, unit.x, unit.y, viewer)) drawHealth(`u${unit.id}`, unit);
+      }
+      for (const enemy of state.enemies) {
+        if (canSeeEnemiesAt(state, enemy.x, enemy.y, viewer)) drawHealth(`e${enemy.id}`, enemy);
+      }
+      drawUprightKeepHp(state, cam, dpr);
+      iso = null;
+      hpBars.endFrame();
+    },
+
     render(state: GameState, ui: UiState, pending: readonly PendingBuild[] = []) {
       viewer = ui.playerId;
       hover = ui.hover;
