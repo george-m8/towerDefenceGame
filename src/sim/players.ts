@@ -14,6 +14,8 @@ export function addPlayer(state: GameState, name: string): PlayerId {
     gold: STARTING_GOLD,
     connected: true,
     votes: { ...NO_VOTES },
+    role: "defender",
+    raid: null,
   };
   updateVotes(state);
   return id;

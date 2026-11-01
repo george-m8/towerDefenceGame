@@ -7,6 +7,8 @@ import { GAME_ONLY_ACTIONS, keyAction, type Action } from "./controls";
 import { createGamepads, createStepState, glide, stepStick, type PadFrame } from "./gamepad";
 import { offeredTools } from "./hud";
 import { pickerKey } from "./pickerKeys";
+import { ownEnemy } from "./raiderHud";
+import { baseAt, keepAt, mountAt } from "../sim/grid";
 import {
   BUILD_TABS,
   TOOLS,
@@ -25,6 +27,8 @@ const STRESS_TEST_ENEMIES = 200;
 export const ZOOM_STEP = 1.25;
 /** How much one notch of the mouse wheel (about 100 deltaY) zooms. */
 const WHEEL_ZOOM_PER_PIXEL = 0.0015;
+/** Raiders: the most often steering goes to the server while the pointer moves. */
+const STEER_EVERY_MS = 100;
 
 const PAN_ACTIONS: Partial<Record<Action, keyof UiState["panKeys"]>> = {
   panLeft: "left",
@@ -55,6 +59,12 @@ export function bindInput(
   let painting = false;
   let debugKind = 0;
   let lastPainted: Point | null = null;
+  /** Raiders: the mouse is held on open ground, so their enemy follows the pointer. */
+  let following = false;
+  let mouse: { clientX: number; clientY: number } | null = null;
+  let lastSteer = { at: -Infinity, key: "" };
+  /** Raiders: Alt is held down dragging a path, painting it or (from a painted tile) rubbing out. */
+  let pathing: { erase: boolean; last: Point } | null = null;
   const gamepads = createGamepads(() => ui.schemes);
   /** The pads' pointer, in screen pixels over the map; null until a pad is first touched. */
   let padPointer: { x: number; y: number } | null = null;
@@ -88,9 +98,37 @@ export function bindInput(
   }
 
   /** The map tile under the mouse. */
-  function tileFromEvent(e: MouseEvent): Point {
+  function tileFromEvent(e: { clientX: number; clientY: number }): Point {
     const rect = canvas.getBoundingClientRect();
     return tileAt(e.clientX - rect.left, e.clientY - rect.top);
+  }
+
+  /** Whether this screen plays a raider: the mouse steers an enemy instead of building. */
+  function isRaider(): boolean {
+    return playing() && getState()?.players[ui.playerId]?.role === "raider";
+  }
+
+  /** Sends where to head, at most every STEER_EVERY_MS and only when the tile changes. */
+  function steerTo(p: Point, now: number, force = false) {
+    const key = `${p.x},${p.y}`;
+    if (key === lastSteer.key && !force) return;
+    if (now - lastSteer.at < STEER_EVERY_MS && !force) return;
+    lastSteer = { at: now, key };
+    ui.raidTarget = p;
+    dispatch({ type: "steer", x: p.x, y: p.y });
+  }
+
+  function paintPathAt(p: Point, erase: boolean) {
+    dispatch(erase ? { type: "paintPath", x: p.x, y: p.y, erase } : { type: "paintPath", ...p });
+  }
+
+  /** Something there for a raider's enemy to act on, or the raider's own enemy (a bomber's blast). */
+  function actsOn(state: GameState, p: Point): boolean {
+    if (keepAt(state, p.x, p.y) || baseAt(state, p.x, p.y) || mountAt(state, p.x, p.y)) return true;
+    const onTile = (e: { x: number; y: number }) =>
+      Math.round(e.x) === p.x && Math.round(e.y) === p.y;
+    const own = ownEnemy(state, ui.playerId);
+    return state.units.some(onTile) || (own !== undefined && onTile(own));
   }
 
   // Wheel zooms around the cursor, so the tile under it stays put.
@@ -111,6 +149,9 @@ export function bindInput(
     const action = keyAction(ui.schemes.keyboard, e.code);
     const direction = action && PAN_ACTIONS[action];
     if (direction) ui.panKeys[direction] = false;
+    if (e.code === "KeyR" && isRaider()) {
+      dispatch({ type: "sprint", on: false });
+    }
   });
   window.addEventListener("blur", () => {
     for (const key of Object.keys(ui.panKeys) as (keyof UiState["panKeys"])[]) {
@@ -278,6 +319,12 @@ export function bindInput(
   window.addEventListener("keydown", (e) => {
     // Typing a name or room code must not trigger game shortcuts.
     if (e.target instanceof HTMLInputElement) return;
+    // A raider's own keys: F switches enemy, C chooses one, V follows it again, R sprints, Esc
+    // stops their enemy and drops its flags, Backspace rubs out the paths.
+    if (isRaider() && raiderKey(e)) {
+      ui.device = "keyboard";
+      return;
+    }
     // The build picker first: 1-3 open a tab, then a number picks, Esc closes.
     if (playing() && !e.metaKey && !e.ctrlKey && applyPickerKey(e.code)) {
       ui.device = "keyboard";
@@ -299,15 +346,67 @@ export function bindInput(
     if (action !== "debugMenu") perform(action);
   });
 
+  /** A raider's keys; false if it isn't one, so it goes on to the usual keys. */
+  function raiderKey(e: KeyboardEvent): boolean {
+    if (e.code === "KeyF") {
+      dispatch({ type: "switchEnemy" });
+    } else if (e.code === "KeyC") {
+      ui.raiderMenuOpen = !ui.raiderMenuOpen;
+    } else if (e.code === "KeyV") {
+      ui.recentre = true;
+    } else if (e.code === "Escape" && ui.raiderMenuOpen) {
+      ui.raiderMenuOpen = false;
+    } else if (e.code === "KeyR") {
+      if (!e.repeat) dispatch({ type: "sprint", on: true });
+    } else if (e.code === "Backspace") {
+      dispatch({ type: "clearPaths" });
+    } else if (e.code === "Escape" && !keys?.escape()) {
+      ui.raidTarget = null;
+      dispatch({ type: "stopInteract" });
+    } else {
+      return e.code === "Escape"; // a window took it
+    }
+    return true;
+  }
+
   canvas.addEventListener("contextmenu", (e) => {
     e.preventDefault();
+    if (isRaider()) {
+      dispatch({ type: "switchEnemy" });
+      return;
+    }
     dropTool();
   });
 
   canvas.addEventListener("mousedown", (e) => {
     if (e.button !== 0) return;
     ui.device = "keyboard";
-    pressAt(tileFromEvent(e));
+    const p = tileFromEvent(e);
+    const state = getState();
+    if (state && isRaider()) {
+      // Alt: paint a path for every free enemy, or rub one out, starting from a painted tile.
+      if (e.altKey) {
+        const erase = state.raidPaths.includes(p.y * state.width + p.x);
+        pathing = { erase, last: p };
+        paintPathAt(p, erase);
+        return;
+      }
+      // Shift: a pathing flag after the ones it has: walk there, or act on what's there.
+      if (e.shiftKey) {
+        const type = actsOn(state, p) ? "interact" : "steer";
+        dispatch({ type, x: p.x, y: p.y, queue: true });
+        return;
+      }
+      // On something to act on: walk up and act on it. On open ground: follow while held.
+      ui.raidTarget = p;
+      if (actsOn(state, p)) dispatch({ type: "interact", x: p.x, y: p.y });
+      else {
+        following = true;
+        steerTo(p, performance.now(), true);
+      }
+      return;
+    }
+    pressAt(p);
   });
 
   canvas.addEventListener("mousemove", (e) => {
@@ -315,6 +414,12 @@ export function bindInput(
     padTile = null; // a pad's d-pad starts again from where the mouse is
     const p = tileFromEvent(e);
     ui.hover = p;
+    mouse = { clientX: e.clientX, clientY: e.clientY };
+    if (following) steerTo(p, performance.now());
+    if (pathing && (p.x !== pathing.last.x || p.y !== pathing.last.y)) {
+      for (const step of lineBetween(pathing.last, p)) paintPathAt(step, pathing.erase);
+      pathing.last = p;
+    }
     dragTo(p);
   });
 
@@ -322,7 +427,13 @@ export function bindInput(
     if (ui.device === "keyboard") ui.hover = null;
   });
 
-  window.addEventListener("mouseup", endPress);
+  window.addEventListener("mouseup", () => {
+    endPress();
+    pathing = null;
+    // Let go: the enemy carries on to where the pointer was.
+    if (following && mouse) steerTo(tileFromEvent(mouse), performance.now(), true);
+    following = false;
+  });
 
   /** A turned view's tile as a map tile, and back. */
   const fromViewTile = (p: Point): Point => {
@@ -445,7 +556,11 @@ export function bindInput(
   }
 
   return {
-    /** Moves the view for held pan keys and reads the pads; call once a frame. */
+    /**
+     * Moves the view for held pan keys and reads the pads; call once a frame. While a raider
+     * holds the mouse, the camera following their enemy moves the map under a still pointer, so
+     * it keeps steering at whatever tile is under it now.
+     */
     frame(seconds: number) {
       const { left, right, up, down } = ui.panKeys;
       const step = (ui.schemes.keyboard.feel.panPixelsPerSecond * seconds) / tilePixels(ui.camera);
@@ -460,6 +575,10 @@ export function bindInput(
         const x = canvas.offsetLeft + padPointer!.x;
         const y = canvas.offsetTop + padPointer!.y;
         arrow.style.transform = `translate(${x}px, ${y}px)`;
+      }
+      if (following && mouse) {
+        if (isRaider()) steerTo(tileFromEvent(mouse), performance.now());
+        else following = false;
       }
     },
   };

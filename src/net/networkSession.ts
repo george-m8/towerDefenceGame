@@ -1,6 +1,6 @@
 // A Session backed by the game server: sends commands, draws what the server sends.
 import type { MapSize } from "../sim/config";
-import type { Command, CommandResult, GameMode, GameState, PlayerId } from "../sim/types";
+import type { Command, CommandResult, GameMode, GameState, PlayerId, Role } from "../sim/types";
 import { isDebugCommand } from "../sim/types";
 import { tokenKey } from "./join";
 import type { ClientMessage, LobbyInfo, ServerMessage } from "./protocol";
@@ -55,6 +55,8 @@ export interface NetworkSession extends Session {
   readonly lobby: LobbyInfo | null;
   /** Host only: start the game for everyone. */
   start(): void;
+  /** In the waiting room: defend, or raid (play the enemy). */
+  setRole(role: Role): void;
   /** Called with errors the player should see (e.g. an unknown room). */
   onError: (reason: string) => void;
   /** Called after each welcome (first join, rejoin or restart). */
@@ -104,6 +106,9 @@ export function createNetworkSession(
     },
     start() {
       send(options.fog === false ? { type: "start", fog: false } : { type: "start" });
+    },
+    setRole(role) {
+      send({ type: "setRole", role });
     },
     online: true,
     get status() {

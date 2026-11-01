@@ -79,6 +79,7 @@ export function applyUpdate(view: GameState, update: StateUpdate): Movers {
     for (const [i, left] of tiles.resources ?? []) view.resources[i] = left;
   }
   if (update.features) view.features = update.features;
+  if (update.raidPaths) view.raidPaths = update.raidPaths;
   return { enemies, units };
 }
 
@@ -162,6 +163,11 @@ function toEnemy(e: ClientEnemy): Enemy {
     mode: e.mode ?? "walking",
     targetId: null,
     leaderId: e.leaderId ?? null,
+    // Who controls an enemy isn't sent: a raider finds theirs by id (Player.raid).
+    controller: null,
+    roamer: false,
+    steer: null,
+    pathDone: false,
   };
 }
 

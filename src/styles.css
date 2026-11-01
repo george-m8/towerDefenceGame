@@ -1235,6 +1235,47 @@ a.button {
   display: none;
 }
 
+/* A raider's line (their enemy, its HP and the controls) along the bottom of the map, with
+   the menu for choosing which kind of enemy to be above it. */
+.raider-hud {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 32px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.raider-hud[hidden],
+.raider-menu[hidden] {
+  display: none;
+}
+
+.raider-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 4px 2px 12px;
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  box-shadow: 2px 2px 0 var(--ink);
+  text-align: center;
+}
+
+.raider-menu {
+  padding: 6px 10px 10px;
+}
+
+.raider-kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
 /*
  * Trial: translucent HUD and map overlays, so they stand out less against the map. Backgrounds
  * let the map show through and borders and shadows are softer; text stays solid. Hovering a

@@ -685,6 +685,28 @@ export const BAND = {
   catchUpSpeed: 1.3,
 };
 
+/** Raiders: players who control enemies (see sim/raiders.ts). */
+export const RAID = {
+  /** Most raiders in one game. */
+  maxRaiders: 2,
+  /** Wait after a raider's enemy dies before they take the nearest other one. */
+  respawnSeconds: 2,
+  /** Most tiles a controlled enemy's path search looks at. */
+  searchTiles: 400,
+  /** Goblins always roaming the map while a game has raiders, so there's always one to be. */
+  roamers: 5,
+  roamerSpawnSeconds: 3,
+  /** How far a roamer heads off each time, and how long it stops between. */
+  roamRadius: 8,
+  roamPauseSeconds: 1,
+  /** How long the flag a raider's enemy leaves where it died stays. */
+  flagSeconds: 10,
+  /** Most pathing flags a raider's enemy can have queued. */
+  maxFlags: 10,
+  /** Most tiles of path the raiders can paint between them. */
+  maxPathTiles: 400,
+};
+
 /** A version of a kind, rolled at spawn. Multipliers apply to the kind's stats. */
 export interface EnemyVariant {
   name: string;

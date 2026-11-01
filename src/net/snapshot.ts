@@ -37,6 +37,8 @@ export interface SentState {
   resources: number[];
   /** The chest list as sent; claiming a chest replaces the list, so a new list means a change. */
   features: GameState["features"];
+  /** The raiders' paths as sent; painting replaces the list, as claiming a chest does. */
+  raidPaths: GameState["raidPaths"];
   structures: Map<number, ClientStructure>;
   /** Enemies whose kind and variant the clients already have. */
   enemies: Set<number>;
@@ -55,6 +57,7 @@ export function sentStateOf(state: GameState): SentState {
     explored: [...state.explored],
     resources: [...state.resources],
     features: state.features,
+    raidPaths: state.raidPaths,
     structures: new Map(
       Object.values(state.structures).map((s) => [s.id, toClientStructure(s)] as const),
     ),
@@ -129,6 +132,10 @@ export function toUpdate(state: GameState, sent: SentState): StateUpdate {
   if (state.features !== sent.features) {
     update.features = state.features;
     sent.features = state.features;
+  }
+  if (state.raidPaths !== sent.raidPaths) {
+    update.raidPaths = state.raidPaths;
+    sent.raidPaths = state.raidPaths;
   }
   return update;
 }

@@ -25,6 +25,7 @@ import { loadPointerSettings, pointerCursor, savePointerSettings } from "./ui/po
 import { createGameOverDialog } from "./ui/gameOver";
 import { createOnlinePanel } from "./ui/players";
 import { createWaitingRoom } from "./ui/waitingRoom";
+import { createRaiderHud, isRaiding, ownEnemy } from "./ui/raiderHud";
 import {
   rememberedName,
   saveLevelStars,
@@ -191,6 +192,7 @@ function updateJournal(state: GameState, viewer: PlayerId, now: number) {
   if (notice !== null && toast.textContent !== notice) toast.textContent = notice;
 }
 const hud = createHud(element("#hud"), ui);
+const raiderHud = createRaiderHud(element("#raider-hud"), ui, dispatch);
 const keysBox = element("#panel");
 const panel = createPanel(
   { actions: hud.actions, keys: keysBox, status: element("#status") },
@@ -292,6 +294,17 @@ createMapButtons(element("#map-buttons"), {
         if (ui.debugDamage) ui.tool = null;
       },
       available: inGame,
+    },
+    {
+      // Plays you as a raider: you control the enemies instead of building (offline only).
+      label: "Play as enemy",
+      isOn: () => isRaiding(session?.state ?? null, ui.playerId),
+      toggle: () =>
+        dispatch({
+          type: "debugRole",
+          role: isRaiding(session?.state ?? null, ui.playerId) ? "defender" : "raider",
+        }),
+      available: () => inGame() && session?.online !== true,
     },
     {
       // Wins the level being played there and then, for its stars (by the keep's health).
@@ -706,6 +719,7 @@ function frame(now: number) {
         centredFor = mapKey;
       }
       input.frame(seconds);
+      followRaider(state);
       updateCurtain(now);
       const viewUi = turnedUi(state);
       const pending = session.pending.map((p) => ({
@@ -718,6 +732,8 @@ function frame(now: number) {
       if (!fullMapBox.hidden) fullMap.update(view);
       panel.update(state);
       hud.update(state);
+      if (isRaiding(state, session.playerId)) element("#hud").hidden = true; // raiders don't build
+      raiderHud.update(state, session.playerId);
       rememberView();
       pointerLabel.update(view, viewUi);
       if (!infoBox.hidden)
@@ -763,8 +779,44 @@ function turnedUi(state: GameState): typeof ui {
   return {
     ...ui,
     hover: ui.hover && toView(ui.hover, ui.rotation, state.width, state.height),
+    raidTarget: ui.raidTarget && toView(ui.raidTarget, ui.rotation, state.width, state.height),
     facing: turnFacing(ui.facing, ui.rotation),
   };
+}
+
+/**
+ * A raider's camera: which enemy it follows, whether it still does, and where it left the view,
+ * so a move by any other means (keys, dragging, the minimap) shows as a change.
+ */
+let raiderCamera: {
+  enemyId: number;
+  following: boolean;
+  x: number;
+  y: number;
+  zoom: number;
+} | null = null;
+
+/**
+ * A raider's camera keeps their enemy in the middle until they move the view away; then it stays
+ * where they put it until they take another enemy or press V. Zooming doesn't count as moving it.
+ */
+function followRaider(state: GameState) {
+  const enemy = ownEnemy(state, ui.playerId);
+  if (!enemy) return; // waiting to respawn: it stays where they died
+  const cam = ui.camera;
+  if (!raiderCamera || raiderCamera.enemyId !== enemy.id || ui.recentre) {
+    raiderCamera = { enemyId: enemy.id, following: true, x: cam.x, y: cam.y, zoom: cam.zoom };
+    ui.recentre = false;
+  } else if (
+    cam.zoom === raiderCamera.zoom &&
+    (cam.x !== raiderCamera.x || cam.y !== raiderCamera.y)
+  ) {
+    raiderCamera.following = false;
+  }
+  if (!raiderCamera.following) return;
+  const p = toView(enemy, ui.rotation, state.width, state.height);
+  centerOn(cam, p.x + 0.5, p.y + 0.5);
+  Object.assign(raiderCamera, { x: cam.x, y: cam.y, zoom: cam.zoom });
 }
 
 /** sessionStorage (per tab, so each tab is its own player), or memory if it's unavailable. */

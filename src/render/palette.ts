@@ -119,7 +119,7 @@ export const BUILD_BORDER_LONG = 0.75;
  * every map glyph, letters and building symbols such as ⛫ ⌂ 𐤄 alike (see GLYPHS.md); the usual
  * symbol fonts are only a fallback.
  */
-const GLYPH_FONTS = `Unifont, "Apple Symbols", "Segoe UI Symbol", "Segoe UI Historic", "Noto Sans Symbols 2", monospace`;
+export const GLYPH_FONTS = `Unifont, "Apple Symbols", "Segoe UI Symbol", "Segoe UI Historic", "Noto Sans Symbols 2", monospace`;
 /** Unifont's letters are half width, so two-letter codes (like Ti) fit a tile at this size too. */
 export const GLYPH_FONT = `${TILE_SIZE - 4}px ${GLYPH_FONTS}`;
 /** Every keep tile but the middle one (which has its HP over it): a rook. */
@@ -210,6 +210,12 @@ export const COLOURS = {
   aimLine: "#ff6b6b",
   splash: "rgba(255, 150, 40, 0.45)",
   heal: "#5ee36a",
+  /** The pole of the flag a raider's enemy leaves where it died (the pennant is theirs). */
+  flagPole: "#e6e1c1",
+  /** The raiders' paths, washed over the tiles they painted. */
+  raidPath: "#f4efcf",
+  /** The flag on each raiders' path's end, where enemies leave it. */
+  raidPathEnd: "#d9a13b",
   spikesUp: "#c8c8c8",
   spikesUpGlyph: "#ffffff",
   trapTarget: "rgba(255, 200, 200, 0.35)",
