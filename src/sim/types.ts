@@ -31,6 +31,74 @@ export interface Player {
   /** False while dropped out; they keep their gold and structures. */
   connected: boolean;
   votes: { pause: boolean; fastForward: boolean; skipToNight: boolean };
+  /** Defenders build; raiders control enemies (see sim/raiders.ts). */
+  role: Role;
+  /** Raiders only: the enemy they're in, and how they get the next one. */
+  raid: RaiderState | null;
+}
+
+export type Role = "defender" | "raider";
+
+export interface RaiderState {
+  /** The enemy they control; null while waiting for one. */
+  enemyId: number | null;
+  /** The enemy they last let go of, which a switch skips. */
+  leftId: number | null;
+  /** Ticks until they take the nearest enemy, after theirs died. */
+  respawnIn: number;
+  /** Where their enemy last was, to find the nearest one from when it dies. */
+  lastAt: Point | null;
+  /**
+   * Their enemy's plan: where it's going or what it's acting on now, then its pathing flags.
+   * The next enemy carries on with it after a death; raiders' screens draw it.
+   */
+  plan: Aim[];
+  /** The kind they last chose in the raider menu: they keep being one while there are any. */
+  kind: EnemyKindId | null;
+  /**
+   * Set while they're in another kind because none of theirs was free: enemies with an id from
+   * this one on have spawned since, and the first of their kind among them becomes them.
+   */
+  waitingFrom: number | null;
+}
+
+/** What a raider told their enemy to act on. */
+export type RaidOrder =
+  | { kind: "structure"; id: number }
+  | { kind: "unit"; id: number }
+  | { kind: "keep"; index: number }
+  | { kind: "self" };
+
+/**
+ * Where a raider sent their enemy, or one of its pathing flags: walk to (x, y), or walk up to
+ * what's there and act on it.
+ */
+export interface Aim {
+  x: number;
+  y: number;
+  order: RaidOrder | null;
+}
+
+/** How a controlled enemy or a roamer is getting about, instead of its flow field. */
+export interface Steering {
+  /** Who's steering: a raider (their enemy, or one they've left still on its way), or roaming. */
+  by: "raider" | "roam";
+  /** The tile it's heading for; null stands still. */
+  goal: Point | null;
+  /** What to walk up to and act on (wins over `goal`). */
+  order: RaidOrder | null;
+  /** The tile it was sent to (for an order, where its target was when given). */
+  aimAt: Point | null;
+  /** Pathing flags still to do, in order, once the goal or order is done. */
+  queue: Aim[];
+  /** Controlled bombers: the sprint button is held. */
+  sprinting: boolean;
+  /** Steps still to walk, searched for `pathKey` from tile index `searchedFrom`. */
+  path: Point[] | null;
+  pathKey: string;
+  searchedFrom: number;
+  /** Roamers: ticks to stand before heading off again. */
+  pause: number;
 }
 
 export interface Structure {
@@ -97,6 +165,14 @@ export interface Enemy {
   targetId: number | null;
   /** Band members: the leader they follow, until it dies. */
   leaderId: number | null;
+  /** The raider controlling it; null while it acts on its own. */
+  controller: PlayerId | null;
+  /** A goblin roaming the map in a game with raiders, outside the waves. */
+  roamer: boolean;
+  /** Controlled enemies, ones left on their way and roamers; null for enemies walking their field. */
+  steer: Steering | null;
+  /** It has walked a raiders' path to its end: it keeps to its own field from then on. */
+  pathDone: boolean;
 }
 
 /** One of a player's own units (see sim/units.ts). Moves tile to tile like an enemy. */
@@ -152,6 +228,8 @@ export type Effect =
   | { kind: "splash"; x: number; y: number; radius: number; ttl: number }
   | { kind: "spikes"; x: number; y: number; ttl: number }
   | { kind: "heal"; x: number; y: number; ttl: number }
+  /** Where a raider's enemy died: a small flag in their colour, the only sign it was them. */
+  | { kind: "flag"; x: number; y: number; owner: PlayerId; ttl: number }
   /**
    * Something destroyed: an enemy or unit killed, or a structure broken. Drawn still there for
    * BURST_DELAY_TICKS, then as its pixels flying apart and fading for BURST_TICKS.
@@ -279,6 +357,13 @@ export interface GameState {
   speed: number;
   /** Chance (0-1) at each tile that an enemy wanders off the path. Starts at ENEMY.wanderChance. */
   wanderChance: number;
+  /** Games with raiders: ticks until another roaming goblin may spawn. */
+  roamerTimer: number;
+  /**
+   * Tiles the raiders painted as paths (tile indices): free wave enemies keep to them, on their
+   * usual flow, to their end nearest the keep. Replaced, never changed in place, when painted.
+   */
+  raidPaths: number[];
   gameOver: boolean;
   /**
    * A campaign level's last wave: no wave starts after it, and once it has all come and been
@@ -319,6 +404,25 @@ export type Command =
   | { type: "debugClock"; hour: number }
   /** Dev only (offline): wins a campaign level on the spot, with the keep as it is. */
   | { type: "debugWin" }
+  /** Dev only (offline): plays the sender as a defender or a raider ("Play as enemy"). */
+  | { type: "debugRole"; role: Role }
+  /** Raiders: head for a tile; with `queue`, add it as a pathing flag after the others. */
+  | { type: "steer"; x: number; y: number; queue?: true }
+  /**
+   * Raiders: act on what's on a tile (attack, blow up, dig), or steer there if nothing is; with
+   * `queue`, as a pathing flag after the others.
+   */
+  | { type: "interact"; x: number; y: number; queue?: true }
+  /** Raiders: stop, dropping their enemy's pathing flags, and stand. */
+  | { type: "stopInteract" }
+  /** Raiders: paint a tile of path for the free enemies, or with `erase`, rub one out. */
+  | { type: "paintPath"; x: number; y: number; erase?: true }
+  /** Raiders: rub out all the paths. */
+  | { type: "clearPaths" }
+  /** Raiders: hold or let go of sprint (bombers). */
+  | { type: "sprint"; on: boolean }
+  /** Raiders: jump into a random other enemy, of `kind` if given (the raider menu). */
+  | { type: "switchEnemy"; kind?: EnemyKindId }
   | { type: "sendWave" }
   /** Votes to skip the rest of the day to the early evening (games with enemies at night). */
   | { type: "voteSkipToNight" }
@@ -335,7 +439,8 @@ export type DebugCommand = Extract<
       | "debugUnit"
       | "debugDamage"
       | "debugClock"
-      | "debugWin";
+      | "debugWin"
+      | "debugRole";
   }
 >;
 
@@ -347,7 +452,8 @@ export function isDebugCommand(command: Command): command is DebugCommand {
     command.type === "debugUnit" ||
     command.type === "debugClock" ||
     command.type === "debugDamage" ||
-    command.type === "debugWin"
+    command.type === "debugWin" ||
+    command.type === "debugRole"
   );
 }
 

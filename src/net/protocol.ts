@@ -1,5 +1,12 @@
 // The messages between browser and game server. Shared by both, so no Node or DOM APIs here.
-import { MAP_SIZES, STRUCTURES, type MapSize, type StructureStats } from "../sim/config";
+import {
+  ENEMY_KINDS,
+  MAP_SIZES,
+  STRUCTURES,
+  type EnemyKindId,
+  type MapSize,
+  type StructureStats,
+} from "../sim/config";
 import type {
   EnemiesCome,
   Command,
@@ -10,6 +17,7 @@ import type {
   GameMode,
   GameState,
   PlayerId,
+  Role,
   Structure,
   StructureKind,
   Unit,
@@ -32,6 +40,8 @@ export type ClientMessage =
   | { type: "rejoin"; room: string; token: string }
   | { type: "command"; seq: number; command: OnlineCommand }
   | { type: "restart" }
+  /** In the waiting room: play as a defender or a raider (Endless only). */
+  | { type: "setRole"; role: Role }
   /** Host only: leave the waiting room and start the game. `fog: false` is the ?fog=off dev switch. */
   | { type: "start"; fog?: false };
 
@@ -126,6 +136,8 @@ export type StateUpdate = Omit<Pick<ClientState, DynamicFields>, "enemies" | "un
   };
   /** The map features (chests), when one was claimed. */
   features?: ClientState["features"];
+  /** The raiders' paths, when they were painted. */
+  raidPaths?: ClientState["raidPaths"];
 };
 
 export type ServerMessage =
@@ -193,6 +205,10 @@ export function parseClientMessage(raw: string): ParseResult {
     }
     case "restart":
       return ok({ type: "restart" });
+    case "setRole":
+      return data.role === "defender" || data.role === "raider"
+        ? ok({ type: "setRole", role: data.role })
+        : fail("Bad role");
     case "start":
       return ok(data.fog === false ? { type: "start", fog: false } : { type: "start" });
     default:
@@ -207,7 +223,27 @@ function parseCommand(data: unknown): OnlineCommand | null {
     case "toggleFastForward":
     case "voteSkipToNight":
     case "sendWave":
+    case "stopInteract":
+    case "clearPaths":
       return { type: data.type };
+    case "paintPath": {
+      if (!isCoordinate(data.x) || !isCoordinate(data.y)) return null;
+      if (data.erase === undefined) return { type: "paintPath", x: data.x, y: data.y };
+      return data.erase === true ? { type: "paintPath", x: data.x, y: data.y, erase: true } : null;
+    }
+    case "switchEnemy":
+      if (data.kind === undefined) return { type: "switchEnemy" };
+      return typeof data.kind === "string" && Object.hasOwn(ENEMY_KINDS, data.kind)
+        ? { type: "switchEnemy", kind: data.kind as EnemyKindId }
+        : null;
+    case "steer":
+    case "interact": {
+      if (!isCoordinate(data.x) || !isCoordinate(data.y)) return null;
+      if (data.queue === undefined) return { type: data.type, x: data.x, y: data.y };
+      return data.queue === true ? { type: data.type, x: data.x, y: data.y, queue: true } : null;
+    }
+    case "sprint":
+      return typeof data.on === "boolean" ? { type: "sprint", on: data.on } : null;
     case "sell":
       return isCoordinate(data.x) && isCoordinate(data.y)
         ? { type: "sell", x: data.x, y: data.y }

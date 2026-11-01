@@ -15,6 +15,7 @@ import { baseAt, blocksAt, damageKeep, damageStructure, inBounds, keepAt, mountA
 import { atTileCentre, stepTo, walk } from "./movement";
 import { damageUnit, unitsAt } from "./units";
 import { DIRECTIONS, canCross } from "./pathfinding";
+import { pathFieldFor } from "./raidPaths";
 import type { Enemy, GameState, Keep, Point, Structure } from "./types";
 
 type Behaviour = (state: GameState, enemy: Enemy) => boolean;
@@ -27,7 +28,7 @@ export const BEHAVIOURS: Record<BehaviourId, Behaviour> = {
   digger: dig,
 };
 
-function abilityOf(enemy: Enemy): EnemyAbility {
+export function abilityOf(enemy: Enemy): EnemyAbility {
   const kind: EnemyKind = ENEMY_KINDS[enemy.kind];
   return kind.ability ?? {};
 }
@@ -39,7 +40,7 @@ function abilityOf(enemy: Enemy): EnemyAbility {
 function bomb(state: GameState, enemy: Enemy): boolean {
   const ability = abilityOf(enemy);
   if (enemy.mode === "walking") {
-    if (!atTileCentre(enemy)) return false;
+    if (!atTileCentre(enemy) || onRaidPath(state, enemy)) return false;
     const target = findTarget(state, enemy, ability, isBombTarget);
     if (!target) return false;
     enemy.mode = "sprinting";
@@ -95,7 +96,7 @@ function dig(state: GameState, enemy: Enemy): boolean {
   let target = enemy.targetId === null ? undefined : state.structures[enemy.targetId];
   if (!target) {
     if (enemy.targetId !== null) giveUp(enemy); // it fell: walk on
-    if (!atTileCentre(enemy)) return false;
+    if (!atTileCentre(enemy) || onRaidPath(state, enemy)) return false;
     target = findTarget(state, enemy, ability, isDigTarget);
     if (!target) return false;
     enemy.targetId = target.id;
@@ -121,7 +122,12 @@ function dig(state: GameState, enemy: Enemy): boolean {
   return true;
 }
 
-function isDigTarget(structure: Structure): boolean {
+/** On a raiders' path, short of its end: it keeps to the path rather than go for a target. */
+function onRaidPath(state: GameState, enemy: Enemy): boolean {
+  return pathFieldFor(state, enemy, ENEMY_KINDS[enemy.kind].profile) !== undefined;
+}
+
+export function isDigTarget(structure: Structure): boolean {
   return structure.owner !== null && (structure.kind === "wall" || structure.kind === "wallSpikes");
 }
 
@@ -209,7 +215,7 @@ function isOpen(state: GameState, x: number, y: number): boolean {
  * Damages every structure and the keep in the square around the bomber, then it dies. It drops
  * no bounty (nobody killed it) and never hurts other enemies.
  */
-function explode(state: GameState, enemy: Enemy, ability: EnemyAbility) {
+export function explode(state: GameState, enemy: Enemy, ability: EnemyAbility) {
   const radius = ability.radius ?? 1;
   const amount = ability.amount ?? 0;
   const keepsHit = new Set<Keep>();

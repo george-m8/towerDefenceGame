@@ -51,6 +51,8 @@ const cache = new WeakMap<GameState, Map<number, Sight>>();
 /** The tier of every tile, as `player` sees it. Recomputed only when the grid changes or a unit
  * moves to another tile. */
 export function getSight(state: GameState, player?: PlayerId): Uint8Array {
+  // Raiders see the whole map for now (sight from their enemies is a later step).
+  if (player !== undefined && state.players[player]?.role === "raider") return allInSight(state);
   const team = teamOf(state, player);
   let byTeam = cache.get(state);
   if (!byTeam) cache.set(state, (byTeam = new Map()));
@@ -70,6 +72,15 @@ export function getSight(state: GameState, player?: PlayerId): Uint8Array {
     fog: state.fog,
     tier,
   });
+  return tier;
+}
+
+const everything = new WeakMap<GameState, Uint8Array>();
+
+function allInSight(state: GameState): Uint8Array {
+  let tier = everything.get(state);
+  if (!tier)
+    everything.set(state, (tier = new Uint8Array(state.width * state.height).fill(IN_SIGHT)));
   return tier;
 }
 

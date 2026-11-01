@@ -10,11 +10,13 @@ import {
 import { BEHAVIOURS } from "./behaviours";
 import { addCue } from "./cues";
 import { trample } from "./farms";
-import { attackTargetAt, blocksAt, damageKeep, damageStructure, keepAt } from "./grid";
+import { attackTargetAt, blocksAt, damageKeep, damageStructure, keepAt, tileIndex } from "./grid";
 import { DIRECTIONS, canCross, distanceAt, nextStep } from "./pathfinding";
 import { stepTo, walk } from "./movement";
 import { damageUnit, unitsAt } from "./units";
 import { nextRandom, randomInt } from "./rng";
+import { followAim, roam, steerControlled } from "./raiders";
+import { pathFieldFor } from "./raidPaths";
 import type { Enemy, GameState, Keep, PlayerId, Point, Structure, Unit } from "./types";
 
 export interface SpawnOptions {
@@ -75,6 +77,10 @@ export function spawnEnemy(
     mode: "walking",
     targetId: null,
     leaderId: options.leader?.id ?? null,
+    controller: null,
+    roamer: false,
+    steer: null,
+    pathDone: false,
   };
   state.enemies.push(enemy);
   return enemy;
@@ -107,7 +113,11 @@ function advance(state: GameState, enemy: Enemy): void {
   if (enemy.hp <= 0) return; // killed since the last tick; removed with the bounties
   enemy.attackCooldown = Math.max(0, enemy.attackCooldown - 1);
   const from = { x: Math.round(enemy.x), y: Math.round(enemy.y) };
-  if (!BEHAVIOURS[ENEMY_KINDS[enemy.kind].behaviour](state, enemy)) {
+  if (enemy.controller !== null) steerControlled(state, enemy);
+  else if (enemy.steer?.by === "raider")
+    followAim(state, enemy); // left still on its way
+  else if (enemy.roamer) roam(state, enemy);
+  else if (!BEHAVIOURS[ENEMY_KINDS[enemy.kind].behaviour](state, enemy)) {
     walk(enemy, speedOf(state, enemy), () => chooseNextTile(state, enemy));
   }
   // Stepping onto a new tile tramples farmland there, by the enemy's weight.
@@ -153,13 +163,15 @@ function speedOf(state: GameState, enemy: Enemy): number {
 /**
  * Sets the next tile to walk to. If the keep or a blocking structure is next, the enemy
  * stays where it is and attacks it instead, and this returns false. A band member uses its
- * leader's field, and waits rather than get too far ahead of it.
+ * leader's field, and waits rather than get too far ahead of it. On a raiders' path, the field
+ * keeps it to the path (see raidPaths.ts).
  */
 function chooseNextTile(state: GameState, enemy: Enemy): boolean {
   const previous = { x: enemy.px, y: enemy.py };
   const leader = leaderOf(state, enemy);
   const profile = ENEMY_KINDS[(leader ?? enemy).kind].profile;
-  const pathStep = nextStep(state, enemy.x, enemy.y, previous, profile);
+  const paths = pathFieldFor(state, enemy, profile);
+  const pathStep = nextStep(state, enemy.x, enemy.y, previous, profile, paths?.dist);
   const unit = unitToFight(state, enemy, pathStep);
   if (unit) {
     attackUnit(enemy, unit);
@@ -177,8 +189,12 @@ function chooseNextTile(state: GameState, enemy: Enemy): boolean {
     return false;
   }
   if (leader && -tilesBehind(state, pathStep, leader, profile) > BAND.maxLead) return false;
-  // Only walking enemies wander; one breaking through stays on its target.
-  const next = wanderStep(state, enemy, pathStep, previous, profile) ?? pathStep;
+  // Only walking enemies wander; one breaking through stays on its target. On a path, it
+  // only wanders along it.
+  const wander = wanderStep(state, enemy, pathStep, previous, profile);
+  const onPath = (p: Point) => paths?.onPath[tileIndex(state, p.x, p.y)] === 1;
+  const strays = wander && paths && onPath(enemy) && !onPath(wander);
+  const next = (!strays && wander) || pathStep;
   stepTo(enemy, next.x, next.y);
   return true;
 }
@@ -211,7 +227,7 @@ function wanderStep(
   return options.length > 0 ? options[randomInt(state, 0, options.length - 1)] : null;
 }
 
-function attackKeep(state: GameState, enemy: Enemy, keep: Keep) {
+export function attackKeep(state: GameState, enemy: Enemy, keep: Keep) {
   if (enemy.attackCooldown > 0) return;
   damageKeep(state, keep, enemy.damage);
   enemy.attackCooldown = enemy.attackInterval;
@@ -237,13 +253,13 @@ function weakest(units: Unit[]): Unit | undefined {
   );
 }
 
-function attackUnit(enemy: Enemy, unit: Unit) {
+export function attackUnit(enemy: Enemy, unit: Unit) {
   if (enemy.attackCooldown > 0) return;
   damageUnit(unit, enemy.damage);
   enemy.attackCooldown = enemy.attackInterval;
 }
 
-function attack(state: GameState, enemy: Enemy, target: Structure) {
+export function attack(state: GameState, enemy: Enemy, target: Structure) {
   if (enemy.attackCooldown > 0) return;
   damageStructure(state, target, enemy.damage);
   enemy.attackCooldown = enemy.attackInterval;

@@ -244,6 +244,10 @@ function enemyAt(x: number, y: number): Enemy {
     mode: "walking",
     targetId: null,
     leaderId: null,
+    controller: null,
+    roamer: false,
+    steer: null,
+    pathDone: false,
   };
 }
 

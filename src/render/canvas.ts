@@ -12,11 +12,13 @@ import {
   topAt,
 } from "../sim/grid";
 import { nextStep } from "../sim/pathfinding";
+import { stretchEnds } from "../sim/raidPaths";
 import { buildFractionAt, buildProgress } from "../sim/building";
 import { facingAngle } from "../sim/aiming";
 import {
   EFFECT_TICKS,
   HEAL_EFFECT_TICKS,
+  TICK_RATE,
   ENEMY_KINDS,
   STRUCTURES,
   UNIT_KINDS,
@@ -75,6 +77,7 @@ import {
   playerColour,
   DOOR_ALPHA,
   KEEP_GLYPH,
+  GLYPH_FONTS,
 } from "./palette";
 import { fogImage, fogSpans, type FogLevel } from "./fog";
 import { createHpBarTracker } from "./hpBars";
@@ -94,6 +97,10 @@ const MAX_LIGHT_RADIUS = Math.max(
 
 /** How dark blocks' shadows are in full daylight, on the ground and on lower blocks beside them. */
 const SHADOW_ALPHA = 0.3;
+/** A raider's death flag fades out over its last second. */
+const FLAG_FADE_TICKS = TICK_RATE;
+/** The numbers on a raider's pathing flags. */
+const FLAG_LABEL_FONT = `${Math.round(TILE_SIZE * 0.45)}px ${GLYPH_FONTS}`;
 
 /** Compass degrees (0 = north, clockwise) to canvas radians (0 = east, clockwise). */
 function toCanvasAngle(compassDegrees: number): number {
@@ -185,6 +192,8 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   let textured = true;
   /** The night's light map as an image, one pixel a tile (see drawNight). */
   const nightImage = document.createElement("canvas");
+  /** Each raiders' path's end, worked out again only when the paths change. */
+  let pathEnds: { paths: number[]; ends: number[] } = { paths: [], ends: [] };
   /** Blocks' shadows this frame: fainter as the light fades (see dayNight.ts). */
   let shadow = `rgba(0, 0, 0, ${SHADOW_ALPHA})`;
   /**
@@ -826,6 +835,97 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     ctx!.lineWidth = 1;
   }
 
+  /**
+   * A small flag in a raider's colour where their enemy died: a pole with a pennant, fading out
+   * over its last FLAG_FADE_TICKS.
+   */
+  function drawFlag(effect: Extract<GameState["effects"][number], { kind: "flag" }>) {
+    drawPennant(effect, playerColour(effect.owner), Math.min(1, effect.ttl / FLAG_FADE_TICKS));
+  }
+
+  /** A ring in the raider's colour round the enemy they're playing. */
+  function drawOwnRing(enemy: Point) {
+    ctx!.strokeStyle = playerColour(viewer);
+    ctx!.lineWidth = 2;
+    ctx!.beginPath();
+    const r = TILE_SIZE * 0.47;
+    ctx!.arc((enemy.x + 0.5) * TILE_SIZE, (enemy.y + 0.5) * TILE_SIZE, r, 0, Math.PI * 2);
+    ctx!.stroke();
+    ctx!.lineWidth = 1;
+  }
+
+  /** A small flag on a tile: a pole and a pennant, with a number beside it if given. */
+  function drawPennant(at: Point, colour: string, alpha = 1, label?: string) {
+    const left = (at.x + 0.35) * TILE_SIZE;
+    const top = (at.y + 0.15) * TILE_SIZE;
+    ctx!.globalAlpha = alpha;
+    ctx!.strokeStyle = COLOURS.flagPole;
+    ctx!.lineWidth = 1.5;
+    ctx!.beginPath();
+    ctx!.moveTo(left, top);
+    ctx!.lineTo(left, top + TILE_SIZE * 0.7);
+    ctx!.stroke();
+    ctx!.fillStyle = colour;
+    ctx!.beginPath();
+    ctx!.moveTo(left, top);
+    ctx!.lineTo(left + TILE_SIZE * 0.4, top + TILE_SIZE * 0.15);
+    ctx!.lineTo(left, top + TILE_SIZE * 0.3);
+    ctx!.closePath();
+    ctx!.fill();
+    if (label) {
+      ctx!.font = FLAG_LABEL_FONT;
+      ctx!.fillStyle = colour;
+      ctx!.fillText(label, left + TILE_SIZE * 0.35, top + TILE_SIZE * 0.55);
+    }
+    ctx!.globalAlpha = 1;
+    ctx!.lineWidth = 1;
+  }
+
+  /**
+   * A raider's pathing flags, numbered in the order they'll be done, joined from `from` (their
+   * enemy) by a faint line. Only the raider sees them.
+   */
+  function drawPathFlags(flags: readonly Point[], colour: string, from?: Point) {
+    if (flags.length === 0) return;
+    ctx!.strokeStyle = colour;
+    ctx!.globalAlpha = 0.5;
+    ctx!.setLineDash([3, 3]);
+    ctx!.beginPath();
+    const points = from ? [from, ...flags] : flags;
+    points.forEach((p, i) => {
+      const x = (p.x + 0.5) * TILE_SIZE;
+      const y = (p.y + 0.5) * TILE_SIZE;
+      if (i === 0) ctx!.moveTo(x, y);
+      else ctx!.lineTo(x, y);
+    });
+    ctx!.stroke();
+    ctx!.setLineDash([]);
+    ctx!.globalAlpha = 1;
+    flags.forEach((f, i) => drawPennant(f, colour, 0.9, String(i + 1)));
+  }
+
+  /**
+   * The raiders' paths: a wash over each painted tile, and a flag on each stretch's end, where
+   * enemies leave it. Only raiders see them.
+   */
+  function drawRaidPaths(state: GameState) {
+    if (state.raidPaths.length === 0) return;
+    ctx!.fillStyle = COLOURS.raidPath;
+    ctx!.globalAlpha = 0.3;
+    for (const i of state.raidPaths) {
+      const x = i % state.width;
+      const y = Math.floor(i / state.width);
+      ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    }
+    ctx!.globalAlpha = 1;
+    if (pathEnds.paths !== state.raidPaths) {
+      pathEnds = { paths: state.raidPaths, ends: stretchEnds(state) };
+    }
+    for (const i of pathEnds.ends) {
+      drawPennant({ x: i % state.width, y: Math.floor(i / state.width) }, COLOURS.raidPathEnd);
+    }
+  }
+
   /** A border just inside a tile. */
   function outlineTile(p: Point, colour: string) {
     ctx!.strokeStyle = colour;
@@ -901,6 +1001,8 @@ export function createRenderer(canvas: HTMLCanvasElement) {
         ctx!.fillText("+", (effect.x + 0.5) * TILE_SIZE, (effect.y + 0.2) * TILE_SIZE - rise);
       } else if (effect.kind === "burst") {
         drawBurst(effect);
+      } else if (effect.kind === "flag") {
+        drawFlag(effect);
       } else {
         if (effect.ttl > EFFECT_TICKS) continue; // the shot is still in the air
         const size = (effect.radius * 2 + 1) * TILE_SIZE;
@@ -990,8 +1092,11 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   }
 
   function drawEnemies(state: GameState, enemies: GameState["enemies"]) {
+    // A raider's own enemy gets a ring, on their screen only: nobody else can tell it apart.
+    const own = state.players[viewer]?.raid?.enemyId ?? null;
     for (const enemy of enemies) {
       if (!canSeeEnemiesAt(state, enemy.x, enemy.y, viewer)) continue;
+      if (enemy.id === own) drawOwnRing(enemy);
       const kind = ENEMY_KINDS[enemy.kind];
       ctx!.font = enemyFont(kind.variants[enemy.variant].size);
       ctx!.fillStyle = ENEMY_COLOURS[enemy.kind];
@@ -1051,6 +1156,15 @@ export function createRenderer(canvas: HTMLCanvasElement) {
         drawGhost(state, ui);
       }
       drawHoverEdge(state, ui);
+      const raid = state.players[viewer]?.raid;
+      if (raid) {
+        // The paths every free enemy keeps to, the raider's target, and their enemy's flags.
+        drawRaidPaths(state);
+        if (ui.raidTarget && raid.enemyId !== null)
+          outlineTile(ui.raidTarget, playerColour(viewer));
+        const own = state.enemies.find((e) => e.id === raid.enemyId);
+        drawPathFlags(raid.plan, playerColour(viewer), own);
+      }
       hpBars.endFrame();
     },
   };

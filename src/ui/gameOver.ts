@@ -53,6 +53,15 @@ export function createGameOverDialog(
         summary.textContent = `${winner} wins after ${time}. Map seed ${state.seed}.`;
         return;
       }
+      if (!state.won && Object.values(state.players).some((p) => p.role === "raider")) {
+        // With raiders, the keep falling is their win.
+        const raiding = state.players[playerId]?.role === "raider";
+        title.textContent = raiding
+          ? "The keep has fallen. Raiders win!"
+          : "The raiders took the keep.";
+        summary.textContent = `Raiders win after ${time}. Map seed ${state.seed}.`;
+        return;
+      }
       if (state.won && win) {
         const keep = state.keeps[0];
         const won = starsFor(win, keep);

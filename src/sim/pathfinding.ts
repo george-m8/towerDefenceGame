@@ -50,6 +50,7 @@ export function canCross(
  * The neighbour an enemy on (x, y) should move to next, or null if already on the keep.
  * The returned tile may hold a blocking structure, which means "attack this".
  * On a tie, any other tile is preferred over `avoid` (the tile the enemy just left).
+ * `dist` walks another field than the profile's own (the raiders' paths).
  */
 export function nextStep(
   state: GameState,
@@ -57,8 +58,8 @@ export function nextStep(
   y: number,
   avoid?: Point,
   profile: MovementProfile = "follower",
+  dist: ArrayLike<number> = getFlowField(state, profile).dist,
 ): Point | null {
-  const { dist } = getFlowField(state, profile);
   if (dist[tileIndex(state, x, y)] === 0) return null;
   let best: Point | null = null;
   let bestDist = Infinity;
@@ -132,7 +133,7 @@ function computeDistances(state: GameState, profile: MovementProfile): number[] 
  * The cost of stepping onto each tile for this profile; Infinity where it can't go. Reads the
  * layers directly (the same rules as canCross and blocksAt) because it runs for every tile.
  */
-function tileCosts(state: GameState, profile: MovementProfile): Float64Array {
+export function tileCosts(state: GameState, profile: MovementProfile): Float64Array {
   const blockedCost = state.width * state.height + 1;
   const { terrain, base, mount, structures } = state;
   const cost = new Float64Array(terrain.length);
@@ -162,7 +163,7 @@ function breachCost(state: GameState, x: number, y: number): number {
 }
 
 /** Minimal binary heap of (priority, tile index) pairs in typed arrays, growing as needed. */
-class MinHeap {
+export class MinHeap {
   private priorities: Float64Array;
   private values: Int32Array;
   size = 0;

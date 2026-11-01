@@ -137,6 +137,12 @@ export interface UiState {
   device: Device;
   /** Each device's bindings, faces and feel, with the player's remaps. */
   schemes: Schemes;
+  /** Raiders: asked to put the camera back on their enemy and follow it again (V). */
+  recentre: boolean;
+  /** Raiders: the map tile they last pointed their enemy at, drawn as an outline. */
+  raidTarget: Point | null;
+  /** Raiders: the menu for choosing which kind of enemy to be is open (C). */
+  raiderMenuOpen: boolean;
 }
 
 export function createUiState(): UiState {
@@ -162,6 +168,9 @@ export function createUiState(): UiState {
     panKeys: { left: false, right: false, up: false, down: false },
     device: "keyboard",
     schemes: DEFAULT_SCHEMES,
+    recentre: false,
+    raidTarget: null,
+    raiderMenuOpen: false,
   };
 }
 
