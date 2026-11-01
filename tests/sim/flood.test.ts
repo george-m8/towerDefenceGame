@@ -266,6 +266,20 @@ describe("the lava", () => {
     expect(state.terrain[tileIndex(state, 12, 20)]).toBe("lava");
   });
 
+  it("doesn't take ruins either", () => {
+    const state = blankFlood();
+    state.flood!.king = { x: 40, y: 10 };
+    const ruin = placeStructure(state, "ruin", 3, 20, "N", null);
+    const tower = placeStructure(state, "archer", 3, 20, "E", ME);
+    tower.buildLeft = 0;
+    state.flood!.front = 20;
+    run(state, 20 * TICK_RATE);
+    expect(state.structures[ruin.id]).toBeDefined();
+    expect(state.structures[tower.id]).toBeDefined(); // safe on it
+    expect(state.terrain[tileIndex(state, 3, 20)]).not.toBe("lava");
+    expect(state.terrain[tileIndex(state, 4, 20)]).toBe("lava");
+  });
+
   it("creeps through a gap and round a corner at its own pace, not all at once", () => {
     const state = blankFlood();
     state.flood!.king = { x: 40, y: 10 };

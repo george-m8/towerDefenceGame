@@ -3,7 +3,8 @@
 // enemy's: a flag to walk to, then more flags after it, and he walks to each in turn by the
 // shortest way he knows (over land you've seen). Behind him lava creeps in from the left, slowly
 // at first and a little faster all the time, with a ragged edge (see lavaEdge), turning each tile
-// it reaches to lava with all that's on it, but for walls, which it flows round (spreadLava). The lava touching the king ends the game; how far he got is the score.
+// it reaches to lava with all that's on it, but for walls and ruins, which it flows round
+// (spreadLava). The lava touching the king ends the game; how far he got is the score.
 // The map never ends: as the king nears its right edge, the column furthest behind (lava, or soon
 // to be) is dropped, everything moves a column left, and a column of new land comes in on the
 // right (see shiftWorld). The camera moves with it.
@@ -381,13 +382,13 @@ function nextWay(state: GameState, flood: Flood): void {
 }
 
 /**
- * Whether lava stops at (x, y): a finished wall holds it (and a tower on it), however long, and
- * so does the keep.
+ * Whether lava stops at (x, y): a finished wall or a ruin (an old wall) holds it, and a tower on
+ * it, however long; so does a goal's keep.
  */
 function holdsLava(state: GameState, x: number, y: number): boolean {
   if (isFloodHome(state, x, y)) return true;
   const base = baseAt(state, x, y);
-  return base !== undefined && base.kind === "wall" && isBuilt(base);
+  return base !== undefined && (base.kind === "wall" || base.kind === "ruin") && isBuilt(base);
 }
 
 /**
