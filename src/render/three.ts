@@ -10,6 +10,7 @@ import * as THREE from "three";
 import { ENEMY_KINDS, UNIT_KINDS } from "../sim/config";
 import { SEEN, UNEXPLORED, canSeeEnemiesAt, getSight } from "../sim/fog";
 import { baseAt, isBuilt, mountAt } from "../sim/grid";
+import { ringTiles } from "../sim/keepWalls";
 import type { GameState, PlayerId } from "../sim/types";
 import { ISO, tilePixels, viewCentre, type Camera } from "../ui/camera";
 import type { UiState } from "../ui/state";
@@ -96,6 +97,43 @@ function isTowerOnWall(state: GameState, x: number, y: number): boolean {
   const mount = mountAt(state, x, y);
   const base = baseAt(state, x, y);
   return !!mount && !!base && isBuilt(mount) && isBuilt(base);
+}
+
+/** The tiles of the wall rings round the keeps (see sim/keepWalls.ts), as tile indices. */
+export function keepRing(state: GameState): Set<number> {
+  return new Set(state.keeps.flatMap(ringTiles).map((p) => p.y * state.width + p.x));
+}
+
+/** A finished, bare wall on a keep's ring: it has ramparts from the start. */
+function isKeepWall(state: GameState, ring: ReadonlySet<number>, x: number, y: number): boolean {
+  if (x < 0 || y < 0 || x >= state.width || y >= state.height) return false;
+  const base = baseAt(state, x, y);
+  return (
+    ring.has(y * state.width + x) && base?.kind === "wall" && isBuilt(base) && !mountAt(state, x, y)
+  );
+}
+
+/** Whether a tile's top has ramparts on any side: a tower on a wall, or a keep wall. */
+function hasRamparts(state: GameState, ring: ReadonlySet<number>, x: number, y: number): boolean {
+  return isTowerOnWall(state, x, y) || isKeepWall(state, ring, x, y);
+}
+
+/**
+ * Whether (x, y)'s top has a rampart on its side towards (x + dx, y + dy). Not between two
+ * towers, so their tops join up; a keep's walls only on their open sides, so they run along
+ * the ring (and stop at a tower on it, which stands above them).
+ */
+export function rampartOn(
+  state: GameState,
+  ring: ReadonlySet<number>,
+  x: number,
+  y: number,
+  dx: number,
+  dy: number,
+): boolean {
+  if (!hasRamparts(state, ring, x, y)) return false;
+  if (isTowerOnWall(state, x + dx, y + dy)) return false;
+  return isTowerOnWall(state, x, y) || !isKeepWall(state, ring, x + dx, y + dy);
 }
 
 /**
@@ -266,8 +304,8 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
     true,
   );
 
-  // Ramparts: round the top of each tower on a wall, in its sides' colour; none between
-  // two towers side by side, so their tops join up.
+  // Ramparts: round the top of each tower on a wall, and along the keep's walls, in their sides'
+  // colour; none where two join up (see rampartOn).
   const ramparts = instances(
     scene,
     rampartGeometry(),
@@ -342,16 +380,17 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
     mapSize.value.set(width, height);
     ground.scale.set(width, 1, height);
 
+    const ring = keepRing(state);
     let count = 0;
-    let towers = 0;
+    let crowned = 0;
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         if (blockHeight(state, x, y) > 0) count++;
-        if (isTowerOnWall(state, x, y)) towers++;
+        if (hasRamparts(state, ring, x, y)) crowned++;
       }
     }
     const mesh = blocks.reserve(count);
-    const walls = ramparts.reserve(towers * 4);
+    const walls = ramparts.reserve(crowned * 4);
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const h = blockTiles(state, x, y);
@@ -364,13 +403,13 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
         if (tier === SEEN) side.lerp(fogColour, FOG.seen.opacity);
         mesh.setColorAt(mesh.count, side);
         mesh.count++;
-        if (!isTowerOnWall(state, x, y)) continue;
+        if (!hasRamparts(state, ring, x, y)) continue;
         for (let quarter = 0; quarter < 4; quarter++) {
           // Turned to face out of each side (south, east, north, west), on that side's edge.
           const angle = (quarter * Math.PI) / 2;
           const dx = Math.round(Math.sin(angle));
           const dy = Math.round(Math.cos(angle));
-          if (isTowerOnWall(state, x + dx, y + dy)) continue;
+          if (!rampartOn(state, ring, x, y, dx, dy)) continue;
           turn.makeRotationY(angle).setPosition(x + 0.5 + dx / 2, h, y + 0.5 + dy / 2);
           walls.setMatrixAt(walls.count, turn);
           walls.setColorAt(walls.count, side);
