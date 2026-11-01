@@ -5,23 +5,19 @@ import { TILE_SIZE } from "../render/palette";
 export const MAX_ZOOM = 3;
 
 /**
- * The isometric view (the 3D renderer): looking down from the south-east corner, turned 45°, at
- * ISO.pitch above the horizon. On screen a tile is a diamond, ISO.squash as tall as it is wide,
- * and a height of one tile stands ISO.lift tiles tall.
+ * The 3D view's camera angles. It looks at the map from `yaw` round from the south (towards
+ * the east), `pitch` above the horizon. A pitch of 90° looks straight down. The default looks
+ * from the south, 75° up: close to the flat map's look (north up, blocks' fronts facing you),
+ * with a little depth. Isometric is a yaw of 45° and a pitch of asin(tan 30°).
  */
 export const ISO = {
-  /** True isometric: every axis is foreshortened the same (asin(tan 30°)). */
-  pitch: Math.asin(Math.tan(Math.PI / 6)),
-  get squash() {
-    return Math.sin(this.pitch);
-  },
-  get lift() {
-    return Math.cos(this.pitch);
-  },
+  yaw: 0,
+  pitch: (75 * Math.PI) / 180,
+  /** The lowest the camera tilts, so the ground never turns edge-on. */
+  minPitch: (10 * Math.PI) / 180,
   /** Blocks stand this many times taller than the flat view's lift, so they read as solid. */
   heightScale: 2.5,
 };
-const DIAGONAL = Math.SQRT1_2;
 
 export interface Camera {
   /** Top-left of the view, in tiles (fractional). */
@@ -39,6 +35,9 @@ export interface Camera {
    * would have in the flat view, so centring and the minimap work the same either way.
    */
   iso: boolean;
+  /** The 3D view's angles, in radians (see ISO). */
+  yaw: number;
+  pitch: number;
 }
 
 export function createCamera(): Camera {
@@ -51,6 +50,8 @@ export function createCamera(): Camera {
     mapWidth: 1,
     mapHeight: 1,
     iso: false,
+    yaw: ISO.yaw,
+    pitch: ISO.pitch,
   };
 }
 
@@ -60,12 +61,26 @@ export function viewCentre(cam: Camera): { x: number; y: number } {
   return { x: cam.x + cam.viewWidth / size / 2, y: cam.y + cam.viewHeight / size / 2 };
 }
 
-/** A move on screen (in pixels) as a move over the iso map (in tiles). */
+/**
+ * A move on screen (in pixels) as a move over the iso map (in tiles): undo the tilt's squash,
+ * then turn back by the yaw.
+ */
 function isoScreenToMap(cam: Camera, px: number, py: number): { x: number; y: number } {
   const size = tilePixels(cam);
-  const u = px / (DIAGONAL * size);
-  const v = py / (DIAGONAL * size * ISO.squash);
-  return { x: (u + v) / 2, y: (v - u) / 2 };
+  const across = px / size;
+  const down = py / (size * Math.sin(cam.pitch));
+  const cos = Math.cos(cam.yaw);
+  const sin = Math.sin(cam.yaw);
+  return { x: across * cos + down * sin, y: down * cos - across * sin };
+}
+
+/**
+ * How far a point raised one tile shows from the ground point under it, as a move over the map:
+ * it shows where the ground that much further from the camera does.
+ */
+export function isoRise(cam: Camera): { x: number; y: number } {
+  const reach = 1 / Math.tan(cam.pitch);
+  return { x: reach * Math.sin(cam.yaw), y: reach * Math.cos(cam.yaw) };
 }
 
 /** Called when the view or the map changes size. */
@@ -87,8 +102,10 @@ export function setViewport(
  * the view is centred).
  */
 export function fitZoom(cam: Camera): number {
-  // Iso, the map's a diamond: its corners left and right span (width + height) diagonals.
-  const across = cam.iso ? (cam.mapWidth + cam.mapHeight) * DIAGONAL : cam.mapWidth;
+  // Iso, the map's turned: its corners left and right span its width and height, turned.
+  const across = cam.iso
+    ? cam.mapWidth * Math.abs(Math.cos(cam.yaw)) + cam.mapHeight * Math.abs(Math.sin(cam.yaw))
+    : cam.mapWidth;
   return cam.viewWidth / (across * TILE_SIZE);
 }
 
@@ -122,9 +139,13 @@ export function tileToScreen(
     const centre = viewCentre(cam);
     const dx = tx - centre.x;
     const dy = ty - centre.y;
+    const cos = Math.cos(cam.yaw);
+    const sin = Math.sin(cam.yaw);
+    const across = dx * cos - dy * sin;
+    const down = dx * sin + dy * cos;
     return {
-      x: cam.viewWidth / 2 + (dx - dy) * DIAGONAL * size,
-      y: cam.viewHeight / 2 + ((dx + dy) * DIAGONAL * ISO.squash - height * ISO.lift) * size,
+      x: cam.viewWidth / 2 + across * size,
+      y: cam.viewHeight / 2 + (down * Math.sin(cam.pitch) - height * Math.cos(cam.pitch)) * size,
     };
   }
   return { x: (tx - cam.x) * size, y: (ty - cam.y) * size };

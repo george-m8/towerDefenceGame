@@ -10,7 +10,7 @@ import * as THREE from "three";
 import { ENEMY_KINDS, UNIT_KINDS } from "../sim/config";
 import { UNEXPLORED, canSeeEnemiesAt, getSight } from "../sim/fog";
 import type { GameState, PlayerId } from "../sim/types";
-import { ISO, tilePixels, viewCentre } from "../ui/camera";
+import { ISO, tilePixels, viewCentre, type Camera } from "../ui/camera";
 import type { UiState } from "../ui/state";
 import { blockHeight, createRenderer } from "./canvas";
 import {
@@ -43,13 +43,23 @@ export function blockTiles(state: GameState, x: number, y: number): number {
   return (blockHeight(state, x, y) / TILE_SIZE) * ISO.heightScale;
 }
 
-/** Where the camera sits from what it looks at: south-east, ISO.pitch up. */
-function cameraOffset(): THREE.Vector3 {
-  const flat = Math.cos(ISO.pitch) * Math.SQRT1_2 * CAMERA_DISTANCE;
-  return new THREE.Vector3(flat, Math.sin(ISO.pitch) * CAMERA_DISTANCE, flat);
+/**
+ * The camera's axes for its angles (see ISO): right and up on screen, and back towards the
+ * camera. Built directly rather than with lookAt, which can't look straight down.
+ */
+function cameraAxes(cam: Camera) {
+  const cosYaw = Math.cos(cam.yaw);
+  const sinYaw = Math.sin(cam.yaw);
+  const cosPitch = Math.cos(cam.pitch);
+  const sinPitch = Math.sin(cam.pitch);
+  return {
+    right: new THREE.Vector3(cosYaw, 0, -sinYaw),
+    up: new THREE.Vector3(-sinYaw * sinPitch, cosPitch, -cosYaw * sinPitch),
+    back: new THREE.Vector3(sinYaw * cosPitch, sinPitch, cosYaw * cosPitch),
+  };
 }
 
-/** Points the camera from the south-east, ISO.pitch up, at the view's middle. */
+/** Points the camera at the view's middle, from its angles. */
 export function placeCamera(camera: THREE.OrthographicCamera, ui: UiState): void {
   const cam = ui.camera;
   const size = tilePixels(cam);
@@ -59,9 +69,9 @@ export function placeCamera(camera: THREE.OrthographicCamera, ui: UiState): void
   camera.bottom = -cam.viewHeight / 2 / size;
   camera.updateProjectionMatrix();
   const centre = viewCentre(cam);
-  camera.position.set(centre.x, 0, centre.y).add(cameraOffset());
-  camera.up.set(0, 1, 0);
-  camera.lookAt(centre.x, 0, centre.y);
+  const { right, up, back } = cameraAxes(cam);
+  camera.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(right, up, back));
+  camera.position.set(centre.x, 0, centre.y).addScaledVector(back, CAMERA_DISTANCE);
 }
 
 /** An instanced mesh that grows when it needs more room than it has. */
@@ -206,13 +216,9 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
     true,
   );
 
-  // Cards: an enemy's or unit's glyph, standing on its point and facing the camera.
+  // Cards: an enemy's or unit's glyph, standing on its point and turned to face the camera.
   const atlas = createGlyphAtlas();
-  const facing = new THREE.Object3D();
-  facing.lookAt(cameraOffset());
-  const cardGeometry = new THREE.PlaneGeometry(1, 1)
-    .translate(0, 0.5, 0)
-    .applyQuaternion(facing.quaternion);
+  const cardGeometry = new THREE.PlaneGeometry(1, 1).translate(0, 0.5, 0);
   const cardMaterial = new THREE.MeshBasicMaterial({
     map: atlas.texture,
     transparent: true,
@@ -246,6 +252,8 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
     return colour;
   };
   const matrix = new THREE.Matrix4();
+  const spot = new THREE.Vector3();
+  const cardScale = new THREE.Vector3();
 
   let painted: { key: string; tiers: Uint8Array | null; at: number } = {
     key: "",
@@ -296,7 +304,8 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
     const card = (x: number, y: number, size: number, glyph: string, colour: string) => {
       // Standing on a block (a unit on a wall), it stands on the block's top.
       const top = blockTiles(state, Math.round(x), Math.round(y));
-      matrix.makeScale(size, size, size).setPosition(x + 0.5, top, y + 0.5);
+      spot.set(x + 0.5, top, y + 0.5);
+      matrix.compose(spot, camera.quaternion, cardScale.setScalar(size));
       mesh.setMatrixAt(mesh.count, matrix);
       mesh.setColorAt(mesh.count, colourOf(colour));
       const [col, row] = atlas.cellOf(glyph);

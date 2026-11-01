@@ -43,6 +43,7 @@ import type { PendingBuild } from "../net/session";
 import { isBuildTool, type UiState } from "../ui/state";
 import {
   ISO,
+  isoRise,
   tilePixels,
   tileToScreen,
   visibleTiles,
@@ -183,6 +184,32 @@ export function pickTile(state: GameState | null, px: number, py: number): Point
   if (!state) return { x, y };
   const lift = blockHeight(state, x, y + 1) / TILE_SIZE;
   return py - y >= 1 - lift ? { x, y: y + 1 } : { x, y };
+}
+
+/** The tallest a block stands, in pixels (a keep's corner), for pickIsoTile's search. */
+const TALLEST_BLOCK = 16;
+/** How finely pickIsoTile steps down the view line, in tiles of height. */
+const PICK_STEP = 1 / 32;
+
+/**
+ * The tile under a point over the 3D view, given the ground point under it (fractional tiles).
+ * Blocks stand up into the view, so the point may be on a block's top or front nearer the
+ * camera: follow the view line from as high as any block stands down to the ground, and take
+ * the first block it meets. A point raised h shows where the ground further from the camera
+ * does (isoRise), so at height h the line is over the ground point moved back towards it.
+ */
+export function pickIsoTile(state: GameState | null, cam: Camera, px: number, py: number): Point {
+  if (state) {
+    const rise = isoRise(cam);
+    const top = (TALLEST_BLOCK / TILE_SIZE) * ISO.heightScale;
+    for (let h = top; h > 0; h -= PICK_STEP) {
+      const x = Math.floor(px + rise.x * h);
+      const y = Math.floor(py + rise.y * h);
+      if (x < 0 || y < 0 || x >= state.width || y >= state.height) continue;
+      if ((blockHeight(state, x, y) / TILE_SIZE) * ISO.heightScale >= h) return { x, y };
+    }
+  }
+  return { x: Math.floor(px), y: Math.floor(py) };
 }
 
 /**
@@ -1162,7 +1189,8 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       return;
     }
     const m = ctx!.getTransform();
-    const up = (height / TILE_SIZE) * ISO.heightScale * ISO.lift * tilePixels(iso.cam) * iso.dpr;
+    const { cam, dpr } = iso;
+    const up = (height / TILE_SIZE) * ISO.heightScale * Math.cos(cam.pitch) * tilePixels(cam) * dpr;
     ctx!.setTransform(m.a, m.b, m.c, m.d, m.e, m.f - up);
   }
 

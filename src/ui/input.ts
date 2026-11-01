@@ -1,7 +1,7 @@
 import { ENEMY_KIND_ORDER } from "../sim/config";
 import type { Command, GameState, Point } from "../sim/types";
 import { panBy, screenToTile, tilePixels, tileToScreen, zoomAt, zoomBy } from "./camera";
-import { pickTile } from "../render/canvas";
+import { pickIsoTile, pickTile } from "../render/canvas";
 import { fromView, lastViewOf, toView, turnView } from "../render/rotation";
 import { GAME_ONLY_ACTIONS, keyAction, type Action } from "./controls";
 import { createGamepads, createStepState, glide, stepStick, type PadFrame } from "./gamepad";
@@ -92,10 +92,11 @@ export function bindInput(
   function tileAt(sx: number, sy: number): Point {
     const p = screenToTile(ui.camera, sx, sy);
     const state = getState();
-    // Iso (the 3D view), the ground under the point, for now: raised tops don't pick yet.
+    // Iso (the 3D view): the first block the view line meets, else the ground.
     if (ui.camera.iso) {
-      const tile = { x: Math.floor(p.x), y: Math.floor(p.y) };
-      return state && ui.rotation ? fromView(tile, ui.rotation, state.width, state.height) : tile;
+      if (!state || ui.rotation === 0) return pickIsoTile(state, ui.camera, p.x, p.y);
+      const tile = pickIsoTile(lastViewOf(state, ui.rotation), ui.camera, p.x, p.y);
+      return fromView(tile, ui.rotation, state.width, state.height);
     }
     if (!state || ui.rotation === 0) return pickTile(state, p.x, p.y);
     const picked = pickTile(lastViewOf(state, ui.rotation), p.x, p.y);
