@@ -8,14 +8,18 @@
 // renderer's own canvas (renderOverlay). World units are tiles: x east, z south, y up.
 import * as THREE from "three";
 import { ENEMY_KINDS, UNIT_KINDS } from "../sim/config";
-import { UNEXPLORED, canSeeEnemiesAt, getSight } from "../sim/fog";
+import { SEEN, UNEXPLORED, canSeeEnemiesAt, getSight } from "../sim/fog";
+import { minimapColour } from "../ui/minimap";
 import type { GameState, PlayerId } from "../sim/types";
 import { ISO, tilePixels, viewCentre, type Camera } from "../ui/camera";
 import type { UiState } from "../ui/state";
 import { blockHeight, createRenderer } from "./canvas";
+import { darknessAt, daylight, skyHour } from "./dayNight";
+import { sunDirection } from "./sun";
 import {
   COLOURS,
   ENEMY_COLOURS,
+  FOG,
   ENEMY_GLYPH_SCALE,
   GLYPH_FONTS,
   TILE_SIZE,
@@ -24,8 +28,11 @@ import {
 
 /** How far back the camera sits along its view line, in tiles (orthographic: only for depth). */
 const CAMERA_DISTANCE = 400;
-/** The map texture's size limit, in pixels each way; big maps get fewer pixels a tile. */
-const MAP_TEXTURE_MAX = 4096;
+/**
+ * The map texture's size limit, in pixels each way (or the GPU's, if smaller); maps too big for
+ * a full tile's pixels get fewer.
+ */
+const MAP_TEXTURE_MAX = 8192;
 /** The map texture's pixels a tile, at most (the flat map's own size). */
 const MAP_TEXTURE_TILE_MAX = TILE_SIZE;
 /** Repainting the map texture: at most this often when something changed... */
@@ -35,6 +42,11 @@ const REPAINT_MAX_MS = 1500;
 /** The glyph atlas: cells across (and down), and each cell's size in pixels. */
 const ATLAS_CELLS = 16;
 const ATLAS_CELL_PX = 64;
+/** The lights by day: the sky's fill and the sun. Night dims them (see placeSun). */
+const SKY_LIGHT = 1.8;
+const SUN_LIGHT = 2;
+/** How much of the sky's light is left at the darkest of night. */
+const NIGHT_SKY = 0.25;
 /** How tall an enemy's or unit's card stands, in tiles, before its size. */
 const CARD_TILES = 1.1;
 
@@ -170,8 +182,9 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
   scene.background = new THREE.Color(COLOURS.offMap);
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, CAMERA_DISTANCE * 2);
 
-  scene.add(new THREE.HemisphereLight(0xfff4e0, 0x403020, 1.8));
-  const sun = new THREE.DirectionalLight(0xfff0d0, 2);
+  const sky = new THREE.HemisphereLight(0xfff4e0, 0x403020, SKY_LIGHT);
+  scene.add(sky);
+  const sun = new THREE.DirectionalLight(0xfff0d0, SUN_LIGHT);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
   sun.shadow.bias = -0.0005;
@@ -183,6 +196,10 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
   const mapTexture = new THREE.CanvasTexture(paintCanvas);
   mapTexture.colorSpace = THREE.SRGBColorSpace;
   mapTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  // Hard pixel edges close up, as on the flat map (its font is a pixel font at a tile's size);
+  // smoothed when zoomed out, so it doesn't shimmer.
+  mapTexture.magFilter = THREE.NearestFilter;
+  const textureMax = Math.min(MAP_TEXTURE_MAX, renderer.capabilities.maxTextureSize);
   /** The map's size in tiles, for the block tops' UVs. */
   const mapSize = { value: new THREE.Vector2(1, 1) };
 
@@ -193,21 +210,24 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
   ground.receiveShadow = true;
   scene.add(ground);
 
-  // Blocks: the top shows the map texture at the block's tile; the sides show the strip along
-  // the tile's south edge, stretched down (its colour, without the glyph in the middle).
+  // Blocks: the top shows the map texture at the block's tile; the sides are plain, in the
+  // block's colour (its instance colour), shaded by the light.
   const blockMaterial = new THREE.MeshLambertMaterial({ map: mapTexture });
   blockMaterial.onBeforeCompile = (shader) => {
     shader.uniforms.mapSize = mapSize;
     shader.vertexShader = shader.vertexShader
-      .replace("#include <common>", "#include <common>\nuniform vec2 mapSize;")
+      .replace("#include <common>", "#include <common>\nuniform vec2 mapSize;\nvarying float vTop;")
       .replace(
         "#include <uv_vertex>",
         `#include <uv_vertex>
-        vec2 tile = instanceMatrix[3].xz - 0.5;
-        vec2 inTile = normal.y > 0.5 ? position.xz + 0.5 : vec2(position.x + 0.5, 0.93);
-        vec2 onMap = (tile + inTile) / mapSize;
+        vTop = normal.y > 0.5 ? 1.0 : 0.0;
+        vec2 onMap = (instanceMatrix[3].xz - 0.5 + position.xz + 0.5) / mapSize;
         vMapUv = vec2(onMap.x, 1.0 - onMap.y);`,
       );
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", "#include <common>\nvarying float vTop;")
+      .replace("#include <map_fragment>", "if (vTop > 0.5) {\n#include <map_fragment>\n}")
+      .replace("#include <color_fragment>", "if (vTop < 0.5) {\n#include <color_fragment>\n}");
   };
   const blocks = instances(
     scene,
@@ -252,6 +272,8 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
     return colour;
   };
   const matrix = new THREE.Matrix4();
+  const side = new THREE.Color();
+  const fogColour = new THREE.Color(FOG.colour);
   const spot = new THREE.Vector3();
   const cardScale = new THREE.Vector3();
 
@@ -271,7 +293,7 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
     const { width, height } = state;
     const pixels = Math.max(
       4,
-      Math.min(MAP_TEXTURE_TILE_MAX, Math.floor(MAP_TEXTURE_MAX / Math.max(width, height))),
+      Math.min(MAP_TEXTURE_TILE_MAX, Math.floor(textureMax / Math.max(width, height))),
     );
     const resized = paintCanvas.width !== width * pixels || paintCanvas.height !== height * pixels;
     painter.renderFlat(state, viewer, pixels);
@@ -288,9 +310,14 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const h = blockTiles(state, x, y);
-        if (h <= 0 || tiers?.[y * width + x] === UNEXPLORED) continue;
+        const tier = tiers?.[y * width + x];
+        if (h <= 0 || tier === UNEXPLORED) continue;
         matrix.makeScale(1, h, 1).setPosition(x + 0.5, 0, y + 0.5);
         mesh.setMatrixAt(mesh.count, matrix);
+        // The sides' colour: the block's own, misted like its top where it's only been seen.
+        side.copy(colourOf(minimapColour(state, x, y)));
+        if (tier === SEEN) side.lerp(fogColour, FOG.seen.opacity);
+        mesh.setColorAt(mesh.count, side);
         mesh.count++;
       }
     }
@@ -338,12 +365,20 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
     chests.done();
   }
 
-  /** The sun over the view's middle, its shadows covering what's on screen. */
-  function placeSun(ui: UiState) {
+  /**
+   * The sun where the flat map has it (the sun slider, or the day's clock), its shadows covering
+   * what's on screen; dimmed with the daylight, the sky's light too as night falls.
+   */
+  function placeSun(state: GameState, ui: UiState) {
     const centre = viewCentre(ui.camera);
     const reach = Math.max(camera.right - camera.left, camera.top - camera.bottom);
-    sun.position.set(centre.x - reach * 0.4, reach, centre.y - reach * 0.7);
+    const way = sunDirection(ui.sun);
+    sun.position.set(centre.x + way.x * reach * 2, way.y * reach * 2, centre.y + way.z * reach * 2);
     sun.target.position.set(centre.x, 0, centre.y);
+    const hour = skyHour(state.clock, ui.clock);
+    sun.intensity = SUN_LIGHT * (hour === undefined ? 1 : daylight(hour));
+    const dark = hour === undefined ? 0 : darknessAt(hour);
+    sky.intensity = SKY_LIGHT * (1 - (1 - NIGHT_SKY) * dark);
     const shadow = sun.shadow.camera;
     shadow.left = shadow.bottom = -reach;
     shadow.right = shadow.top = reach;
@@ -358,7 +393,7 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
       renderer.setPixelRatio(window.devicePixelRatio || 1);
       renderer.setSize(cam.viewWidth, cam.viewHeight, false);
       placeCamera(camera, ui);
-      placeSun(ui);
+      placeSun(state, ui);
       build(state, ui.playerId, performance.now());
       placeMovers(state, ui.playerId);
       renderer.render(scene, camera);
