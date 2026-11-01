@@ -435,7 +435,14 @@ function startSession(intent: Exclude<PageIntent, { mode: "menu" }>) {
   } else if (intent.mode === "offline") {
     const map = intent.map ? bundledMaps[intent.map] : undefined;
     const items = intent.items ? bundledItems[intent.items] : undefined;
-    session = soloSession(map, items, intent.size, fog && intent.fog !== false, intent.enemiesCome);
+    session =
+      intent.game === "journey"
+        ? createLocalSession(Date.now() >>> 0, undefined, {
+            fog: fog && intent.fog !== false,
+            size: intent.size,
+            mode: "journey",
+          })
+        : soloSession(map, items, intent.size, fog && intent.fog !== false, intent.enemiesCome);
   } else {
     network = createNetworkSession(
       serverUrl(location),

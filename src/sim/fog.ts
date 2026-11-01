@@ -5,6 +5,7 @@
 // players can build: enemies move and fight the same either way.
 import { angleTo, facingAngle, inArc } from "./aiming";
 import {
+  JOURNEY,
   KEEP_SIGHT,
   SIGHT_CLOSE_RADIUS,
   STRUCTURES,
@@ -206,13 +207,13 @@ export function forEachSightTile(
   }
 }
 
-/** A keep sees from its nearest tile. */
+/** A keep sees from its nearest tile (Journey home's camp less far). */
 function forEachKeepSightTile(
   state: GameState,
   keep: Keep,
   visit: (index: number, tier: Tier) => void,
 ) {
-  const { inner, outer } = KEEP_SIGHT;
+  const { inner, outer } = state.journey ? JOURNEY.campSight : KEEP_SIGHT;
   const reach = Math.floor(outer);
   const last = keep.size - 1;
   for (let y = keep.y - reach; y <= keep.y + last + reach; y++) {

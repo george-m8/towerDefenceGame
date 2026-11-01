@@ -1,5 +1,6 @@
 import { facingAngle } from "./aiming";
 import {
+  JOURNEY,
   SELL_REFUND,
   STRUCTURES,
   TERRAIN,
@@ -153,6 +154,8 @@ export function canBuild(
     return { ok: false, reason: `${stats.name} limit reached (${limit} at a time)` };
   }
   if (!inBounds(state, x, y)) return { ok: false, reason: "Out of bounds" };
+  const away = campRefusal(state, x, y);
+  if (away) return { ok: false, reason: away };
   if (!isExplored(state, x, y, player)) {
     return { ok: false, reason: "Can't build on unexplored land" };
   }
@@ -176,6 +179,15 @@ export function canBuild(
     return { ok: false, reason: "Not enough gold" };
   }
   return { ok: true };
+}
+
+/** Journey home: you build only round the camp, while it's camped. */
+function campRefusal(state: GameState, x: number, y: number): string | null {
+  if (!state.journey) return null;
+  if (state.journey.phase !== "camped") return "Set up camp first";
+  const camp = state.keeps[0];
+  const far = Math.max(Math.abs(x - camp.x), Math.abs(y - camp.y)) > JOURNEY.buildRadius;
+  return far ? "Too far from your camp" : null;
 }
 
 function canBuildOnTerrain(

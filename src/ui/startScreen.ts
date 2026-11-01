@@ -18,23 +18,37 @@ import type { EnemiesCome, GameMode } from "../sim/types";
 import { DEFAULT_MAP_SIZE, MAP_SIZES, type MapSize } from "../sim/config";
 
 /** The game modes, as the mode screen offers them. */
-export const GAME_MODES: { mode: GameMode; name: string; description: string; online: boolean }[] =
-  [
-    {
-      mode: "endless",
-      name: "Endless",
-      description:
-        "Hold your keep against endless waves of enemies, each bigger than the last. Solo, or co-op with friends.",
-      online: false,
-    },
-    {
-      mode: "pvp",
-      name: "PvP",
-      description:
-        "Two players, a keep each. Build towers to tear down your rival's walls and keep. You only see your own land, and can't build inside their walls. Last keep standing wins.",
-      online: true,
-    },
-  ];
+export const GAME_MODES: {
+  mode: GameMode;
+  name: string;
+  description: string;
+  /** Online only (PvP), or solo only (Journey home); neither: both. */
+  online: boolean;
+  solo?: true;
+}[] = [
+  {
+    mode: "endless",
+    name: "Endless",
+    description:
+      "Hold your keep against endless waves of enemies, each bigger than the last. Solo, or co-op with friends.",
+    online: false,
+  },
+  {
+    mode: "pvp",
+    name: "PvP",
+    description:
+      "Two players, a keep each. Build towers to tear down your rival's walls and keep. You only see your own land, and can't build inside their walls. Last keep standing wins.",
+    online: true,
+  },
+  {
+    mode: "journey",
+    name: "Journey home",
+    description:
+      "Get your camp from the far left of the map to the keep on the right. Swarms lie in wait: come into their sight and they come for you. Move camp to what you can see, and build round it.",
+    online: false,
+    solo: true,
+  },
+];
 
 /** Campaign, above the other modes: solo only for now, and only once there are levels. */
 export const CAMPAIGN = {
@@ -376,6 +390,7 @@ function chooseGame(
           ...(items ? { items } : {}),
           ...fogOff,
           ...night,
+          ...(game === "journey" ? { game } : {}),
         });
       }
       options.onChoose(
@@ -526,7 +541,7 @@ function showModeScreen(
           <span>${CAMPAIGN.description}</span>
           ${options.onCampaign ? "" : "<em>Coming soon.</em>"}
         </button>
-        ${GAME_MODES.filter((m) => options.online || !m.online)
+        ${GAME_MODES.filter((m) => (options.online ? !m.solo : !m.online))
           .map(
             (m) => `
           <button class="mode-card" data-mode="${m.mode}">

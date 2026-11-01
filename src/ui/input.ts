@@ -165,7 +165,9 @@ export function bindInput(
     dispatch(
       ui.tool === "sell"
         ? { type: "sell", x: p.x, y: p.y }
-        : { type: "build", kind: ui.tool, x: p.x, y: p.y, facing: ui.facing },
+        : ui.tool === "moveCamp"
+          ? { type: "moveCamp", x: p.x, y: p.y }
+          : { type: "build", kind: ui.tool, x: p.x, y: p.y, facing: ui.facing },
     );
   }
 
@@ -304,6 +306,11 @@ export function bindInput(
         ui.debugDamage = false;
         if (ui.tool === "sell") ui.tool = beforeSell;
         else [beforeSell, ui.tool] = [ui.tool, "sell"];
+        return;
+      case "moveCamp":
+        if (!getState()?.journey) return;
+        ui.debugDamage = false;
+        ui.tool = ui.tool === "moveCamp" ? null : "moveCamp";
         return;
       case "prevTool":
         return stepTool(-1);

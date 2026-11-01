@@ -110,8 +110,8 @@ export function mapName(title: string): string {
   return name || "untitled";
 }
 
-/** How many keeps a map of each mode has. */
-export const KEEPS_FOR_MODE: Record<GameMode, number> = { endless: 1, pvp: 2 };
+/** How many keeps a map of each mode has (Journey home maps are only generated, for now). */
+export const KEEPS_FOR_MODE: Record<GameMode, number> = { endless: 1, pvp: 2, journey: 1 };
 
 export function mapWidth(map: Pick<MapFile, "size">): number {
   return MAP_SIZES[map.size].width;

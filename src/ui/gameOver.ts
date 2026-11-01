@@ -1,4 +1,5 @@
 import { TICK_RATE } from "../sim/config";
+import { tilesFromHome } from "../sim/journey";
 import { nightsSurvived } from "../sim/clock";
 import { starsFor, type LevelWin } from "../sim/levelFile";
 import { playerName } from "../sim/players";
@@ -47,6 +48,13 @@ export function createGameOverDialog(
       stars.hidden = true;
       levels.hidden = win === null;
       restart.textContent = "Restart";
+      if (state.journey) {
+        title.textContent = state.won ? "Home at last!" : "Your camp has fallen.";
+        summary.textContent = state.won
+          ? `Your camp made it home in ${time}. Map seed ${state.seed}.`
+          : `It fell ${tilesFromHome(state)} tiles from home, after ${time}. Map seed ${state.seed}.`;
+        return;
+      }
       if (state.mode === "pvp") {
         title.textContent = state.winner === playerId ? "Victory!" : "Your keep has fallen.";
         const winner = state.winner !== null ? playerName(state, state.winner) : "Nobody";

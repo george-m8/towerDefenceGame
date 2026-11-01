@@ -15,6 +15,7 @@ import { DIRECTIONS, canCross, distanceAt, nextStep } from "./pathfinding";
 import { stepTo, walk } from "./movement";
 import { damageUnit, unitsAt } from "./units";
 import { nextRandom, randomInt } from "./rng";
+import { idleOnJourney } from "./journey";
 import { followAim, roam, steerControlled } from "./raiders";
 import { pathFieldFor } from "./raidPaths";
 import type { Enemy, GameState, Keep, PlayerId, Point, Structure, Unit } from "./types";
@@ -117,7 +118,9 @@ function advance(state: GameState, enemy: Enemy): void {
   else if (enemy.steer?.by === "raider")
     followAim(state, enemy); // left still on its way
   else if (enemy.roamer) roam(state, enemy);
-  else if (!BEHAVIOURS[ENEMY_KINDS[enemy.kind].behaviour](state, enemy)) {
+  else if (enemy.journey && idleOnJourney(state, enemy)) {
+    // Journey home, not after the camp: idling at its post, heading back there, or wandering.
+  } else if (!BEHAVIOURS[ENEMY_KINDS[enemy.kind].behaviour](state, enemy)) {
     walk(enemy, speedOf(state, enemy), () => chooseNextTile(state, enemy));
   }
   // Stepping onto a new tile tramples farmland there, by the enemy's weight.

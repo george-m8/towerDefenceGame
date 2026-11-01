@@ -1,6 +1,7 @@
 import {
   DEFAULT_MAP_SIZE,
   ENEMY,
+  JOURNEY,
   KEEP_HP,
   KEEP_SIZE,
   MAP_SIZES,
@@ -24,7 +25,8 @@ import { addCue, updateCues } from "./cues";
 import { updateEffects } from "./effects";
 import { initialExplored, revealKeep } from "./fog";
 import { claimKeepWalls, placeKeepWalls } from "./keepWalls";
-import { generateTerrain, layoutFor } from "./mapgen";
+import { createJourney, moveCamp, populateJourney, reachedHome, updateJourney } from "./journey";
+import { generateTerrain, journeyLayout, layoutFor, type MapLayout } from "./mapgen";
 import type { ItemsFile } from "./itemsFile";
 import { mapFromGame, spawnTiles, terrainGrid, type MapFile } from "./mapFile";
 import { randomInt } from "./rng";
@@ -53,7 +55,7 @@ export interface GameOptions {
   players?: string[];
   /** Fog of war (default on). Off, every tile is in sight. */
   fog?: boolean;
-  /** Endless (default) or PvP. */
+  /** Endless (default), PvP or Journey home. */
   mode?: GameMode;
   /** How big the map is (default M). */
   size?: MapSize;
@@ -80,18 +82,25 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     keep: keepSide,
   } = MAP_SIZES[file?.size ?? options.size ?? DEFAULT_MAP_SIZE];
   const mode = file?.mode ?? options.mode ?? "endless";
-  // PvP has no waves, so its enemies come "all the time" (never).
-  const enemiesCome: EnemiesCome = mode === "pvp" ? "always" : (options.enemiesCome ?? "always");
-  const layout = file
+  // Only Endless has waves; the other modes' enemies come "all the time" (never).
+  const enemiesCome: EnemiesCome =
+    mode === "endless" ? (options.enemiesCome ?? "always") : "always";
+  // Journey home's map is made with home as its keep and a spawn strip round the camp (see
+  // journeyLayout); the game's one keep is the camp, a single tile, and there's no spawn strip.
+  const journey = mode === "journey" && !file ? journeyLayout(width, height, seed) : null;
+  const generated: MapLayout = file
     ? {
         width,
         height,
         keeps: file.keeps.map((k) => ({ ...k, size: KEEP_SIZE })),
         spawnTiles: spawnTiles(file),
       }
-    : layoutFor(width, height, mode, keepSide);
+    : (journey?.layout ?? layoutFor(width, height, mode, keepSide));
+  const layout = journey
+    ? { ...generated, keeps: [{ ...journey.camp, size: 1 }], spawnTiles: [] }
+    : generated;
   const { spawnTiles: spawns } = layout;
-  const keepHp = mode === "pvp" ? PVP.keepHp : KEEP_HP;
+  const keepHp = mode === "pvp" ? PVP.keepHp : journey ? JOURNEY.campHp : KEEP_HP;
 
   const base = new Array<number>(width * height).fill(EMPTY);
   for (const keep of layout.keeps) {
@@ -108,7 +117,7 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
       }
     : options.blankMap
       ? { terrain: new Array<Terrain>(width * height).fill("ground"), ruins: [], chests: [] }
-      : generateTerrain(layout, seed);
+      : generateTerrain(generated, seed);
 
   const state: GameState = {
     seed,
@@ -153,12 +162,15 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     limits: { ...options.items?.limits },
     rngState: seed,
     fog: options.fog ?? true,
+    journey: journey ? createJourney(journey.home) : null,
     explored: [],
   };
-  if (mode === "pvp") state.wave.countdown = Infinity; // no waves in PvP
+  if (mode !== "endless") state.wave.countdown = Infinity; // only Endless has waves
   state.explored = initialExplored(state);
   for (const name of options.players ?? ["Player 1"]) addPlayer(state, name);
   if (mode === "pvp") assignKeeps(state);
+  // The camp is the player's, in their colour.
+  if (journey) state.keeps[0].owner = Number(Object.keys(state.players)[0] ?? 1);
   updateVotes(state); // with no players, the game starts paused
   for (const spot of map.ruins) {
     const ruin = placeStructure(state, "ruin", spot.x, spot.y, "N", null);
@@ -177,7 +189,8 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
       structure.keep = s.keep;
       structure.paid = 0;
     }
-  } else if (!options.blankMap) placeKeepWalls(state);
+  } else if (journey) populateJourney(state);
+  else if (!options.blankMap) placeKeepWalls(state);
   return state;
 }
 
@@ -219,6 +232,7 @@ export function tick(state: GameState): void {
   updateEffects(state);
   updateCues(state);
   updateBuilding(state);
+  updateJourney(state);
   updateSpawners(state);
   updateUnits(state); // before enemies, so a unit that steps in the way blocks them this tick
   updateEnemies(state);
@@ -238,7 +252,7 @@ export function tick(state: GameState): void {
       state.winner = state.keeps.find((keep) => keep.hp > 0)?.owner ?? null;
     }
     addCue(state, "gameOver");
-  } else if (!state.gameOver && lastWaveBeaten(state)) {
+  } else if (!state.gameOver && (lastWaveBeaten(state) || reachedHome(state))) {
     state.gameOver = true;
     state.won = true;
   }
@@ -314,8 +328,11 @@ export function applyCommand(
     }
     case "sell":
       return sellStructure(state, playerId, command.x, command.y);
+    case "moveCamp":
+      return moveCamp(state, playerId, command.x, command.y);
     case "sendWave":
       if (state.mode === "pvp") return { ok: false, reason: "No waves in PvP" };
+      if (state.mode === "journey") return { ok: false, reason: "No waves on the journey home" };
       return sendWaveEarly(state, playerId);
     case "debugOption":
       state.debug[command.option] = command.on;

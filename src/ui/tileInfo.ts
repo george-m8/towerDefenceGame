@@ -262,7 +262,7 @@ function enemyDoing(state: GameState, enemy: Enemy): string | null {
 /** What the info boxes show: the price of the selected tool here, then the tile's details. */
 export function hoverText(state: GameState, ui: UiState): string {
   if (!ui.hover) return "";
-  const brief = ui.tool === null ? undefined : isBuildTool(ui.tool) ? "build" : "sell";
+  const brief = isBuildTool(ui.tool) ? "build" : ui.tool === "sell" ? "sell" : undefined;
   const lines = describeTile(state, ui.hover, ui.playerId, brief);
   if (isBuildTool(ui.tool))
     lines.unshift(priceLine(state, ui.tool, ui.hover, ui.playerId, ui.facing));
