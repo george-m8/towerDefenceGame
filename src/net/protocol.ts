@@ -31,14 +31,27 @@ const MAX_TOKEN_LENGTH = 64;
 /** Coordinates are checked against the map by the sim; this only bounds the numbers. */
 const MAX_COORDINATE = 4096;
 
+/**
+ * Commands per `commands` message. The longest command is about 105 characters, so a full batch
+ * stays well under the server's 4 KB message limit.
+ */
+export const MAX_COMMANDS_PER_MESSAGE = 32;
+
 /** Commands a player may send online (no debug commands). */
 export type OnlineCommand = Exclude<Command, DebugCommand>;
+
+export interface SequencedCommand {
+  seq: number;
+  command: OnlineCommand;
+}
 
 export type ClientMessage =
   | { type: "create"; name: string; mode?: GameMode; size?: MapSize; enemiesCome?: EnemiesCome }
   | { type: "join"; room: string; name: string }
   | { type: "rejoin"; room: string; token: string }
-  | { type: "command"; seq: number; command: OnlineCommand }
+  | ({ type: "command" } & SequencedCommand)
+  /** Several commands at once (e.g. a dragged line of walls), answered one result each. */
+  | { type: "commands"; commands: SequencedCommand[] }
   | { type: "restart" }
   /** In the waiting room: play as a defender or a raider (Endless only). */
   | { type: "setRole"; role: Role }
@@ -202,6 +215,20 @@ export function parseClientMessage(raw: string): ParseResult {
       if (!isInt(data.seq, 0, Number.MAX_SAFE_INTEGER)) return fail("Bad seq");
       const command = parseCommand(data.command);
       return command ? ok({ type: "command", seq: data.seq, command }) : fail("Bad command");
+    }
+    case "commands": {
+      const list = data.commands;
+      if (!Array.isArray(list) || list.length === 0 || list.length > MAX_COMMANDS_PER_MESSAGE) {
+        return fail("Bad commands");
+      }
+      const commands: SequencedCommand[] = [];
+      for (const item of list) {
+        if (!isRecord(item) || !isInt(item.seq, 0, Number.MAX_SAFE_INTEGER)) return fail("Bad seq");
+        const command = parseCommand(item.command);
+        if (!command) return fail("Bad command");
+        commands.push({ seq: item.seq, command });
+      }
+      return ok({ type: "commands", commands });
     }
     case "restart":
       return ok({ type: "restart" });

@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { CASTERS, DEFAULT_SUN, castShade, shadowOffset, sweptTile } from "../../src/render/sun";
+import {
+  CASTERS,
+  DEFAULT_SUN,
+  castShade,
+  shadowOffset,
+  sunDirection,
+  sweptTile,
+} from "../../src/render/sun";
 import { SUN, TILE_SIZE } from "../../src/render/palette";
 
 /** The shadow for the sun at `across`, on the default arc unless given. */
@@ -190,5 +197,27 @@ describe("castShade", () => {
       { x: 5, y: 5, height: 6 },
     );
     expect(shade).toEqual({ top: null, face: null });
+  });
+});
+
+describe("sunDirection (the 3D view's sun)", () => {
+  it.each([
+    DEFAULT_SUN,
+    { across: 0.1, arc: 30 },
+    { across: 0.5, arc: 90 },
+    { across: 0.9, arc: 150 },
+    { across: 0.02, arc: 10 }, // low: the shadow's cut to SUN.maxLength
+  ])("casts the same shadow as the flat map, for %o", (sun) => {
+    const way = sunDirection(sun);
+    expect(Math.hypot(way.x, way.y, way.z)).toBeCloseTo(1);
+    expect(way.y).toBeGreaterThan(0);
+    // A unit of height's shadow lands away from the sun, along the ground.
+    const { dx, dy } = shadowOffset(sun);
+    expect(-way.x / way.y).toBeCloseTo(dx);
+    expect(-way.z / way.y).toBeCloseTo(dy);
+  });
+
+  it("a sun on the left lights from the west", () => {
+    expect(sunDirection({ across: 0.2, arc: 60 }).x).toBeLessThan(0);
   });
 });

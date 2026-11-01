@@ -574,6 +574,19 @@ body {
   touch-action: none;
 }
 
+/* The 3D view (?3d), under the map canvas, which draws what goes over it and takes the pointer. */
+#map3d {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+#map3d:not([hidden]) + #map {
+  position: relative;
+}
+
 /* A pad's pointer arrow over the map, while its stick points (input.ts); its tip is the point. */
 .pad-pointer {
   position: absolute;

@@ -33,6 +33,18 @@ export function shadowOffset(sun: Sun): { dx: number; dy: number } {
   return { dx: (-sideways / ground) * length, dy: (back / ground) * length };
 }
 
+/**
+ * The way to the sun for the 3D view, as a unit vector in its world (x east, y up, z south):
+ * the same sun as shadowOffset, so shadows fall the same way and no longer than SUN.maxLength
+ * times a block's height (a low sun is lifted just enough).
+ */
+export function sunDirection(sun: Sun): { x: number; y: number; z: number } {
+  const { dx, dy } = shadowOffset(sun);
+  // A shadow of (dx, dy) per unit of height comes from a sun at (-dx, 1, -dy).
+  const length = Math.hypot(dx, 1, dy);
+  return { x: -dx / length, y: 1 / length, z: -dy / length };
+}
+
 /** A raised block: its tile and its height in pixels. */
 export interface Block {
   x: number;

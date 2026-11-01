@@ -4,6 +4,7 @@ import type { PlayerId } from "../src/sim/types";
 import { parseClientMessage, type ClientMessage, type ServerMessage } from "../src/net/protocol";
 import {
   applyRoomCommand,
+  applyRoomCommands,
   joinRoom,
   leaveRoom,
   rejoinRoom,
@@ -101,6 +102,10 @@ export function handleConnection(hub: Hub, socket: WebSocket): void {
       case "command":
         if (!seat) return send({ type: "error", reason: "Join a room first" });
         applyRoomCommand(seat.room, seat.playerId, message.seq, message.command);
+        return;
+      case "commands":
+        if (!seat) return send({ type: "error", reason: "Join a room first" });
+        applyRoomCommands(seat.room, seat.playerId, message.commands);
         return;
       case "start": {
         if (!seat) return send({ type: "error", reason: "Join a room first" });
