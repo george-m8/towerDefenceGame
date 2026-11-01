@@ -18,6 +18,7 @@ import { facingAngle } from "../sim/aiming";
 import {
   EFFECT_TICKS,
   HEAL_EFFECT_TICKS,
+  KEEP_SIZE,
   TICK_RATE,
   ENEMY_KINDS,
   STRUCTURES,
@@ -44,7 +45,14 @@ import { isBuildTool, type UiState } from "../ui/state";
 import { tilePixels, visibleTiles, type VisibleTiles } from "../ui/camera";
 import { minimapColour } from "../ui/minimap";
 import { KEEP, NONE, getEnclosures } from "../sim/enclosures";
-import { SEEN, canSeeEnemiesAt, forEachSightTile, getSight, isExplored } from "../sim/fog";
+import {
+  IN_SIGHT,
+  SEEN,
+  canSeeEnemiesAt,
+  forEachSightTile,
+  getSight,
+  isExplored,
+} from "../sim/fog";
 import {
   AIM_LINE_TILES,
   ARROWS,
@@ -77,8 +85,11 @@ import {
   playerColour,
   DOOR_ALPHA,
   KEEP_GLYPH,
+  CAMP_GLYPH,
+  CAMP_PACKED_GLYPH,
   GLYPH_FONTS,
 } from "./palette";
+import { isHomeTile } from "../sim/journey";
 import { fogImage, fogSpans, type FogLevel } from "./fog";
 import { createHpBarTracker } from "./hpBars";
 import { burstPixels, burstWaiting } from "./burst";
@@ -120,9 +131,12 @@ export function isDamagedWall(structure: Structure): boolean {
 const ROCK_HEIGHT = 4;
 
 export function blockHeight(state: GameState, x: number, y: number): number {
-  if (isKeepTile(state, x, y)) {
+  // Journey home's keep at the end stands like any keep.
+  const keep =
+    keepAt(state, x, y) ??
+    (isHomeTile(state, x, y) ? { ...state.journey!.home, size: KEEP_SIZE } : undefined);
+  if (keep) {
     // The corners stand a little taller, like towers, round a low middle.
-    const keep = keepAt(state, x, y)!;
     const last = keep.size - 1;
     const corner = (x - keep.x) % last === 0 && (y - keep.y) % last === 0;
     const centre = Math.floor(keep.size / 2);
@@ -262,6 +276,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     if (base && !isBuilt(base)) drawTerrain(state, x, y);
     if (base) drawStructure(base);
     else if (isKeepTile(state, x, y)) drawKeepTile(state, x, y);
+    else if (isHomeTile(state, x, y)) drawHomeTile(state, x, y);
     else if (isSpawnTile(state, x, y)) drawTile(x, y, COLOURS.spawn, ".", COLOURS.spawnGlyph);
     else drawTerrain(state, x, y);
     const mount = mountAt(state, x, y);
@@ -428,10 +443,38 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     const bg = keep.owner !== null ? playerColour(keep.owner) : COLOURS.keep;
     const centre = Math.floor(keep.size / 2);
     drawTile(x, y, bg);
+    if (state.journey) {
+      // Journey home's camp: a tent, pitched or packed up.
+      const pitched = state.journey.phase === "camped";
+      drawGlyph(x, y, pitched ? CAMP_GLYPH : CAMP_PACKED_GLYPH, COLOURS.keepGlyph);
+      return;
+    }
     drawTexture(x, y, KEEP_TEXTURE);
     if (x !== keep.x + centre || y !== keep.y + centre) {
       drawGlyph(x, y, KEEP_GLYPH, COLOURS.keepGlyph);
     }
+  }
+
+  /** Journey home's keep, where the camp is heading: a keep, with no HP to show. */
+  function drawHomeTile(state: GameState, x: number, y: number) {
+    const { home } = state.journey!;
+    drawTile(x, y, COLOURS.keep);
+    drawTexture(x, y, KEEP_TEXTURE);
+    if (x !== home.x + 1 || y !== home.y + 1) drawGlyph(x, y, KEEP_GLYPH, COLOURS.keepGlyph);
+  }
+
+  /** Journey home: the way the camp is going, to where it's going. */
+  function drawCampPath(state: GameState) {
+    const journey = state.journey;
+    if (!journey?.goal) return;
+    ctx!.fillStyle = playerColour(state.keeps[0].owner ?? 1);
+    ctx!.globalAlpha = 0.5;
+    const dot = TILE_SIZE / 4;
+    for (const p of journey.path) {
+      ctx!.fillRect((p.x + 0.5) * TILE_SIZE - dot / 2, (p.y + 0.5) * TILE_SIZE - dot / 2, dot, dot);
+    }
+    ctx!.globalAlpha = 1;
+    outlineTile(journey.goal, playerColour(state.keeps[0].owner ?? 1));
   }
 
   /**
@@ -445,6 +488,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     ctx!.strokeStyle = "rgba(0, 0, 0, 0.6)"; // an outline, as it crosses walls and their faces
     ctx!.fillStyle = COLOURS.keepGlyph;
     for (const keep of state.keeps) {
+      if (state.journey) continue; // the camp's HP is with the stats
       const centre = Math.floor(keep.size / 2);
       const x = keep.x + centre;
       const y = keep.y + centre;
@@ -701,6 +745,15 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       ctx!.fillStyle = COLOURS.ghostSell;
       ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
       drawGlyph(x, y, "$", "#ffffff");
+      return;
+    }
+    if (ui.tool === "moveCamp") {
+      // Somewhere in sight with nothing on it (the move itself says why not, if it can't).
+      const ok =
+        getSight(state, ui.playerId)[y * state.width + x] === IN_SIGHT && !topAt(state, x, y);
+      ctx!.fillStyle = ok ? COLOURS.ghostOk : COLOURS.ghostBad;
+      ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      drawGlyph(x, y, CAMP_GLYPH, "#ffffff");
       return;
     }
     const ok = canBuild(state, ui.playerId, ui.tool, x, y).ok;
@@ -1156,6 +1209,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
         drawGhost(state, ui);
       }
       drawHoverEdge(state, ui);
+      drawCampPath(state);
       const raid = state.players[viewer]?.raid;
       if (raid) {
         // The paths every free enemy keeps to, the raider's target, and their enemy's flags.

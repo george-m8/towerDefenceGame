@@ -15,7 +15,7 @@ import { discountAt, priceAt } from "../sim/enclosures";
 import { refundFor } from "../sim/economy";
 import { ownedCount, topAt } from "../sim/grid";
 import type { GameState, PlayerId, StructureKind } from "../sim/types";
-import { ARROW_SYMBOLS, GLYPHS, facingArrow, glyphFor } from "../render/palette";
+import { ARROW_SYMBOLS, CAMP_GLYPH, GLYPHS, facingArrow, glyphFor } from "../render/palette";
 import {
   BUILD_TABS,
   TOOLS,
@@ -51,6 +51,15 @@ export function hudContent(state: GameState, ui: UiState): HudContent {
     return {
       tool: { glyph: "$", name: "Sell" },
       cost: target ? `+${refundFor(target)}g` : null,
+      time: null,
+      short: false,
+      gold,
+    };
+  }
+  if (ui.tool === "moveCamp") {
+    return {
+      tool: { glyph: CAMP_GLYPH, name: "Move camp" },
+      cost: null,
       time: null,
       short: false,
       gold,

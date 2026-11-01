@@ -596,6 +596,16 @@ export function roam(state: GameState, enemy: Enemy): void {
   });
 }
 
+/** Walks to `goal` along a short path and stands once there (or as near as it gets). */
+export function headFor(state: GameState, enemy: Enemy, goal: Point): void {
+  if (enemy.steer?.by !== "roam") enemy.steer = freshSteering("roam");
+  walk(enemy, enemy.speed, () =>
+    stepTowards(state, enemy, `to:${goal.x},${goal.y}`, goal, (x, y) => {
+      return x === goal.x && y === goal.y;
+    }),
+  );
+}
+
 /** A random open tile within the roam radius, or null after a few misses. */
 function roamGoal(state: GameState, enemy: Enemy): Point | null {
   const r = RAID.roamRadius;

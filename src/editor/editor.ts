@@ -10,7 +10,7 @@ import { pickTile } from "../render/canvas";
 import { TILE_SIZE } from "../render/palette";
 import { screenToTile } from "../ui/camera";
 import { lineBetween } from "../ui/input";
-import { TOOLS, type UiState } from "../ui/state";
+import { TOOLS, isBuildTool, type UiState } from "../ui/state";
 import { editorKey } from "./keys";
 import {
   History,
@@ -362,7 +362,7 @@ export function keepWalls(editor: Editor) {
 /** Names for the tool box: the structure, the eraser, or the Map tab's item. */
 export function toolName(editor: Editor, ui: UiState): string {
   if (ui.tool === "sell") return "Eraser";
-  if (ui.tool !== null) return STRUCTURES[ui.tool].name;
+  if (isBuildTool(ui.tool)) return STRUCTURES[ui.tool].name;
   if (editor.item !== null) return itemName(editor.item);
   return "Choose a tool";
 }
