@@ -100,7 +100,7 @@ import {
   GLYPH_FONTS,
 } from "./palette";
 import { isHomeTile } from "../sim/journey";
-import { isFloodHome, lavaWarning, mountainStep } from "../sim/flood";
+import { isFloodHome, kingAt, lavaWarning, mountainStep } from "../sim/flood";
 import { fromView, type Rotation } from "./rotation";
 import { fogImage, fogSpans, type FogLevel } from "./fog";
 import { createHpBarTracker } from "./hpBars";
@@ -158,13 +158,13 @@ export function blockHeight(state: GameState, x: number, y: number): number {
     return corner ? 15 : 12;
   }
   // No looking back's mountain, a ring higher at a time, with home's keep (lower, so the two
-  // together stay within a tile's height) on top.
+  // together stand no taller than TALLEST_BLOCK) on top.
   const mountain = mountainStep(state, x, y) * MOUNTAIN_STEP;
   if (isFloodHome(state, x, y)) {
     const { home } = state.flood!;
     const corner = (x - home.x) % (KEEP_SIZE - 1) === 0 && (y - home.y) % (KEEP_SIZE - 1) === 0;
     if (x === home.x + 1 && y === home.y + 1) return mountain + 1;
-    return mountain + (corner ? 7 : 5);
+    return mountain + (corner ? 4 : 3);
   }
   if (mountain > 0) return mountain;
   // Anything still being built lies flat until it's finished.
@@ -543,7 +543,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
    * right on the map, so each tile of the (maybe turned) view is looked up by its column on the
    * map. The mountain never glows: the lava can't climb it.
    */
-  function drawLavaWarning(state: GameState, turns: Rotation) {
+  function drawLavaWarning(state: GameState, turns: Rotation, pulsing = true) {
     const flood = state.flood;
     if (!flood) return;
     const odd = turns % 2 === 1;
@@ -555,7 +555,9 @@ export function createRenderer(canvas: HTMLCanvasElement) {
         if (mountainStep(state, x, y) > 0) continue;
         const warning = lavaWarning(state, column);
         if (warning === null) continue;
-        const pulse = 0.5 + 0.5 * Math.sin(performance.now() / (400 - 300 * warning));
+        const pulse = pulsing
+          ? 0.5 + 0.5 * Math.sin(performance.now() / (400 - 300 * warning))
+          : 0.5;
         ctx!.fillStyle = COLOURS.lavaWarn;
         ctx!.globalAlpha = 0.08 + warning * (0.2 + 0.25 * pulse);
         ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
@@ -565,21 +567,32 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   }
 
   /**
+   * Where a map point on (x, y)'s top shows, as a point on the ground: up the screen on the flat
+   * map, and over the 3D view, the ground point further from the camera that it covers.
+   */
+  function onTop(state: GameState, p: Point): Point {
+    const height = blockHeight(state, Math.round(p.x), Math.round(p.y));
+    if (!iso) return { x: p.x, y: p.y - height / TILE_SIZE };
+    const rise = isoRise(iso.cam);
+    const tiles = (height / TILE_SIZE) * ISO.heightScale;
+    return { x: p.x - rise.x * tiles, y: p.y - rise.y * tiles };
+  }
+
+  /**
    * No looking back: the king's plan, drawn as a raider's (numbered flags, joined from him by a
    * faint line), with his way to the next flag as Journey home draws the camp's (a dot a tile);
-   * then the king, part way to his next tile. Each sits on its tile's top, so up the mountain
-   * they're lifted with it.
+   * then, on the flat map, the king, part way to his next tile (the 3D view stands him up as a
+   * card). Each sits on its tile's top, so up the mountain they're lifted with it.
    */
   function drawKing(state: GameState) {
     const flood = state.flood;
     if (!flood) return;
     const colour = playerColour(flood.owner);
-    const lifted = (p: Point) => ({ x: p.x, y: p.y - blockHeight(state, p.x, p.y) / TILE_SIZE });
     ctx!.fillStyle = colour;
     ctx!.globalAlpha = 0.5;
     const dot = TILE_SIZE / 4;
     for (const p of flood.path) {
-      const at = lifted(p);
+      const at = onTop(state, p);
       ctx!.fillRect(
         (at.x + 0.5) * TILE_SIZE - dot / 2,
         (at.y + 0.5) * TILE_SIZE - dot / 2,
@@ -588,17 +601,18 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       );
     }
     ctx!.globalAlpha = 1;
-    const next = flood.progress > 0 ? flood.path[0] : undefined;
-    const t = next ? flood.progress : 0;
-    const kx = flood.king.x + ((next?.x ?? flood.king.x) - flood.king.x) * t;
-    const ky = flood.king.y + ((next?.y ?? flood.king.y) - flood.king.y) * t;
-    const kingLift = blockHeight(state, Math.round(kx), Math.round(ky)) / TILE_SIZE;
-    drawPathFlags(flood.plan.map(lifted), colour, { x: kx, y: ky - kingLift });
-    ctx!.save();
-    ctx!.translate(0, -kingLift * TILE_SIZE);
+    const king = onTop(state, kingAt(flood));
+    drawPathFlags(
+      flood.plan.map((p) => onTop(state, p)),
+      colour,
+      king,
+    );
+    if (iso) return;
+    const kx = (king.x + 0.5) * TILE_SIZE;
+    const ky = (king.y + 0.5) * TILE_SIZE;
     ctx!.fillStyle = colour;
     ctx!.beginPath();
-    ctx!.arc((kx + 0.5) * TILE_SIZE, (ky + 0.5) * TILE_SIZE, TILE_SIZE * 0.45, 0, Math.PI * 2);
+    ctx!.arc(kx, ky, TILE_SIZE * 0.45, 0, Math.PI * 2);
     ctx!.fill();
     ctx!.strokeStyle = COLOURS.keepGlyph;
     ctx!.lineWidth = 1.5;
@@ -606,8 +620,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     ctx!.lineWidth = 1;
     ctx!.font = GLYPH_FONT;
     ctx!.fillStyle = COLOURS.keepGlyph;
-    ctx!.fillText(KING_GLYPH, (kx + 0.5) * TILE_SIZE, (ky + 0.5) * TILE_SIZE + 1);
-    ctx!.restore();
+    ctx!.fillText(KING_GLYPH, kx, ky + 1);
   }
 
   /** Journey home: the way the camp is going, to where it's going. */
@@ -1413,7 +1426,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
      * The whole map drawn flat, every tile, at `pixelsPerTile`: for the 3D view's ground and
      * block tops. No bars (they're drawn over the 3D view), no shadows or lift; fog as a tint.
      */
-    renderFlat(state: GameState, viewer_: PlayerId, pixelsPerTile: number) {
+    renderFlat(state: GameState, viewer_: PlayerId, pixelsPerTile: number, turns: Rotation = 0) {
       viewer = viewer_;
       hover = null;
       now = performance.now();
@@ -1438,6 +1451,9 @@ export function createRenderer(canvas: HTMLCanvasElement) {
         }
       }
       drawDoors(state);
+      // No looking back's glow over the land the next wave of lava takes (repainted every so
+      // often, so it doesn't pulse here).
+      drawLavaWarning(state, turns, false);
       barsShown = true;
       if (!state.fog) return;
       const tiers = getSight(state, viewer);
@@ -1478,6 +1494,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
         drawGhost(state, ui);
       }
       drawHoverEdge(state, ui);
+      drawKing(state);
       const raid = state.players[viewer]?.raid;
       const own = raid ? state.enemies.find((e) => e.id === raid.enemyId) : undefined;
       if (raid) {

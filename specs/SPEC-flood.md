@@ -51,6 +51,11 @@ A solo mode about keeping moving. You have no keep of your own. Your **king** st
 
 - Each frame, the view is moved, if it needs to be, so that it shows no more than `LAVA_SHOWN` (3) tiles back over the lava's front, so it's pushed on as each wave comes in. It also keeps the king at least `MARGIN` (4) tiles in from its edges, or as near as a small view allows. The king wins over the lava if the view can't hold both. Panning, zooming and looking ahead are otherwise free. With the view turned, the lava's side of the screen turns with it.
 
+**The 3D view** (`?3d`)
+
+- The lava, the mountain and home's keep come from the shared terrain and block heights, so they stand up there as on the flat map. The king stands as a glyph card, like units, a little taller. His flags, the dashed line and his way are drawn over the view on the tops they're on, as raiders' flags are. The lava's glow is painted into the map's texture, without the pulse (it's repainted every second or so).
+- The camera rule works from the ground point in the middle of the screen: at least half the screen's width (in tiles) on from the lava, less `LAVA_SHOWN`, and no further from the king than that less `MARGIN`.
+
 **Winning**
 
 - The king on, or next to, any tile of home's keep wins.
@@ -65,5 +70,4 @@ The numbers above are first guesses, checked with a scripted king that repaints 
 - Endless (score on distance) and PvP variants from the issue. Endless needs real generation ahead, not a pre-made map. Online play needs the same, seeded.
 - Lava that changes direction, or follows the king.
 - A HUD button and a pad binding for the Route tool (keyboard H only).
-- The 3D view: see below.
 - `lava` is listed in the map editor's terrain, like every terrain; it does nothing special there.

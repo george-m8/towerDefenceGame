@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createGame } from "../../src/sim/game";
-import { centerOn, createCamera, setViewport, tilePixels } from "../../src/ui/camera";
+import { centerOn, createCamera, setViewport, tilePixels, viewCentre } from "../../src/ui/camera";
 import { LAVA_SHOWN, MARGIN, followActiveArea } from "../../src/ui/lavaCamera";
 import { fromView, toView, viewSize, type Rotation } from "../../src/render/rotation";
 import type { GameState } from "../../src/sim/types";
@@ -80,5 +80,18 @@ describe("No looking back's camera", () => {
       expect(king.y).toBeGreaterThanOrEqual(cam.y);
       expect(king.y + 1).toBeLessThanOrEqual(cam.y + y);
     }
+  });
+  it("over the 3D view, keeps the middle of the screen on from the lava and near the king", () => {
+    const { state, cam } = setup();
+    cam.iso = true;
+    state.flood!.king = { x: 60, y: 30 };
+    state.flood!.front = 40;
+    centerOn(cam, 10, 30);
+    follow(state, cam);
+    const reach = span(cam).x / 2;
+    expect(viewCentre(cam).x).toBeCloseTo(40 - LAVA_SHOWN + reach);
+    centerOn(cam, 120, 30);
+    follow(state, cam);
+    expect(viewCentre(cam).x).toBeCloseTo(60.5 + reach - MARGIN);
   });
 });

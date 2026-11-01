@@ -8,6 +8,7 @@
 // renderer's own canvas (renderOverlay). World units are tiles: x east, z south, y up.
 import * as THREE from "three";
 import { ENEMY_KINDS, UNIT_KINDS } from "../sim/config";
+import { kingAt } from "../sim/flood";
 import { SEEN, UNEXPLORED, canSeeEnemiesAt, getSight } from "../sim/fog";
 import { baseAt, isBuilt, mountAt } from "../sim/grid";
 import { ringTiles } from "../sim/keepWalls";
@@ -15,6 +16,7 @@ import type { GameState, PlayerId } from "../sim/types";
 import { ISO, tilePixels, viewCentre, type Camera } from "../ui/camera";
 import type { UiState } from "../ui/state";
 import { blockHeight, blockSideColour, createRenderer } from "./canvas";
+import type { Rotation } from "./rotation";
 import { darknessAt, daylight, skyHour } from "./dayNight";
 import { sunDirection } from "./sun";
 import {
@@ -23,6 +25,7 @@ import {
   FOG,
   ENEMY_GLYPH_SCALE,
   GLYPH_FONTS,
+  KING_GLYPH,
   TILE_SIZE,
   playerColour,
 } from "./palette";
@@ -50,6 +53,8 @@ const SUN_LIGHT = 2;
 const NIGHT_SKY = 0.25;
 /** How tall an enemy's or unit's card stands, in tiles, before its size. */
 const CARD_TILES = 1.1;
+/** No looking back's king stands a little taller than the rest. */
+const KING_CARD_TILES = 1.5;
 
 /** A tower on a wall's ramparts: how tall they stand above its top, in tiles, and their merlons. */
 const RAMPART_TILES = 0.3;
@@ -362,7 +367,7 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
   };
 
   /** Repaints the map texture and rebuilds the blocks, when the map or sight changes. */
-  function build(state: GameState, viewer: PlayerId, now: number) {
+  function build(state: GameState, viewer: PlayerId, now: number, turns: Rotation) {
     const tiers = state.fog ? getSight(state, viewer) : null;
     const key = `${state.width}x${state.height}:${state.gridVersion}:${state.fog}`;
     const changed = key !== painted.key || tiers !== painted.tiers;
@@ -374,7 +379,7 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
       Math.min(MAP_TEXTURE_TILE_MAX, Math.floor(textureMax / Math.max(width, height))),
     );
     const resized = paintCanvas.width !== width * pixels || paintCanvas.height !== height * pixels;
-    painter.renderFlat(state, viewer, pixels);
+    painter.renderFlat(state, viewer, pixels, turns);
     if (resized) mapTexture.dispose(); // a new size needs a new GPU texture
     mapTexture.needsUpdate = true;
     mapSize.value.set(width, height);
@@ -423,7 +428,7 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
 
   /** Enemies, units and chests: every frame, where the viewer can see them. */
   function placeMovers(state: GameState, viewer: PlayerId) {
-    const mesh = cards.reserve(state.enemies.length + state.units.length);
+    const mesh = cards.reserve(state.enemies.length + state.units.length + 1);
     const cell = mesh.geometry.getAttribute("cell") as THREE.InstancedBufferAttribute;
     const card = (x: number, y: number, size: number, glyph: string, colour: string) => {
       // Standing on a block (a unit on a wall), it stands on the block's top.
@@ -445,6 +450,11 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
     for (const unit of state.units) {
       if (!canSeeEnemiesAt(state, unit.x, unit.y, viewer)) continue;
       card(unit.x, unit.y, CARD_TILES, UNIT_KINDS[unit.kind].glyph, playerColour(unit.owner));
+    }
+    // No looking back's king, always in sight (he's what sees).
+    if (state.flood) {
+      const king = kingAt(state.flood);
+      card(king.x, king.y, KING_CARD_TILES, KING_GLYPH, playerColour(state.flood.owner));
     }
     cards.done();
 
@@ -491,7 +501,7 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
       renderer.setSize(cam.viewWidth, cam.viewHeight, false);
       placeCamera(camera, ui);
       placeSun(state, ui);
-      build(state, ui.playerId, performance.now());
+      build(state, ui.playerId, performance.now(), ui.rotation);
       placeMovers(state, ui.playerId);
       renderer.render(scene, camera);
     },

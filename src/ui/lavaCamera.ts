@@ -5,7 +5,7 @@
 import type { Rotation } from "../render/rotation";
 import { toView } from "../render/rotation";
 import type { Flood } from "../sim/types";
-import { clamp, tilePixels, type Camera } from "./camera";
+import { clamp, tilePixels, viewCentre, type Camera } from "./camera";
 
 /** Tiles of lava the view may show behind its edge, so you can see what's coming. */
 export const LAVA_SHOWN = 3;
@@ -24,6 +24,10 @@ export function followActiveArea(
     x: cam.viewWidth / tilePixels(cam),
     y: cam.viewHeight / tilePixels(cam),
   };
+  if (cam.iso) {
+    followIso(cam, flood, width, height, turns, span);
+    return;
+  }
   // Which way, in the view, the lava comes from: the view axis that the map's columns run along.
   const a = toView({ x: 0, y: 0 }, turns, width, height);
   const b = toView({ x: 1, y: 0 }, turns, width, height);
@@ -40,5 +44,40 @@ export function followActiveArea(
     cam[k] = Math.min(cam[k], king[k] - margin);
     cam[k] = Math.max(cam[k], king[k] + 1 + margin - span[k]);
   }
+  clamp(cam);
+}
+
+/**
+ * Over the 3D view the ground on screen is the view turned and tilted, so the rules are kept by
+ * the ground point in the middle of the screen instead: at least `reach` tiles on from the lava
+ * (less what's shown of it), and no further than `reach` less the margin from the king. `reach`
+ * is half the screen's width in tiles, about how far the ground shows either way.
+ */
+function followIso(
+  cam: Camera,
+  flood: Flood,
+  width: number,
+  height: number,
+  turns: Rotation,
+  span: { x: number; y: number },
+): void {
+  const reach = span.x / 2;
+  const a = toView({ x: 0, y: 0 }, turns, width, height);
+  const b = toView({ x: 1, y: 0 }, turns, width, height);
+  const axis = a.x !== b.x ? "x" : "y";
+  const dir = b[axis] - a[axis];
+  const centre = viewCentre(cam);
+  const target = { ...centre };
+  const back = a[axis] + dir * (flood.front - LAVA_SHOWN) + (dir > 0 ? 0 : 1);
+  if (dir > 0) target[axis] = Math.max(target[axis], back + reach);
+  else target[axis] = Math.min(target[axis], back - reach);
+  const king = toView(flood.king, turns, width, height);
+  const leash = Math.max(0, reach - MARGIN);
+  for (const k of ["x", "y"] as const) {
+    const middle = king[k] + 0.5;
+    target[k] = Math.min(Math.max(target[k], middle - leash), middle + leash);
+  }
+  cam.x += target.x - centre.x;
+  cam.y += target.y - centre.y;
   clamp(cam);
 }

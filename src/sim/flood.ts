@@ -60,6 +60,17 @@ export function mountainStep(state: GameState, x: number, y: number): number {
   return Math.max(0, FLOOD.mountainRadius + 1 - Math.max(1, fromHome(flood, x, y)));
 }
 
+/** Where the king is drawn: part way from his tile to the next on his way. */
+export function kingAt(flood: Flood): Point {
+  const next = flood.progress > 0 ? flood.path[0] : undefined;
+  if (!next) return { ...flood.king };
+  const t = flood.progress;
+  return {
+    x: flood.king.x + (next.x - flood.king.x) * t,
+    y: flood.king.y + (next.y - flood.king.y) * t,
+  };
+}
+
 /** Tiles from the king to the nearest tile of home (0: on it), in steps any way. */
 export function kingFromHome(state: GameState): number {
   const { king } = state.flood!;

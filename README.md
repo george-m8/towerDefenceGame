@@ -59,6 +59,7 @@ A solo mode (**Solo**, then **No looking back**, or `?solo&game=flood`). You hav
 - **The lava** comes in waves. The first comes after 20 seconds. Each wave runs in fast (4 tiles a second, faster than the king walks): 14 tiles for the first wave and 3 more for each wave after, up to 36. Then there's a calm, 18 seconds after the first wave and a second shorter after each one, down to 8. Every column a wave crosses turns to lava, and everything on it goes too: buildings, units and flags. The land the coming wave will take glows, brighter and faster as the wave nears. The HUD shows when the next wave comes and how far behind the king the lava is.
 - **The mountain:** home's keep stands on a mountain that rises in rings 4 tiles out round it. The lava never climbs it, so the king is safe once he's on it. Nothing can be built on it.
 - **Building:** only within 6 tiles of the king. Building is quickest right next to him.
+- It works in the 3D view (`?3d`) too: the mountain and keep stand up, and the king stands as a glyph.
 - **The camera** keeps to the land still in play. It can't look more than 3 tiles back over the lava, so each wave pushes it on, and it always keeps the king in view. You can still look ahead.
 
 All the numbers are in `FLOOD` in `src/sim/config.ts`, and the rules are in `src/sim/flood.ts` and `specs/SPEC-flood.md`.
