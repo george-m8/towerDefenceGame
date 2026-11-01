@@ -235,7 +235,7 @@ const ISO_REACH_PX = 200;
  * Keeps the view on the map; a map narrower (or shorter) than the view is centred. Iso, the
  * middle of the view stays over the map.
  */
-function clamp(cam: Camera): void {
+export function clamp(cam: Camera): void {
   if (cam.iso) {
     const centre = viewCentre(cam);
     cam.x += clampTo(centre.x, 0, cam.mapWidth) - centre.x;

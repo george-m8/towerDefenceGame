@@ -1,4 +1,5 @@
 import { GRID_HEIGHT, GRID_WIDTH, type MapSize } from "./sim/config";
+import { followActiveArea } from "./ui/lavaCamera";
 import { createRenderer } from "./render/canvas";
 import { toView, turnFacing, turnView, viewOf } from "./render/rotation";
 import { GLYPH_FONT, TERRAIN_STYLES } from "./render/palette";
@@ -794,6 +795,9 @@ function frame(now: number) {
       }
       input.frame(seconds);
       followRaider(state);
+      // No looking back: the view keeps to the land in play, ahead of the lava.
+      if (state.flood)
+        followActiveArea(ui.camera, state.flood, state.width, state.height, ui.rotation);
       updateCurtain(now);
       const viewUi = turnedUi(state);
       const pending = session.pending.map((p) => ({

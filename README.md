@@ -60,6 +60,7 @@ A solo mode (**Solo**, then **No looking back**, or `?solo&game=flood`). You hav
 - **The mountain:** home's keep stands on a mountain that rises in rings 4 tiles out round it. The lava never climbs it, so the king is safe once he's on it. Nothing can be built on it.
 - **The land ahead:** the land rises 9 tiles ahead of the king as he walks, and never sinks back until the lava reaches it. Further out is a dark void, with home's mountain showing through: you can't paint or build there yet. The king sees 7 tiles clearly and 10 dimly.
 - **Building:** only within 6 tiles of the king, on land that has risen. Building is quickest right next to him.
+- **The camera** keeps to the land still in play. It can't look more than 3 tiles back over the lava, so each wave pushes it on, and it always keeps the king in view. You can still look ahead.
 
 All the numbers are in `FLOOD` in `src/sim/config.ts`, and the rules are in `src/sim/flood.ts` and `specs/SPEC-flood.md`.
 

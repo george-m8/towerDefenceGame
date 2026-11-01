@@ -52,6 +52,10 @@ A solo mode about keeping moving. You have no keep of your own. Your **king** st
 
 - Only within `buildRadius` (6) tiles of the king, in any direction ("Too far from the king"), and only on risen land ("That land hasn't risen yet"). Everything else is as in Endless. Build time is measured from the king instead of a keep.
 
+**The camera** (`src/ui/lavaCamera.ts`)
+
+- Each frame, the view is moved, if it needs to be, so that it shows no more than `LAVA_SHOWN` (3) tiles back over the lava's front, so it's pushed on as each wave comes in. It also keeps the king at least `MARGIN` (4) tiles in from its edges, or as near as a small view allows. The king wins over the lava if the view can't hold both. Panning, zooming and looking ahead are otherwise free. With the view turned, the lava's side of the screen turns with it.
+
 **Winning**
 
 - The king on, or next to, any tile of home's keep wins.
