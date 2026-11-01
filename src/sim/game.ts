@@ -1,7 +1,6 @@
 import {
   DEFAULT_MAP_SIZE,
   ENEMY,
-  FLOOD,
   JOURNEY,
   KEEP_HP,
   KEEP_SIZE,
@@ -20,25 +19,15 @@ import { buildTicksAt, updateBuilding } from "./building";
 import { debugDamage } from "./debug";
 import { priceAt } from "./enclosures";
 import { spawnEnemy, updateEnemies } from "./enemies";
-import {
-  EMPTY,
-  KEEP_TILE,
-  canBuild,
-  inBounds,
-  placeStructure,
-  removeStructure,
-  replacedBy,
-  tileIndex,
-  topAt,
-} from "./grid";
+import { EMPTY, KEEP_TILE, canBuild, placeStructure, replacedBy } from "./grid";
 import { awardBounties, claimChest, collectIncome, sellStructure } from "./economy";
 import { addCue, updateCues } from "./cues";
 import { updateEffects } from "./effects";
 import { initialExplored, revealKeep } from "./fog";
 import { claimKeepWalls, placeKeepWalls } from "./keepWalls";
-import { createFlood, kingDrowned, kingHome, mountainStep, planKing, updateFlood } from "./flood";
+import { createFlood, kingDrowned, planKing, updateFlood } from "./flood";
 import { createJourney, moveCamp, populateJourney, reachedHome, updateJourney } from "./journey";
-import { generateTerrain, journeyLayout, layoutFor, type MapLayout } from "./mapgen";
+import { floodLayout, generateTerrain, journeyLayout, layoutFor, type MapLayout } from "./mapgen";
 import type { ItemsFile } from "./itemsFile";
 import { mapFromGame, spawnTiles, terrainGrid, type MapFile } from "./mapFile";
 import { randomInt } from "./rng";
@@ -99,11 +88,10 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     mode === "endless" ? (options.enemiesCome ?? "always") : "always";
   // Journey home's map is made with home as its keep and a spawn strip round the camp (see
   // journeyLayout); the game's one keep is the camp, a single tile, and there's no spawn strip.
-  // No looking back's map is made the same way: the king starts where the camp would, there's
-  // no keep at all, and home is where Journey home's keep would be.
-  const journey =
-    (mode === "journey" || mode === "flood") && !file ? journeyLayout(width, height, seed) : null;
-  const flooding = mode === "flood" && journey !== null;
+  const journey = mode === "journey" && !file ? journeyLayout(width, height, seed) : null;
+  // No looking back's is made with a clear patch round the king's start (see floodLayout), and
+  // there's no keep at all.
+  const flooding = mode === "flood" && !file ? floodLayout(width, height, seed) : null;
   const generated: MapLayout = file
     ? {
         width,
@@ -111,7 +99,7 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
         keeps: file.keeps.map((k) => ({ ...k, size: KEEP_SIZE })),
         spawnTiles: spawnTiles(file),
       }
-    : (journey?.layout ?? layoutFor(width, height, mode, keepSide));
+    : (journey?.layout ?? flooding?.layout ?? layoutFor(width, height, mode, keepSide));
   const layout = flooding
     ? { ...generated, keeps: [], spawnTiles: [] }
     : journey
@@ -180,8 +168,8 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     limits: { ...options.items?.limits },
     rngState: seed,
     fog: options.fog ?? true,
-    journey: journey && !flooding ? createJourney(journey.home) : null,
-    flood: flooding ? createFlood(journey.camp, journey.home) : null,
+    journey: journey ? createJourney(journey.home) : null,
+    flood: flooding ? createFlood(flooding.king, height) : null,
     explored: [],
   };
   if (mode !== "endless") state.wave.countdown = Infinity; // only Endless has waves
@@ -211,31 +199,8 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
       structure.paid = 0;
     }
   } else if (state.journey) populateJourney(state);
-  else if (state.flood) raiseMountain(state);
   else if (!options.blankMap) placeKeepWalls(state);
   return state;
-}
-
-/**
- * No looking back: the mountain home's keep stands on, cleared to open ground (no rock, trees
- * or ruins), and explored from the start, so you can see where you're going.
- */
-function raiseMountain(state: GameState): void {
-  const { home } = state.flood!;
-  const r = FLOOD.mountainRadius;
-  for (let y = home.y - r; y < home.y + KEEP_SIZE + r; y++) {
-    for (let x = home.x - r; x < home.x + KEEP_SIZE + r; x++) {
-      if (!inBounds(state, x, y)) continue;
-      const i = tileIndex(state, x, y);
-      const top = topAt(state, x, y);
-      if (top) removeStructure(state, top);
-      state.terrain[i] = "ground";
-      state.resources[i] = 0;
-      state.resourceWorth[i] = 0;
-      state.explored[i] |= 1;
-    }
-  }
-  state.features = state.features.filter((f) => mountainStep(state, f.x, f.y) === 0);
 }
 
 /** A generated map (as `createGame` makes it for this seed) as a `.map` file to edit. */
@@ -297,7 +262,7 @@ export function tick(state: GameState): void {
       state.winner = state.keeps.find((keep) => keep.hp > 0)?.owner ?? null;
     }
     addCue(state, "gameOver");
-  } else if (!state.gameOver && (lastWaveBeaten(state) || reachedHome(state) || kingHome(state))) {
+  } else if (!state.gameOver && (lastWaveBeaten(state) || reachedHome(state))) {
     state.gameOver = true;
     state.won = true;
   }
@@ -380,7 +345,7 @@ export function applyCommand(
     case "sendWave":
       if (state.mode === "pvp") return { ok: false, reason: "No waves in PvP" };
       if (state.mode === "journey") return { ok: false, reason: "No waves on the journey home" };
-      if (state.mode === "flood") return { ok: false, reason: "The lava comes in its own time" };
+      if (state.mode === "flood") return { ok: false, reason: "No waves, just the lava" };
       return sendWaveEarly(state, playerId);
     case "debugOption":
       state.debug[command.option] = command.on;

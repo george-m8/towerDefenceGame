@@ -1116,8 +1116,8 @@ export const JOURNEY = {
 };
 
 /**
- * No looking back (see sim/flood.ts): the king walks to the flags you plant, from the left edge to
- * home, a keep on a mountain on the right, while lava comes in behind him in waves.
+ * No looking back (see sim/flood.ts): the king walks to the flags you plant, as far as he can,
+ * while lava creeps in behind him and new land is generated ahead.
  */
 export const FLOOD = {
   /** The king sees round himself, and so lifts the fog, as he goes. */
@@ -1126,18 +1126,38 @@ export const FLOOD = {
   kingSpeed: 1.5,
   /** The most flags he can have planned at once. */
   maxFlags: 10,
-  /** Building only this many tiles from the king, at most (any direction). */
-  buildRadius: 6,
-  /** Seconds before the first wave of lava. */
+  /** Seconds before the lava starts to creep in. */
   graceSeconds: 20,
-  /** How far each wave of lava runs in, in tiles. */
-  surgeTiles: 3,
-  /** How fast a wave runs in, in tiles a second (faster than the king walks). */
-  surgeSpeed: 4,
-  /** The calm after each wave, in seconds: after the first, less each wave, and at least. */
-  calmSeconds: { first: 2.4, lessPerWave: 0.03, least: 1.15 },
-  /** How far the mountain under home spreads round its keep, in tiles; lava never climbs it. */
-  mountainRadius: 4,
+  /**
+   * How fast the lava creeps, in tiles a second: at first, more each minute, and at most (in the
+   * end faster than the king walks, so every game ends).
+   */
+  lavaSpeed: { start: 0.35, perMinute: 0.06, most: 1.8 },
+  /**
+   * The lava's edge isn't straight: each row's is up to `reach` tiles on or back from the front,
+   * by `waves` across the rows (each its share of that, a wavelength in rows, and how fast it
+   * drifts, in radians a second), and each tile goes under up to `rough` tiles later, at random.
+   */
+  edge: {
+    reach: 3,
+    waves: [
+      { share: 0.65, rows: 23, drift: 0.05 },
+      { share: 0.35, rows: 9, drift: -0.11 },
+    ],
+    rough: 1.5,
+  },
+  /** Tiles ahead of the lava that glow, to show what it takes next. */
+  warnTiles: 4,
+  /** New land is generated this many columns at a time... */
+  chunkColumns: 40,
+  /**
+   * ...and comes in this many at a time, as the king gets within `aheadTiles` of the map's right
+   * edge (at most half the map's width).
+   */
+  shiftColumns: 3,
+  aheadTiles: 48,
+  /** Rows open on both sides of where new land joins the old, at least. */
+  seamRows: 3,
 };
 
 /** Selling refunds this fraction of cost, scaled by remaining HP. */

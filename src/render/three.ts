@@ -360,10 +360,11 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
   const cardScale = new THREE.Vector3();
   const turn = new THREE.Matrix4();
 
-  let painted: { key: string; tiers: Uint8Array | null; at: number } = {
+  let painted: { key: string; tiers: Uint8Array | null; at: number; shifted: number } = {
     key: "",
     tiers: null,
     at: -Infinity,
+    shifted: 0,
   };
 
   /** Repaints the map texture and rebuilds the blocks, when the map or sight changes. */
@@ -371,8 +372,12 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
     const tiers = state.fog ? getSight(state, viewer) : null;
     const key = `${state.width}x${state.height}:${state.gridVersion}:${state.fog}`;
     const changed = key !== painted.key || tiers !== painted.tiers;
-    if (now - painted.at < (changed ? REPAINT_MIN_MS : REPAINT_MAX_MS)) return;
-    painted = { key, tiers, at: now };
+    // No looking back's world moving on moves every tile: repaint at once, or the ground would
+    // lag behind the blocks and the king.
+    const shifted = state.flood?.shifted ?? 0;
+    const moved = shifted !== painted.shifted;
+    if (!moved && now - painted.at < (changed ? REPAINT_MIN_MS : REPAINT_MAX_MS)) return;
+    painted = { key, tiers, at: now, shifted };
     const { width, height } = state;
     const pixels = Math.max(
       4,

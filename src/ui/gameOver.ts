@@ -1,6 +1,6 @@
 import { TICK_RATE } from "../sim/config";
 import { tilesFromHome } from "../sim/journey";
-import { kingFromHome } from "../sim/flood";
+import { distanceTravelled } from "../sim/flood";
 import { nightsSurvived } from "../sim/clock";
 import { starsFor, type LevelWin } from "../sim/levelFile";
 import { playerName } from "../sim/players";
@@ -50,10 +50,10 @@ export function createGameOverDialog(
       levels.hidden = win === null;
       restart.textContent = "Restart";
       if (state.flood) {
-        title.textContent = state.won ? "The king is home!" : "The lava took the king.";
-        summary.textContent = state.won
-          ? `He made it home in ${time}. Map seed ${state.seed}.`
-          : `It caught him ${kingFromHome(state)} tiles from home, in wave ${state.flood.wave}, after ${time}. Map seed ${state.seed}.`;
+        // Endless: the lava always wins in the end. How far he got is the score.
+        const distance = distanceTravelled(state.flood);
+        title.textContent = "The lava took the king.";
+        summary.textContent = `He got ${distance} tile${distance === 1 ? "" : "s"}, in ${time}. Map seed ${state.seed}.`;
         return;
       }
       if (state.journey) {

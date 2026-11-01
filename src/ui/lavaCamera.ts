@@ -2,8 +2,12 @@
 // LAVA_SHOWN tiles over the lava, so it's pushed on as each wave comes in, and it always keeps
 // the king in view, MARGIN tiles from its edge. Looking ahead (and anywhere else) is still free.
 // The lava runs left to right on the map; with the view turned (Q), that's another way on screen.
+// When the world moves on (new land on the right), the camera moves with it (moveWithWorld).
+// It glides rather than jumps: it follows the king as he walks, not tile by tile, and eases
+// towards where it should be.
 import type { Rotation } from "../render/rotation";
 import { toView } from "../render/rotation";
+import { kingAt } from "../sim/flood";
 import type { Flood } from "../sim/types";
 import { clamp, tilePixels, viewCentre, type Camera } from "./camera";
 
@@ -12,8 +16,32 @@ export const LAVA_SHOWN = 3;
 /** The king stays at least this many tiles in from the view's edge (when the view's big enough). */
 export const MARGIN = 4;
 
-/** Moves the camera, if it needs to, to keep to the land in play. */
+/** How quickly the camera glides to where it should be: the share of the way it goes in a second. */
+export const GLIDE_RATE = 5;
+
+/**
+ * Moves the camera, if it needs to, to keep to the land in play: gliding there over `seconds`
+ * (the frame's time), or straight there without.
+ */
 export function followActiveArea(
+  cam: Camera,
+  flood: Flood,
+  width: number,
+  height: number,
+  turns: Rotation,
+  seconds?: number,
+): void {
+  const from = { x: cam.x, y: cam.y };
+  keepToActiveArea(cam, flood, width, height, turns);
+  if (seconds === undefined) return;
+  const share = 1 - Math.exp(-GLIDE_RATE * seconds);
+  cam.x = from.x + (cam.x - from.x) * share;
+  cam.y = from.y + (cam.y - from.y) * share;
+  clamp(cam);
+}
+
+/** Puts the camera where the rules say, straight away. */
+function keepToActiveArea(
   cam: Camera,
   flood: Flood,
   width: number,
@@ -38,7 +66,7 @@ export function followActiveArea(
   if (dir > 0) cam[axis] = Math.max(cam[axis], back);
   else cam[axis] = Math.min(cam[axis], back + 1 - span[axis]);
   // The king in view, whatever the lava says.
-  const king = toView(flood.king, turns, width, height);
+  const king = toView(kingAt(flood), turns, width, height);
   for (const k of ["x", "y"] as const) {
     const margin = Math.min(MARGIN, Math.max(0, (span[k] - 1) / 2));
     cam[k] = Math.min(cam[k], king[k] - margin);
@@ -71,7 +99,7 @@ function followIso(
   const back = a[axis] + dir * (flood.front - LAVA_SHOWN) + (dir > 0 ? 0 : 1);
   if (dir > 0) target[axis] = Math.max(target[axis], back + reach);
   else target[axis] = Math.min(target[axis], back - reach);
-  const king = toView(flood.king, turns, width, height);
+  const king = toView(kingAt(flood), turns, width, height);
   const leash = Math.max(0, reach - MARGIN);
   for (const k of ["x", "y"] as const) {
     const middle = king[k] + 0.5;
@@ -79,5 +107,23 @@ function followIso(
   }
   cam.x += target.x - centre.x;
   cam.y += target.y - centre.y;
+  clamp(cam);
+}
+
+/**
+ * The world has moved on `columns` columns to the left (see shiftWorld): the camera goes with it,
+ * so what's on screen stays put.
+ */
+export function moveWithWorld(
+  cam: Camera,
+  columns: number,
+  width: number,
+  height: number,
+  turns: Rotation,
+): void {
+  const a = toView({ x: 0, y: 0 }, turns, width, height);
+  const b = toView({ x: -columns, y: 0 }, turns, width, height);
+  cam.x += b.x - a.x;
+  cam.y += b.y - a.y;
   clamp(cam);
 }

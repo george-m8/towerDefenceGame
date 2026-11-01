@@ -100,7 +100,7 @@ import {
   GLYPH_FONTS,
 } from "./palette";
 import { isHomeTile } from "../sim/journey";
-import { isFloodHome, kingAt, lavaWarning, mountainStep } from "../sim/flood";
+import { kingAt, lavaWarning } from "../sim/flood";
 import { fromView, type Rotation } from "./rotation";
 import { fogImage, fogSpans, type FogLevel } from "./fog";
 import { createHpBarTracker } from "./hpBars";
@@ -141,8 +141,6 @@ export function isDamagedWall(structure: Structure): boolean {
 
 /** How tall untouched rock (and gold rock) stands, in pixels. */
 const ROCK_HEIGHT = 4;
-/** No looking back's mountain: how much higher each ring of it stands, in pixels. */
-const MOUNTAIN_STEP = 3;
 
 export function blockHeight(state: GameState, x: number, y: number): number {
   // Journey home's keep at the end stands like any keep.
@@ -157,16 +155,6 @@ export function blockHeight(state: GameState, x: number, y: number): number {
     if (x - keep.x === centre && y - keep.y === centre) return 4;
     return corner ? 15 : 12;
   }
-  // No looking back's mountain, a ring higher at a time, with home's keep (lower, so the two
-  // together stand no taller than TALLEST_BLOCK) on top.
-  const mountain = mountainStep(state, x, y) * MOUNTAIN_STEP;
-  if (isFloodHome(state, x, y)) {
-    const { home } = state.flood!;
-    const corner = (x - home.x) % (KEEP_SIZE - 1) === 0 && (y - home.y) % (KEEP_SIZE - 1) === 0;
-    if (x === home.x + 1 && y === home.y + 1) return mountain + 1;
-    return mountain + (corner ? 4 : 3);
-  }
-  if (mountain > 0) return mountain;
   // Anything still being built lies flat until it's finished.
   const built = (s: Structure | undefined) => (s && isBuilt(s) ? s : undefined);
   const base = built(baseAt(state, x, y));
@@ -340,9 +328,6 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     if (base) drawStructure(base);
     else if (isKeepTile(state, x, y)) drawKeepTile(state, x, y);
     else if (isHomeTile(state, x, y)) drawHomeTile(state, x, y);
-    else if (isFloodHome(state, x, y)) drawFloodHomeTile(state, x, y);
-    else if (mountainStep(state, x, y) > 0)
-      drawTile(x, y, COLOURS.mountain, "^", COLOURS.mountainGlyph);
     else if (isSpawnTile(state, x, y)) drawTile(x, y, COLOURS.spawn, ".", COLOURS.spawnGlyph);
     else drawTerrain(state, x, y);
     const mount = mountAt(state, x, y);
@@ -529,19 +514,10 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     if (x !== home.x + 1 || y !== home.y + 1) drawGlyph(x, y, KEEP_GLYPH, COLOURS.keepGlyph);
   }
 
-  /** No looking back's home, where the king is going: a keep, on top of the mountain. */
-  function drawFloodHomeTile(state: GameState, x: number, y: number) {
-    const { home } = state.flood!;
-    drawTile(x, y, COLOURS.keep);
-    drawTexture(x, y, KEEP_TEXTURE);
-    if (x !== home.x + 1 || y !== home.y + 1) drawGlyph(x, y, KEEP_GLYPH, COLOURS.keepGlyph);
-  }
-
   /**
-   * No looking back: how far the coming wave of lava will run, glowing over the land it will
-   * take, stronger and quicker to pulse as the wave nears (under the fog). Lava runs left to
-   * right on the map, so each tile of the (maybe turned) view is looked up by its column on the
-   * map. The mountain never glows: the lava can't climb it.
+   * No looking back: a glow over the land the lava's about to take, stronger and quicker to pulse
+   * the nearer it is (under the fog). The lava's edge is worked out on the map (its rows and the
+   * world's columns), so each tile of the (maybe turned) view is looked up by its place there.
    */
   function drawLavaWarning(state: GameState, turns: Rotation, pulsing = true) {
     const flood = state.flood;
@@ -551,9 +527,8 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     const h = odd ? state.width : state.height;
     for (let y = view.y0; y <= view.y1; y++) {
       for (let x = view.x0; x <= view.x1; x++) {
-        const column = turns === 0 ? x : fromView({ x, y }, turns, w, h).x;
-        if (mountainStep(state, x, y) > 0) continue;
-        const warning = lavaWarning(state, column);
+        const on = turns === 0 ? { x, y } : fromView({ x, y }, turns, w, h);
+        const warning = lavaWarning(state, on.x, on.y);
         if (warning === null) continue;
         const pulse = pulsing
           ? 0.5 + 0.5 * Math.sin(performance.now() / (400 - 300 * warning))
@@ -582,7 +557,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
    * No looking back: the king's plan, drawn as a raider's (numbered flags, joined from him by a
    * faint line), with his way to the next flag as Journey home draws the camp's (a dot a tile);
    * then, on the flat map, the king, part way to his next tile (the 3D view stands him up as a
-   * card). Each sits on its tile's top, so up the mountain they're lifted with it.
+   * card). Each sits on its tile's top.
    */
   function drawKing(state: GameState) {
     const flood = state.flood;

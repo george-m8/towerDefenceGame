@@ -1,63 +1,43 @@
-// No looking back: a solo mode. You have no keep to hold: the king starts on the left edge and
-// has to walk home, a keep on a raised mountain on the right edge. You plan his way as a raider
-// plans their enemy's: a flag to walk to, then more flags after it, and he walks to each in turn
-// by the shortest way he knows (over land you've seen). Behind him lava comes in from the left in
-// waves: a surge that runs fast across a few tiles, then a calm before the next, each calm a
-// little shorter. Every column a surge crosses turns to lava with all that's on it,
-// except the mountain, which the lava can't climb. The lava touching the king loses; reaching
-// home's keep wins. The whole map is there from the start; the camera rolls on with the lava.
-import { FLOOD, KEEP_SIZE, TICK_RATE } from "./config";
+// No looking back: a solo mode, and an endless one. You have no keep to hold: the king starts on
+// the left edge and walks on, as far as he can. You plan his way as a raider plans their
+// enemy's: a flag to walk to, then more flags after it, and he walks to each in turn by the
+// shortest way he knows (over land you've seen). Behind him lava creeps in from the left, slowly
+// at first and a little faster all the time, with a ragged edge (see lavaEdge), turning each tile
+// it reaches to lava with all that's on it. The lava touching the king ends the game; how far he got is the score.
+// The map never ends: as the king nears its right edge, the column furthest behind (lava, or soon
+// to be) is dropped, everything moves a column left, and a column of new land comes in on the
+// right (see shiftWorld). The camera moves with it.
+import { FLOOD, TERRAIN, TICK_RATE } from "./config";
 import { exploreKingSight, isExplored } from "./fog";
 import {
+  EMPTY,
   baseAt,
   blocksAt,
   inBounds,
   isWalkable,
   mountAt,
+  placeStructure,
   removeStructure,
   terrainAt,
   tileIndex,
 } from "./grid";
-import type { CommandResult, Flood, GameState, PlayerId, Point } from "./types";
+import { generateChunk, type MapGenResult } from "./mapgen";
+import { startingWork, startingWorth } from "./resources";
+import type { CommandResult, Flood, GameState, Land, PlayerId, Point, Terrain } from "./types";
 
-export function createFlood(king: Point, home: Point): Flood {
+export function createFlood(king: Point, height: number): Flood {
   return {
     king,
     progress: 0,
     owner: 1,
     plan: [],
     path: [],
-    home,
     front: 0,
-    sunk: 0,
-    wave: 0,
-    calm: FLOOD.graceSeconds * TICK_RATE,
-    surgeTo: 0,
+    sunk: new Array<number>(height).fill(0),
+    shifted: 0,
+    startX: king.x,
+    land: null,
   };
-}
-
-/** Whether (x, y) is part of home, the keep the king is going to. */
-export function isFloodHome(state: GameState, x: number, y: number): boolean {
-  const home = state.flood?.home;
-  return !!home && x >= home.x && y >= home.y && x < home.x + KEEP_SIZE && y < home.y + KEEP_SIZE;
-}
-
-/** Tiles from home's keep to (x, y), in steps any way (0: on it). */
-function fromHome(flood: Flood, x: number, y: number): number {
-  const { home } = flood;
-  const dx = Math.max(home.x - x, 0, x - (home.x + KEEP_SIZE - 1));
-  const dy = Math.max(home.y - y, 0, y - (home.y + KEEP_SIZE - 1));
-  return Math.max(dx, dy);
-}
-
-/**
- * How high the mountain home stands on is at (x, y): 0 off it, rising a step a ring to
- * FLOOD.mountainRadius at the top, round the keep (which stands on the top).
- */
-export function mountainStep(state: GameState, x: number, y: number): number {
-  const flood = state.flood;
-  if (!flood) return 0;
-  return Math.max(0, FLOOD.mountainRadius + 1 - Math.max(1, fromHome(flood, x, y)));
 }
 
 /** Where the king is drawn: part way from his tile to the next on his way. */
@@ -71,22 +51,48 @@ export function kingAt(flood: Flood): Point {
   };
 }
 
-/** Tiles from the king to the nearest tile of home (0: on it), in steps any way. */
-export function kingFromHome(state: GameState): number {
+/** How far the king has got from where he started, in tiles across the map: the score. */
+export function distanceTravelled(flood: Flood): number {
+  return Math.max(0, flood.king.x + flood.shifted - flood.startX);
+}
+
+/** Tiles from the lava's edge, in his row, to the king (0: it has him). */
+export function lavaBehindKing(state: GameState): number {
   const { king } = state.flood!;
-  return fromHome(state.flood!, king.x, king.y);
+  return Math.max(0, Math.floor(king.x + 1 - lavaEdge(state, king.y)));
 }
 
-/** Tiles from the lava to the king (0: it has him); null once he's up the mountain, safe. */
-export function lavaBehindKing(state: GameState): number | null {
-  const { king, front } = state.flood!;
-  if (mountainStep(state, king.x, king.y) > 0) return null;
-  return Math.max(0, Math.floor(king.x + 1 - front));
+/**
+ * Where the lava's edge is in row y, in tiles from the left: not a straight line but the
+ * front, pushed on or held back a little row by row by two slow waves that drift as time goes
+ * by (seeded, so a game plays the same), so tongues of lava run on ahead here and there.
+ */
+export function lavaEdge(state: GameState, y: number): number {
+  const flood = state.flood!;
+  const { reach, waves } = FLOOD.edge;
+  const t = state.tick / TICK_RATE;
+  let wobble = 0;
+  waves.forEach((wave, i) => {
+    const phase = (((state.seed >>> (i * 8)) & 0xff) / 256) * Math.PI * 2;
+    wobble += wave.share * Math.sin((y / wave.rows) * Math.PI * 2 + phase + t * wave.drift);
+  });
+  return flood.front + reach * wobble;
 }
 
-/** The king is home once he's on, or next to, any tile of its keep. */
-export function kingHome(state: GameState): boolean {
-  return state.flood !== null && kingFromHome(state) <= 1;
+/**
+ * How much later than the edge the lava takes a tile, 0 to FLOOD.edge.rough: a little different
+ * for each tile (fixed for its place in the world, not the map), so the edge is ragged.
+ */
+function roughness(state: GameState, x: number, y: number): number {
+  let h = Math.imul(x + state.flood!.shifted, 0x27d4eb2d) ^ Math.imul(y, 0x165667b1) ^ state.seed;
+  h = Math.imul(h ^ (h >>> 15), 0x85ebca77);
+  h ^= h >>> 13;
+  return ((h >>> 0) / 0x100000000) * FLOOD.edge.rough;
+}
+
+/** How far ahead of the lava's edge (x, y) is, in tiles (0 or less: due to go under now). */
+function aheadOfLava(state: GameState, x: number, y: number): number {
+  return x + 1 + roughness(state, x, y) - lavaEdge(state, y);
 }
 
 /** The lava has the king. */
@@ -95,34 +101,29 @@ export function kingDrowned(state: GameState): boolean {
   return flood !== null && terrainAt(state, flood.king.x, flood.king.y) === "lava";
 }
 
-/** The calm after wave number `wave` (the first is 1), in ticks. */
-function calmTicks(wave: number): number {
-  const { first, lessPerWave, least } = FLOOD.calmSeconds;
-  return Math.round(Math.max(least, first - lessPerWave * (wave - 1)) * TICK_RATE);
+/** How fast the lava creeps now, in tiles a second (0 before it starts). */
+export function lavaSpeed(state: GameState): number {
+  const seconds = state.tick / TICK_RATE - FLOOD.graceSeconds;
+  if (seconds <= 0) return 0;
+  const { start, perMinute, most } = FLOOD.lavaSpeed;
+  return Math.min(most, start + (perMinute * seconds) / 60);
 }
 
-/** The lava's waves: surging now, or how long until the next one (whole seconds). */
-export function lavaWaves(state: GameState): { wave: number; surging: boolean; seconds: number } {
-  const { wave, calm } = state.flood!;
-  return calm > 0
-    ? { wave: wave + 1, surging: false, seconds: Math.ceil(calm / TICK_RATE) }
-    : { wave, surging: true, seconds: 0 };
+/** Seconds until the lava starts to creep (0 once it has). */
+export function lavaStartsIn(state: GameState): number {
+  return Math.max(0, Math.ceil(FLOOD.graceSeconds - state.tick / TICK_RATE));
 }
 
 /**
- * How soon lava takes column x: null if not in this wave's (or the coming wave's) reach, else
- * 0 to 1, the coming wave's nearness (1: surging now). Under lava already: null too.
+ * How soon lava takes (x, y): null if under already or more than FLOOD.warnTiles ahead of it,
+ * else 0 to 1, higher nearer the lava.
  */
-export function lavaWarning(state: GameState, x: number): number | null {
+export function lavaWarning(state: GameState, x: number, y: number): number | null {
   const flood = state.flood;
-  if (!flood || x < flood.sunk) return null;
-  const surging = flood.calm === 0;
-  const reach = surging ? flood.surgeTo : flood.front + FLOOD.surgeTiles;
-  if (x >= Math.ceil(reach)) return null;
-  if (surging) return 1;
-  // The calm before the first wave is the grace period.
-  const total = flood.wave === 0 ? FLOOD.graceSeconds * TICK_RATE : calmTicks(flood.wave);
-  return Math.max(0, 1 - flood.calm / total);
+  if (!flood || x < flood.sunk[y]) return null;
+  const ahead = aheadOfLava(state, x, y);
+  if (ahead > FLOOD.warnTiles) return null;
+  return Math.min(1, 1 - ahead / FLOOD.warnTiles + 1 / FLOOD.warnTiles);
 }
 
 /**
@@ -227,21 +228,27 @@ export function kingPath(state: GameState, flood: Flood): Point[] {
   return path;
 }
 
-/** Once a tick: the king walks, and the lava waits or surges. */
+/** Once a tick: the king walks, the lava creeps, and the world moves on if he's near its edge. */
 export function updateFlood(state: GameState): void {
   const flood = state.flood;
   if (!flood) return;
   walkKing(state, flood);
-  if (flood.calm > 0) {
-    if (--flood.calm === 0) {
-      flood.surgeTo = Math.min(state.width, flood.front + FLOOD.surgeTiles);
-      flood.wave++;
+  flood.front = Math.min(state.width, flood.front + lavaSpeed(state) / TICK_RATE);
+  // Each row's lava takes its next tile once its edge (and that tile's roughness) has passed it.
+  for (let y = 0; y < state.height; y++) {
+    while (flood.sunk[y] < state.width && aheadOfLava(state, flood.sunk[y], y) <= 0) {
+      sinkTile(state, flood, flood.sunk[y]++, y);
     }
-  } else {
-    flood.front = Math.min(flood.surgeTo, flood.front + FLOOD.surgeSpeed / TICK_RATE);
-    if (flood.front >= flood.surgeTo) flood.calm = calmTicks(flood.wave);
   }
-  while (flood.sunk < Math.floor(flood.front)) sinkColumn(state, flood, flood.sunk++);
+  // The world moves on a few columns at a time, so new land comes in a few lines at a time.
+  if (flood.king.x >= state.width - aheadTiles(state)) {
+    for (let i = 0; i < FLOOD.shiftColumns; i++) shiftWorld(state);
+  }
+}
+
+/** How close to the map's right edge the king gets before new land comes (half a small map). */
+function aheadTiles(state: GameState): number {
+  return Math.min(FLOOD.aheadTiles, Math.floor(state.width / 2));
 }
 
 function walkKing(state: GameState, flood: Flood): void {
@@ -271,24 +278,189 @@ function nextWay(state: GameState, flood: Flood): void {
   }
 }
 
-/**
- * A column goes under: lava, with nothing left on it (units burn, buildings and flags go).
- * The mountain, and home's keep on it, stand above it.
- */
-function sinkColumn(state: GameState, flood: Flood, x: number): void {
-  const above = (y: number) => mountainStep(state, x, y) > 0 || isFloodHome(state, x, y);
-  for (let y = 0; y < state.height; y++) {
-    if (above(y)) continue;
-    const mount = mountAt(state, x, y);
-    if (mount) removeStructure(state, mount);
-    const base = baseAt(state, x, y);
-    if (base) removeStructure(state, base);
-    state.terrain[tileIndex(state, x, y)] = "lava";
-  }
-  for (const unit of state.units) {
-    if (Math.round(unit.x) <= x && !above(Math.round(unit.y))) unit.hp = 0;
-  }
-  state.enemies = state.enemies.filter((e) => Math.round(e.x) > x || above(Math.round(e.y)));
-  flood.plan = flood.plan.filter((p) => p.x > x || above(p.y));
+/** A tile goes under: lava, with nothing left on it (units burn, buildings and flags go). */
+function sinkTile(state: GameState, flood: Flood, x: number, y: number): void {
+  const mount = mountAt(state, x, y);
+  if (mount) removeStructure(state, mount);
+  const base = baseAt(state, x, y);
+  if (base) removeStructure(state, base);
+  state.terrain[tileIndex(state, x, y)] = "lava";
+  const on = (p: { x: number; y: number }) => Math.round(p.x) === x && Math.round(p.y) === y;
+  for (const unit of state.units) if (on(unit)) unit.hp = 0;
+  state.enemies = state.enemies.filter((e) => !on(e));
+  state.features = state.features.filter((f) => !on(f));
+  flood.plan = flood.plan.filter((p) => !on(p));
   state.gridVersion++;
+}
+
+/**
+ * Moves the world on a column: the one furthest behind is dropped, with all that's on it (the
+ * lava's, or soon would be), everything else moves a column to the left, and the next column of
+ * new land (see nextColumn) comes in on the right. Everything that has a place on the map moves
+ * with it; caches keyed to the grid start again, and units look for their ways again.
+ */
+export function shiftWorld(state: GameState): void {
+  const flood = state.flood!;
+  const { width, height } = state;
+  const land = nextLand(state);
+  const column = land.next++;
+  const fresh = (y: number) => y * land.width + column;
+  // Whatever's on the dropped column goes first, as it would under lava.
+  for (const s of Object.values(state.structures)) if (s.x < 1) removeStructure(state, s);
+  const shift = <T>(layer: T[], fill: (y: number) => T): T[] => {
+    const out = new Array<T>(width * height);
+    for (let y = 0; y < height; y++) {
+      const row = y * width;
+      for (let x = 0; x < width - 1; x++) out[row + x] = layer[row + x + 1];
+      out[row + width - 1] = fill(y);
+    }
+    return out;
+  };
+  state.terrain = shift(state.terrain, (y) => land.terrain[fresh(y)]);
+  state.resources = shift(state.resources, (y) => land.resources[fresh(y)]);
+  state.resourceWorth = shift(state.resourceWorth, (y) => land.worth[fresh(y)]);
+  state.base = shift(state.base, () => EMPTY);
+  state.mount = shift(state.mount, () => EMPTY);
+  state.explored = shift(state.explored, () => 0);
+  for (const s of Object.values(state.structures)) s.x -= 1;
+  state.units = state.units.filter((u) => u.x >= 1);
+  for (const u of state.units) {
+    u.x -= 1;
+    u.tx -= 1;
+    if (u.goal) u.goal = u.goal.x >= 1 ? { x: u.goal.x - 1, y: u.goal.y } : null;
+    // Their ways were found on the old map: look again.
+    u.path = [];
+    u.pathGoal = null;
+    u.pathVersion = -1;
+  }
+  state.enemies = state.enemies.filter((e) => e.x >= 1);
+  for (const e of state.enemies) e.x -= 1;
+  state.features = state.features
+    .filter((f) => f.x >= 1)
+    .map((f) => ({ ...f, x: f.x - 1 }))
+    .concat(
+      land.chests
+        .filter((c) => c.x === column)
+        .map((c) => ({ kind: "chest" as const, x: width - 1, y: c.y, gold: c.gold })),
+    );
+  state.effects = [];
+  const moved = (p: Point) => ({ x: p.x - 1, y: p.y });
+  flood.king = moved(flood.king);
+  flood.plan = flood.plan.filter((p) => p.x >= 1).map(moved);
+  flood.path = flood.path.filter((p) => p.x >= 1).map(moved);
+  flood.front -= 1;
+  flood.sunk = flood.sunk.map((x) => Math.max(0, x - 1));
+  flood.shifted += 1;
+  for (const ruin of land.ruins.filter((r) => r.x === column)) {
+    const r = placeStructure(state, "ruin", width - 1, ruin.y, "N", null);
+    r.hp = Math.round(r.maxHp * ruin.hpFraction);
+  }
+  state.flows = {};
+  state.gridVersion++;
+  state.sightVersion++;
+  state.exploredVersion++;
+}
+
+/**
+ * The new land columns come from: FLOOD.chunkColumns at a time, generated as a map of their own
+ * (seeded by the game's seed and how far the world has moved, so a game plays the same every
+ * time), then handed out a column at a time. A new piece is tried again until you can walk
+ * right across it from the land before it (see joinsOn).
+ */
+function nextLand(state: GameState): Land {
+  const flood = state.flood!;
+  if (flood.land && flood.land.next < flood.land.width) return flood.land;
+  const { width, height } = state;
+  // The land before it: the last piece, or the map's right side to start with.
+  const last = flood.land;
+  const before = last
+    ? {
+        width: last.width,
+        open: (x: number, y: number) =>
+          isOpen(last.terrain[y * last.width + x]) &&
+          !last.ruins.some((r) => r.x === x && r.y === y),
+      }
+    : {
+        width: FLOOD.chunkColumns,
+        open: (x: number, y: number) => {
+          const mx = width - FLOOD.chunkColumns + x;
+          return isWalkable(state, mx, y) && !blocksAt(state, mx, y);
+        },
+      };
+  const n = FLOOD.chunkColumns;
+  let chunk = generateChunk(n, height, chunkSeed(state, 0));
+  for (let attempt = 1; attempt < 20 && !joinsOn(before, chunk, height); attempt++) {
+    chunk = generateChunk(n, height, chunkSeed(state, attempt));
+  }
+  flood.land = {
+    width: n,
+    next: 0,
+    terrain: chunk.terrain,
+    resources: startingWork(chunk.terrain),
+    worth: startingWorth(chunk.terrain, chunkSeed(state, 0)),
+    ruins: chunk.ruins,
+    chests: chunk.chests,
+  };
+  return flood.land;
+}
+
+/**
+ * Whether you can walk from the left side of the land before into a new piece and right across
+ * it, at least FLOOD.seamRows rows wide where they join: the two side by side, ruins in the way.
+ */
+function joinsOn(
+  before: { width: number; open: (x: number, y: number) => boolean },
+  chunk: MapGenResult,
+  height: number,
+): boolean {
+  const n = FLOOD.chunkColumns;
+  const across = before.width + n;
+  const open = (x: number, y: number) =>
+    x < before.width
+      ? before.open(x, y)
+      : isOpen(chunk.terrain[y * n + x - before.width]) &&
+        !chunk.ruins.some((r) => r.x === x - before.width && r.y === y);
+  let seam = 0;
+  for (let y = 0; y < height; y++) if (open(before.width - 1, y) && open(before.width, y)) seam++;
+  if (seam < FLOOD.seamRows) return false;
+  const reached = new Uint8Array(across * height);
+  const queue: number[] = [];
+  for (let y = 0; y < height; y++) {
+    if (open(0, y)) {
+      reached[y * across] = 1;
+      queue.push(y * across);
+    }
+  }
+  for (let head = 0; head < queue.length; head++) {
+    const i = queue[head];
+    const x = i % across;
+    const y = (i - x) / across;
+    if (x === across - 1) return true;
+    for (const [nx, ny] of [
+      [x + 1, y],
+      [x - 1, y],
+      [x, y + 1],
+      [x, y - 1],
+    ]) {
+      if (nx < 0 || ny < 0 || nx >= across || ny >= height) continue;
+      const ni = ny * across + nx;
+      if (reached[ni] || !open(nx, ny)) continue;
+      reached[ni] = 1;
+      queue.push(ni);
+    }
+  }
+  return false;
+}
+
+function isOpen(terrain: Terrain): boolean {
+  return TERRAIN[terrain].walkable;
+}
+
+function chunkSeed(state: GameState, attempt: number): number {
+  return (
+    (state.seed ^
+      Math.imul(state.flood!.shifted + 1, 0x85ebca6b) ^
+      Math.imul(attempt, 0x27d4eb2f)) |
+    0
+  );
 }

@@ -97,6 +97,45 @@ export function journeyLayout(
 }
 
 /**
+ * No looking back: the start of the map, with a clear patch round the king's start on the left
+ * edge (as a keep's would be) and no spawn strip, so the coast is only ever along the top or
+ * bottom and the right edge stays open for new land to join.
+ */
+export function floodLayout(
+  width: number,
+  height: number,
+  seed: number,
+): { layout: MapLayout; king: Point } {
+  const rng = { rngState: seed ^ 0x5bd1e995 };
+  const y = randomInt(rng, 6, height - 7);
+  return {
+    layout: { width, height, keeps: [{ x: 0, y: y - 1, size: KEEP_SIZE }], spawnTiles: [] },
+    king: { x: 1, y },
+  };
+}
+
+/**
+ * No looking back: new land for the right edge, `width` columns of it, generated as a map of its
+ * own: a river with fords, coast only top or bottom, rocks, forests, ruins and chests. Its keep
+ * (for the generator's checks: everything walkable joins up) is a small clear patch in the middle.
+ */
+export function generateChunk(width: number, height: number, seed: number): MapGenResult {
+  const layout: MapLayout = {
+    width,
+    height,
+    keeps: [
+      {
+        x: Math.floor(width / 2) - 1,
+        y: Math.floor(height / 2) - 1,
+        size: KEEP_SIZE,
+      },
+    ],
+    spawnTiles: [],
+  };
+  return generateTerrain(layout, seed, { ...MAP_GEN, keepClearRadius: 1 });
+}
+
+/**
  * Seeded map: a meandering river with fords, a coast, rock clusters and forests, with clear
  * zones around the keep and spawn; then ruin fragments on the finished ground. Maps that fail
  * validation are regenerated from a derived seed, so the result is still deterministic.

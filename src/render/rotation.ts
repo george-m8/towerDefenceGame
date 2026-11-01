@@ -3,7 +3,6 @@
 // game: every tile layer, structure, enemy, unit, keep, chest and effect moved to where it
 // sits once the map is turned, and every facing turned with it. The game itself never turns:
 // clicks are turned back into map tiles before they become commands.
-import { KEEP_SIZE } from "../sim/config";
 import type { Facing, GameState, Point } from "../sim/types";
 import { centerOn, setViewport, tilePixels } from "../ui/camera";
 import type { UiState } from "../ui/state";
@@ -176,17 +175,13 @@ export function viewOf(state: GameState, turns: Rotation): GameState {
     const b = cornerToView(keep.x + keep.size, keep.y + keep.size, turns, w, h);
     return { ...keep, x: Math.min(a.x, b.x), y: Math.min(a.y, b.y) };
   });
-  // No looking back's king, his flags and way, and home (a square, as a keep is).
+  // No looking back's king, his flags and his way.
   if (state.flood) {
-    const { home } = state.flood;
-    const a = cornerToView(home.x, home.y, turns, w, h);
-    const b = cornerToView(home.x + KEEP_SIZE, home.y + KEEP_SIZE, turns, w, h);
     view.flood = {
       ...state.flood,
       king: toView(state.flood.king, turns, w, h),
       plan: state.flood.plan.map((p) => toView(p, turns, w, h)),
       path: state.flood.path.map((p) => toView(p, turns, w, h)),
-      home: { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y) },
     };
   }
   return view;

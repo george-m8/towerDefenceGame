@@ -216,16 +216,29 @@ export interface Flood {
   /** His flags, in the order he'll walk to them (as a raider's plan), and his way to the first. */
   plan: Point[];
   path: Point[];
-  /** Where he's going, a keep on a mountain (top-left tile, KEEP_SIZE square): reaching it wins. */
-  home: Point;
-  /** How far in from the left the lava has come, in tiles; columns left of it are under. */
+  /** How far in from the left the lava has come, in tiles, on average (see lavaEdge). */
   front: number;
-  /** Columns left of this have gone under (lava, but for the mountain), with all on them. */
-  sunk: number;
-  /** Waves of lava so far; ticks of calm left before the next (0: one is surging in, to surgeTo). */
-  wave: number;
-  calm: number;
-  surgeTo: number;
+  /** In each row, tiles left of this have gone under, with all that was on them. */
+  sunk: number[];
+  /** Columns the world has moved on by (see shiftWorld), and the column he started on. */
+  shifted: number;
+  startX: number;
+  /** The new land still to come in on the right, a column at a time (see shiftWorld). */
+  land: Land | null;
+}
+
+/** A piece of new land for No looking back, generated whole and handed out a column at a time. */
+export interface Land {
+  /** Its size across, and the next of its columns to come in. */
+  width: number;
+  next: number;
+  /** Per tile (index y * width + x), as GameState's layers. */
+  terrain: Terrain[];
+  resources: number[];
+  worth: number[];
+  /** Its ruins and chests, placed as their columns come in. */
+  ruins: { x: number; y: number; hpFraction: number }[];
+  chests: { x: number; y: number; gold: number }[];
 }
 
 /** One of a player's own units (see sim/units.ts). Moves tile to tile like an enemy. */
@@ -339,7 +352,7 @@ export interface WaveState {
 /**
  * Endless: hold one shared keep against waves. PvP: two players, a keep each, no waves.
  * Journey home: move your camp across the map to the keep (solo; see sim/journey.ts).
- * No looking back (flood): walk the king home ahead of the lava (solo; see sim/flood.ts).
+ * No looking back (flood): walk the king as far as he can ahead of the lava (solo; see sim/flood.ts).
  */
 export type GameMode = "endless" | "pvp" | "journey" | "flood";
 
@@ -434,7 +447,7 @@ export interface GameState {
   fog: boolean;
   /** Journey home's camp and home; null in other modes. The camp itself is keeps[0]. */
   journey: Journey | null;
-  /** No looking back's king, route and lava; null in other modes. The only keep is home. */
+  /** No looking back's king, his flags and the lava; null in other modes. There's no keep. */
   flood: Flood | null;
   /** Debug options (offline only), all off to start with. */
   debug: Record<DebugOption, boolean>;
