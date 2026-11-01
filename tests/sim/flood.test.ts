@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { FLOOD, TICK_RATE } from "../../src/sim/config";
+import { FLOOD, JOURNEY, TICK_RATE } from "../../src/sim/config";
+import { spawnEnemy } from "../../src/sim/enemies";
+import { swarmWave } from "../../src/sim/floodSwarms";
 import { applyCommand, createGame, tick } from "../../src/sim/game";
 import { canBuild, placeStructure, removeStructure, tileIndex } from "../../src/sim/grid";
 import { getSight, IN_SIGHT } from "../../src/sim/fog";
@@ -56,7 +58,6 @@ describe("setting out", () => {
     expect(flood.king.x).toBe(1);
     expect(flood.owner).toBe(ME);
     expect(distanceTravelled(flood)).toBe(0);
-    expect(state.enemies).toEqual([]);
     expect(state.wave.countdown).toBe(Infinity);
     // No sea on the left or right edges: the coast is only ever along the top or bottom.
     for (const x of [0, state.width - 1]) {
@@ -364,6 +365,7 @@ describe("new land", () => {
     const state = floodGame();
     state.fog = false;
     state.flood!.front = -Infinity;
+    state.flood!.kingHp = Infinity; // swarms come with the land; this is about the land
     for (let i = 0; i < 300 * TICK_RATE && !state.gameOver; i++) {
       // A flag far to the right, on his row, as near as he can get.
       if (i % TICK_RATE === 0) {
@@ -386,8 +388,9 @@ describe("a goal", () => {
     expect(home.x).toBe(flood.king.x + 60);
     expect(isFloodHome(state, home.x + 1, home.y + 1)).toBe(true);
     expect(tilesToGoal(flood)).toBe(59);
-    // Walk him there with the fog off.
+    // Walk him there with the fog off, and the swarms out of the way.
     state.fog = false;
+    state.enemies = [];
     flood.front = -Infinity;
     flag(state, { x: home.x - 1, y: home.y + 1 });
     for (let i = 0; i < 200 * TICK_RATE && !state.gameOver; i++) tick(state);
@@ -413,5 +416,57 @@ describe("a goal", () => {
         expect(state.terrain[tileIndex(state, home.x + dx, home.y + dy)]).toBe("ground");
       }
     }
+  });
+});
+
+describe("swarms", () => {
+  it("wait round the map, clear of the king's start, tougher further on", () => {
+    const state = floodGame();
+    const { king } = state.flood!;
+    const swarmers = state.enemies.filter((e) => e.journey?.post);
+    expect(new Set(swarmers.map((e) => e.journey!.swarm)).size).toBeGreaterThan(3);
+    for (const e of swarmers) {
+      expect(Math.hypot(e.x - king.x, e.y - king.y)).toBeGreaterThan(JOURNEY.clearOfStart - 3);
+    }
+    expect(swarmWave(state, state.width - 1)).toBeGreaterThan(swarmWave(state, 0));
+  });
+
+  it("wake when one sees him, come for him, and hit him", () => {
+    const state = blankFlood();
+    const { x, y } = king(state);
+    const goblin = spawnEnemy(state, x + 5, y, { kind: "goblin" });
+    goblin.journey = { post: { x: x + 5, y }, swarm: 7, alert: 0, hp: goblin.hp };
+    const friend = spawnEnemy(state, x + 20, y, { kind: "goblin" });
+    friend.journey = { post: { x: x + 20, y }, swarm: 7, alert: 0, hp: friend.hp };
+    tick(state);
+    expect(friend.journey.alert).toBeGreaterThan(0); // its whole swarm wakes
+    run(state, 10 * TICK_RATE);
+    expect(state.flood!.kingHp).toBeLessThan(FLOOD.kingHp);
+  });
+
+  it("taking all his HP loses", () => {
+    const state = blankFlood();
+    state.flood!.kingHp = 0;
+    tick(state);
+    expect(state.gameOver).toBe(true);
+    expect(state.won).toBe(false);
+  });
+
+  it("come in with new land", () => {
+    const state = blankFlood();
+    const before = state.enemies.length;
+    for (let i = 0; i < 2 * FLOOD.chunkColumns; i++) shiftWorld(state);
+    const swarmers = state.enemies.filter((e) => e.journey?.post);
+    expect(swarmers.length).toBeGreaterThan(before);
+    for (const e of swarmers) expect(e.x).toBeGreaterThan(state.width - 2 * FLOOD.chunkColumns - 3);
+  });
+
+  it("move with the world, posts and all", () => {
+    const state = blankFlood();
+    const goblin = spawnEnemy(state, 30, 20, { kind: "goblin" });
+    goblin.journey = { post: { x: 30, y: 20 }, swarm: 9, alert: 0, hp: goblin.hp };
+    shiftWorld(state);
+    expect(goblin).toMatchObject({ x: 29, y: 20, tx: 29 });
+    expect(goblin.journey.post).toEqual({ x: 29, y: 20 });
   });
 });

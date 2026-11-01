@@ -26,6 +26,7 @@ import { updateEffects } from "./effects";
 import { initialExplored, revealKeep } from "./fog";
 import { claimKeepWalls, placeKeepWalls } from "./keepWalls";
 import { createFlood, kingDrowned, kingHome, planKing, updateFlood } from "./flood";
+import { kingFallen, populateFlood } from "./floodSwarms";
 import { createJourney, moveCamp, populateJourney, reachedHome, updateJourney } from "./journey";
 import { floodLayout, generateTerrain, journeyLayout, layoutFor, type MapLayout } from "./mapgen";
 import type { ItemsFile } from "./itemsFile";
@@ -204,6 +205,7 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
       structure.paid = 0;
     }
   } else if (state.journey) populateJourney(state);
+  else if (state.flood && !options.blankMap) populateFlood(state);
   else if (!options.blankMap) placeKeepWalls(state);
   return state;
 }
@@ -259,7 +261,8 @@ export function tick(state: GameState): void {
   removeDeadUnits(state);
   collectIncome(state);
   collectFarmIncome(state);
-  const fallen = state.keeps.find((keep) => keep.hp <= 0) ?? kingDrowned(state);
+  const fallen =
+    state.keeps.find((keep) => keep.hp <= 0) ?? (kingDrowned(state) || kingFallen(state));
   if (fallen && !state.gameOver) {
     state.gameOver = true;
     // PvP: the player whose keep still stands wins.

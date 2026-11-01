@@ -34,7 +34,8 @@ export function statList(state: GameState, playerId: PlayerId): Stat[] {
   ];
   if (state.flood) {
     // No keep and no waves: how far behind the king the lava is, in the waves' place (shown in
-    // the HUD from the start); how far he's got (the score) in the keep's; how fast it creeps.
+    // the HUD from the start); the king's HP in the keep's; how far he's got (the score); and
+    // how fast the lava's coming, or how far it is to a goal's keep.
     const tiles = (n: number) => `${n} tile${n === 1 ? "" : "s"}`;
     const startsIn = lavaStartsIn(state);
     stats.push(
@@ -43,7 +44,8 @@ export function statList(state: GameState, playerId: PlayerId): Stat[] {
         label: "Lava",
         value: startsIn > 0 ? `starts in ${startsIn}s` : `${tiles(lavaBehindKing(state))} behind`,
       },
-      { id: "keep", label: "Distance", value: tiles(distanceTravelled(state.flood)) },
+      { id: "keep", label: "King", value: `${state.flood.kingHp} / ${state.flood.kingMaxHp}` },
+      { id: "mode", label: "Distance", value: tiles(distanceTravelled(state.flood)) },
       // A goal game: how far still to the keep; else how fast the lava's coming.
       tilesToGoal(state.flood) === null
         ? { id: "next", label: "Lava speed", value: `${lavaSpeed(state).toFixed(2)} tiles/s` }

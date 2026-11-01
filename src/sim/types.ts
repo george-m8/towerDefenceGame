@@ -213,6 +213,11 @@ export interface Flood {
   progress: number;
   /** Whose king he is: the fog he lifts is theirs. */
   owner: PlayerId;
+  /** His HP: swarms hit him (see floodSwarms.ts), and at 0 the game's over, as with the lava. */
+  kingHp: number;
+  kingMaxHp: number;
+  /** The next swarm's number (a swarm wakes together). */
+  swarms: number;
   /** His flags, in the order he'll walk to them (as a raider's plan), and his way to the first. */
   plan: Point[];
   path: Point[];
@@ -247,9 +252,10 @@ export interface Land {
   terrain: Terrain[];
   resources: number[];
   worth: number[];
-  /** Its ruins and chests, placed as their columns come in. */
+  /** Its ruins and chests, placed as their columns come in, and its swarms' middles. */
   ruins: { x: number; y: number; hpFraction: number }[];
   chests: { x: number; y: number; gold: number }[];
+  swarms: Point[];
 }
 
 /** One of a player's own units (see sim/units.ts). Moves tile to tile like an enemy. */

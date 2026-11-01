@@ -611,6 +611,10 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       colour,
       king,
     );
+    // Hurt by a swarm: his HP over him, as anything's.
+    if (flood.kingHp < flood.kingMaxHp) {
+      drawHpBar(king.x, king.y - 0.2, flood.kingHp / flood.kingMaxHp);
+    }
     if (iso) return;
     const kx = (king.x + 0.5) * TILE_SIZE;
     const ky = (king.y + 0.5) * TILE_SIZE;

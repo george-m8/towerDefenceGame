@@ -8,7 +8,9 @@
 // The map never ends: as the king nears its right edge, the column furthest behind (lava, or soon
 // to be) is dropped, everything moves a column left, and a column of new land comes in on the
 // right (see shiftWorld). The camera moves with it.
-import { FLOOD, KEEP_SIZE, TERRAIN, TICK_RATE } from "./config";
+import { FLOOD, JOURNEY, KEEP_SIZE, TERRAIN, TICK_RATE } from "./config";
+import { placeFloodSwarm } from "./floodSwarms";
+import { randomInt } from "./rng";
 import { exploreKingSight, isExplored } from "./fog";
 import {
   EMPTY,
@@ -38,6 +40,9 @@ export function createFlood(
     king,
     progress: 0,
     owner: 1,
+    kingHp: FLOOD.kingHp,
+    kingMaxHp: FLOOD.kingHp,
+    swarms: 1,
     plan: [],
     path: [],
     front: 0,
@@ -497,7 +502,17 @@ export function shiftWorld(state: GameState): void {
     u.pathVersion = -1;
   }
   state.enemies = state.enemies.filter((e) => e.x >= 1);
-  for (const e of state.enemies) e.x -= 1;
+  for (const e of state.enemies) {
+    e.x -= 1;
+    e.tx -= 1;
+    e.px -= 1;
+    // Its way was found on the old map, and its post moves with the world (or is gone).
+    e.steer = null;
+    if (e.journey?.post) {
+      e.journey.post =
+        e.journey.post.x >= 1 ? { x: e.journey.post.x - 1, y: e.journey.post.y } : null;
+    }
+  }
   state.features = state.features
     .filter((f) => f.x >= 1)
     .map((f) => ({ ...f, x: f.x - 1 }))
@@ -518,6 +533,10 @@ export function shiftWorld(state: GameState): void {
   for (const ruin of land.ruins.filter((r) => r.x === column)) {
     const r = placeStructure(state, "ruin", width - 1, ruin.y, "N", null);
     r.hp = Math.round(r.maxHp * ruin.hpFraction);
+  }
+  // A swarm comes in once the land round its middle has (two columns past it).
+  for (const middle of land.swarms.filter((m) => m.x === column - 2)) {
+    placeFloodSwarm(state, { x: width - 3, y: middle.y });
   }
   state.flows = {};
   state.gridVersion++;
@@ -574,6 +593,7 @@ function nextLand(state: GameState): Land {
     chunk = { ...chunk, ruins: chunk.ruins.filter(offKeep), chests: chunk.chests.filter(offKeep) };
   }
   flood.land = {
+    swarms: swarmMiddles(chunk, n, height, chunkSeed(state, 0)),
     width: n,
     next: 0,
     terrain: chunk.terrain,
@@ -631,6 +651,27 @@ function joinsOn(
     }
   }
   return false;
+}
+
+/**
+ * Where a new piece of land's swarms go (as many for its size as on any map, apart from each
+ * other), on open ground, chosen with their own RNG so the game's isn't touched.
+ */
+function swarmMiddles(chunk: MapGenResult, n: number, height: number, seed: number): Point[] {
+  const rng = { rngState: seed ^ 0x51ed270b };
+  const count = Math.round((n * height) / JOURNEY.tilesPerSwarm);
+  const middles: Point[] = [];
+  for (let k = 0; k < count; k++) {
+    for (let tries = 0; tries < 40; tries++) {
+      // Two columns in from its right side, so the land round it has come in with it.
+      const p = { x: randomInt(rng, 0, n - 3), y: randomInt(rng, 2, height - 3) };
+      if (!isOpen(chunk.terrain[p.y * n + p.x])) continue;
+      if (middles.some((m) => Math.hypot(p.x - m.x, p.y - m.y) < JOURNEY.swarmSpacing)) continue;
+      middles.push(p);
+      break;
+    }
+  }
+  return middles;
 }
 
 function isOpen(terrain: Terrain): boolean {

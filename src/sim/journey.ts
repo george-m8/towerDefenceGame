@@ -175,7 +175,7 @@ export function idleOnJourney(state: GameState, enemy: Enemy): boolean {
 }
 
 /** Wakes an enemy and the rest of its swarm (a wanderer wakes alone). */
-function wake(state: GameState, enemy: Enemy): void {
+export function wake(state: GameState, enemy: Enemy): void {
   const alert = JOURNEY.giveUpSeconds * TICK_RATE;
   const { swarm } = enemy.journey!;
   if (swarm === 0) {
@@ -188,7 +188,7 @@ function wake(state: GameState, enemy: Enemy): void {
 }
 
 /** Open ground an enemy can stand on. */
-function isOpen(state: GameState, x: number, y: number): boolean {
+export function isOpen(state: GameState, x: number, y: number): boolean {
   return (
     inBounds(state, x, y) &&
     canCross(state, "follower", x, y) &&
@@ -241,14 +241,23 @@ function distance(a: Point, b: Point): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
-/** A swarm round `middle`, as tough as the wave its distance across the map is worth. */
-function placeSwarm(state: GameState, middle: Point, swarm: number): void {
-  const wave = 1 + Math.round((middle.x / (state.width - 1)) * (JOURNEY.hardestWave - 1));
+/**
+ * A swarm round `middle`, as tough as `wave` (by default, the wave its distance across the map is
+ * worth: wave 1 at the left edge, JOURNEY.hardestWave at the right). None if there's no open
+ * ground there.
+ */
+export function placeSwarm(
+  state: GameState,
+  middle: Point,
+  swarm: number,
+  wave = 1 + Math.round((middle.x / (state.width - 1)) * (JOURNEY.hardestWave - 1)),
+): void {
   const spots: Point[] = [];
   for (let y = middle.y - 2; y <= middle.y + 2; y++) {
     for (let x = middle.x - 2; x <= middle.x + 2; x++)
       if (isOpen(state, x, y)) spots.push({ x, y });
   }
+  if (spots.length === 0) return;
   const size = randomInt(state, JOURNEY.swarmSize.min, JOURNEY.swarmSize.max);
   for (let i = 0; i < size; i++) {
     const spot = spots[randomInt(state, 0, spots.length - 1)];

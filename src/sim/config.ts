@@ -1124,6 +1124,11 @@ export const FLOOD = {
   kingSight: { inner: 7, outer: 10 } satisfies SightStats,
   /** How fast the king walks, in tiles per second. */
   kingSpeed: 1.5,
+  /** The king's HP: swarms that reach him hit him (as Journey home's do the camp). */
+  kingHp: 150,
+  /** Swarms (see sim/floodSwarms.ts) get a wave tougher every this many tiles on, up to the hardest. */
+  tilesPerWave: 40,
+  hardestWave: 25,
   /** The most flags he can have planned at once. */
   maxFlags: 10,
   /** Seconds before the lava starts to creep in. */

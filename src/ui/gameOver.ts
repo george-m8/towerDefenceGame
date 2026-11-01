@@ -54,7 +54,11 @@ export function createGameOverDialog(
         // goal, reaching the keep wins.
         const distance = distanceTravelled(state.flood);
         const tiles = `${distance} tile${distance === 1 ? "" : "s"}`;
-        title.textContent = state.won ? "The king made it to the keep!" : "The lava took the king.";
+        title.textContent = state.won
+          ? "The king made it to the keep!"
+          : state.flood.kingHp <= 0
+            ? "The king has fallen."
+            : "The lava took the king.";
         summary.textContent = state.won
           ? `He walked ${tiles} to it, in ${time}. Map seed ${state.seed}.`
           : state.flood.goal !== null
