@@ -425,7 +425,17 @@ npm run server:probe -- 192.168.1.20
 
 It should print a welcome and a line per update. If it can't connect, check that the host's firewall allows incoming connections on port 8787.
 
-**Friends outside your network** need a tunnel or a port forward to your machine until the game is hosted somewhere.
+**Friends outside your network** need a tunnel or a port forward to your machine until the game is hosted somewhere. The quickest is a Cloudflare quick tunnel (no account needed; `brew install cloudflared`) to the production build:
+
+```sh
+npm run build && npm run build:server
+PORT=8790 npm run start                          # any free port; 8787 may be taken by npm run server
+cloudflared tunnel --url http://localhost:8790   # prints https://<random>.trycloudflare.com
+```
+
+Send friends the `https://….trycloudflare.com` address it prints. The page is served over https, so the game connects with `wss:` on its own, and the tunnel carries the WebSocket. The address changes every time `cloudflared` restarts, and only works while your machine is awake and both commands are running. Code changes need a rebuild and a server restart (the tunnel can stay up). `ngrok http 8790` or `tailscale funnel 8790` work the same way.
+
+Tunnelling the dev server (port 5173) instead needs the tunnel's hostname allowed in `vite.config.ts` (`server.allowedHosts: [".trycloudflare.com"]`), as Vite rejects requests for hosts it doesn't know.
 
 **Production (one process, one port):**
 
