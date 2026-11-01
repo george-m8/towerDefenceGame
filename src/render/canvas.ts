@@ -518,7 +518,11 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     drawTile(x, y, style.bg);
     drawTexture(x, y, TERRAIN_TEXTURES[terrain]);
     if (style.glyph && style.fg) drawGlyph(x, y, style.glyph, style.fg);
-    // A resource being worked shows what's left (in sight only, like enemies).
+    drawResourceLeft(state, x, y);
+  }
+
+  /** A resource being worked shows what's left (in sight only, like enemies). */
+  function drawResourceLeft(state: GameState, x: number, y: number) {
     const resource = resourceAt(state, x, y);
     if (resource && resource.goldLeft < resource.worth && canSeeEnemiesAt(state, x, y, viewer)) {
       drawHpBar(x, y, resource.goldLeft / resource.worth, COLOURS.resourceLeft);
@@ -1332,6 +1336,11 @@ export function createRenderer(canvas: HTMLCanvasElement) {
         if (x < view.x0 || x > view.x1 || y < view.y0 || y > view.y1) continue;
         if (!isExplored(state, x, y, viewer)) continue;
         drawBars(structure, structure);
+      }
+      for (let y = view.y0; y <= view.y1; y++) {
+        for (let x = view.x0; x <= view.x1; x++) {
+          if (state.resources[y * state.width + x] > 0) drawResourceLeft(state, x, y);
+        }
       }
       for (const unit of state.units) {
         if (canSeeEnemiesAt(state, unit.x, unit.y, viewer)) drawHealth(`u${unit.id}`, unit);
