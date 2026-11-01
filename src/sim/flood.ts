@@ -3,7 +3,7 @@
 // enemy's: a flag to walk to, then more flags after it, and he walks to each in turn by the
 // shortest way he knows (over land you've seen). Behind him lava creeps in from the left, slowly
 // at first and a little faster all the time, with a ragged edge (see lavaEdge), turning each tile
-// it reaches to lava with all that's on it. The lava touching the king ends the game; how far he got is the score.
+// it reaches to lava with all that's on it, but for walls, which it flows round (spreadLava). The lava touching the king ends the game; how far he got is the score.
 // The map never ends: as the king nears its right edge, the column furthest behind (lava, or soon
 // to be) is dropped, everything moves a column left, and a column of new land comes in on the
 // right (see shiftWorld). The camera moves with it.
@@ -14,6 +14,7 @@ import {
   baseAt,
   blocksAt,
   inBounds,
+  isBuilt,
   isWalkable,
   mountAt,
   placeStructure,
@@ -25,7 +26,7 @@ import { generateChunk, type MapGenResult } from "./mapgen";
 import { startingWork, startingWorth } from "./resources";
 import type { CommandResult, Flood, GameState, Land, PlayerId, Point, Terrain } from "./types";
 
-export function createFlood(king: Point, height: number): Flood {
+export function createFlood(king: Point, width: number, height: number): Flood {
   return {
     king,
     progress: 0,
@@ -33,7 +34,8 @@ export function createFlood(king: Point, height: number): Flood {
     plan: [],
     path: [],
     front: 0,
-    sunk: new Array<number>(height).fill(0),
+    // Lava comes in from beyond the left edge: every tile of it is next to it.
+    edge: Array.from({ length: height }, (_, y) => y * width),
     shifted: 0,
     startX: king.x,
     land: null,
@@ -120,7 +122,7 @@ export function lavaStartsIn(state: GameState): number {
  */
 export function lavaWarning(state: GameState, x: number, y: number): number | null {
   const flood = state.flood;
-  if (!flood || x < flood.sunk[y]) return null;
+  if (!flood || terrainAt(state, x, y) === "lava") return null;
   const ahead = aheadOfLava(state, x, y);
   if (ahead > FLOOD.warnTiles) return null;
   return Math.min(1, 1 - ahead / FLOOD.warnTiles + 1 / FLOOD.warnTiles);
@@ -234,12 +236,7 @@ export function updateFlood(state: GameState): void {
   if (!flood) return;
   walkKing(state, flood);
   flood.front = Math.min(state.width, flood.front + lavaSpeed(state) / TICK_RATE);
-  // Each row's lava takes its next tile once its edge (and that tile's roughness) has passed it.
-  for (let y = 0; y < state.height; y++) {
-    while (flood.sunk[y] < state.width && aheadOfLava(state, flood.sunk[y], y) <= 0) {
-      sinkTile(state, flood, flood.sunk[y]++, y);
-    }
-  }
+  spreadLava(state, flood);
   // The world moves on a few columns at a time, so new land comes in a few lines at a time.
   if (flood.king.x >= state.width - aheadTiles(state)) {
     for (let i = 0; i < FLOOD.shiftColumns; i++) shiftWorld(state);
@@ -276,6 +273,51 @@ function nextWay(state: GameState, flood: Flood): void {
     flood.plan = flood.plan.slice(1);
     flood.path = kingPath(state, flood);
   }
+}
+
+/** Whether lava stops at (x, y): a finished wall holds it (and a tower on it), however long. */
+function holdsLava(state: GameState, x: number, y: number): boolean {
+  const base = baseAt(state, x, y);
+  return base !== undefined && base.kind === "wall" && isBuilt(base);
+}
+
+/**
+ * The lava takes the tiles beside it that its edge (and their roughness) has passed, but for
+ * walls, which it flows round. It spreads a tile a tick, so through a gap it pours in quickly
+ * but not all at once. `flood.edge` keeps the tiles beside it not yet under (walls too, in case
+ * they go).
+ */
+function spreadLava(state: GameState, flood: Flood): void {
+  const { width } = state;
+  const next = new Set<number>();
+  for (const i of flood.edge) {
+    if (state.terrain[i] === "lava") continue;
+    const x = i % width;
+    const y = (i - x) / width;
+    if (holdsLava(state, x, y) || aheadOfLava(state, x, y) > 0) {
+      next.add(i);
+      continue;
+    }
+    sinkTile(state, flood, x, y);
+    for (const n of besideOnMap(state, x, y)) if (state.terrain[n] !== "lava") next.add(n);
+  }
+  flood.edge = [...next];
+}
+
+/** The tiles beside the lava not yet under (or, on the left edge, beside where it comes from). */
+function lavaEdgeTiles(state: GameState): number[] {
+  const { width, height } = state;
+  const edge: number[] = [];
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = y * width + x;
+      if (state.terrain[i] === "lava") continue;
+      if (x === 0 || besideOnMap(state, x, y).some((n) => state.terrain[n] === "lava")) {
+        edge.push(i);
+      }
+    }
+  }
+  return edge;
 }
 
 /** A tile goes under: lava, with nothing left on it (units burn, buildings and flags go). */
@@ -349,7 +391,7 @@ export function shiftWorld(state: GameState): void {
   flood.plan = flood.plan.filter((p) => p.x >= 1).map(moved);
   flood.path = flood.path.filter((p) => p.x >= 1).map(moved);
   flood.front -= 1;
-  flood.sunk = flood.sunk.map((x) => Math.max(0, x - 1));
+  flood.edge = lavaEdgeTiles(state);
   flood.shifted += 1;
   for (const ruin of land.ruins.filter((r) => r.x === column)) {
     const r = placeStructure(state, "ruin", width - 1, ruin.y, "N", null);

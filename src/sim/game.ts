@@ -169,7 +169,7 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     rngState: seed,
     fog: options.fog ?? true,
     journey: journey ? createJourney(journey.home) : null,
-    flood: flooding ? createFlood(flooding.king, height) : null,
+    flood: flooding ? createFlood(flooding.king, width, height) : null,
     explored: [],
   };
   if (mode !== "endless") state.wave.countdown = Infinity; // only Endless has waves

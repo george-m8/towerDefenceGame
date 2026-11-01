@@ -7,6 +7,7 @@ import { RESOURCES } from "../../src/sim/config";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { harvest, placeResource } from "../../src/sim/resources";
 import { createGameWithoutWaves } from "../sim/helpers";
+import { createGame } from "../../src/sim/game";
 
 describe("enemy draw order", () => {
   it("draws an enemy with its own row", () => {
@@ -86,5 +87,22 @@ describe("damaged walls", () => {
     expect(textureSpecks("crackedStone", 0).length).toBeGreaterThan(
       textureSpecks("stone", 0).length,
     );
+  });
+});
+
+describe("No looking back's lava", () => {
+  it("stands half a wall high where it's deep, lower towards its fringe", () => {
+    const state = createGame(3, { mode: "flood", blankMap: true });
+    // Lava over the left 10 columns.
+    for (let y = 0; y < state.height; y++) {
+      for (let x = 0; x < 10; x++) state.terrain[y * state.width + x] = "lava";
+    }
+    const wall = placeStructure(state, "wall", 20, 20, "N", 1);
+    wall.buildLeft = 0;
+    const wallHeight = blockHeight(state, 20, 20);
+    expect(blockHeight(state, 9, 20)).toBe(1); // beside land
+    expect(blockHeight(state, 8, 20)).toBe(2);
+    expect(blockHeight(state, 5, 20)).toBe(wallHeight / 2);
+    expect(blockHeight(state, 0, 20)).toBe(wallHeight / 2); // off the map counts as lava
   });
 });

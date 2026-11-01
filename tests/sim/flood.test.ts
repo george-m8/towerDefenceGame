@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { FLOOD, TICK_RATE } from "../../src/sim/config";
 import { applyCommand, createGame, tick } from "../../src/sim/game";
-import { canBuild, placeStructure, tileIndex } from "../../src/sim/grid";
+import { canBuild, placeStructure, removeStructure, tileIndex } from "../../src/sim/grid";
 import { getSight, IN_SIGHT } from "../../src/sim/fog";
 import {
   distanceTravelled,
@@ -197,13 +197,12 @@ describe("the lava", () => {
     run(state, (FLOOD.graceSeconds + 40) * TICK_RATE);
     const edges = Array.from({ length: state.height }, (_, y) => lavaEdge(state, y));
     expect(Math.max(...edges) - Math.min(...edges)).toBeGreaterThan(FLOOD.edge.reach);
-    expect(new Set(state.flood!.sunk).size).toBeGreaterThan(3);
-    // Each row's lava is all in one piece, from the left edge up to where it's got to.
-    for (let y = 0; y < state.height; y++) {
-      for (let x = 0; x < state.flood!.sunk[y]; x++) {
-        expect(state.terrain[tileIndex(state, x, y)]).toBe("lava");
-      }
-    }
+    const lavaIn = (y: number) =>
+      Array.from({ length: state.width }, (_, x) => state.terrain[tileIndex(state, x, y)]).filter(
+        (t) => t === "lava",
+      ).length;
+    const counts = Array.from({ length: state.height }, (_, y) => lavaIn(y));
+    expect(new Set(counts).size).toBeGreaterThan(3);
   });
 
   it("glows over the next few tiles before its edge, not beyond", () => {
@@ -214,17 +213,43 @@ describe("the lava", () => {
     expect(lavaWarning(state, Math.ceil(edge) + FLOOD.warnTiles + 1, 5)).toBeNull();
   });
 
-  it("sinks whatever's on a tile it reaches", () => {
+  it("sinks whatever's on a tile it reaches (but walls)", () => {
     const state = blankFlood();
     const { x, y } = king(state);
-    const wall = placeStructure(state, "wall", x + 1, y + 1, "N", ME);
+    const tower = placeStructure(state, "archer", x + 1, y + 1, "E", ME);
     flag(state, { x: x + 1, y: y + 2 });
+    state.flood!.king = { x: x + 20, y }; // out of the way
     // Far enough on that every row's edge, however ragged, is past them.
     state.flood!.front = x + 2 + FLOOD.edge.reach + FLOOD.edge.rough;
-    tick(state);
-    expect(state.structures[wall.id]).toBeUndefined();
+    run(state, 5);
+    expect(state.structures[tower.id]).toBeUndefined();
     expect(state.flood!.plan).toEqual([]);
     expect(state.terrain[tileIndex(state, x + 1, y)]).toBe("lava");
+  });
+
+  it("doesn't take walls: it flows round them, and what they shut in stays dry", () => {
+    const state = blankFlood();
+    state.flood!.king = { x: 30, y: 10 };
+    // A closed ring of finished walls round (12, 20), and a lone wall at (12, 30).
+    const walls = [];
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        walls.push(placeStructure(state, "wall", 12 + dx, 20 + dy, "N", ME));
+      }
+    }
+    walls.push(placeStructure(state, "wall", 12, 30, "N", ME));
+    for (const wall of walls) wall.buildLeft = 0;
+    state.flood!.front = 20;
+    run(state, 3 * TICK_RATE);
+    for (const wall of walls) expect(state.structures[wall.id]).toBeDefined();
+    expect(state.terrain[tileIndex(state, 12, 20)]).not.toBe("lava"); // shut in
+    expect(state.terrain[tileIndex(state, 13, 30)]).toBe("lava"); // round the lone wall
+    // Once a wall of the ring goes (one along a side: lava doesn't flow corner to corner), the
+    // lava gets in.
+    removeStructure(state, walls[1]);
+    run(state, 5);
+    expect(state.terrain[tileIndex(state, 12, 20)]).toBe("lava");
   });
 
   it("taking the king loses", () => {
@@ -234,7 +259,7 @@ describe("the lava", () => {
     expect(lavaBehindKing(state)).toBe(Math.floor(x + 1 - lavaEdge(state, y)));
     expect(lavaBehindKing(state)).toBeGreaterThan(0);
     state.flood!.front = x + 1 + FLOOD.edge.reach + FLOOD.edge.rough;
-    tick(state);
+    run(state, 5);
     expect(state.gameOver).toBe(true);
     expect(state.won).toBe(false);
   });
@@ -250,7 +275,6 @@ describe("new land", () => {
     const lost = placeStructure(state, "wall", 3, y, "N", ME);
     state.explored[tileIndex(state, 52, y)] = 1;
     state.flood!.front = 5;
-    state.flood!.sunk = state.flood!.sunk.map(() => 5);
     for (let i = 0; i < n; i++) shiftWorld(state);
     expect(state.flood!.king).toEqual({ x: 50 - n, y });
     expect(distanceTravelled(state.flood!)).toBe(50 - 1);
@@ -259,7 +283,9 @@ describe("new land", () => {
     expect(state.structures[lost.id]).toBeUndefined();
     expect(state.explored[tileIndex(state, 52 - n, y)]).toBe(1);
     expect(state.flood!.front).toBe(5 - n);
-    expect(new Set(state.flood!.sunk)).toEqual(new Set([0]));
+    // What's beside the lava is worked out again for the moved world.
+    expect(state.flood!.edge.every((i) => state.terrain[i] !== "lava")).toBe(true);
+    expect(state.flood!.edge).toContain(tileIndex(state, 0, y));
     // The new columns are generated land, not just open ground, joined to the old at some rows.
     const fresh = [];
     for (let yy = 0; yy < state.height; yy++) {

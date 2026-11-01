@@ -141,6 +141,29 @@ export function isDamagedWall(structure: Structure): boolean {
 
 /** How tall untouched rock (and gold rock) stands, in pixels. */
 const ROCK_HEIGHT = 4;
+/** A wall's height (a finished one, unbattered). */
+const WALL_HEIGHT = 6;
+/** No looking back's lava: half a wall high where it's deep, lower towards its fringes. */
+const LAVA_HEIGHT = WALL_HEIGHT / 2;
+
+/**
+ * How high lava stands at (x, y): a pixel at its fringe (beside land), two a tile further in,
+ * and LAVA_HEIGHT from two tiles in. Off the map counts as lava, so it's deep at the edges.
+ */
+function lavaHeight(state: GameState, x: number, y: number): number {
+  for (let reach = 1; reach < LAVA_HEIGHT; reach++) {
+    for (let dy = -reach; dy <= reach; dy++) {
+      for (let dx = -reach; dx <= reach; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== reach) continue;
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= state.width || ny >= state.height) continue;
+        if (state.terrain[ny * state.width + nx] !== "lava") return reach;
+      }
+    }
+  }
+  return LAVA_HEIGHT;
+}
 
 export function blockHeight(state: GameState, x: number, y: number): number {
   // Journey home's keep at the end stands like any keep.
@@ -162,8 +185,9 @@ export function blockHeight(state: GameState, x: number, y: number): number {
   // A battered wall sinks a little, and a tower on it with it.
   const sunk = base && isDamagedWall(base) ? 1 : 0;
   if (mount) return base ? 11 - sunk : 8;
-  if (base) return STRUCTURES[base.kind].blocksMovement ? 6 - sunk : 0;
+  if (base) return STRUCTURES[base.kind].blocksMovement ? WALL_HEIGHT - sunk : 0;
   const terrain = terrainAt(state, x, y);
+  if (terrain === "lava") return lavaHeight(state, x, y);
   if (terrain === "tree") return 7;
   if (terrain === "rock" || terrain === "goldRock") {
     // Ore sinks as it's mined: full height while untouched, down to a sliver near the end.

@@ -218,8 +218,8 @@ export interface Flood {
   path: Point[];
   /** How far in from the left the lava has come, in tiles, on average (see lavaEdge). */
   front: number;
-  /** In each row, tiles left of this have gone under, with all that was on them. */
-  sunk: number[];
+  /** The tiles beside the lava not yet under (tile indices): where it spreads to next. */
+  edge: number[];
   /** Columns the world has moved on by (see shiftWorld), and the column he started on. */
   shifted: number;
   startX: number;
