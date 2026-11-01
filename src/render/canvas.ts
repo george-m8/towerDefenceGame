@@ -165,6 +165,12 @@ export function blockHeight(state: GameState, x: number, y: number): number {
   return terrain === "berries" ? 2 : 0;
 }
 
+/** A block's sides: its own colour, but a tower on a wall shows the wall it stands on. */
+export function blockSideColour(state: GameState, x: number, y: number): string {
+  const base = mountAt(state, x, y) && baseAt(state, x, y);
+  return base ? STRUCTURE_COLOURS[base.kind].bg : minimapColour(state, x, y);
+}
+
 /**
  * The row an enemy is drawn with. Blocks in front hide it, except the keep: an enemy standing
  * against the back of the keep (attacking it) is drawn in front, not sunk under the keep's top.
@@ -371,7 +377,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
         const h = heightAt(x, y);
         if (h === 0) continue;
         // Front face: the block's colour, darkened; the top sits h pixels higher.
-        ctx!.fillStyle = minimapColour(state, x, y);
+        ctx!.fillStyle = blockSideColour(state, x, y);
         ctx!.fillRect(x * TILE_SIZE, (y + 1) * TILE_SIZE - h, TILE_SIZE, h);
         ctx!.fillStyle = "rgba(0, 0, 0, 0.45)";
         ctx!.fillRect(x * TILE_SIZE, (y + 1) * TILE_SIZE - h, TILE_SIZE, h);

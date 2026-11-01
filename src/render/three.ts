@@ -9,11 +9,11 @@
 import * as THREE from "three";
 import { ENEMY_KINDS, UNIT_KINDS } from "../sim/config";
 import { SEEN, UNEXPLORED, canSeeEnemiesAt, getSight } from "../sim/fog";
-import { minimapColour } from "../ui/minimap";
+import { baseAt, isBuilt, mountAt } from "../sim/grid";
 import type { GameState, PlayerId } from "../sim/types";
 import { ISO, tilePixels, viewCentre, type Camera } from "../ui/camera";
 import type { UiState } from "../ui/state";
-import { blockHeight, createRenderer } from "./canvas";
+import { blockHeight, blockSideColour, createRenderer } from "./canvas";
 import { darknessAt, daylight, skyHour } from "./dayNight";
 import { sunDirection } from "./sun";
 import {
@@ -50,6 +50,10 @@ const NIGHT_SKY = 0.25;
 /** How tall an enemy's or unit's card stands, in tiles, before its size. */
 const CARD_TILES = 1.1;
 
+/** A tower on a wall's ramparts: how tall they stand above its top, in tiles, and their merlons. */
+const RAMPART_TILES = 0.3;
+const MERLONS = 3;
+
 /** A block's height in tiles, from canvas.ts's height in pixels. */
 export function blockTiles(state: GameState, x: number, y: number): number {
   return (blockHeight(state, x, y) / TILE_SIZE) * ISO.heightScale;
@@ -84,6 +88,32 @@ export function placeCamera(camera: THREE.OrthographicCamera, ui: UiState): void
   const { right, up, back } = cameraAxes(cam);
   camera.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(right, up, back));
   camera.position.set(centre.x, 0, centre.y).addScaledVector(back, CAMERA_DISTANCE);
+}
+
+/** A finished tower standing on a finished wall: it gets ramparts round its top. */
+function isTowerOnWall(state: GameState, x: number, y: number): boolean {
+  if (x < 0 || y < 0 || x >= state.width || y >= state.height) return false;
+  const mount = mountAt(state, x, y);
+  const base = baseAt(state, x, y);
+  return !!mount && !!base && isBuilt(mount) && isBuilt(base);
+}
+
+/**
+ * A rampart: a flat, crenellated piece a tile wide standing on its bottom edge, facing +z, its
+ * middle at x = 0. A low strip with merlons on it, gaps between them.
+ */
+function rampartGeometry(): THREE.BufferGeometry {
+  const strip = RAMPART_TILES * 0.4;
+  const step = 1 / (MERLONS * 2 - 1); // merlons and gaps all the same width
+  const shape = new THREE.Shape().moveTo(-0.5, 0).lineTo(0.5, 0);
+  for (let i = MERLONS - 1; i >= 0; i--) {
+    const right = -0.5 + (i * 2 + 1) * step;
+    const left = right - step;
+    shape.lineTo(right, strip);
+    shape.lineTo(right, RAMPART_TILES).lineTo(left, RAMPART_TILES).lineTo(left, strip);
+  }
+  shape.lineTo(-0.5, 0);
+  return new THREE.ShapeGeometry(shape);
 }
 
 /** An instanced mesh that grows when it needs more room than it has. */
@@ -236,6 +266,15 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
     true,
   );
 
+  // Ramparts: round the top of each tower on a wall, in its sides' colour; none between
+  // two towers side by side, so their tops join up.
+  const ramparts = instances(
+    scene,
+    rampartGeometry(),
+    new THREE.MeshLambertMaterial({ side: THREE.DoubleSide }),
+    true,
+  );
+
   // Cards: an enemy's or unit's glyph, standing on its point and turned to face the camera.
   const atlas = createGlyphAtlas();
   const cardGeometry = new THREE.PlaneGeometry(1, 1).translate(0, 0.5, 0);
@@ -276,6 +315,7 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
   const fogColour = new THREE.Color(FOG.colour);
   const spot = new THREE.Vector3();
   const cardScale = new THREE.Vector3();
+  const turn = new THREE.Matrix4();
 
   let painted: { key: string; tiers: Uint8Array | null; at: number } = {
     key: "",
@@ -303,10 +343,15 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
     ground.scale.set(width, 1, height);
 
     let count = 0;
+    let towers = 0;
     for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) if (blockHeight(state, x, y) > 0) count++;
+      for (let x = 0; x < width; x++) {
+        if (blockHeight(state, x, y) > 0) count++;
+        if (isTowerOnWall(state, x, y)) towers++;
+      }
     }
     const mesh = blocks.reserve(count);
+    const walls = ramparts.reserve(towers * 4);
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const h = blockTiles(state, x, y);
@@ -314,14 +359,27 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
         if (h <= 0 || tier === UNEXPLORED) continue;
         matrix.makeScale(1, h, 1).setPosition(x + 0.5, 0, y + 0.5);
         mesh.setMatrixAt(mesh.count, matrix);
-        // The sides' colour: the block's own, misted like its top where it's only been seen.
-        side.copy(colourOf(minimapColour(state, x, y)));
+        // The sides' colour: the block's own (a tower on a wall, the wall's), misted like its top where it's only been seen.
+        side.copy(colourOf(blockSideColour(state, x, y)));
         if (tier === SEEN) side.lerp(fogColour, FOG.seen.opacity);
         mesh.setColorAt(mesh.count, side);
         mesh.count++;
+        if (!isTowerOnWall(state, x, y)) continue;
+        for (let quarter = 0; quarter < 4; quarter++) {
+          // Turned to face out of each side (south, east, north, west), on that side's edge.
+          const angle = (quarter * Math.PI) / 2;
+          const dx = Math.round(Math.sin(angle));
+          const dy = Math.round(Math.cos(angle));
+          if (isTowerOnWall(state, x + dx, y + dy)) continue;
+          turn.makeRotationY(angle).setPosition(x + 0.5 + dx / 2, h, y + 0.5 + dy / 2);
+          walls.setMatrixAt(walls.count, turn);
+          walls.setColorAt(walls.count, side);
+          walls.count++;
+        }
       }
     }
     blocks.done();
+    ramparts.done();
   }
 
   /** Enemies, units and chests: every frame, where the viewer can see them. */
