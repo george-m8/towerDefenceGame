@@ -52,7 +52,7 @@ export const GAME_MODES: {
     mode: "flood",
     name: "No looking back",
     description:
-      "No keep, just your king, and the flood behind him. Paint his route and he walks it, home to the far right. The land rises ahead of him and sinks behind. If the water reaches him, it's over.",
+      "No keep to hold, just your king, and lava behind him, coming in waves. Plant his flags and he walks to them, home to the keep on the mountain at the far right. If the lava reaches him, it's over.",
     online: false,
     solo: true,
   },

@@ -192,11 +192,10 @@ function campRefusal(state: GameState, x: number, y: number): string | null {
   return far ? "Too far from your camp" : null;
 }
 
-/** No looking back: you build only round the king, on land that has risen. */
+/** No looking back: you build only round the king, and not on the mountain. */
 function kingRefusal(state: GameState, x: number, y: number): string | null {
   const flood = state.flood;
   if (!flood) return null;
-  if (x >= flood.risen) return "That land hasn't risen yet";
   if (onMountain(flood, x, y)) return "Nothing can be built on the mountain";
   const far = Math.max(Math.abs(x - flood.king.x), Math.abs(y - flood.king.y)) > FLOOD.buildRadius;
   return far ? "Too far from the king" : null;

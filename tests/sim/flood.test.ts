@@ -10,7 +10,6 @@ import {
   lavaWarning,
   lavaWaves,
   mountainStep,
-  nextKingStep,
 } from "../../src/sim/flood";
 import type { GameState, Point } from "../../src/sim/types";
 
@@ -34,15 +33,16 @@ function blankFlood(): GameState {
 
 const king = (state: GameState): Point => ({ ...state.flood!.king });
 
-/** Paints a straight route from just past the king along a row or column. */
-function paintLine(state: GameState, from: Point, to: Point) {
-  const dx = Math.sign(to.x - from.x);
-  const dy = Math.sign(to.y - from.y);
-  for (let p = { ...from }; ; p = { x: p.x + dx, y: p.y + dy }) {
-    expect(applyCommand(state, ME, { type: "paintRoute", ...p })).toEqual({ ok: true });
-    if (p.x === to.x && p.y === to.y) break;
-  }
+/** Sends the king to (x, y), or (`queue`) adds it after his other flags. */
+function flag(state: GameState, p: Point, queue = false) {
+  const command = queue
+    ? { type: "planKing" as const, ...p, queue: true as const }
+    : { type: "planKing" as const, ...p };
+  expect(applyCommand(state, ME, command)).toEqual({ ok: true });
 }
+
+/** Ticks for the king to walk `tiles` tiles, and one more. */
+const walkTicks = (tiles: number) => Math.ceil(((tiles + 1) / FLOOD.kingSpeed) * TICK_RATE);
 
 describe("setting out", () => {
   it("has no keep: the king on the left edge, home on the right, and no waves", () => {
@@ -65,75 +65,100 @@ describe("setting out", () => {
     const sight = getSight(state, ME);
     expect(sight[tileIndex(state, x + FLOOD.kingSight.inner, y)]).toBe(IN_SIGHT);
   });
-
-  it("only has land a few tiles ahead of the king", () => {
-    const state = floodGame();
-    const { x, y } = king(state);
-    expect(state.flood!.risen).toBe(x + FLOOD.riseAhead + 1);
-    const far = { x: x + FLOOD.riseAhead + 1, y };
-    expect(applyCommand(state, ME, { type: "paintRoute", ...far })).toMatchObject({ ok: false });
-  });
 });
 
-describe("the king's route", () => {
-  it("walks the route he's painted, using it up, to its last tile", () => {
+describe("the king's flags", () => {
+  it("walks to a flag by the shortest way, and stands there", () => {
     const state = blankFlood();
     const start = king(state);
-    const end = { x: start.x + 6, y: start.y };
-    paintLine(state, { x: start.x + 1, y: start.y }, end);
-    run(state, Math.ceil((7 / FLOOD.kingSpeed) * TICK_RATE));
-    expect(king(state)).toEqual(end);
-    expect(state.flood!.route).toEqual([]);
-  });
-
-  it("takes the shortest way within the route to the tile painted last", () => {
-    const state = blankFlood();
-    const { x, y } = king(state);
-    // A loop: right 3, down 2, back left 3. The far end (painted last) is right below the king,
-    // two tiles away, but only over painted tiles: round the loop is the only way.
-    paintLine(state, { x: x + 1, y }, { x: x + 3, y });
-    paintLine(state, { x: x + 3, y: y + 1 }, { x: x + 3, y: y + 2 });
-    paintLine(state, { x: x + 2, y: y + 2 }, { x, y: y + 2 });
-    expect(nextKingStep(state)).toEqual({ x: x + 1, y });
-    // Painting the gap makes it two steps straight down.
-    expect(applyCommand(state, ME, { type: "paintRoute", x, y: y + 1 })).toEqual({ ok: true });
-    expect(nextKingStep(state)).toEqual({ x, y: y + 1 });
-  });
-
-  it("stands still with no route, and waits at anything built in his way", () => {
-    const state = blankFlood();
-    const start = king(state);
+    const to = { x: start.x + 4, y: start.y + 2 };
+    flag(state, to);
+    expect(state.flood!.path).toHaveLength(6);
+    run(state, walkTicks(6));
+    expect(king(state)).toEqual(to);
+    expect(state.flood!.plan).toEqual([]);
     run(state, TICK_RATE);
-    expect(king(state)).toEqual(start);
-    const wall = placeStructure(state, "wall", start.x + 2, start.y, "N", ME);
-    wall.buildLeft = 0;
-    paintLine(state, { x: start.x + 1, y: start.y }, { x: start.x + 4, y: start.y });
-    run(state, 5 * TICK_RATE);
-    expect(king(state)).toEqual({ x: start.x + 1, y: start.y });
+    expect(king(state)).toEqual(to);
   });
 
-  it("rubs a tile out", () => {
+  it("walks to each flag in turn, as a raider's enemy does", () => {
     const state = blankFlood();
     const { x, y } = king(state);
-    paintLine(state, { x: x + 1, y }, { x: x + 2, y });
-    applyCommand(state, ME, { type: "paintRoute", x: x + 2, y, erase: true });
-    expect(state.flood!.route).toEqual([{ x: x + 1, y }]);
+    flag(state, { x: x + 3, y });
+    flag(state, { x: x + 3, y: y + 3 }, true);
+    flag(state, { x, y: y + 3 }, true);
+    expect(state.flood!.plan).toHaveLength(3);
+    const visited: Point[] = [];
+    for (let i = 0; i < walkTicks(9); i++) {
+      tick(state);
+      const at = king(state);
+      const last = visited[visited.length - 1];
+      if (!last || last.x !== at.x || last.y !== at.y) visited.push(at);
+    }
+    expect(visited).toContainEqual({ x: x + 3, y });
+    expect(visited).toContainEqual({ x: x + 3, y: y + 3 });
+    expect(visited).toHaveLength(10); // where he started, then the shortest way through all three
+    expect(king(state)).toEqual({ x, y: y + 3 });
+    expect(state.flood!.plan).toEqual([]);
   });
 
-  it("can't be painted where you've never seen", () => {
+  it("drops his plan for a new flag, and stops when you click on him", () => {
+    const state = blankFlood();
+    const { x, y } = king(state);
+    flag(state, { x: x + 5, y });
+    flag(state, { x: x + 5, y: y + 5 }, true);
+    flag(state, { x, y: y + 4 });
+    expect(state.flood!.plan).toEqual([{ x, y: y + 4 }]);
+    flag(state, { x, y });
+    expect(state.flood!.plan).toEqual([]);
+    run(state, TICK_RATE * 2);
+    expect(king(state)).toEqual({ x, y });
+  });
+
+  it("goes round what's built in his way", () => {
+    const state = blankFlood();
+    const { x, y } = king(state);
+    const wall = placeStructure(state, "wall", x + 2, y, "N", ME);
+    wall.buildLeft = 0;
+    flag(state, { x: x + 4, y });
+    expect(state.flood!.path.some((p) => p.x === x + 2 && p.y === y)).toBe(false);
+    run(state, walkTicks(6));
+    expect(king(state)).toEqual({ x: x + 4, y });
+  });
+
+  it("gets as near as he can to a flag he can't reach", () => {
+    const state = blankFlood();
+    const { x, y } = king(state);
+    const wall = placeStructure(state, "wall", x + 3, y, "N", ME);
+    wall.buildLeft = 0;
+    flag(state, { x: x + 3, y });
+    run(state, walkTicks(3));
+    expect(king(state)).toEqual({ x: x + 2, y });
+    expect(state.flood!.plan).toEqual([]);
+  });
+
+  it("can't be planted where you've never seen, and only so many at once", () => {
     const state = floodGame();
     const { x, y } = king(state);
     const unseen = { x, y: y + FLOOD.kingSight.outer + 3 };
     if (unseen.y < state.height) {
-      expect(applyCommand(state, ME, { type: "paintRoute", ...unseen })).toMatchObject({
+      expect(applyCommand(state, ME, { type: "planKing", ...unseen })).toMatchObject({
         ok: false,
       });
     }
+    const blank = blankFlood();
+    const at = king(blank);
+    for (let i = 0; i < FLOOD.maxFlags; i++) {
+      flag(blank, { x: at.x + 1 + (i % 5), y: at.y + Math.floor(i / 5) }, true);
+    }
+    expect(
+      applyCommand(blank, ME, { type: "planKing", x: at.x, y: at.y + 2, queue: true }),
+    ).toMatchObject({ reason: "Too many flags" });
   });
 });
 
 describe("building", () => {
-  it("is only round the king, on risen land", () => {
+  it("is only round the king", () => {
     const state = blankFlood();
     const { x, y } = king(state);
     expect(canBuild(state, ME, "wall", x + 2, y).ok).toBe(true);
@@ -178,11 +203,11 @@ describe("the lava", () => {
     const state = blankFlood();
     const { x, y } = king(state);
     const wall = placeStructure(state, "wall", x + 1, y + 1, "N", ME);
-    applyCommand(state, ME, { type: "paintRoute", x: x + 1, y: y + 2 });
+    flag(state, { x: x + 1, y: y + 2 });
     state.flood!.front = x + 2;
     tick(state);
     expect(state.structures[wall.id]).toBeUndefined();
-    expect(state.flood!.route).toEqual([]);
+    expect(state.flood!.plan).toEqual([]);
     expect(state.terrain[tileIndex(state, x + 1, y)]).toBe("lava");
   });
 
@@ -197,11 +222,10 @@ describe("the lava", () => {
   it("is outrun by a king walking straight home, which wins", () => {
     const state = blankFlood();
     state.flood!.front = 0;
-    state.flood!.risen = state.width; // to paint it all now
     state.fog = false;
     const { home } = state.flood!;
     state.flood!.king = { x: 1, y: home.y + 1 };
-    paintLine(state, { x: 2, y: home.y + 1 }, { x: home.x - 1, y: home.y + 1 });
+    flag(state, { x: home.x - 1, y: home.y + 1 });
     for (let i = 0; i < 300 * TICK_RATE && !state.gameOver; i++) tick(state);
     expect(state.won).toBe(true);
     expect(kingFromHome(state)).toBeLessThanOrEqual(1);
@@ -243,7 +267,6 @@ describe("the mountain", () => {
     const state = blankFlood();
     const { home } = state.flood!;
     state.flood!.king = { x: home.x - 2, y: home.y + 1 };
-    state.flood!.risen = state.width;
     expect(canBuild(state, ME, "wall", home.x - 3, home.y + 1)).toMatchObject({
       reason: "Nothing can be built on the mountain",
     });

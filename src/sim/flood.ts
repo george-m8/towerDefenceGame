@@ -1,12 +1,11 @@
 // No looking back: a solo mode. You have no keep to hold: the king starts on the left edge and
-// has to walk home, a keep on a raised mountain on the right edge. He walks the route you paint
-// for him, as raiders' enemies keep to their painted paths: within the stretch he's on, by the
-// shortest way, to the tile of it painted last, using up each tile he steps on. Behind him lava
-// comes in from the left in waves: a surge that runs fast across a stretch of land, then a calm
-// before the next, each wave bigger and the calm shorter. Every column a surge crosses turns to
-// lava with all that's on it, except the mountain, which the lava can't climb. Ahead of him the
-// land rises as he comes. The lava touching the king loses; reaching home's keep wins.
-// The whole map is generated (seeded) at the start: the land that rises is what was always there.
+// has to walk home, a keep on a raised mountain on the right edge. You plan his way as a raider
+// plans their enemy's: a flag to walk to, then more flags after it, and he walks to each in turn
+// by the shortest way he knows (over land you've seen). Behind him lava comes in from the left in
+// waves: a surge that runs fast across a stretch of land, then a calm before the next, each wave
+// bigger and the calm shorter. Every column a surge crosses turns to lava with all that's on it,
+// except the mountain, which the lava can't climb. The lava touching the king loses; reaching
+// home's keep wins. The whole map is there from the start; the camera rolls on with the lava.
 import { FLOOD, KEEP_SIZE, TICK_RATE } from "./config";
 import { exploreKingSight, isExplored } from "./fog";
 import {
@@ -21,16 +20,16 @@ import {
 } from "./grid";
 import type { CommandResult, Flood, GameState, PlayerId, Point } from "./types";
 
-export function createFlood(king: Point, home: Point, width: number): Flood {
+export function createFlood(king: Point, home: Point): Flood {
   return {
     king,
     progress: 0,
     owner: 1,
-    route: [],
+    plan: [],
+    path: [],
     home,
     front: 0,
     sunk: 0,
-    risen: Math.min(width, king.x + FLOOD.riseAhead + 1),
     wave: 0,
     calm: FLOOD.graceSeconds * TICK_RATE,
     surgeTo: 0,
@@ -85,11 +84,6 @@ export function kingDrowned(state: GameState): boolean {
   return flood !== null && terrainAt(state, flood.king.x, flood.king.y) === "lava";
 }
 
-/** Whether the land at column x has risen yet (always, outside this mode). */
-export function hasRisen(state: GameState, x: number): boolean {
-  return !state.flood || x < state.flood.risen;
-}
-
 /** How far the wave after `wave` waves runs, in tiles. */
 function surgeTiles(wave: number): number {
   return Math.min(FLOOD.surgeTiles.most, FLOOD.surgeTiles.first + FLOOD.surgeTiles.perWave * wave);
@@ -125,70 +119,81 @@ export function lavaWarning(state: GameState, x: number): number | null {
   return Math.max(0, 1 - flood.calm / (total * TICK_RATE));
 }
 
-/** The paintRoute command: a tile more of the king's route, or one rubbed out. */
-export function paintRoute(
+/**
+ * The planKing command, as a raider plans: a flag for the king to walk to (his plan's first, its
+ * others dropped), or with `queue` one more after his others. On the king himself: he stops.
+ */
+export function planKing(
   state: GameState,
   player: PlayerId,
   x: number,
   y: number,
-  erase: boolean,
+  queue: boolean,
 ): CommandResult {
   const flood = state.flood;
   if (!flood) return { ok: false, reason: "Only when there's no looking back" };
   if (!inBounds(state, x, y)) return { ok: false, reason: "Off the map" };
-  const painted = flood.route.findIndex((p) => p.x === x && p.y === y);
-  if (erase) {
-    if (painted >= 0) flood.route = flood.route.filter((_, i) => i !== painted);
+  if (x === flood.king.x && y === flood.king.y && !queue) {
+    flood.plan = [];
+    flood.path = [];
     return { ok: true };
   }
-  if (painted >= 0) return { ok: true };
-  if (!hasRisen(state, x)) return { ok: false, reason: "That land hasn't risen yet" };
   if (!isExplored(state, x, y, player)) return { ok: false, reason: "You can't see there" };
   if (terrainAt(state, x, y) === "lava") return { ok: false, reason: "That's lava" };
-  if (flood.route.length >= FLOOD.maxRouteTiles) {
-    return { ok: false, reason: "No more route to paint" };
-  }
-  flood.route = [...flood.route, { x, y }];
+  if (queue) {
+    if (flood.plan.length >= FLOOD.maxFlags) return { ok: false, reason: "Too many flags" };
+    flood.plan = [...flood.plan, { x, y }];
+  } else flood.plan = [{ x, y }];
+  flood.path = kingPath(state, flood);
   return { ok: true };
 }
 
-/** Somewhere the king can step: ground (or a bridge) with nothing in the way, risen. */
-function canStep(state: GameState, x: number, y: number): boolean {
-  return isWalkable(state, x, y) && !blocksAt(state, x, y) && hasRisen(state, x);
+/** Somewhere the king can step: ground (or a bridge) with nothing in the way, that you've seen. */
+function canStep(state: GameState, flood: Flood, x: number, y: number): boolean {
+  return isWalkable(state, x, y) && !blocksAt(state, x, y) && isExplored(state, x, y, flood.owner);
 }
 
 /**
- * The king's next tile: the first step of the shortest way, over painted tiles he can step on,
- * from where he stands to the tile painted last of those he can reach. Null if there's none.
+ * The tiles from the king to his next flag, not counting where he stands, by the shortest way
+ * over tiles he can step on. A flag he can't reach: to the tile nearest it that he can.
  */
-export function nextKingStep(state: GameState): Point | null {
-  const { king, route } = state.flood!;
-  const { width } = state;
-  const order = new Map<number, number>();
-  route.forEach((p, i) => {
-    if (canStep(state, p.x, p.y)) order.set(tileIndex(state, p.x, p.y), i);
-  });
-  const start = tileIndex(state, king.x, king.y);
+export function kingPath(state: GameState, flood: Flood): Point[] {
+  const goal = flood.plan[0];
+  if (!goal) return [];
+  const { width, height } = state;
+  const start = tileIndex(state, flood.king.x, flood.king.y);
   const cameFrom = new Map<number, number>([[start, -1]]);
   const queue = [start];
-  let end = -1;
+  let best = start;
+  let bestDistance = Math.hypot(flood.king.x - goal.x, flood.king.y - goal.y);
   for (let head = 0; head < queue.length; head++) {
     const i = queue[head];
-    if (i !== start && (end < 0 || order.get(i)! > order.get(end)!)) end = i;
     const x = i % width;
-    for (const n of [i - width, x < width - 1 ? i + 1 : -1, i + width, x > 0 ? i - 1 : -1]) {
-      if (!order.has(n) || cameFrom.has(n)) continue;
+    const y = (i - x) / width;
+    const distance = Math.hypot(x - goal.x, y - goal.y);
+    if (distance < bestDistance) [best, bestDistance] = [i, distance];
+    if (distance === 0) break;
+    for (const [nx, ny] of [
+      [x, y - 1],
+      [x + 1, y],
+      [x, y + 1],
+      [x - 1, y],
+    ]) {
+      if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+      const n = ny * width + nx;
+      if (cameFrom.has(n) || !canStep(state, flood, nx, ny)) continue;
       cameFrom.set(n, i);
       queue.push(n);
     }
   }
-  if (end < 0) return null;
-  let step = end;
-  while (cameFrom.get(step) !== start) step = cameFrom.get(step)!;
-  return { x: step % width, y: Math.floor(step / width) };
+  const path: Point[] = [];
+  for (let i = best; i !== start; i = cameFrom.get(i)!) {
+    path.push({ x: i % width, y: Math.floor(i / width) });
+  }
+  return path.reverse();
 }
 
-/** Once a tick: the king walks, the lava waits or surges, and the land rises ahead of him. */
+/** Once a tick: the king walks, and the lava waits or surges. */
 export function updateFlood(state: GameState): void {
   const flood = state.flood;
   if (!flood) return;
@@ -201,27 +206,37 @@ export function updateFlood(state: GameState): void {
     if (flood.front >= flood.surgeTo) flood.calm = calmSeconds(flood.wave) * TICK_RATE;
   }
   while (flood.sunk < Math.floor(flood.front)) sinkColumn(state, flood, flood.sunk++);
-  flood.risen = Math.max(flood.risen, Math.min(state.width, flood.king.x + FLOOD.riseAhead + 1));
 }
 
 function walkKing(state: GameState, flood: Flood): void {
-  // A tile painted under him is used up already.
-  flood.route = flood.route.filter((p) => p.x !== flood.king.x || p.y !== flood.king.y);
-  const next = nextKingStep(state);
-  if (!next) {
+  if (flood.path.length === 0) nextWay(state, flood);
+  if (flood.path.length === 0) {
     flood.progress = 0;
     return;
   }
   flood.progress += FLOOD.kingSpeed / TICK_RATE;
   if (flood.progress < 1) return;
   flood.progress -= 1;
+  // His way, found again as he steps (what's built and seen changes as he goes).
+  nextWay(state, flood);
+  const next = flood.path[0];
+  if (!next) return;
   flood.king = next;
-  flood.route = flood.route.filter((p) => p.x !== next.x || p.y !== next.y);
+  flood.path = flood.path.slice(1);
   exploreKingSight(state);
 }
 
+/** The way to his next flag; flags he's at (or as near as he can get to) are done. */
+function nextWay(state: GameState, flood: Flood): void {
+  flood.path = kingPath(state, flood);
+  while (flood.path.length === 0 && flood.plan.length > 0) {
+    flood.plan = flood.plan.slice(1);
+    flood.path = kingPath(state, flood);
+  }
+}
+
 /**
- * A column goes under: lava, with nothing left on it (units burn, buildings and route go).
+ * A column goes under: lava, with nothing left on it (units burn, buildings and flags go).
  * The mountain, and home's keep on it, stand above it.
  */
 function sinkColumn(state: GameState, flood: Flood, x: number): void {
@@ -238,6 +253,6 @@ function sinkColumn(state: GameState, flood: Flood, x: number): void {
     if (Math.round(unit.x) <= x && !above(Math.round(unit.y))) unit.hp = 0;
   }
   state.enemies = state.enemies.filter((e) => Math.round(e.x) > x || above(Math.round(e.y)));
-  flood.route = flood.route.filter((p) => p.x > x || above(p.y));
+  flood.plan = flood.plan.filter((p) => p.x > x || above(p.y));
   state.gridVersion++;
 }

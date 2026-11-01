@@ -67,7 +67,7 @@ export function hudContent(state: GameState, ui: UiState): HudContent {
     const route = ui.tool === "route";
     return {
       tool: route
-        ? { glyph: KING_GLYPH, name: "King's route" }
+        ? { glyph: KING_GLYPH, name: "King's flags (Shift: add)" }
         : { glyph: CAMP_GLYPH, name: "Move camp" },
       cost: null,
       time: null,

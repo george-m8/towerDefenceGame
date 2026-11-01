@@ -36,7 +36,7 @@ import { addCue, updateCues } from "./cues";
 import { updateEffects } from "./effects";
 import { initialExplored, revealKeep } from "./fog";
 import { claimKeepWalls, placeKeepWalls } from "./keepWalls";
-import { createFlood, kingDrowned, kingHome, mountainStep, paintRoute, updateFlood } from "./flood";
+import { createFlood, kingDrowned, kingHome, mountainStep, planKing, updateFlood } from "./flood";
 import { createJourney, moveCamp, populateJourney, reachedHome, updateJourney } from "./journey";
 import { generateTerrain, journeyLayout, layoutFor, type MapLayout } from "./mapgen";
 import type { ItemsFile } from "./itemsFile";
@@ -181,7 +181,7 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     rngState: seed,
     fog: options.fog ?? true,
     journey: journey && !flooding ? createJourney(journey.home) : null,
-    flood: flooding ? createFlood(journey.camp, journey.home, width) : null,
+    flood: flooding ? createFlood(journey.camp, journey.home) : null,
     explored: [],
   };
   if (mode !== "endless") state.wave.countdown = Infinity; // only Endless has waves
@@ -375,8 +375,8 @@ export function applyCommand(
       return sellStructure(state, playerId, command.x, command.y);
     case "moveCamp":
       return moveCamp(state, playerId, command.x, command.y);
-    case "paintRoute":
-      return paintRoute(state, playerId, command.x, command.y, command.erase === true);
+    case "planKing":
+      return planKing(state, playerId, command.x, command.y, command.queue === true);
     case "sendWave":
       if (state.mode === "pvp") return { ok: false, reason: "No waves in PvP" };
       if (state.mode === "journey") return { ok: false, reason: "No waves on the journey home" };

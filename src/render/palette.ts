@@ -219,11 +219,10 @@ export const COLOURS = {
   flagPole: "#e6e1c1",
   /** The raiders' paths, washed over the tiles they painted. */
   raidPath: "#f4efcf",
-  /** No looking back: the mountain home stands on, where lava will run, land yet to rise. */
+  /** No looking back: the mountain home stands on, and where lava will run. */
   mountain: "#5e5548",
   mountainGlyph: "#7d7365",
   lavaWarn: "#e0541c",
-  unrisen: "#0b0d12",
   /** The flag on each raiders' path's end, where enemies leave it. */
   raidPathEnd: "#d9a13b",
   spikesUp: "#c8c8c8",

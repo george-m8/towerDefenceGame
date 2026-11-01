@@ -59,8 +59,8 @@ export function bindInput(
   let painting = false;
   let debugKind = 0;
   let lastPainted: Point | null = null;
-  /** No looking back: this drag of the Route tool rubs out (it started on a painted tile). */
-  let routeErase = false;
+  /** No looking back: this click adds a flag after the king's others (Shift held). */
+  let queueFlag = false;
   /** Raiders: the mouse is held on open ground, so their enemy follows the pointer. */
   let following = false;
   let mouse: { clientX: number; clientY: number } | null = null;
@@ -168,13 +168,16 @@ export function bindInput(
   });
 
   function useToolAt(p: Point) {
-    if (!ui.tool || !playing()) return;
-    if (ui.tool === "route") {
+    if (!playing()) return;
+    // No looking back, as a raider plans: with nothing in hand (or the Route tool), a click
+    // sends the king there, and Shift adds a flag after his others.
+    if ((ui.tool === null || ui.tool === "route") && getState()?.flood) {
       dispatch(
-        routeErase ? { type: "paintRoute", ...p, erase: true } : { type: "paintRoute", ...p },
+        queueFlag ? { type: "planKing", ...p, queue: true } : { type: "planKing", x: p.x, y: p.y },
       );
       return;
     }
+    if (!ui.tool || ui.tool === "route") return;
     // Refusals come back through the session's onResult.
     dispatch(
       ui.tool === "sell"
@@ -221,10 +224,8 @@ export function bindInput(
       dispatch({ type: "debugDamage", x: p.x, y: p.y });
       return;
     }
-    const route = getState()?.flood?.route;
-    routeErase = !!route?.some((r) => r.x === p.x && r.y === p.y);
     useToolAt(p);
-    painting = ui.tool === "route" || TOOLS.some((t) => t.tool === ui.tool && t.paintable);
+    painting = TOOLS.some((t) => t.tool === ui.tool && t.paintable);
     lastPainted = p;
   }
 
@@ -324,7 +325,7 @@ export function bindInput(
         else [beforeSell, ui.tool] = [ui.tool, "sell"];
         return;
       case "moveCamp": {
-        // Journey home's Move camp, or No looking back's Route: the same key.
+        // Journey home's Move camp, or No looking back's Route (plain clicks plan too): one key.
         const state = getState();
         const tool = state?.journey ? "moveCamp" : state?.flood ? "route" : null;
         if (!tool) return;
@@ -433,7 +434,9 @@ export function bindInput(
       }
       return;
     }
+    queueFlag = e.shiftKey;
     pressAt(p);
+    queueFlag = false;
   });
 
   canvas.addEventListener("mousemove", (e) => {

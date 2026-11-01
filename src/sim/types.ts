@@ -213,16 +213,15 @@ export interface Flood {
   progress: number;
   /** Whose king he is: the fog he lifts is theirs. */
   owner: PlayerId;
-  /** The route painted for him, in the order it was painted; he walks to its last tile. */
-  route: Point[];
+  /** His flags, in the order he'll walk to them (as a raider's plan), and his way to the first. */
+  plan: Point[];
+  path: Point[];
   /** Where he's going, a keep on a mountain (top-left tile, KEEP_SIZE square): reaching it wins. */
   home: Point;
   /** How far in from the left the lava has come, in tiles; columns left of it are under. */
   front: number;
   /** Columns left of this have gone under (lava, but for the mountain), with all on them. */
   sunk: number;
-  /** Columns left of this have risen; the land right of it isn't there yet. */
-  risen: number;
   /** Waves of lava so far; ticks of calm left before the next (0: one is surging in, to surgeTo). */
   wave: number;
   calm: number;
@@ -491,8 +490,8 @@ export type Command =
   | { type: "sell"; x: number; y: number }
   /** Journey home: pack up the camp and move it to a tile in sight. */
   | { type: "moveCamp"; x: number; y: number }
-  /** No looking back: paints a tile of the king's route, or rubs one out. */
-  | { type: "paintRoute"; x: number; y: number; erase?: true };
+  /** No looking back: a flag for the king to walk to, or (`queue`) one after his others. */
+  | { type: "planKing"; x: number; y: number; queue?: true };
 
 /** Commands for testing: offline only, refused online. */
 export type DebugCommand = Extract<

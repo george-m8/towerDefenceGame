@@ -176,7 +176,7 @@ export function viewOf(state: GameState, turns: Rotation): GameState {
     const b = cornerToView(keep.x + keep.size, keep.y + keep.size, turns, w, h);
     return { ...keep, x: Math.min(a.x, b.x), y: Math.min(a.y, b.y) };
   });
-  // No looking back's king, his route and home (a square, as a keep is).
+  // No looking back's king, his flags and way, and home (a square, as a keep is).
   if (state.flood) {
     const { home } = state.flood;
     const a = cornerToView(home.x, home.y, turns, w, h);
@@ -184,7 +184,8 @@ export function viewOf(state: GameState, turns: Rotation): GameState {
     view.flood = {
       ...state.flood,
       king: toView(state.flood.king, turns, w, h),
-      route: state.flood.route.map((p) => toView(p, turns, w, h)),
+      plan: state.flood.plan.map((p) => toView(p, turns, w, h)),
+      path: state.flood.path.map((p) => toView(p, turns, w, h)),
       home: { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y) },
     };
   }
