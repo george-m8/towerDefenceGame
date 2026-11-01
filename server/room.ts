@@ -176,14 +176,31 @@ export function applyRoomCommand(
   seq: number,
   command: Command,
 ): CommandResult {
-  const result: CommandResult = !room.started
-    ? { ok: false, reason: "The game hasn't started" }
-    : isDebugCommand(command)
-      ? { ok: false, reason: "Not allowed online" }
-      : applyCommand(room.state, playerId, command);
-  room.send(playerId, { type: "result", seq, result });
-  if (result.ok && !QUIET_COMMANDS.has(command.type)) broadcastUpdate(room);
-  return result;
+  return applyRoomCommands(room, playerId, [{ seq, command }])[0];
+}
+
+/**
+ * Applies commands in order, answering each with its own result, then sends everyone one update
+ * for the lot (a dragged line of walls is one update, not one per wall).
+ */
+export function applyRoomCommands(
+  room: Room,
+  playerId: PlayerId,
+  commands: readonly { seq: number; command: Command }[],
+): CommandResult[] {
+  let changed = false;
+  const results = commands.map(({ seq, command }) => {
+    const result: CommandResult = !room.started
+      ? { ok: false, reason: "The game hasn't started" }
+      : isDebugCommand(command)
+        ? { ok: false, reason: "Not allowed online" }
+        : applyCommand(room.state, playerId, command);
+    room.send(playerId, { type: "result", seq, result });
+    if (result.ok && !QUIET_COMMANDS.has(command.type)) changed = true;
+    return result;
+  });
+  if (changed) broadcastUpdate(room);
+  return results;
 }
 
 /** Runs whole ticks for the elapsed time (scaled by game speed), sending updates on cadence. */

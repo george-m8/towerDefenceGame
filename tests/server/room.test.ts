@@ -6,6 +6,7 @@ import { topAt } from "../../src/sim/grid";
 import {
   advanceRoom,
   applyRoomCommand,
+  applyRoomCommands,
   createRoom,
   joinRoom,
   leaveRoom,
@@ -123,6 +124,22 @@ describe("commands", () => {
       result: { ok: false, reason: "Not allowed online" },
     });
     expect(room.state.enemies).toEqual([]);
+  });
+
+  it("a batch answers each command and sends everyone one update", () => {
+    const { room, ofType } = testRoom();
+    join(room, "Ann");
+    const bo = join(room, "Bo");
+    const updates = ofType(1, "update").length;
+    const { x, y } = nearKeep(room);
+    const results = applyRoomCommands(room, bo.playerId, [
+      { seq: 1, command: { type: "build", kind: "wall", x, y } },
+      { seq: 2, command: { type: "build", kind: "wall", x, y } }, // taken by the first
+      { seq: 3, command: { type: "build", kind: "wall", x: x, y: y + 1 } },
+    ]);
+    expect(results.map((r) => r.ok)).toEqual([true, false, true]);
+    expect(ofType(2, "result").map((m) => m.seq)).toEqual([1, 2, 3]);
+    expect(ofType(1, "update").length).toBe(updates + 1);
   });
 
   it("a rejected command sends no update", () => {

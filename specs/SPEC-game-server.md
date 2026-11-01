@@ -37,9 +37,10 @@ This module is the server and the message format only. The browser doesn't use i
 
 **Commands**
 - `{ type: "command", seq, command }` applies `command` as the connection's player. The server replies `{ type: "result", seq, result }` so the client can match replies to the commands it sent.
+- `{ type: "commands", commands: [{ seq, command }, ...] }` sends up to 32 commands at once. Each gets its own `result`, and everyone gets one update for the whole batch. The client queues commands and sends them at most every 50 ms, so dragging a line of walls is a few messages, not one per tile.
 - `debugSpawn` is always rejected online.
 - Every incoming message is validated: its shape, field types, known command types and structure kinds, integers in range. A malformed message gets an `error` reply and is otherwise ignored. A message over 4 KB closes the connection.
-- Rate limit: 40 messages per second per connection, enough for painting walls by dragging. Extra messages are dropped with one `error` per second.
+- Rate limit: 40 messages per second per connection (a batch counts as one). Extra messages are dropped with one `error` per second.
 
 **Time and updates**
 - Each room ticks on its own timer at 20 Hz, times `state.speed`, with the same catch-up cap as `main.ts`. A paused or game-over room doesn't tick.
@@ -64,6 +65,7 @@ export type ClientMessage =
   | { type: "join"; room: string; name: string }
   | { type: "rejoin"; room: string; token: string }
   | { type: "command"; seq: number; command: Command }
+  | { type: "commands"; commands: { seq: number; command: Command }[] }
   | { type: "restart" };
 
 // Server -> client
