@@ -1115,6 +1115,34 @@ export const JOURNEY = {
   wandererSpawnSeconds: 5,
 };
 
+/**
+ * No looking back (see sim/flood.ts): the king walks the route you paint, from the left edge to
+ * home, a keep on a mountain on the right, while lava comes in behind him in waves and the land
+ * rises ahead of him.
+ */
+export const FLOOD = {
+  /** The king sees round himself, and so lifts the fog, as he goes. */
+  kingSight: { inner: 7, outer: 10 } satisfies SightStats,
+  /** How fast the king walks his route, in tiles per second. */
+  kingSpeed: 1.5,
+  /** The most route that can be painted ahead of him at once, in tiles. */
+  maxRouteTiles: 300,
+  /** Building only this many tiles from the king, at most (any direction). */
+  buildRadius: 6,
+  /** Seconds before the first wave of lava. */
+  graceSeconds: 20,
+  /** How far each wave of lava runs in, in tiles: the first, more each wave, and at most. */
+  surgeTiles: { first: 14, perWave: 3, most: 36 },
+  /** How fast a wave runs in, in tiles a second (faster than the king walks). */
+  surgeSpeed: 4,
+  /** The calm after each wave, in seconds: after the first, less each wave, and at least. */
+  calmSeconds: { first: 18, lessPerWave: 1, least: 8 },
+  /** Land rises this many tiles ahead of the king (it never sinks back). */
+  riseAhead: 9,
+  /** How far the mountain under home spreads round its keep, in tiles; lava never climbs it. */
+  mountainRadius: 4,
+};
+
 /** Selling refunds this fraction of cost, scaled by remaining HP. */
 export const SELL_REFUND = 0.5;
 /** Build discounts in enclosed areas: inside the keep's walls, and inside any other walls. */
@@ -1136,6 +1164,8 @@ export const TERRAIN = {
   tree: { name: "Tree", walkable: false, buildable: "none" },
   goldRock: { name: "Gold-veined rock", walkable: false, buildable: "none" },
   berries: { name: "Berry bush", walkable: true, buildable: "none" },
+  /** No looking back's lava (see sim/flood.ts). */
+  lava: { name: "Lava", walkable: false, buildable: "none" },
 } satisfies Record<string, TerrainStats>;
 
 /**

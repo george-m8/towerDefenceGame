@@ -21,7 +21,11 @@ function homeKeeps(state: GameState, player?: PlayerId): Keep[] {
 /** How long building at (x, y) takes, as a fraction of the longest build time (0 to 1). */
 export function buildFractionAt(state: GameState, x: number, y: number, player?: PlayerId): number {
   if (!inBounds(state, x, y)) return 0;
-  const distance = Math.min(...homeKeeps(state, player).map((k) => distanceToKeep(k, x, y)));
+  // No looking back has no keep: building is quickest next to the king.
+  const king = state.flood?.king;
+  const distance = king
+    ? Math.max(Math.abs(x - king.x), Math.abs(y - king.y))
+    : Math.min(...homeKeeps(state, player).map((k) => distanceToKeep(k, x, y)));
   const fraction = (distance - 1) / (BUILD_TIME.fullDistance - 1);
   return Math.min(1, Math.max(0, fraction));
 }

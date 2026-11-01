@@ -206,6 +206,29 @@ export interface Journey {
   wandererTimer: number;
 }
 
+/** No looking back: the king's walk home ahead of the lava (see sim/flood.ts). */
+export interface Flood {
+  /** The tile the king stands on, and how far he is across to the next (0 to 1). */
+  king: Point;
+  progress: number;
+  /** Whose king he is: the fog he lifts is theirs. */
+  owner: PlayerId;
+  /** The route painted for him, in the order it was painted; he walks to its last tile. */
+  route: Point[];
+  /** Where he's going, a keep on a mountain (top-left tile, KEEP_SIZE square): reaching it wins. */
+  home: Point;
+  /** How far in from the left the lava has come, in tiles; columns left of it are under. */
+  front: number;
+  /** Columns left of this have gone under (lava, but for the mountain), with all on them. */
+  sunk: number;
+  /** Columns left of this have risen; the land right of it isn't there yet. */
+  risen: number;
+  /** Waves of lava so far; ticks of calm left before the next (0: one is surging in, to surgeTo). */
+  wave: number;
+  calm: number;
+  surgeTo: number;
+}
+
 /** One of a player's own units (see sim/units.ts). Moves tile to tile like an enemy. */
 export interface Unit {
   id: number;
@@ -317,8 +340,9 @@ export interface WaveState {
 /**
  * Endless: hold one shared keep against waves. PvP: two players, a keep each, no waves.
  * Journey home: move your camp across the map to the keep (solo; see sim/journey.ts).
+ * No looking back (flood): walk the king home ahead of the lava (solo; see sim/flood.ts).
  */
-export type GameMode = "endless" | "pvp" | "journey";
+export type GameMode = "endless" | "pvp" | "journey" | "flood";
 
 /** When enemies come (Endless): all the time, as ever, or only at night (with a clock). */
 export type EnemiesCome = "always" | "night";
@@ -411,6 +435,8 @@ export interface GameState {
   fog: boolean;
   /** Journey home's camp and home; null in other modes. The camp itself is keeps[0]. */
   journey: Journey | null;
+  /** No looking back's king, route and lava; null in other modes. The only keep is home. */
+  flood: Flood | null;
   /** Debug options (offline only), all off to start with. */
   debug: Record<DebugOption, boolean>;
   /** From an `.items` file: the most of each kind a player can have at once (none: no limit). */
@@ -464,7 +490,9 @@ export type Command =
   | { type: "voteSkipToNight" }
   | { type: "sell"; x: number; y: number }
   /** Journey home: pack up the camp and move it to a tile in sight. */
-  | { type: "moveCamp"; x: number; y: number };
+  | { type: "moveCamp"; x: number; y: number }
+  /** No looking back: paints a tile of the king's route, or rubs one out. */
+  | { type: "paintRoute"; x: number; y: number; erase?: true };
 
 /** Commands for testing: offline only, refused online. */
 export type DebugCommand = Extract<

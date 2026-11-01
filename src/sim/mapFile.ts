@@ -74,6 +74,7 @@ export const TERRAIN_CHARS: Record<Terrain, string> = {
   goldRock: "$",
   tree: "T",
   berries: "b",
+  lava: "^",
 };
 const TERRAIN_BY_CHAR = new Map(
   Object.entries(TERRAIN_CHARS).map(([terrain, char]) => [char, terrain as Terrain]),
@@ -110,8 +111,13 @@ export function mapName(title: string): string {
   return name || "untitled";
 }
 
-/** How many keeps a map of each mode has (Journey home maps are only generated, for now). */
-export const KEEPS_FOR_MODE: Record<GameMode, number> = { endless: 1, pvp: 2, journey: 1 };
+/** How many keeps a map of each mode has (Journey home and flood maps are only generated, for now). */
+export const KEEPS_FOR_MODE: Record<GameMode, number> = {
+  endless: 1,
+  pvp: 2,
+  journey: 1,
+  flood: 0,
+};
 
 export function mapWidth(map: Pick<MapFile, "size">): number {
   return MAP_SIZES[map.size].width;

@@ -87,9 +87,12 @@ import {
   KEEP_GLYPH,
   CAMP_GLYPH,
   CAMP_PACKED_GLYPH,
+  KING_GLYPH,
   GLYPH_FONTS,
 } from "./palette";
 import { isHomeTile } from "../sim/journey";
+import { isFloodHome, lavaWarning, mountainStep, nextKingStep } from "../sim/flood";
+import { fromView, type Rotation } from "./rotation";
 import { fogImage, fogSpans, type FogLevel } from "./fog";
 import { createHpBarTracker } from "./hpBars";
 import { burstPixels, burstWaiting } from "./burst";
@@ -129,6 +132,8 @@ export function isDamagedWall(structure: Structure): boolean {
 
 /** How tall untouched rock (and gold rock) stands, in pixels. */
 const ROCK_HEIGHT = 4;
+/** No looking back's mountain: how much higher each ring of it stands, in pixels. */
+const MOUNTAIN_STEP = 3;
 
 export function blockHeight(state: GameState, x: number, y: number): number {
   // Journey home's keep at the end stands like any keep.
@@ -143,6 +148,16 @@ export function blockHeight(state: GameState, x: number, y: number): number {
     if (x - keep.x === centre && y - keep.y === centre) return 4;
     return corner ? 15 : 12;
   }
+  // No looking back's mountain, a ring higher at a time, with home's keep (lower, so the two
+  // together stay within a tile's height) on top.
+  const mountain = mountainStep(state, x, y) * MOUNTAIN_STEP;
+  if (isFloodHome(state, x, y)) {
+    const { home } = state.flood!;
+    const corner = (x - home.x) % (KEEP_SIZE - 1) === 0 && (y - home.y) % (KEEP_SIZE - 1) === 0;
+    if (x === home.x + 1 && y === home.y + 1) return mountain + 1;
+    return mountain + (corner ? 7 : 5);
+  }
+  if (mountain > 0) return mountain;
   // Anything still being built lies flat until it's finished.
   const built = (s: Structure | undefined) => (s && isBuilt(s) ? s : undefined);
   const base = built(baseAt(state, x, y));
@@ -277,6 +292,9 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     if (base) drawStructure(base);
     else if (isKeepTile(state, x, y)) drawKeepTile(state, x, y);
     else if (isHomeTile(state, x, y)) drawHomeTile(state, x, y);
+    else if (isFloodHome(state, x, y)) drawFloodHomeTile(state, x, y);
+    else if (mountainStep(state, x, y) > 0)
+      drawTile(x, y, COLOURS.mountain, "^", COLOURS.mountainGlyph);
     else if (isSpawnTile(state, x, y)) drawTile(x, y, COLOURS.spawn, ".", COLOURS.spawnGlyph);
     else drawTerrain(state, x, y);
     const mount = mountAt(state, x, y);
@@ -461,6 +479,95 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     drawTile(x, y, COLOURS.keep);
     drawTexture(x, y, KEEP_TEXTURE);
     if (x !== home.x + 1 || y !== home.y + 1) drawGlyph(x, y, KEEP_GLYPH, COLOURS.keepGlyph);
+  }
+
+  /** No looking back's home, where the king is going: a keep, on top of the mountain. */
+  function drawFloodHomeTile(state: GameState, x: number, y: number) {
+    const { home } = state.flood!;
+    drawTile(x, y, COLOURS.keep);
+    drawTexture(x, y, KEEP_TEXTURE);
+    if (x !== home.x + 1 || y !== home.y + 1) drawGlyph(x, y, KEEP_GLYPH, COLOURS.keepGlyph);
+  }
+
+  /**
+   * No looking back: how far the coming wave of lava will run, glowing over the land it will
+   * take, stronger and quicker to pulse as the wave nears (under the fog); or the land not
+   * risen yet (over the fog: the edge of the world, with home's mountain showing through). Lava runs
+   * left to right on the map, so each tile of the (maybe turned) view is looked up by its column
+   * on the map. The mountain never glows: the lava can't climb it.
+   */
+  function drawFloodLand(state: GameState, turns: Rotation, layer: "warning" | "void") {
+    const flood = state.flood;
+    if (!flood) return;
+    const odd = turns % 2 === 1;
+    const w = odd ? state.height : state.width;
+    const h = odd ? state.width : state.height;
+
+    for (let y = view.y0; y <= view.y1; y++) {
+      for (let x = view.x0; x <= view.x1; x++) {
+        const column = turns === 0 ? x : fromView({ x, y }, turns, w, h).x;
+        if (column >= flood.risen) {
+          if (layer === "warning" || mountainStep(state, x, y) > 0) continue;
+          // A little over a tile, so no seams show between the void's tiles when zoomed.
+          ctx!.fillStyle = COLOURS.unrisen;
+          ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE + 0.5, TILE_SIZE + 0.5);
+          continue;
+        }
+        if (layer === "void" || mountainStep(state, x, y) > 0) continue;
+        const warning = lavaWarning(state, column);
+        if (warning === null) continue;
+        const pulse = 0.5 + 0.5 * Math.sin(performance.now() / (400 - 300 * warning));
+        ctx!.fillStyle = COLOURS.lavaWarn;
+        ctx!.globalAlpha = 0.08 + warning * (0.2 + 0.25 * pulse);
+        ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        ctx!.globalAlpha = 1;
+      }
+    }
+  }
+
+  /**
+   * No looking back: the king's route, as Journey home draws the camp's way (a dot on each
+   * tile, its end outlined), then the king, part way to his next tile. Each sits on its tile's
+   * top, so up the mountain they're lifted with it.
+   */
+  function drawKing(state: GameState) {
+    const flood = state.flood;
+    if (!flood) return;
+    const colour = playerColour(flood.owner);
+    ctx!.fillStyle = colour;
+    ctx!.globalAlpha = 0.5;
+    const dot = TILE_SIZE / 4;
+    for (const p of flood.route) {
+      const lift = blockHeight(state, p.x, p.y);
+      const top = (p.y + 0.5) * TILE_SIZE - lift;
+      ctx!.fillRect((p.x + 0.5) * TILE_SIZE - dot / 2, top - dot / 2, dot, dot);
+    }
+    ctx!.globalAlpha = 1;
+    const end = flood.route[flood.route.length - 1];
+    if (end) {
+      ctx!.save();
+      ctx!.translate(0, -blockHeight(state, end.x, end.y));
+      outlineTile(end, colour);
+      ctx!.restore();
+    }
+    const next = flood.progress > 0 ? nextKingStep(state) : null;
+    const t = next ? flood.progress : 0;
+    const kx = flood.king.x + ((next?.x ?? flood.king.x) - flood.king.x) * t;
+    const ky = flood.king.y + ((next?.y ?? flood.king.y) - flood.king.y) * t;
+    ctx!.save();
+    ctx!.translate(0, -blockHeight(state, Math.round(kx), Math.round(ky)));
+    ctx!.fillStyle = colour;
+    ctx!.beginPath();
+    ctx!.arc((kx + 0.5) * TILE_SIZE, (ky + 0.5) * TILE_SIZE, TILE_SIZE * 0.45, 0, Math.PI * 2);
+    ctx!.fill();
+    ctx!.strokeStyle = COLOURS.keepGlyph;
+    ctx!.lineWidth = 1.5;
+    ctx!.stroke();
+    ctx!.lineWidth = 1;
+    ctx!.font = GLYPH_FONT;
+    ctx!.fillStyle = COLOURS.keepGlyph;
+    ctx!.fillText(KING_GLYPH, (kx + 0.5) * TILE_SIZE, (ky + 0.5) * TILE_SIZE + 1);
+    ctx!.restore();
   }
 
   /** Journey home: the way the camp is going, to where it's going. */
@@ -754,6 +861,13 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       ctx!.fillStyle = ok ? COLOURS.ghostOk : COLOURS.ghostBad;
       ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
       drawGlyph(x, y, CAMP_GLYPH, "#ffffff");
+      return;
+    }
+    if (ui.tool === "route") {
+      // A dot of route, as it'll be painted (a painted tile: where a drag rubs out).
+      const painted = state.flood?.route.some((p) => p.x === x && p.y === y);
+      ctx!.fillStyle = painted ? COLOURS.ghostSell : COLOURS.ghostOk;
+      ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
       return;
     }
     const ok = canBuild(state, ui.playerId, ui.tool, x, y).ok;
@@ -1200,7 +1314,9 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       drawKeepHp(state);
       if (ui.showFlow) drawFlow(state);
       drawEffects(state);
+      drawFloodLand(state, ui.rotation, "warning");
       drawFog(state);
+      drawFloodLand(state, ui.rotation, "void");
       if (hour !== undefined) drawNight(state, darknessAt(hour));
       drawPending(pending);
       // While the build menu is open, what's chosen in it isn't on the map yet: no ghost or range.
@@ -1210,6 +1326,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       }
       drawHoverEdge(state, ui);
       drawCampPath(state);
+      drawKing(state);
       const raid = state.players[viewer]?.raid;
       if (raid) {
         // The paths every free enemy keeps to, the raider's target, and their enemy's flags.

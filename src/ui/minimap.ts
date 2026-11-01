@@ -1,5 +1,6 @@
 // The minimap: the whole map in miniature, with enemies and the current view, through the
 // same fog of war as the map. Click or drag on it to move the view there.
+import { isFloodHome, mountainStep } from "../sim/flood";
 import type { GameState } from "../sim/types";
 import { baseAt, isKeepTile, isSpawnTile, mountAt, terrainAt } from "../sim/grid";
 import { COLOURS, FOG, STRUCTURE_COLOURS, TERRAIN_STYLES } from "../render/palette";
@@ -20,7 +21,8 @@ const VIEW_DASH_PX = 4;
 
 /** The colour of one tile on the minimap: the keep, a structure, the spawn, or the ground. */
 export function minimapColour(state: GameState, x: number, y: number): string {
-  if (isKeepTile(state, x, y)) return COLOURS.keep;
+  if (isKeepTile(state, x, y) || isFloodHome(state, x, y)) return COLOURS.keep;
+  if (mountainStep(state, x, y) > 0) return COLOURS.mountain;
   const top = mountAt(state, x, y) ?? baseAt(state, x, y);
   if (top) return STRUCTURE_COLOURS[top.kind].bg;
   if (isSpawnTile(state, x, y)) return COLOURS.spawn;

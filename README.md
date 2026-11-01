@@ -51,6 +51,18 @@ A solo mode (**Solo**, then **Journey home**, or `?solo&game=journey`). There's 
 
 All the numbers are in `JOURNEY` in `src/sim/config.ts`, and the rules are in `src/sim/journey.ts`.
 
+### No looking back
+
+A solo mode (**Solo**, then **No looking back**, or `?solo&game=flood`). You have no keep to hold, and there are no enemies. Your **king** (`♚`) starts on the far left edge, and you have to walk him home: a keep on a raised mountain on the right edge, which you can see from the start. Behind him, lava comes in from the left in waves. If it reaches the king, you lose. If he gets to the keep, you win.
+
+- **The king's route:** press `H` for the Route tool, then click and drag to paint tiles. The king walks the route at 1.5 tiles a second, by the shortest way over painted tiles to the tile you painted last, using it up as he goes. A drag that starts on a painted tile rubs route out. He waits at anything that blocks his way (rock, trees, a wall, a ruin) and crosses rivers at fords or on bridges, so paint over a river and build a bridge there for a shortcut. The route shows as a dot on each tile, with the tile he's heading for outlined.
+- **The lava** comes in waves. The first comes after 20 seconds. Each wave runs in fast (4 tiles a second, faster than the king walks): 14 tiles for the first wave and 3 more for each wave after, up to 36. Then there's a calm, 18 seconds after the first wave and a second shorter after each one, down to 8. Every column a wave crosses turns to lava, and everything on it goes too: buildings, units and route. The land the coming wave will take glows, brighter and faster as the wave nears. The HUD shows when the next wave comes and how far behind the king the lava is.
+- **The mountain:** home's keep stands on a mountain that rises in rings 4 tiles out round it. The lava never climbs it, so the king is safe once he's on it. Nothing can be built on it.
+- **The land ahead:** the land rises 9 tiles ahead of the king as he walks, and never sinks back until the lava reaches it. Further out is a dark void, with home's mountain showing through: you can't paint or build there yet. The king sees 7 tiles clearly and 10 dimly.
+- **Building:** only within 6 tiles of the king, on land that has risen. Building is quickest right next to him.
+
+All the numbers are in `FLOOD` in `src/sim/config.ts`, and the rules are in `src/sim/flood.ts` and `specs/SPEC-flood.md`.
+
 ### Enemies
 
 Waves 1 and 2 are all goblins. Later waves mix in other kinds from the wave shown: each wave has a threat budget (5 + 3 x wave, where a goblin costs 1) spent on whichever kinds have arrived. HP grows 15% per wave and bounties by 1 every 5 waves, for every kind. Each enemy hits structures in its way, and the keep, with its own damage and speed of attack.

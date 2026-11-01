@@ -1,6 +1,8 @@
 import { facingAngle } from "./aiming";
 import {
+  FLOOD,
   JOURNEY,
+  KEEP_SIZE,
   SELL_REFUND,
   STRUCTURES,
   TERRAIN,
@@ -154,7 +156,7 @@ export function canBuild(
     return { ok: false, reason: `${stats.name} limit reached (${limit} at a time)` };
   }
   if (!inBounds(state, x, y)) return { ok: false, reason: "Out of bounds" };
-  const away = campRefusal(state, x, y);
+  const away = campRefusal(state, x, y) ?? kingRefusal(state, x, y);
   if (away) return { ok: false, reason: away };
   if (!isExplored(state, x, y, player)) {
     return { ok: false, reason: "Can't build on unexplored land" };
@@ -188,6 +190,25 @@ function campRefusal(state: GameState, x: number, y: number): string | null {
   const camp = state.keeps[0];
   const far = Math.max(Math.abs(x - camp.x), Math.abs(y - camp.y)) > JOURNEY.buildRadius;
   return far ? "Too far from your camp" : null;
+}
+
+/** No looking back: you build only round the king, on land that has risen. */
+function kingRefusal(state: GameState, x: number, y: number): string | null {
+  const flood = state.flood;
+  if (!flood) return null;
+  if (x >= flood.risen) return "That land hasn't risen yet";
+  if (onMountain(flood, x, y)) return "Nothing can be built on the mountain";
+  const far = Math.max(Math.abs(x - flood.king.x), Math.abs(y - flood.king.y)) > FLOOD.buildRadius;
+  return far ? "Too far from the king" : null;
+}
+
+/** On the mountain home's keep stands on (see sim/flood.ts, which can't be imported here). */
+function onMountain(flood: NonNullable<GameState["flood"]>, x: number, y: number): boolean {
+  const r = FLOOD.mountainRadius;
+  const { home } = flood;
+  return (
+    x >= home.x - r && y >= home.y - r && x < home.x + KEEP_SIZE + r && y < home.y + KEEP_SIZE + r
+  );
 }
 
 function canBuildOnTerrain(

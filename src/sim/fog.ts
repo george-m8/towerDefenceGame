@@ -5,6 +5,7 @@
 // players can build: enemies move and fight the same either way.
 import { angleTo, facingAngle, inArc } from "./aiming";
 import {
+  FLOOD,
   JOURNEY,
   KEEP_SIGHT,
   SIGHT_CLOSE_RADIUS,
@@ -115,6 +116,8 @@ export function initialExplored(state: GameState): number[] {
     if (state.mode !== "pvp") forEachKeepSightTile(state, keep, (i) => (explored[i] |= 1));
   }
   for (const p of state.spawnTiles) explored[p.y * state.width + p.x] |= 1;
+  const king = state.flood?.king;
+  if (king) forEachCircleTile(state, king.x, king.y, FLOOD.kingSight, (i) => (explored[i] |= 1));
   return explored;
 }
 
@@ -135,6 +138,16 @@ function explore(state: GameState, index: number, bit: number) {
 export function unitMoved(state: GameState, unit: Unit): void {
   const bit = 1 << teamOf(state, unit.owner);
   forEachUnitSightTile(state, unit, (i) => explore(state, i, bit));
+  state.sightVersion++;
+}
+
+/** No looking back: the king has moved; what he sees now is explored, for good. */
+export function exploreKingSight(state: GameState): void {
+  const flood = state.flood!;
+  const bit = 1 << teamOf(state, flood.owner);
+  forEachCircleTile(state, flood.king.x, flood.king.y, FLOOD.kingSight, (i) =>
+    explore(state, i, bit),
+  );
   state.sightVersion++;
 }
 
@@ -239,6 +252,10 @@ function findSight(state: GameState, team: number): Uint8Array {
     if (teamOf(state, keep.owner) === team && (state.mode !== "pvp" || keep.owner !== null)) {
       forEachKeepSightTile(state, keep, see);
     }
+  }
+  const flood = state.flood;
+  if (flood && teamOf(state, flood.owner) === team) {
+    forEachCircleTile(state, flood.king.x, flood.king.y, FLOOD.kingSight, see);
   }
   // Ruins have no sight, so only what players built counts.
   for (const structure of Object.values(state.structures)) {

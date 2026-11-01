@@ -15,7 +15,14 @@ import { discountAt, priceAt } from "../sim/enclosures";
 import { refundFor } from "../sim/economy";
 import { ownedCount, topAt } from "../sim/grid";
 import type { GameState, PlayerId, StructureKind } from "../sim/types";
-import { ARROW_SYMBOLS, CAMP_GLYPH, GLYPHS, facingArrow, glyphFor } from "../render/palette";
+import {
+  ARROW_SYMBOLS,
+  CAMP_GLYPH,
+  GLYPHS,
+  KING_GLYPH,
+  facingArrow,
+  glyphFor,
+} from "../render/palette";
 import {
   BUILD_TABS,
   TOOLS,
@@ -56,9 +63,12 @@ export function hudContent(state: GameState, ui: UiState): HudContent {
       gold,
     };
   }
-  if (ui.tool === "moveCamp") {
+  if (ui.tool === "moveCamp" || ui.tool === "route") {
+    const route = ui.tool === "route";
     return {
-      tool: { glyph: CAMP_GLYPH, name: "Move camp" },
+      tool: route
+        ? { glyph: KING_GLYPH, name: "King's route" }
+        : { glyph: CAMP_GLYPH, name: "Move camp" },
       cost: null,
       time: null,
       short: false,

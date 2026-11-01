@@ -16,7 +16,7 @@ export type Action =
   | "sell"
   /** Sell in hand, or back to what was in hand before it. */
   | "toggleSell"
-  /** Journey home: Move camp in hand (or put down). */
+  /** Journey home: Move camp in hand (or put down); No looking back: the king's Route. */
   | "moveCamp"
   | "buildTowers"
   | "buildUnits"

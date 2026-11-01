@@ -22,7 +22,7 @@ export const GAME_MODES: {
   mode: GameMode;
   name: string;
   description: string;
-  /** Online only (PvP), or solo only (Journey home); neither: both. */
+  /** Online only (PvP), or solo only (Journey home, No looking back); neither: both. */
   online: boolean;
   solo?: true;
 }[] = [
@@ -45,6 +45,14 @@ export const GAME_MODES: {
     name: "Journey home",
     description:
       "Get your camp from the far left of the map to the keep on the right. Swarms lie in wait: come into their sight and they come for you. Move camp to what you can see, and build round it.",
+    online: false,
+    solo: true,
+  },
+  {
+    mode: "flood",
+    name: "No looking back",
+    description:
+      "No keep, just your king, and the flood behind him. Paint his route and he walks it, home to the far right. The land rises ahead of him and sinks behind. If the water reaches him, it's over.",
     online: false,
     solo: true,
   },
@@ -390,7 +398,7 @@ function chooseGame(
           ...(items ? { items } : {}),
           ...fogOff,
           ...night,
-          ...(game === "journey" ? { game } : {}),
+          ...(game === "journey" || game === "flood" ? { game } : {}),
         });
       }
       options.onChoose(

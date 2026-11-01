@@ -127,6 +127,8 @@ export const KEEP_GLYPH = "♜";
 /** Journey home's camp, a tent: pitched, and packed up (on the move). */
 export const CAMP_GLYPH = "▲";
 export const CAMP_PACKED_GLYPH = "△";
+/** No looking back's king. */
+export const KING_GLYPH = "♚";
 
 /** Each enemy kind's glyph colour. Variants never change it; they change the glyph size. */
 export const ENEMY_COLOURS: Record<EnemyKindId, string> = {
@@ -217,6 +219,11 @@ export const COLOURS = {
   flagPole: "#e6e1c1",
   /** The raiders' paths, washed over the tiles they painted. */
   raidPath: "#f4efcf",
+  /** No looking back: the mountain home stands on, where lava will run, land yet to rise. */
+  mountain: "#5e5548",
+  mountainGlyph: "#7d7365",
+  lavaWarn: "#e0541c",
+  unrisen: "#0b0d12",
   /** The flag on each raiders' path's end, where enemies leave it. */
   raidPathEnd: "#d9a13b",
   spikesUp: "#c8c8c8",
@@ -377,6 +384,7 @@ export const TERRAIN_STYLES: Record<
   goldRock: { bg: "#4a4a4a", glyph: "o", fg: "#e3c04d" },
   // Unifont's blueberries, kept as text like the tree.
   berries: { bg: "#2f5a2a", glyph: "\u{1FAD0}\uFE0E", fg: "#7a3b4f" },
+  lava: { bg: "#8a2a0c", glyph: "≈", fg: "#f2a23a" },
 };
 
 /** The texture over each kind of terrain (see render/textures.ts). */
@@ -390,6 +398,7 @@ export const TERRAIN_TEXTURES: Record<Terrain, TextureStyle> = {
   tree: "speckle",
   goldRock: "ore",
   berries: "speckle",
+  lava: "ripple",
 };
 /** The keep's stone walls. */
 export const KEEP_TEXTURE: TextureStyle = "stone";

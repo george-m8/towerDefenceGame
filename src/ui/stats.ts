@@ -1,13 +1,14 @@
 // The game's stats (gold, income, keep, waves...) as label and value, for the sidebar and the
 // HUD's stat box. PvP has no waves: it shows the rival's keep and the mode instead. Journey home
 // has none either: its keep is the camp, and the wave and next slots say how far home it is and
-// what it's doing. With enemies
+// what it's doing; No looking back's say when the lava's next wave comes and how far home. With enemies
 // at night, the wave stat shows the night too, and by day the next wave is "At dusk".
 import { TICK_RATE } from "../sim/config";
 import { incomePerMinute } from "../sim/economy";
 import { isSpawningTime } from "../sim/clock";
 import { isLastWave } from "../sim/waves";
 import { tilesFromHome } from "../sim/journey";
+import { kingFromHome, lavaBehindKing, lavaWaves } from "../sim/flood";
 import type { GameState, PlayerId } from "../sim/types";
 
 export type StatId = "gold" | "income" | "keep" | "wave" | "next" | "rival" | "mode" | "seed";
@@ -24,12 +25,36 @@ export function statList(state: GameState, playerId: PlayerId): Stat[] {
   const stats: Stat[] = [
     { id: "gold", label: "Gold", value: state.debug.infiniteGold ? "∞" : String(gold) },
     { id: "income", label: "Income", value: `+${incomePerMinute(state, playerId)}/min` },
-    {
-      id: "keep",
-      label: state.journey ? "Camp" : "Keep",
-      value: `${mine.hp} / ${mine.maxHp}`,
-    },
   ];
+  if (state.flood) {
+    // No keep of your own: the lava's waves in the waves' place (shown in the HUD from the
+    // start), how far behind the king it is in the keep's, and how far home he is.
+    const tiles = (n: number) => `${n} tile${n === 1 ? "" : "s"}`;
+    const lava = lavaWaves(state);
+    const behind = lavaBehindKing(state);
+    stats.push(
+      {
+        id: "wave",
+        label: "Lava",
+        value: lava.surging
+          ? `wave ${lava.wave} coming in!`
+          : `wave ${lava.wave} in ${lava.seconds}s`,
+      },
+      {
+        id: "keep",
+        label: "Behind",
+        value: behind === null ? "Safe on the mountain" : tiles(behind),
+      },
+      { id: "next", label: "Home", value: tiles(kingFromHome(state)) },
+      { id: "seed", label: "Seed", value: String(state.seed) },
+    );
+    return stats;
+  }
+  stats.push({
+    id: "keep",
+    label: state.journey ? "Camp" : "Keep",
+    value: `${mine.hp} / ${mine.maxHp}`,
+  });
   if (state.journey) {
     const doing = {
       camped: "Camped",

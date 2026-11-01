@@ -435,14 +435,13 @@ function startSession(intent: Exclude<PageIntent, { mode: "menu" }>) {
   } else if (intent.mode === "offline") {
     const map = intent.map ? bundledMaps[intent.map] : undefined;
     const items = intent.items ? bundledItems[intent.items] : undefined;
-    session =
-      intent.game === "journey"
-        ? createLocalSession(Date.now() >>> 0, undefined, {
-            fog: fog && intent.fog !== false,
-            size: intent.size,
-            mode: "journey",
-          })
-        : soloSession(map, items, intent.size, fog && intent.fog !== false, intent.enemiesCome);
+    session = intent.game
+      ? createLocalSession(Date.now() >>> 0, undefined, {
+          fog: fog && intent.fog !== false,
+          size: intent.size,
+          mode: intent.game,
+        })
+      : soloSession(map, items, intent.size, fog && intent.fog !== false, intent.enemiesCome);
   } else {
     network = createNetworkSession(
       serverUrl(location),
@@ -720,9 +719,10 @@ function frame(now: number) {
       const mapKey = `${state.seed}:${state.width}x${state.height}:${mine}`;
       if (mapKey !== centredFor) {
         ui.camera.zoom = 1;
-        // Your own keep in PvP (once they're handed out), else the shared one.
+        // Your own keep in PvP (once they're handed out), else the shared one (or the king).
         const keep = view.keeps[mine] ?? view.keeps[0];
-        centerOn(ui.camera, keep.x + keep.size / 2, keep.y + keep.size / 2);
+        if (keep) centerOn(ui.camera, keep.x + keep.size / 2, keep.y + keep.size / 2);
+        else if (view.flood) centerOn(ui.camera, view.flood.king.x + 0.5, view.flood.king.y + 0.5);
         centredFor = mapKey;
       }
       input.frame(seconds);
