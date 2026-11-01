@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { parseClientMessage, uniqueName, type ClientMessage } from "../../src/net/protocol";
+import { MAX_MESSAGE_BYTES } from "../../server/config";
+import {
+  MAX_COMMANDS_PER_MESSAGE,
+  parseClientMessage,
+  uniqueName,
+  type ClientMessage,
+} from "../../src/net/protocol";
 
 function parses(message: ClientMessage) {
   expect(parseClientMessage(JSON.stringify(message))).toEqual({ ok: true, message });
@@ -36,6 +42,27 @@ describe("parseClientMessage", () => {
       seq: 5,
       command: { type: "build", kind: "wallSpikes", x: 5, y: 6, facing: "W" },
     });
+    parses({
+      type: "commands",
+      commands: [
+        { seq: 6, command: { type: "build", kind: "wall", x: 5, y: 6 } },
+        { seq: 7, command: { type: "paintPath", x: 5, y: 7, erase: true } },
+      ],
+    });
+  });
+
+  it("caps a batch of commands to fit the message limit", () => {
+    const wall = (seq: number) => ({
+      seq,
+      command: { type: "build", kind: "archeryRange", x: 4096, y: 4096, facing: "N" },
+    });
+    const full = {
+      type: "commands",
+      commands: Array.from({ length: MAX_COMMANDS_PER_MESSAGE }, (_, i) => wall(i)),
+    };
+    expect(parseClientMessage(JSON.stringify(full)).ok).toBe(true);
+    expect(JSON.stringify(full).length).toBeLessThan(MAX_MESSAGE_BYTES);
+    rejects({ ...full, commands: [...full.commands, wall(99)] });
   });
 
   it("trims names", () => {
@@ -88,6 +115,18 @@ describe("parseClientMessage", () => {
     command({ type: "build", kind: "wall", x: "1", y: 1 });
     command({ type: "build", kind: "wallSpikes", x: 1, y: 1, facing: "NE" });
     command({ type: "sell", x: 1 });
+  });
+
+  it("rejects a batch with any bad command", () => {
+    const good = { seq: 1, command: { type: "togglePause" } };
+    rejects({ type: "commands", commands: [] });
+    rejects({ type: "commands", commands: good });
+    rejects({ type: "commands", commands: [good, { seq: -1, command: { type: "togglePause" } }] });
+    rejects({
+      type: "commands",
+      commands: [good, { seq: 2, command: { type: "debugSpawn", count: 9 } }],
+    });
+    rejects({ type: "commands", commands: [good, null] });
   });
 });
 

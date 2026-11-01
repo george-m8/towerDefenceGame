@@ -3,7 +3,13 @@ import type { MapSize } from "../sim/config";
 import type { Command, CommandResult, GameMode, GameState, PlayerId, Role } from "../sim/types";
 import { isDebugCommand } from "../sim/types";
 import { tokenKey } from "./join";
-import type { ClientMessage, LobbyInfo, ServerMessage } from "./protocol";
+import {
+  MAX_COMMANDS_PER_MESSAGE,
+  type ClientMessage,
+  type LobbyInfo,
+  type SequencedCommand,
+  type ServerMessage,
+} from "./protocol";
 import type { PendingBuild, Session } from "./session";
 import {
   applyUpdate,
@@ -47,6 +53,11 @@ export interface NetworkDeps {
 const RECONNECT_DELAYS_MS = [500, 1000, 2000, 4000, 5000];
 /** The server closes a connection with this when the same player connects again elsewhere. */
 const REPLACED_CODE = 4000;
+/**
+ * Commands go out at most this often, together, so dragging a line of walls is a few messages
+ * rather than one per tile (the server allows 40 messages a second).
+ */
+const BATCH_MS = 50;
 
 export interface NetworkSession extends Session {
   /** The room code, once welcomed. */
@@ -90,6 +101,10 @@ export function createNetworkSession(
   let newest: { movers: Movers; at: number; tick: number } | null = null;
   /** Builds in flight by seq; `confirmed` ones are cleared once the next update has them. */
   const pending = new Map<number, PendingBuild & { confirmed: boolean }>();
+  /** Commands waiting for the next batch, and when the last batch went. */
+  const outbox: SequencedCommand[] = [];
+  let lastBatchAt = -Infinity;
+  let batchTimer: ReturnType<typeof setTimeout> | null = null;
 
   const session: NetworkSession = {
     get state() {
@@ -137,7 +152,9 @@ export function createNetworkSession(
         const { kind, x, y, facing } = command;
         pending.set(seq, { kind, x, y, facing, confirmed: false });
       }
-      send({ type: "command", seq, command });
+      outbox.push({ seq, command });
+      // A timeout even when due now, so commands sent in the same loop share a message.
+      batchTimer ??= setTimeout(sendBatch, Math.max(0, lastBatchAt + BATCH_MS - deps.now()));
     },
     restart() {
       send({ type: "restart" });
@@ -152,12 +169,36 @@ export function createNetworkSession(
     close() {
       closedByUs = true;
       if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (batchTimer) clearTimeout(batchTimer);
       socket?.close();
     },
   };
 
   function send(message: ClientMessage) {
     if (socket?.readyState === OPEN) socket.send(JSON.stringify(message));
+  }
+
+  /** Sends the queued commands, a single one as a plain `command`. */
+  function sendBatch() {
+    batchTimer = null;
+    lastBatchAt = deps.now();
+    const commands = outbox.splice(0);
+    if (socket?.readyState !== OPEN) {
+      // Dropped while they waited.
+      for (const { seq } of commands) {
+        pending.delete(seq);
+        session.onResult({ ok: false, reason: "Not connected" });
+      }
+      return;
+    }
+    for (let i = 0; i < commands.length; i += MAX_COMMANDS_PER_MESSAGE) {
+      const batch = commands.slice(i, i + MAX_COMMANDS_PER_MESSAGE);
+      send(
+        batch.length === 1
+          ? { type: "command", ...batch[0] }
+          : { type: "commands", commands: batch },
+      );
+    }
   }
 
   /** The first message on a connection: rejoin if this tab has a token for the room. */
