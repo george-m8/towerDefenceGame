@@ -169,30 +169,35 @@ describe("building", () => {
 });
 
 describe("the lava", () => {
-  it("waits, then comes in in waves: a surge, a calm, then a bigger one", () => {
+  it("waits, then comes in a few tiles at a time, the calms between getting shorter", () => {
     const state = floodGame();
     state.flood!.king.x = state.width - 10; // well out of its way
+    const tiles = FLOOD.surgeTiles;
+    const surge = Math.ceil((tiles / FLOOD.surgeSpeed) * TICK_RATE) + 1;
     run(state, FLOOD.graceSeconds * TICK_RATE - 1);
     expect(state.flood!.front).toBe(0);
     expect(lavaWaves(state)).toMatchObject({ wave: 1, surging: false });
     run(state, 2);
     expect(lavaWaves(state)).toMatchObject({ wave: 1, surging: true });
-    // The first wave runs its stretch fast, then stops.
-    const first = FLOOD.surgeTiles.first;
-    run(state, Math.ceil((first / FLOOD.surgeSpeed) * TICK_RATE) + 1);
-    expect(state.flood!.front).toBe(first);
+    // A wave runs its few tiles fast, then stops for a calm.
+    run(state, surge);
+    expect(state.flood!.front).toBe(tiles);
     expect(state.terrain[tileIndex(state, 0, 5)]).toBe("lava");
     expect(lavaWaves(state)).toMatchObject({ wave: 2, surging: false });
-    run(state, (FLOOD.calmSeconds.first - 1) * TICK_RATE);
-    expect(state.flood!.front).toBe(first);
-    // The second runs further.
-    run(state, 2 * TICK_RATE + Math.ceil(((first + 3) / FLOOD.surgeSpeed) * TICK_RATE));
-    expect(state.flood!.front).toBe(first + first + FLOOD.surgeTiles.perWave);
+    const { first, lessPerWave, least } = FLOOD.calmSeconds;
+    run(state, Math.round(first * TICK_RATE) - surge);
+    expect(state.flood!.front).toBe(tiles);
+    // The next runs as far, and the calm after it is shorter (down to the least).
+    while (state.flood!.front < 2 * tiles) tick(state);
+    expect(state.flood!.front).toBe(2 * tiles);
+    const shorter = Math.max(least, first - lessPerWave);
+    expect(state.flood!.calm).toBe(Math.round(shorter * TICK_RATE));
+    expect(shorter).toBeLessThan(first);
   });
 
   it("glows over the land the coming wave will take, more as it nears", () => {
     const state = floodGame();
-    const reach = FLOOD.surgeTiles.first;
+    const reach = FLOOD.surgeTiles;
     expect(lavaWarning(state, reach)).toBeNull();
     const early = lavaWarning(state, reach - 1)!;
     run(state, 10 * TICK_RATE);

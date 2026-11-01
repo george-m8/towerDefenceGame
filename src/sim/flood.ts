@@ -2,8 +2,8 @@
 // has to walk home, a keep on a raised mountain on the right edge. You plan his way as a raider
 // plans their enemy's: a flag to walk to, then more flags after it, and he walks to each in turn
 // by the shortest way he knows (over land you've seen). Behind him lava comes in from the left in
-// waves: a surge that runs fast across a stretch of land, then a calm before the next, each wave
-// bigger and the calm shorter. Every column a surge crosses turns to lava with all that's on it,
+// waves: a surge that runs fast across a few tiles, then a calm before the next, each calm a
+// little shorter. Every column a surge crosses turns to lava with all that's on it,
 // except the mountain, which the lava can't climb. The lava touching the king loses; reaching
 // home's keep wins. The whole map is there from the start; the camera rolls on with the lava.
 import { FLOOD, KEEP_SIZE, TICK_RATE } from "./config";
@@ -95,15 +95,10 @@ export function kingDrowned(state: GameState): boolean {
   return flood !== null && terrainAt(state, flood.king.x, flood.king.y) === "lava";
 }
 
-/** How far the wave after `wave` waves runs, in tiles. */
-function surgeTiles(wave: number): number {
-  return Math.min(FLOOD.surgeTiles.most, FLOOD.surgeTiles.first + FLOOD.surgeTiles.perWave * wave);
-}
-
-/** The calm after wave number `wave` (the first is 1), in seconds. */
-function calmSeconds(wave: number): number {
+/** The calm after wave number `wave` (the first is 1), in ticks. */
+function calmTicks(wave: number): number {
   const { first, lessPerWave, least } = FLOOD.calmSeconds;
-  return Math.max(least, first - lessPerWave * (wave - 1));
+  return Math.round(Math.max(least, first - lessPerWave * (wave - 1)) * TICK_RATE);
 }
 
 /** The lava's waves: surging now, or how long until the next one (whole seconds). */
@@ -122,12 +117,12 @@ export function lavaWarning(state: GameState, x: number): number | null {
   const flood = state.flood;
   if (!flood || x < flood.sunk) return null;
   const surging = flood.calm === 0;
-  const reach = surging ? flood.surgeTo : flood.front + surgeTiles(flood.wave);
+  const reach = surging ? flood.surgeTo : flood.front + FLOOD.surgeTiles;
   if (x >= Math.ceil(reach)) return null;
   if (surging) return 1;
   // The calm before the first wave is the grace period.
-  const total = flood.wave === 0 ? FLOOD.graceSeconds : calmSeconds(flood.wave);
-  return Math.max(0, 1 - flood.calm / (total * TICK_RATE));
+  const total = flood.wave === 0 ? FLOOD.graceSeconds * TICK_RATE : calmTicks(flood.wave);
+  return Math.max(0, 1 - flood.calm / total);
 }
 
 /**
@@ -164,44 +159,72 @@ function canStep(state: GameState, flood: Flood, x: number, y: number): boolean 
   return isWalkable(state, x, y) && !blocksAt(state, x, y) && isExplored(state, x, y, flood.owner);
 }
 
+/** The four tiles beside (x, y) that are on the map, as indices. */
+function besideOnMap(state: GameState, x: number, y: number): number[] {
+  const { width, height } = state;
+  const out: number[] = [];
+  if (y > 0) out.push(x + (y - 1) * width);
+  if (x < width - 1) out.push(x + 1 + y * width);
+  if (y < height - 1) out.push(x + (y + 1) * width);
+  if (x > 0) out.push(x - 1 + y * width);
+  return out;
+}
+
 /**
  * The tiles from the king to his next flag, not counting where he stands, by the shortest way
- * over tiles he can step on. A flag he can't reach: to the tile nearest it that he can.
+ * over tiles he can step on. A flag he can't reach: to the tile nearest it that he can. Of the
+ * shortest ways, the one nearest the straight line there: each step goes to whichever tile a
+ * step nearer (along the way) is nearest the flag, so he walks a staircase, not an L.
  */
 export function kingPath(state: GameState, flood: Flood): Point[] {
   const goal = flood.plan[0];
   if (!goal) return [];
-  const { width, height } = state;
+  const { width } = state;
   const start = tileIndex(state, flood.king.x, flood.king.y);
-  const cameFrom = new Map<number, number>([[start, -1]]);
+  const steppable = (i: number) => canStep(state, flood, i % width, Math.floor(i / width));
+  // Out from the king: what he can reach, and the tile of it nearest the flag.
+  const reached = new Set([start]);
   const queue = [start];
   let best = start;
   let bestDistance = Math.hypot(flood.king.x - goal.x, flood.king.y - goal.y);
-  for (let head = 0; head < queue.length; head++) {
+  for (let head = 0; head < queue.length && bestDistance > 0; head++) {
     const i = queue[head];
     const x = i % width;
     const y = (i - x) / width;
     const distance = Math.hypot(x - goal.x, y - goal.y);
     if (distance < bestDistance) [best, bestDistance] = [i, distance];
-    if (distance === 0) break;
-    for (const [nx, ny] of [
-      [x, y - 1],
-      [x + 1, y],
-      [x, y + 1],
-      [x - 1, y],
-    ]) {
-      if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
-      const n = ny * width + nx;
-      if (cameFrom.has(n) || !canStep(state, flood, nx, ny)) continue;
-      cameFrom.set(n, i);
+    for (const n of besideOnMap(state, x, y)) {
+      if (reached.has(n) || !steppable(n)) continue;
+      reached.add(n);
       queue.push(n);
     }
   }
-  const path: Point[] = [];
-  for (let i = best; i !== start; i = cameFrom.get(i)!) {
-    path.push({ x: i % width, y: Math.floor(i / width) });
+  if (best === start) return [];
+  // Back from there: steps to go from each tile he can reach.
+  const steps = new Map([[best, 0]]);
+  const back = [best];
+  for (let head = 0; head < back.length && !steps.has(start); head++) {
+    const i = back[head];
+    for (const n of besideOnMap(state, i % width, Math.floor(i / width))) {
+      if (steps.has(n) || !reached.has(n)) continue;
+      steps.set(n, steps.get(i)! + 1);
+      back.push(n);
+    }
   }
-  return path.reverse();
+  const path: Point[] = [];
+  for (let at = start; at !== best;) {
+    const left = steps.get(at)!;
+    let next = -1;
+    let nearest = Infinity;
+    for (const n of besideOnMap(state, at % width, Math.floor(at / width))) {
+      if (steps.get(n) !== left - 1) continue;
+      const d = Math.hypot((n % width) - goal.x, Math.floor(n / width) - goal.y);
+      if (d < nearest) [next, nearest] = [n, d];
+    }
+    path.push({ x: next % width, y: Math.floor(next / width) });
+    at = next;
+  }
+  return path;
 }
 
 /** Once a tick: the king walks, and the lava waits or surges. */
@@ -210,11 +233,13 @@ export function updateFlood(state: GameState): void {
   if (!flood) return;
   walkKing(state, flood);
   if (flood.calm > 0) {
-    if (--flood.calm === 0)
-      flood.surgeTo = Math.min(state.width, flood.front + surgeTiles(flood.wave++));
+    if (--flood.calm === 0) {
+      flood.surgeTo = Math.min(state.width, flood.front + FLOOD.surgeTiles);
+      flood.wave++;
+    }
   } else {
     flood.front = Math.min(flood.surgeTo, flood.front + FLOOD.surgeSpeed / TICK_RATE);
-    if (flood.front >= flood.surgeTo) flood.calm = calmSeconds(flood.wave) * TICK_RATE;
+    if (flood.front >= flood.surgeTo) flood.calm = calmTicks(flood.wave);
   }
   while (flood.sunk < Math.floor(flood.front)) sinkColumn(state, flood, flood.sunk++);
 }

@@ -1130,12 +1130,12 @@ export const FLOOD = {
   buildRadius: 6,
   /** Seconds before the first wave of lava. */
   graceSeconds: 20,
-  /** How far each wave of lava runs in, in tiles: the first, more each wave, and at most. */
-  surgeTiles: { first: 14, perWave: 3, most: 36 },
+  /** How far each wave of lava runs in, in tiles. */
+  surgeTiles: 3,
   /** How fast a wave runs in, in tiles a second (faster than the king walks). */
   surgeSpeed: 4,
   /** The calm after each wave, in seconds: after the first, less each wave, and at least. */
-  calmSeconds: { first: 18, lessPerWave: 1, least: 8 },
+  calmSeconds: { first: 2.4, lessPerWave: 0.03, least: 1.15 },
   /** How far the mountain under home spreads round its keep, in tiles; lava never climbs it. */
   mountainRadius: 4,
 };
