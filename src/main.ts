@@ -12,6 +12,7 @@ import { createPanel } from "./ui/panel";
 import { createHud } from "./ui/hud";
 import { createMapButtons, panelToggle } from "./ui/mapButtons";
 import { createSunSlider, toggleSun } from "./ui/sunSlider";
+import { createCameraAngles } from "./ui/cameraAngles";
 import { createPadTest } from "./ui/padTest";
 import { advanceClock, createClockControls, followSky, toggleClock } from "./ui/clockControls";
 import { hoverText } from "./ui/tileInfo";
@@ -106,6 +107,49 @@ const dispatch = (command: Command) => {
 };
 const canvas = element<HTMLCanvasElement>("#map");
 const renderer = createRenderer(canvas);
+/**
+ * The 3D view (Debug > 3D view, or ?3d in the address to start with it): games are drawn on a
+ * WebGL canvas under the map canvas, which draws what goes over it (effects, bars, the ghost)
+ * and still takes the pointer. The editor and the backdrop stay flat.
+ */
+const canvas3d = document.createElement("canvas");
+canvas3d.id = "map3d";
+canvas3d.hidden = true;
+canvas.before(canvas3d);
+let threeD = false;
+let renderer3d: ReturnType<typeof import("./render/three").createRenderer3d> | null = null;
+/** Turns the 3D view on or off. Loaded the first time, so the flat game never downloads three.js. */
+function setThreeD(on: boolean) {
+  threeD = on;
+  if (!on) canvas3d.hidden = true;
+  if (on && !renderer3d) {
+    void import("./render/three").then(({ createRenderer3d }) => {
+      renderer3d ??= createRenderer3d(canvas3d);
+    });
+  }
+}
+setThreeD(new URLSearchParams(location.search).has("3d"));
+/** Whether games are being drawn in 3D: switched on, and loaded. */
+const drawing3d = () => threeD && renderer3d !== null;
+/** Draws a game in 3D if that's on, else flat. */
+function renderGame(
+  state: GameState,
+  viewUi: typeof ui,
+  pending: Parameters<typeof renderer.render>[2],
+) {
+  if (!drawing3d()) {
+    renderer.render(state, viewUi, pending);
+    return;
+  }
+  canvas3d.hidden = false;
+  renderer3d!.render(state, viewUi);
+  renderer.renderOverlay(state, viewUi, pending);
+}
+/** Flat drawing (the editor, the backdrop): the 3D view hides and the camera goes flat. */
+function useFlatView() {
+  ui.camera.iso = false;
+  canvas3d.hidden = true;
+}
 // Nothing on the page uses the map's font, so ask for it; the map draws in it once it's here.
 void document.fonts.load(GLYPH_FONT);
 void document.fonts.load(GLYPH_FONT, TERRAIN_STYLES.tree.glyph); // the upper-plane glyphs' file
@@ -230,6 +274,7 @@ const debugToggle = (label: string, option: DebugOption) => ({
   available: inGame,
 });
 const sunSlider = createSunSlider(element("#sun"), ui);
+const cameraAngles = createCameraAngles(element("#camera-angles"), ui);
 const padTest = createPadTest(element("#pad-test"), ui);
 const clockControls = createClockControls(
   element("#clock"),
@@ -265,6 +310,25 @@ createMapButtons(element("#map-buttons"), {
       label: "Controller test",
       isOn: () => ui.showPadTest,
       toggle: () => (ui.showPadTest = !ui.showPadTest),
+    },
+    {
+      label: "3D view",
+      isOn: () => threeD,
+      toggle: () => {
+        setThreeD(!threeD);
+        if (!threeD) ui.showCameraAngles = false;
+        cameraAngles.sync();
+      },
+    },
+    {
+      // Turn and tilt the 3D view's camera; a tilt of 90° looks straight down, like the flat map.
+      label: "Camera angles",
+      isOn: () => ui.showCameraAngles,
+      toggle: () => {
+        ui.showCameraAngles = !ui.showCameraAngles;
+        cameraAngles.sync();
+      },
+      available: () => threeD,
     },
     {
       label: "Sun slider",
@@ -672,6 +736,7 @@ function frame(now: number) {
     sunSlider.sync();
   }
   if (editing && editorActive) {
+    useFlatView();
     const { editor, toolbar } = editing;
     editor.update(now);
     const state = editor.state;
@@ -691,6 +756,7 @@ function frame(now: number) {
     if (!fullMapBox.hidden) fullMap.update(state);
     toolbar.update(now);
   } else if (backdrop) {
+    useFlatView();
     backdrop.frame(now, seconds);
     const state = backdrop.session.state!;
     fitCanvas(state.width, state.height);
@@ -706,6 +772,7 @@ function frame(now: number) {
     if (state) {
       // Drawn through the view's turn (Q): the camera, minimap and renderer see a turned copy.
       const view = viewOf(state, ui.rotation);
+      ui.camera.iso = drawing3d();
       fitCanvas(view.width, view.height);
       // A new map (first game, restart, or joining a room): start looking at the keep.
       // (PvP keeps are handed out at the start, so that counts as a new map too.)
@@ -727,7 +794,7 @@ function frame(now: number) {
         ...toView(p, ui.rotation, state.width, state.height),
         ...(p.facing ? { facing: turnFacing(p.facing, ui.rotation) } : {}),
       }));
-      renderer.render(view, viewUi, pending);
+      renderGame(view, viewUi, pending);
       minimap.update(view);
       if (!fullMapBox.hidden) fullMap.update(view);
       panel.update(state);

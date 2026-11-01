@@ -107,6 +107,8 @@ export interface UiState {
   showFlow: boolean;
   /** Debug: the sun slider shown over the map. */
   showSun: boolean;
+  /** Debug: the 3D view's camera angle sliders are shown (cameraAngles.ts). */
+  showCameraAngles: boolean;
   /** Debug: the controller test shown over the map (padTest.ts). */
   showPadTest: boolean;
   /** Where the sun is, for shadows (see render/sun.ts). */
@@ -153,6 +155,7 @@ export function createUiState(): UiState {
     messageUntil: 0,
     showFlow: false,
     showSun: false,
+    showCameraAngles: false,
     showPadTest: false,
     sun: { ...DEFAULT_SUN },
     clock: null,
