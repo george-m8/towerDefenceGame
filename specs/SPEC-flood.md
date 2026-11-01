@@ -33,9 +33,9 @@ An endless solo mode about keeping moving. You have no keep of your own. Your **
 
 - `front`, in tiles from the left edge, starts moving after `graceSeconds` (20). Its speed is `lavaSpeed`: 0.35 tiles a second, 0.06 more each minute after that, up to 1.8, faster than the king walks, so every game ends.
 - Its edge isn't straight. Each row's edge (`lavaEdge`) is the front pushed on or held back by up to `edge.reach` (3) tiles, by two slow waves across the rows that drift over time (seeded). Each tile also goes under up to `edge.rough` (1.5) tiles later, fixed for its place in the world.
-- It spreads (`spreadLava`): each tick, each tile beside lava (or on the map's left edge) that the edge has passed goes under, a tile a tick, so it can pour round things. It turns to lava, and every structure on it is removed. Units, chests and flags on it go too.
-- **Walls hold it.** A finished wall (and a tower on it) never goes under: the lava flows round it, and land a closed ring of walls shuts in stays dry. If the wall goes (sold, say), the lava gets in. Walls hold along their sides; lava doesn't go corner to corner.
-- The `warnTiles` (4) tiles ahead of its edge glow, more strongly, and pulsing faster, the nearer they are.
+- It spreads (`spreadLava`): a tile beside lava (or on the map's left edge) that the edge has passed fills at `flowRate` (1.25) times the lava's speed (never slower than it starts), and goes under once full. So it creeps round corners and through gaps at its own pace, just keeping up with its edge in the open. It turns to lava, and every structure on it is removed. Units, chests and flags on it go too.
+- **Walls hold it.** A finished wall (and a tower on it), and a goal's keep, never go under: the lava flows round it, and land a closed ring of walls shuts in stays dry. If the wall goes (sold, say), the lava gets in. Walls hold along their sides; lava doesn't go corner to corner.
+- The tiles it'll take soon glow (`lavaGlow`, worked out each tick): out from the tiles beside it, through tiles it can take only, up to `warnTiles` (4) steps and 4 tiles on from its edge, more strongly, and pulsing faster, the nearer they are (a filling tile as full as it is). Walls, and land they shut in, never glow.
 - It's drawn raised: half a wall high where it's deep, 1 px at its fringe (beside land) and 2 px a tile in.
 - If the king's tile goes under, the game is over. How far he got (`distanceTravelled`: tiles across the world from where he started) is the score.
 - HUD: "Lava: starts in Ns" or "N tiles behind" (his row's edge), "Distance: N tiles", and the lava's speed.
@@ -63,9 +63,15 @@ An endless solo mode about keeping moving. You have no keep of your own. Your **
 
 First guesses, checked with a scripted king that plants a flag every second on the reachable tile furthest right. With the fog on (so it walks into dead ends) it lasts 4-10 minutes and gets 100-350 tiles. With the fog off it lasts 16-20 minutes and gets 800-1,100 tiles, until the lava outruns it. A player who plans ahead, bridges rivers and walls off tongues of lava should land in between. Ticks average 0.1-1 ms.
 
+**A goal** (`floodGoal`: the mode's Goal setting, Endless or a keep at 250, 500 or 1,000 tiles; or `&goal=N`)
+
+- A keep (not one you defend: no HP, not in `state.keeps`) stands `goal` tiles on from the king's start. If that's on the starting map, it's made with a keep's clear patch round it. Otherwise it goes in the piece of new land its column falls in, on that piece's clear patch (moved there), so it's always on open ground you can reach. Nothing's on its tiles, and lava flows round it.
+- Once the keep and `pastKeep` (8) tiles beyond it are on the map, no more new land comes.
+- The king on, or next to, any of its tiles wins. The HUD shows "Keep: N tiles to go" in place of the lava's speed.
+
 ## Still to do
 
-- A **campaign**: the keep appearing after a set distance, reaching it to win.
+- **Campaign levels** using goals (level files with `mode: flood` and a goal).
 - **Enemies on** (the issue's option).
 - PvP from the issue (a lane each, or one shared map).
 - A best distance kept between games.
