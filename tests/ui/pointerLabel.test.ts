@@ -33,15 +33,27 @@ describe("pointerTags", () => {
       cost: `${STRUCTURES.cannon.cost}g`,
       short: false,
       time: `${BUILD_TIME.maxSeconds.toFixed(1)}s`,
+      fullCost: null,
+      rotate: false,
     });
   });
 
-  it("shows the discounted price, without the discount spelled out", () => {
+  it("shows the discounted price, with the full price beside it", () => {
     const { state, ui, keep } = setup();
     buildAt(state, ring(keep.x - 2, keep.y - 2, keep.x + keep.size + 1, keep.y + keep.size + 1));
     ui.tool = "wall";
     ui.hover = { x: keep.x - 1, y: keep.y - 1 };
     expect(pointerTags(state, ui)?.cost).toBe("3g");
+    expect(pointerTags(state, ui)?.fullCost).toBe(`${STRUCTURES.wall.cost}g`);
+  });
+
+  it("hints at R for a tool that turns", () => {
+    const { state, ui, keep } = setup();
+    ui.hover = { x: keep.x - 5, y: keep.y };
+    ui.tool = "archer";
+    expect(pointerTags(state, ui)?.rotate).toBe(true);
+    ui.tool = "wall";
+    expect(pointerTags(state, ui)?.rotate).toBe(false);
   });
 
   it("marks a cost you can't afford", () => {

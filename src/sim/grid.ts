@@ -1,5 +1,12 @@
 import { facingAngle } from "./aiming";
-import { STRUCTURES, TERRAIN, TICK_RATE, type StructureStats, type TerrainStats } from "./config";
+import {
+  SELL_REFUND,
+  STRUCTURES,
+  TERRAIN,
+  TICK_RATE,
+  type StructureStats,
+  type TerrainStats,
+} from "./config";
 import { priceAt, rivalOwnerAt } from "./enclosures";
 import { addBurst } from "./effects";
 import { isExplored, reveal } from "./fog";
@@ -158,10 +165,14 @@ export function canBuild(
   const terrainCheck = canBuildOnTerrain(state, kind, x, y);
   if (!terrainCheck.ok) return terrainCheck;
   const layerCheck =
-    STRUCTURES[kind].layer === "mount" ? canMount(state, player, x, y) : canBuildBase(state, x, y);
+    STRUCTURES[kind].layer === "mount"
+      ? canMount(state, player, x, y)
+      : canBuildBase(state, player, kind, x, y);
   if (!layerCheck.ok) return layerCheck;
   const gold = state.players[player]?.gold ?? 0;
-  if (!state.debug.infiniteGold && gold < priceAt(state, kind, x, y, player)) {
+  const replaced = replacedBy(state, kind, x, y);
+  const refund = replaced ? refundFor(replaced) : 0;
+  if (!state.debug.infiniteGold && gold + refund < priceAt(state, kind, x, y, player)) {
     return { ok: false, reason: "Not enough gold" };
   }
   return { ok: true };
@@ -189,10 +200,53 @@ function canBuildOnTerrain(
   return { ok: true };
 }
 
-/** A base needs open ground: nothing built there, and no enemy standing on it. */
-function canBuildBase(state: GameState, x: number, y: number): CommandResult {
+/**
+ * A base needs open ground: nothing built there, and no enemy standing on it. The one exception
+ * is a gate on a wall, which replaces it (see replacedBy).
+ */
+function canBuildBase(
+  state: GameState,
+  player: PlayerId,
+  kind: StructureKind,
+  x: number,
+  y: number,
+): CommandResult {
+  const base = baseAt(state, x, y);
+  if (kind === "gate" && base?.kind === "ruin") {
+    return { ok: false, reason: "Can't put a gate on a ruin" };
+  }
+  if (kind === "gate" && base?.kind === "wall") {
+    if (base.owner !== null && base.owner !== player) {
+      return { ok: false, reason: `That wall belongs to ${playerName(state, base.owner)}` };
+    }
+    if (mountAt(state, x, y)) return { ok: false, reason: "Sell the tower first" };
+    return { ok: true }; // nothing walks on a wall, so enemies can't be in the way
+  }
   if (topAt(state, x, y)) return { ok: false, reason: "Tile is occupied" };
   return noEnemyAt(state, x, y);
+}
+
+/**
+ * The wall that building `kind` at (x, y) would replace, refunded as if sold: a gate goes
+ * straight onto a wall. canBuild says whether the wall is the player's to replace.
+ */
+export function replacedBy(
+  state: GameState,
+  kind: StructureKind,
+  x: number,
+  y: number,
+): Structure | undefined {
+  const base = baseAt(state, x, y);
+  return kind === "gate" && base?.kind === "wall" ? base : undefined;
+}
+
+/** What selling a structure pays: half of what was paid, scaled by its condition. */
+export function refundFor(structure: Structure): number {
+  const condition = structure.maxHp > 0 ? structure.hp / structure.maxHp : 1;
+  const stats: StructureStats = STRUCTURES[structure.kind];
+  // Half of what was actually paid, so a discounted build can't be sold for more than it cost.
+  const fullValue = stats.salvageGold ?? (structure.paid ?? stats.cost) * SELL_REFUND;
+  return Math.floor(fullValue * condition);
 }
 
 /**

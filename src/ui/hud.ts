@@ -3,22 +3,32 @@
 // (bottom right, side by side). Clicking the tool opens a menu above it to pick another;
 // clicking any stat box opens the stat menu, where each stat toggles on and off. Clicks
 // anywhere else pass through to the map.
-import { SELL_REFUND, STRUCTURES, TICK_RATE, type StructureStats } from "../sim/config";
+import {
+  SELL_REFUND,
+  STRUCTURES,
+  TICK_RATE,
+  TREE_CLEAR_GOLD,
+  type StructureStats,
+} from "../sim/config";
 import { buildTicksAt } from "../sim/building";
 import { discountAt, priceAt } from "../sim/enclosures";
 import { refundFor } from "../sim/economy";
 import { ownedCount, topAt } from "../sim/grid";
 import type { GameState, PlayerId, StructureKind } from "../sim/types";
-import { ARROW_SYMBOLS, GLYPHS, glyphFor } from "../render/palette";
+import { ARROW_SYMBOLS, GLYPHS, facingArrow, glyphFor } from "../render/palette";
 import {
   BUILD_TABS,
   TOOLS,
-  hasBuildTools,
   isBuildTool,
+  pickerLayout,
+  rotateFacing,
   type BuildTab,
   type UiState,
 } from "./state";
 import { statList, type Stat, type StatId } from "./stats";
+import { toolNumbers } from "./pickerKeys";
+import { buildHints, canRotate, describeKind, percent, traits } from "./describe";
+import { createKeyLabels, keyText } from "./keyLabels";
 
 export interface HudContent {
   /** The selected tool, or null with none selected. */
@@ -76,6 +86,78 @@ export function allowed(state: GameState, kind: StructureKind): boolean {
   return state.limits[kind] !== 0;
 }
 
+/** The build tools this game offers (sell not counted), in the picker's order. */
+export function offeredTools(state: GameState, tab?: BuildTab): StructureKind[] {
+  return TOOLS.filter((t) => tab === undefined || t.tab === tab)
+    .map((t) => t.tool)
+    .filter((tool): tool is StructureKind => isBuildTool(tool) && allowed(state, tool));
+}
+
+/** What a build picker item's tooltip card says, top to bottom. */
+export interface PickerCard {
+  /** Glyph and name, e.g. "C Cannon". */
+  title: string;
+  /** Full price, and the limit if an items file sets one: "50g · 2/5". */
+  cost: string;
+  description: string;
+  numbers: string[];
+  /** Short trait words joined: "Splash damage · Turns slowly". Empty when it has none. */
+  traits: string;
+  hints: string[];
+}
+
+export function pickerCard(state: GameState, player: PlayerId, kind: StructureKind): PickerCard {
+  const { title, description, numbers } = describeKind({ type: "structure", kind });
+  const limit = limitLabel(state, player, kind);
+  return {
+    title: `${GLYPHS[kind]} ${title}`,
+    cost: `${STRUCTURES[kind].cost}g${limit ? ` · ${limit}` : ""}`,
+    description,
+    numbers,
+    traits: traits(kind).join(" · "),
+    hints: buildHints(kind),
+  };
+}
+
+/** The Sell tool's card: what selling pays back, and what else it does. */
+export function sellCard(): PickerCard {
+  return {
+    title: "$ Sell",
+    cost: `${percent(SELL_REFUND)} back`,
+    description: "Take down one of your own builds for gold. Damaged builds pay back less.",
+    numbers: [`Pays ${percent(SELL_REFUND)} of what you paid, at full HP`],
+    traits: `Clears a tree for ${TREE_CLEAR_GOLD}g`,
+    hints: ["X to pick it", "Drag to sell along a line"],
+  };
+}
+
+/** Fills the tooltip card element with a picker item's card. */
+function renderCard(root: HTMLElement, card: PickerCard) {
+  const line = (className: string, text: string) =>
+    Object.assign(document.createElement("p"), { className, textContent: text });
+  const head = document.createElement("p");
+  head.className = "card-head";
+  head.append(
+    Object.assign(document.createElement("strong"), { textContent: card.title }),
+    Object.assign(document.createElement("span"), { textContent: card.cost }),
+  );
+  root.replaceChildren(
+    head,
+    line("card-description", card.description),
+    ...card.numbers.map((n) => line("card-numbers", n)),
+    ...(card.traits ? [line("card-traits", card.traits)] : []),
+    ...card.hints.map((h) => line("card-hint", h)),
+  );
+}
+
+/** Whether the HUD offers a Rotate button: the selected tool turns with R. */
+export function showsRotate(tool: UiState["tool"]): boolean {
+  return isBuildTool(tool) && canRotate(tool);
+}
+
+/** Space between a picker button and its card, in pixels. */
+const CARD_GAP_PX = 14;
+
 /** The build time the HUD shows, and the tool it was for. */
 export interface ShownTime {
   tool: UiState["tool"];
@@ -116,28 +198,44 @@ export function createHud(root: HTMLElement, ui: UiState) {
   root.innerHTML = `
     <div class="hud-left">
       <div class="hud-picker tools" data-field="picker" hidden>
-        <div class="build-tabs" role="tablist">
-          ${BUILD_TABS.map(
-            (t) => `
-            <button class="build-tab" role="tab" data-tab="${t.tab}"
-              ${hasBuildTools(t.tab) ? "" : 'disabled title="Barracks coming"'}>
-              ${t.name} <kbd>${t.label}</kbd>
-            </button>`,
-          ).join("")}
-        </div>
         ${TOOLS.map(
-          (t) => `
+          (t, i) => `
+          ${
+            // One-list layout: a section label before each tab's first tool.
+            t.tab !== "all" && TOOLS[i - 1]?.tab !== t.tab
+              ? `<p class="picker-section" data-section="${t.tab}" hidden>${BUILD_TABS.find((b) => b.tab === t.tab)!.name}</p>`
+              : ""
+          }
+          ${
+            // A subtitle before each group's first tool (Walls, Towers; Static, Exploring).
+            t.group && TOOLS[i - 1]?.group !== t.group
+              ? `<p class="picker-group" data-group="${t.group}" data-group-tab="${t.tab}" hidden>${t.group}</p>`
+              : ""
+          }
           <button class="tool" data-tool="${t.tool}" data-tab="${t.tab}">
             <span class="glyph">${isBuildTool(t.tool) ? GLYPHS[t.tool] : "$"}</span>
             <span class="name">${isBuildTool(t.tool) ? STRUCTURES[t.tool].name : "Sell"}</span>
             <span class="cost">${isBuildTool(t.tool) ? `${STRUCTURES[t.tool].cost}g` : `${SELL_REFUND * 100}%`}</span>
-            ${t.label ? `<kbd>${t.label}</kbd>` : '<span class="limit"></span>'}
+            ${t.action ? `<kbd data-action="${t.action}"></kbd>` : '<span class="keys"><span class="limit"></span><kbd class="number" hidden></kbd></span>'}
           </button>`,
         ).join("")}
+        <!-- At the bottom, by the tool button, so they stay put whichever tab is open. -->
+        <div class="build-tabs at-bottom" role="tablist">
+          ${BUILD_TABS.map(
+            (t) => `
+            <button class="build-tab" role="tab" data-tab="${t.tab}">
+              ${t.name} <kbd data-action="${t.action}"></kbd>
+            </button>`,
+          ).join("")}
+        </div>
       </div>
+      <div class="picker-card" data-field="card" role="tooltip" hidden></div>
       <button class="hud-box hud-tool" data-field="tool" title="Choose what to build">
         <span class="hud-glyph" data-field="glyph"></span>
         <span data-field="name"></span>
+      </button>
+      <button class="hud-box hud-tool hud-rotate" data-field="rotate" title="Rotate" hidden>
+        <span data-field="arrow"></span> <kbd data-action="rotate"></kbd>
       </button>
       <div class="hud-box hud-cost" data-field="cost"></div>
       <div class="hud-box hud-cost" data-field="time" title="Time to build here"></div>
@@ -149,11 +247,18 @@ export function createHud(root: HTMLElement, ui: UiState) {
     </div>
   `;
   const field = (name: string) => root.querySelector<HTMLElement>(`[data-field="${name}"]`)!;
+  const keyLabels = createKeyLabels(root);
   const toolBox = field("tool");
   const picker = field("picker");
   const glyph = field("glyph");
   const name = field("name");
   const cost = field("cost");
+  const rotate = field("rotate");
+  const arrow = field("arrow");
+  rotate.addEventListener("click", () => {
+    rotateFacing(ui); // the same turn as pressing R
+    rotate.blur(); // so Space only ever toggles pause
+  });
   const time = field("time");
   let shownTime: ShownTime | null = null;
   const statBoxes = field("stats");
@@ -163,7 +268,39 @@ export function createHud(root: HTMLElement, ui: UiState) {
   /** The stat menu's rows by id, rebuilt only when the set of stats changes (PvP differs). */
   let statRows = new Map<string, HTMLButtonElement>();
   const toolButtons = [...picker.querySelectorAll<HTMLButtonElement>("[data-tool]")];
+  const card = field("card");
+  /** The game the card describes (its limits and counts), kept from the last update. */
+  let cardState: GameState | null = null;
+  /** Shows the card beside a picker button, pointing at it, kept inside the window. */
+  function showCard(button: HTMLButtonElement) {
+    const tool = button.dataset.tool as UiState["tool"];
+    if (!tool || !cardState) return hideCard();
+    renderCard(card, isBuildTool(tool) ? pickerCard(cardState, ui.playerId, tool) : sellCard());
+    card.hidden = false;
+    const at = button.getBoundingClientRect();
+    const box = picker.getBoundingClientRect();
+    const height = card.offsetHeight;
+    const top = Math.max(8, Math.min(at.top + at.height / 2 - 24, window.innerHeight - height - 8));
+    card.style.left = `${box.right + CARD_GAP_PX}px`;
+    card.style.top = `${top}px`;
+    // The pointer on the card's left edge lines up with the button's middle.
+    card.style.setProperty("--card-arrow", `${at.top + at.height / 2 - top}px`);
+  }
+  function hideCard() {
+    card.hidden = true;
+  }
+  /** The tool whose card a pad is showing: with no mouse, the one chosen in the menu shows. */
+  let padCardFor: UiState["tool"] = null;
+  for (const button of toolButtons) {
+    button.addEventListener("pointerenter", () => showCard(button));
+    button.addEventListener("focus", () => showCard(button));
+    button.addEventListener("blur", hideCard);
+  }
+  picker.addEventListener("pointerleave", hideCard);
   const tabButtons = [...picker.querySelectorAll<HTMLButtonElement>(".build-tab")];
+  const tabBar = picker.querySelector<HTMLElement>(".build-tabs")!;
+  const sections = [...picker.querySelectorAll<HTMLElement>("[data-section]")];
+  const groups = [...picker.querySelectorAll<HTMLElement>("[data-group]")];
   for (const button of tabButtons) {
     button.addEventListener("click", () => {
       ui.tab = button.dataset.tab as BuildTab;
@@ -174,7 +311,8 @@ export function createHud(root: HTMLElement, ui: UiState) {
   // Each box opens and closes its menu (and closes the other one); picking something, or
   // clicking anywhere else, closes it.
   toolBox.addEventListener("click", () => {
-    picker.hidden = !picker.hidden;
+    ui.pickerOpen = !ui.pickerOpen;
+    picker.hidden = !ui.pickerOpen;
     statPicker.hidden = true;
     toolBox.blur(); // so Space only ever toggles pause
   });
@@ -184,6 +322,7 @@ export function createHud(root: HTMLElement, ui: UiState) {
     if (!box) return;
     statPicker.hidden = !statPicker.hidden;
     picker.hidden = true;
+    ui.pickerOpen = false;
     box.blur();
   });
   for (const button of toolButtons) {
@@ -191,12 +330,16 @@ export function createHud(root: HTMLElement, ui: UiState) {
       const tool = button.dataset.tool as UiState["tool"];
       ui.tool = ui.tool === tool ? null : tool;
       picker.hidden = true;
+      ui.pickerOpen = false;
       button.blur();
     });
   }
   document.addEventListener("pointerdown", (e) => {
     const target = e.target as HTMLElement;
-    if (!target.closest(".hud-left")) picker.hidden = true;
+    if (!target.closest(".hud-left")) {
+      picker.hidden = true;
+      ui.pickerOpen = false;
+    }
     if (!target.closest(".hud-right")) statPicker.hidden = true;
   });
 
@@ -261,6 +404,8 @@ export function createHud(root: HTMLElement, ui: UiState) {
     update(state: GameState | null) {
       root.hidden = state === null;
       if (!state) return;
+      keyLabels.sync(ui);
+      rotate.title = `Rotate (${keyText(ui, "rotate")})`;
       const hud = hudContent(state, ui);
       const damaging = ui.debugDamage && ui.tool === null;
       glyph.textContent = damaging ? "✸" : (hud.tool?.glyph ?? "+");
@@ -268,6 +413,8 @@ export function createHud(root: HTMLElement, ui: UiState) {
       name.textContent = damaging
         ? "Damage (debug)"
         : `${hud.tool?.name ?? "Build"}${limit ? ` ${limit}` : ""}`;
+      rotate.hidden = !showsRotate(ui.tool);
+      arrow.textContent = facingArrow(ui.facing);
       cost.hidden = hud.cost === null;
       cost.textContent = hud.cost ?? "";
       shownTime = heldTime(shownTime, ui.tool, hud.time);
@@ -275,15 +422,46 @@ export function createHud(root: HTMLElement, ui: UiState) {
       time.textContent = shownTime?.text ?? "";
       updateStatBoxes(hudStats(state, ui), hud.short);
       if (!statPicker.hidden) updateStatPicker(state);
-      if (ui.openPicker) {
-        // 1, 2 or 3 was pressed: open the picker on that tab.
-        ui.openPicker = false;
-        picker.hidden = false;
-        statPicker.hidden = true;
+      if (picker.hidden === ui.pickerOpen) {
+        // Opened or closed from the keyboard (1, 2, 3, a number, Esc).
+        picker.hidden = !ui.pickerOpen;
+        if (ui.pickerOpen) statPicker.hidden = true;
       }
-      if (picker.hidden) return;
+      cardState = state;
+      if (picker.hidden) {
+        card.hidden = true;
+        padCardFor = null;
+        return;
+      }
+      // Few kinds offered: one list with section labels; otherwise tabs, minus the empty ones.
+      const row = pickerLayout(offeredTools(state).length) === "row";
+      tabBar.hidden = row;
+      const withTools = BUILD_TABS.filter((t) => offeredTools(state, t.tab).length > 0);
+      if (!row && withTools.length > 0 && !withTools.some((t) => t.tab === ui.tab)) {
+        ui.tab = withTools[0].tab;
+      }
       for (const button of tabButtons) {
+        button.hidden = !withTools.some((t) => t.tab === button.dataset.tab);
         button.setAttribute("aria-selected", String(button.dataset.tab === ui.tab));
+      }
+      for (const label of sections) {
+        const tab = label.dataset.section as BuildTab;
+        label.hidden = !row || offeredTools(state, tab).length === 0;
+        // In one list, the section the number keys pick from (1, 2, 3 choose it).
+        label.classList.toggle("current", tab === ui.tab);
+      }
+      const numbers = new Map(
+        BUILD_TABS.flatMap((t) => [...toolNumbers(offeredTools(state, t.tab))]),
+      );
+      for (const label of groups) {
+        const tab = label.dataset.groupTab as BuildTab;
+        const anyOffered = TOOLS.some(
+          (t) =>
+            t.group === label.dataset.group &&
+            t.tab === tab &&
+            allowed(state, t.tool as StructureKind),
+        );
+        label.hidden = !anyOffered || (!row && tab !== ui.tab);
       }
       for (const button of toolButtons) {
         const tool = button.dataset.tool as UiState["tool"];
@@ -299,12 +477,22 @@ export function createHud(root: HTMLElement, ui: UiState) {
         const tab = button.dataset.tab;
         // An items file can rule a kind out (not offered) or cap it (shows "2/5").
         const offered = !isBuildTool(tool) || allowed(state, tool);
-        button.hidden = !offered || (tab !== "all" && tab !== ui.tab);
+        button.hidden = !offered || (!row && tab !== "all" && tab !== ui.tab);
         if (isBuildTool(tool)) {
           const count = button.querySelector<HTMLElement>(".limit")!;
           const text = limitLabel(state, ui.playerId, tool) ?? "";
           if (count.textContent !== text) count.textContent = text;
+          const number = button.querySelector<HTMLElement>(".number")!;
+          const key = numbers.get(tool) ?? "";
+          if (number.textContent !== key) number.textContent = key;
+          number.hidden = key === "" || ui.device !== "keyboard"; // number keys are the keyboard's
         }
+      }
+      if (ui.device !== "keyboard" && ui.tool !== padCardFor) {
+        padCardFor = ui.tool;
+        const chosen = toolButtons.find((b) => b.dataset.tool === ui.tool && !b.hidden);
+        if (chosen) showCard(chosen);
+        else hideCard();
       }
     },
   };

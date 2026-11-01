@@ -4,6 +4,7 @@
 import { TICK_RATE } from "../sim/config";
 import { incomePerMinute } from "../sim/economy";
 import { isSpawningTime } from "../sim/clock";
+import { isLastWave } from "../sim/waves";
 import type { GameState, PlayerId } from "../sim/types";
 
 export type StatId = "gold" | "income" | "keep" | "wave" | "next" | "rival" | "mode" | "seed";
@@ -31,18 +32,22 @@ export function statList(state: GameState, playerId: PlayerId): Stat[] {
   } else {
     const spawning = state.wave.threatLeft > 0;
     const night = state.enemiesCome === "night" && state.clock ? state.clock.day : null;
+    // A level's waves count up to its last.
+    const of = state.lastWave === null ? "" : ` / ${state.lastWave}`;
     stats.push(
       night === null
-        ? { id: "wave", label: "Wave", value: String(state.wave.number) }
-        : { id: "wave", label: "Night", value: `${night} · wave ${state.wave.number}` },
+        ? { id: "wave", label: "Wave", value: `${state.wave.number}${of}` }
+        : { id: "wave", label: "Night", value: `${night} · wave ${state.wave.number}${of}` },
       {
         id: "next",
         label: "Next",
         value: spawning
           ? "incoming!"
-          : !isSpawningTime(state)
-            ? "At dusk"
-            : `${Math.ceil(state.wave.countdown / TICK_RATE)}s`,
+          : isLastWave(state)
+            ? "Last wave"
+            : !isSpawningTime(state)
+              ? "At dusk"
+              : `${Math.ceil(state.wave.countdown / TICK_RATE)}s`,
       },
     );
   }

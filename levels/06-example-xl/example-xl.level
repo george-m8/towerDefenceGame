@@ -1,0 +1,27 @@
+{
+  "format": "keep-defence-level",
+  "version": 1,
+  "title": "Example XL",
+  "icon": [
+    ["land:river", "land:tree", "land:ground", "land:tree", "land:ground", "land:tree", "land:berries", "land:sea"],
+    ["land:river", "land:ground", "land:ground", "land:rock", "land:ground", "land:ground", "land:ground", "land:sea"],
+    ["land:river", "land:tree", "land:tree", "land:ground", "land:ground", "land:rock", "land:ground", "land:sea"],
+    ["land:tree", "land:ground", "land:ground", "land:ground", "land:tree", "land:tree", "land:ground", "land:sea"],
+    ["enemy:goblin", "land:tree", "land:ground", "land:tree", "keep", "land:ground", "land:ground", "land:sea"],
+    ["land:river", "land:ground", "land:tree", "land:ground", "land:ground", "land:ground", "land:rock", "land:sea"],
+    ["land:ground", "land:ground", "land:tree", "land:tree", "land:tree", "land:ground", "land:tree", "land:sea"],
+    ["land:tree", "land:river", "land:tree", "land:ground", "land:tree", "land:berries", "land:tree", "land:sea"]
+  ],
+  "mode": "endless",
+  "win": {
+    "waves": 5,
+    "stars": {
+      "2": 50,
+      "3": 100
+    }
+  },
+  "fog": true,
+  "dayNight": {
+    "enemiesCome": "always"
+  }
+}

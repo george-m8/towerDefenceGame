@@ -1,0 +1,23 @@
+{
+  "format": "keep-defence-level",
+  "version": 1,
+  "title": "Example XS",
+  "icon": [
+    ["land:sea", "land:sea", "land:sea", "land:sea"],
+    ["land:tree", "land:ground", "land:ground", "land:river"],
+    ["enemy:goblin", "land:ground", "keep", "land:river"],
+    ["land:ground", "land:ground", "land:rock", "land:river"]
+  ],
+  "mode": "endless",
+  "win": {
+    "waves": 5,
+    "stars": {
+      "2": 50,
+      "3": 100
+    }
+  },
+  "fog": true,
+  "dayNight": {
+    "enemiesCome": "always"
+  }
+}

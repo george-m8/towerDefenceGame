@@ -28,7 +28,20 @@ export function minimapColour(state: GameState, x: number, y: number): string {
   return terrain === "ground" ? COLOURS.ground : TERRAIN_STYLES[terrain].bg;
 }
 
-export function createMinimap(canvas: HTMLCanvasElement, ui: UiState) {
+/** The full-screen map's scale: the most whole pixels per tile that fit, never below 1. */
+export function fullMapScale(mapW: number, mapH: number, availW: number, availH: number): number {
+  return Math.max(1, Math.floor(Math.min(availW / mapW, availH / mapH)));
+}
+
+/**
+ * The minimap, drawn on `canvas`. With `fit`, it's the full-screen map instead: it fills the
+ * space `fit` gives (in CSS pixels) at a whole number of device pixels per tile.
+ */
+export function createMinimap(
+  canvas: HTMLCanvasElement,
+  ui: UiState,
+  fit?: () => { width: number; height: number },
+) {
   const ctx = canvas.getContext("2d")!;
   /** Pixels per tile on the minimap. */
   let scale = 1;
@@ -39,12 +52,18 @@ export function createMinimap(canvas: HTMLCanvasElement, ui: UiState) {
 
   // Click or drag to move the view.
   let dragging = false;
+  /** The map tile (in the view's tiles) under a point on the screen. */
+  const tileAt = (clientX: number, clientY: number) => {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: ((clientX - rect.left) / rect.width) * (state?.width ?? 0),
+      y: ((clientY - rect.top) / rect.height) * (state?.height ?? 0),
+    };
+  };
   const moveViewTo = (e: PointerEvent) => {
     if (!state) return;
-    const rect = canvas.getBoundingClientRect();
-    const tx = ((e.clientX - rect.left) / rect.width) * state.width;
-    const ty = ((e.clientY - rect.top) / rect.height) * state.height;
-    centerOn(ui.camera, tx, ty);
+    const tile = tileAt(e.clientX, e.clientY);
+    centerOn(ui.camera, tile.x, tile.y);
   };
   canvas.addEventListener("pointerdown", (e) => {
     dragging = true;
@@ -84,14 +103,23 @@ export function createMinimap(canvas: HTMLCanvasElement, ui: UiState) {
   }
 
   return {
+    tileAt,
     update(current: GameState) {
       state = current;
-      scale = Math.max(1, Math.ceil(DRAW_WIDTH / current.width));
+      const dpr = window.devicePixelRatio || 1;
+      const space = fit?.();
+      scale = space
+        ? fullMapScale(current.width, current.height, space.width * dpr, space.height * dpr)
+        : Math.max(1, Math.ceil(DRAW_WIDTH / current.width));
       const width = current.width * scale;
       const height = current.height * scale;
       if (canvas.width !== width || canvas.height !== height) {
         canvas.width = width;
         canvas.height = height;
+        if (space) {
+          canvas.style.width = `${width / dpr}px`;
+          canvas.style.height = `${height / dpr}px`;
+        }
       }
       const key = `${current.seed}:${current.gridVersion}:${current.fog}:${ui.playerId}:${current.width}x${current.height}:${scale}`;
       if (key !== imageKey) {

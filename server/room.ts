@@ -4,6 +4,7 @@ import { randomBytes } from "node:crypto";
 import { DEFAULT_MAP_SIZE, STARTING_GOLD, TICK_RATE, type MapSize } from "../src/sim/config";
 import { applyCommand, assignKeeps, createGame, tick } from "../src/sim/game";
 import { NO_VOTES, addPlayer, setConnected, updateVotes } from "../src/sim/players";
+import { freshRaid, raiders, setRole } from "../src/sim/raiders";
 import type {
   EnemiesCome,
   Command,
@@ -11,6 +12,7 @@ import type {
   GameMode,
   GameState,
   PlayerId,
+  Role,
 } from "../src/sim/types";
 import { isDebugCommand } from "../src/sim/types";
 import { uniqueName, type LobbyInfo, type ServerMessage } from "../src/net/protocol";
@@ -92,6 +94,10 @@ export function startRoom(room: Room, playerId: PlayerId, fog = true): CommandRe
     }
     assignKeeps(room.state);
   }
+  const players = Object.values(room.state.players);
+  if (raiders(room.state).length === players.length) {
+    return { ok: false, reason: "Someone has to defend" };
+  }
   room.started = true;
   room.fog = fog;
   room.state.fog = fog;
@@ -149,6 +155,20 @@ export function leaveRoom(room: Room, playerId: PlayerId): void {
   broadcastUpdate(room);
 }
 
+/** In the waiting room: a player picks defending or raiding. */
+export function setRoomRole(room: Room, playerId: PlayerId, role: Role): CommandResult {
+  if (room.started) return { ok: false, reason: "The game has started" };
+  const result = setRole(room.state, playerId, role);
+  if (result.ok) broadcastUpdate(room);
+  return result;
+}
+
+/**
+ * Steering and painting paths change as the pointer moves: they wait for the next update rather
+ * than force one.
+ */
+const QUIET_COMMANDS: ReadonlySet<Command["type"]> = new Set(["steer", "sprint", "paintPath"]);
+
 /** Runs a command as `playerId`, answers with its result, and shares any change. */
 export function applyRoomCommand(
   room: Room,
@@ -156,14 +176,31 @@ export function applyRoomCommand(
   seq: number,
   command: Command,
 ): CommandResult {
-  const result: CommandResult = !room.started
-    ? { ok: false, reason: "The game hasn't started" }
-    : isDebugCommand(command)
-      ? { ok: false, reason: "Not allowed online" }
-      : applyCommand(room.state, playerId, command);
-  room.send(playerId, { type: "result", seq, result });
-  if (result.ok) broadcastUpdate(room);
-  return result;
+  return applyRoomCommands(room, playerId, [{ seq, command }])[0];
+}
+
+/**
+ * Applies commands in order, answering each with its own result, then sends everyone one update
+ * for the lot (a dragged line of walls is one update, not one per wall).
+ */
+export function applyRoomCommands(
+  room: Room,
+  playerId: PlayerId,
+  commands: readonly { seq: number; command: Command }[],
+): CommandResult[] {
+  let changed = false;
+  const results = commands.map(({ seq, command }) => {
+    const result: CommandResult = !room.started
+      ? { ok: false, reason: "The game hasn't started" }
+      : isDebugCommand(command)
+        ? { ok: false, reason: "Not allowed online" }
+        : applyCommand(room.state, playerId, command);
+    room.send(playerId, { type: "result", seq, result });
+    if (result.ok && !QUIET_COMMANDS.has(command.type)) changed = true;
+    return result;
+  });
+  if (changed) broadcastUpdate(room);
+  return results;
 }
 
 /** Runs whole ticks for the elapsed time (scaled by game speed), sending updates on cadence. */
@@ -207,6 +244,7 @@ export function restartRoom(room: Room, seed: number): CommandResult {
       ...player,
       gold: STARTING_GOLD,
       votes: { ...NO_VOTES },
+      raid: player.raid && freshRaid(),
     };
   }
   state.nextPlayerId = old.nextPlayerId;

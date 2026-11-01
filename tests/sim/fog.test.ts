@@ -196,6 +196,10 @@ describe("building and selling", () => {
       mode: "walking",
       targetId: null,
       leaderId: null,
+      controller: null,
+      roamer: false,
+      steer: null,
+      pathDone: false,
     });
     state.wave.countdown = Infinity;
     tick(state);

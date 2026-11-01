@@ -4,10 +4,12 @@ import type { PlayerId } from "../src/sim/types";
 import { parseClientMessage, type ClientMessage, type ServerMessage } from "../src/net/protocol";
 import {
   applyRoomCommand,
+  applyRoomCommands,
   joinRoom,
   leaveRoom,
   rejoinRoom,
   restartRoom,
+  setRoomRole,
   startRoom,
   type Room,
 } from "./room";
@@ -101,9 +103,19 @@ export function handleConnection(hub: Hub, socket: WebSocket): void {
         if (!seat) return send({ type: "error", reason: "Join a room first" });
         applyRoomCommand(seat.room, seat.playerId, message.seq, message.command);
         return;
+      case "commands":
+        if (!seat) return send({ type: "error", reason: "Join a room first" });
+        applyRoomCommands(seat.room, seat.playerId, message.commands);
+        return;
       case "start": {
         if (!seat) return send({ type: "error", reason: "Join a room first" });
         const result = startRoom(seat.room, seat.playerId, message.fog !== false);
+        if (!result.ok) send({ type: "error", reason: result.reason });
+        return;
+      }
+      case "setRole": {
+        if (!seat) return send({ type: "error", reason: "Join a room first" });
+        const result = setRoomRole(seat.room, seat.playerId, message.role);
         if (!result.ok) send({ type: "error", reason: result.reason });
         return;
       }

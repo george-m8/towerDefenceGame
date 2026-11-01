@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { applyCommand, createGame } from "../../src/sim/game";
 import { COLOURS, FOG, STRUCTURE_COLOURS, TERRAIN_STYLES } from "../../src/render/palette";
-import { fogged, minimapColour } from "../../src/ui/minimap";
+import { fogged, fullMapScale, minimapColour } from "../../src/ui/minimap";
 import { IN_SIGHT, SEEN, UNEXPLORED } from "../../src/sim/fog";
 import { paintTerrain } from "../sim/helpers";
 
@@ -37,5 +37,16 @@ describe("fogged", () => {
     expect(fogged("#808080", UNEXPLORED)).toBe(mist(FOG.unexplored.opacity));
     expect(fogged("#808080", SEEN)).toBe(mist(FOG.seen.opacity));
     expect(fogged("#808080", IN_SIGHT)).toBe("#808080");
+  });
+});
+
+describe("fullMapScale", () => {
+  it("is the largest whole number of pixels per tile that fits", () => {
+    expect(fullMapScale(42, 28, 1280, 800)).toBe(28); // 1280 / 42 = 30.4, 800 / 28 = 28.6
+    expect(fullMapScale(100, 50, 1000, 1000)).toBe(10);
+  });
+
+  it("is never below one pixel per tile", () => {
+    expect(fullMapScale(400, 300, 200, 100)).toBe(1);
   });
 });

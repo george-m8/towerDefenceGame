@@ -157,6 +157,18 @@ export function viewOf(state: GameState, turns: Rotation): GameState {
   view.features = state.features.map((f) => turned(f, turns, w, h));
   view.effects = state.effects.map((e) => turned(e, turns, w, h));
   view.spawnTiles = state.spawnTiles.map((p) => toView(p, turns, w, h));
+  // Raiders' pathing flags, drawn on their screens.
+  view.players = Object.fromEntries(
+    Object.entries(state.players).map(([id, player]) => [
+      id,
+      player.raid
+        ? {
+            ...player,
+            raid: { ...player.raid, plan: player.raid.plan.map((f) => turned(f, turns, w, h)) },
+          }
+        : player,
+    ]),
+  );
   // A keep is a square: its top-left in the view is the turned corner nearest the top-left.
   view.keeps = state.keeps.map((keep) => {
     const a = cornerToView(keep.x, keep.y, turns, w, h);

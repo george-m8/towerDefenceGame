@@ -12,11 +12,13 @@ import {
   topAt,
 } from "../sim/grid";
 import { nextStep } from "../sim/pathfinding";
+import { stretchEnds } from "../sim/raidPaths";
 import { buildFractionAt, buildProgress } from "../sim/building";
 import { facingAngle } from "../sim/aiming";
 import {
   EFFECT_TICKS,
   HEAL_EFFECT_TICKS,
+  TICK_RATE,
   ENEMY_KINDS,
   STRUCTURES,
   UNIT_KINDS,
@@ -39,10 +41,25 @@ import type {
 } from "../sim/types";
 import type { PendingBuild } from "../net/session";
 import { isBuildTool, type UiState } from "../ui/state";
-import { tilePixels, visibleTiles, type VisibleTiles } from "../ui/camera";
+import {
+  ISO,
+  isoRise,
+  tilePixels,
+  tileToScreen,
+  visibleTiles,
+  type Camera,
+  type VisibleTiles,
+} from "../ui/camera";
 import { minimapColour } from "../ui/minimap";
 import { KEEP, NONE, getEnclosures } from "../sim/enclosures";
-import { SEEN, canSeeEnemiesAt, forEachSightTile, getSight, isExplored } from "../sim/fog";
+import {
+  IN_SIGHT,
+  SEEN,
+  canSeeEnemiesAt,
+  forEachSightTile,
+  getSight,
+  isExplored,
+} from "../sim/fog";
 import {
   AIM_LINE_TILES,
   ARROWS,
@@ -63,6 +80,8 @@ import {
   TERRAIN_STYLES,
   TERRAIN_TEXTURES,
   KEEP_TEXTURE,
+  FOG,
+  FOG_TEXTURE,
   STRUCTURE_TEXTURES,
   DAMAGED_WALL_TEXTURE,
   WALL_DAMAGED_BELOW,
@@ -74,9 +93,9 @@ import {
   playerColour,
   DOOR_ALPHA,
   KEEP_GLYPH,
+  GLYPH_FONTS,
 } from "./palette";
-import { fogImage } from "./fog";
-import { curtainTier, type Curtain } from "../ui/curtain";
+import { fogImage, fogSpans, type FogLevel } from "./fog";
 import { createHpBarTracker } from "./hpBars";
 import { burstPixels, burstWaiting } from "./burst";
 import { textureSpecks, textureVariant, type TextureStyle } from "./textures";
@@ -94,6 +113,10 @@ const MAX_LIGHT_RADIUS = Math.max(
 
 /** How dark blocks' shadows are in full daylight, on the ground and on lower blocks beside them. */
 const SHADOW_ALPHA = 0.3;
+/** A raider's death flag fades out over its last second. */
+const FLAG_FADE_TICKS = TICK_RATE;
+/** The numbers on a raider's pathing flags. */
+const FLAG_LABEL_FONT = `${Math.round(TILE_SIZE * 0.45)}px ${GLYPH_FONTS}`;
 
 /** Compass degrees (0 = north, clockwise) to canvas radians (0 = east, clockwise). */
 function toCanvasAngle(compassDegrees: number): number {
@@ -142,6 +165,12 @@ export function blockHeight(state: GameState, x: number, y: number): number {
   return terrain === "berries" ? 2 : 0;
 }
 
+/** A block's sides: its own colour, but a tower on a wall shows the wall it stands on. */
+export function blockSideColour(state: GameState, x: number, y: number): string {
+  const base = mountAt(state, x, y) && baseAt(state, x, y);
+  return base ? STRUCTURE_COLOURS[base.kind].bg : minimapColour(state, x, y);
+}
+
 /**
  * The row an enemy is drawn with. Blocks in front hide it, except the keep: an enemy standing
  * against the back of the keep (attacking it) is drawn in front, not sunk under the keep's top.
@@ -163,6 +192,32 @@ export function pickTile(state: GameState | null, px: number, py: number): Point
   return py - y >= 1 - lift ? { x, y: y + 1 } : { x, y };
 }
 
+/** The tallest a block stands, in pixels (a keep's corner), for pickIsoTile's search. */
+const TALLEST_BLOCK = 16;
+/** How finely pickIsoTile steps down the view line, in tiles of height. */
+const PICK_STEP = 1 / 32;
+
+/**
+ * The tile under a point over the 3D view, given the ground point under it (fractional tiles).
+ * Blocks stand up into the view, so the point may be on a block's top or front nearer the
+ * camera: follow the view line from as high as any block stands down to the ground, and take
+ * the first block it meets. A point raised h shows where the ground further from the camera
+ * does (isoRise), so at height h the line is over the ground point moved back towards it.
+ */
+export function pickIsoTile(state: GameState | null, cam: Camera, px: number, py: number): Point {
+  if (state) {
+    const rise = isoRise(cam);
+    const top = (TALLEST_BLOCK / TILE_SIZE) * ISO.heightScale;
+    for (let h = top; h > 0; h -= PICK_STEP) {
+      const x = Math.floor(px + rise.x * h);
+      const y = Math.floor(py + rise.y * h);
+      if (x < 0 || y < 0 || x >= state.width || y >= state.height) continue;
+      if ((blockHeight(state, x, y) / TILE_SIZE) * ISO.heightScale >= h) return { x, y };
+    }
+  }
+  return { x: Math.floor(px), y: Math.floor(py) };
+}
+
 /**
  * Draws the game through the camera in `ui.camera`. Everything below draws in map pixels
  * (TILE_SIZE per tile); the canvas transform turns that into the zoomed, scrolled view, and
@@ -179,12 +234,21 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   let hover: Point | null = null;
   let now = 0;
   const hpBars = createHpBarTracker();
+  /** False while painting the flat map for the 3D view: bars change too often to bake in. */
+  let barsShown = true;
+  /**
+   * Over the 3D view (renderOverlay): the camera, the game and the screen's pixel ratio, so
+   * map-pixel drawing goes through the iso transform and bars stand upright over things.
+   */
+  let iso: { cam: Camera; state: GameState; dpr: number } | null = null;
   /** Tile textures, drawn once each ("style:variant"). */
   const textureImages = new Map<string, HTMLCanvasElement>();
   /** False when zoomed too far out for textures to show. */
   let textured = true;
   /** The night's light map as an image, one pixel a tile (see drawNight). */
   const nightImage = document.createElement("canvas");
+  /** Each raiders' path's end, worked out again only when the paths change. */
+  let pathEnds: { paths: number[]; ends: number[] } = { paths: [], ends: [] };
   /** Blocks' shadows this frame: fainter as the light fades (see dayNight.ts). */
   let shadow = `rgba(0, 0, 0, ${SHADOW_ALPHA})`;
   /**
@@ -214,12 +278,12 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     const row = y - y0;
     return col >= 0 && row >= 0 && col < width && row < height ? data[row * width + col] : 0;
   }
-  /** The fog image and what it was made from: the sight, and the curtain's radius if any. */
+  /** The fog image and the sight it was made from. */
   let fog: {
     tier: Uint8Array;
-    radius: number | null;
     image: HTMLCanvasElement;
     lift: number;
+    levels: (FogLevel | undefined)[];
   } | null = null;
 
   function drawTile(x: number, y: number, bg: string, glyph?: string, fg?: string) {
@@ -313,7 +377,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
         const h = heightAt(x, y);
         if (h === 0) continue;
         // Front face: the block's colour, darkened; the top sits h pixels higher.
-        ctx!.fillStyle = minimapColour(state, x, y);
+        ctx!.fillStyle = blockSideColour(state, x, y);
         ctx!.fillRect(x * TILE_SIZE, (y + 1) * TILE_SIZE - h, TILE_SIZE, h);
         ctx!.fillStyle = "rgba(0, 0, 0, 0.45)";
         ctx!.fillRect(x * TILE_SIZE, (y + 1) * TILE_SIZE - h, TILE_SIZE, h);
@@ -460,7 +524,11 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     drawTile(x, y, style.bg);
     drawTexture(x, y, TERRAIN_TEXTURES[terrain]);
     if (style.glyph && style.fg) drawGlyph(x, y, style.glyph, style.fg);
-    // A resource being worked shows what's left (in sight only, like enemies).
+    drawResourceLeft(state, x, y);
+  }
+
+  /** A resource being worked shows what's left (in sight only, like enemies). */
+  function drawResourceLeft(state: GameState, x: number, y: number) {
     const resource = resourceAt(state, x, y);
     if (resource && resource.goldLeft < resource.worth && canSeeEnemiesAt(state, x, y, viewer)) {
       drawHpBar(x, y, resource.goldLeft / resource.worth, COLOURS.resourceLeft);
@@ -470,7 +538,11 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   /** A tile's texture over its flat colour, unless zoomed too far out to see it. */
   function drawTexture(x: number, y: number, style: TextureStyle) {
     if (!textured) return;
-    const variant = textureVariant(x, y);
+    ctx!.drawImage(textureImage(style, textureVariant(x, y)), x * TILE_SIZE, y * TILE_SIZE);
+  }
+
+  /** One variant of a texture, drawn the first time it's wanted. */
+  function textureImage(style: TextureStyle, variant: number): HTMLCanvasElement {
     const key = `${style}:${variant}`;
     let image = textureImages.get(key);
     if (!image) {
@@ -483,7 +555,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       }
       textureImages.set(key, image);
     }
-    ctx!.drawImage(image, x * TILE_SIZE, y * TILE_SIZE);
+    return image;
   }
 
   /**
@@ -511,21 +583,37 @@ export function createRenderer(canvas: HTMLCanvasElement) {
    * Fog of war, over everything drawn so far: a white mist raised like the blocks, thin and low
    * over seen land, solid and high over unexplored land, stepping down in see-through bands
    * along its edge. Enemies and effects out of sight are left out before this, not covered by
-   * it. The fog image is only rebuilt when sight changes. While a game is being swapped in, the
-   * curtain's fog goes over it too (all of it, with fog of war off).
+   * it. The fog image is only rebuilt when sight changes. A dithered haze lies over each fog
+   * tile's top, as see-through as its fog.
    */
-  function drawFog(state: GameState, curtain: Curtain | null) {
-    if (!state.fog && !curtain) return;
+  function drawFog(state: GameState) {
+    if (!state.fog) return;
     const tier = getSight(state, viewer);
-    // Rebuilt for every whole tile the curtain moves, not every frame.
-    const radius = curtain && Math.round(curtain.radius);
-    if (fog?.tier !== tier || fog.radius !== radius) {
-      const drawn = curtain ? curtainTier(tier, state.width, state.height, curtain) : tier;
-      fog = { tier, radius, ...fogImage(drawn, state.width, state.height) };
-    }
+    if (fog?.tier !== tier) fog = { tier, ...fogImage(tier, state.width, state.height) };
     ctx!.imageSmoothingEnabled = false; // hard tile edges
     ctx!.drawImage(fog.image, 0, -fog.lift, state.width * TILE_SIZE, fog.image.height);
     ctx!.imageSmoothingEnabled = true;
+    if (textured) drawHaze(state, fog.levels);
+  }
+
+  /** The haze texture on the visible fog tops, cut short where higher fog in front hides it. */
+  function drawHaze(state: GameState, levels: (FogLevel | undefined)[]) {
+    // One row past the view: its fog is raised into the view's bottom row.
+    const y1 = Math.min(state.height - 1, view.y1 + 1);
+    for (let y = view.y0; y <= y1; y++) {
+      for (let x = view.x0; x <= view.x1; x++) {
+        const level = levels[y * state.width + x];
+        if (!level) continue;
+        const front = y + 1 < state.height ? (levels[(y + 1) * state.width + x]?.height ?? 0) : 0;
+        const { top } = fogSpans(y, level.height, front);
+        const shown = top.bottom - top.top;
+        if (shown <= 0) continue;
+        ctx!.globalAlpha = level.opacity;
+        const image = textureImage(FOG_TEXTURE, textureVariant(x, y));
+        ctx!.drawImage(image, 0, 0, TILE_SIZE, shown, x * TILE_SIZE, top.top, TILE_SIZE, shown);
+      }
+    }
+    ctx!.globalAlpha = 1;
   }
 
   /** Chests in one row, drawn with that row so blocks in front hide them. */
@@ -650,8 +738,17 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   function drawGhost(state: GameState, ui: UiState) {
     if (!ui.tool || !ui.hover) return;
     ctx!.save();
-    ctx!.translate(0, -blockHeight(state, ui.hover.x, ui.hover.y));
+    liftBy(blockHeight(state, ui.hover.x, ui.hover.y));
     drawGhostAt(state, ui);
+    ctx!.restore();
+  }
+
+  /** A white edge round the tile under the pointer, on top of whatever's on it (raised blocks too). */
+  function drawHoverEdge(state: GameState, ui: UiState) {
+    if (!ui.hover) return;
+    ctx!.save();
+    liftBy(blockHeight(state, ui.hover.x, ui.hover.y));
+    outlineTile(ui.hover, COLOURS.hoverEdge);
     ctx!.restore();
   }
 
@@ -797,6 +894,97 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     ctx!.lineWidth = 1;
   }
 
+  /**
+   * A small flag in a raider's colour where their enemy died: a pole with a pennant, fading out
+   * over its last FLAG_FADE_TICKS.
+   */
+  function drawFlag(effect: Extract<GameState["effects"][number], { kind: "flag" }>) {
+    drawPennant(effect, playerColour(effect.owner), Math.min(1, effect.ttl / FLAG_FADE_TICKS));
+  }
+
+  /** A ring in the raider's colour round the enemy they're playing. */
+  function drawOwnRing(enemy: Point) {
+    ctx!.strokeStyle = playerColour(viewer);
+    ctx!.lineWidth = 2;
+    ctx!.beginPath();
+    const r = TILE_SIZE * 0.47;
+    ctx!.arc((enemy.x + 0.5) * TILE_SIZE, (enemy.y + 0.5) * TILE_SIZE, r, 0, Math.PI * 2);
+    ctx!.stroke();
+    ctx!.lineWidth = 1;
+  }
+
+  /** A small flag on a tile: a pole and a pennant, with a number beside it if given. */
+  function drawPennant(at: Point, colour: string, alpha = 1, label?: string) {
+    const left = (at.x + 0.35) * TILE_SIZE;
+    const top = (at.y + 0.15) * TILE_SIZE;
+    ctx!.globalAlpha = alpha;
+    ctx!.strokeStyle = COLOURS.flagPole;
+    ctx!.lineWidth = 1.5;
+    ctx!.beginPath();
+    ctx!.moveTo(left, top);
+    ctx!.lineTo(left, top + TILE_SIZE * 0.7);
+    ctx!.stroke();
+    ctx!.fillStyle = colour;
+    ctx!.beginPath();
+    ctx!.moveTo(left, top);
+    ctx!.lineTo(left + TILE_SIZE * 0.4, top + TILE_SIZE * 0.15);
+    ctx!.lineTo(left, top + TILE_SIZE * 0.3);
+    ctx!.closePath();
+    ctx!.fill();
+    if (label) {
+      ctx!.font = FLAG_LABEL_FONT;
+      ctx!.fillStyle = colour;
+      ctx!.fillText(label, left + TILE_SIZE * 0.35, top + TILE_SIZE * 0.55);
+    }
+    ctx!.globalAlpha = 1;
+    ctx!.lineWidth = 1;
+  }
+
+  /**
+   * A raider's pathing flags, numbered in the order they'll be done, joined from `from` (their
+   * enemy) by a faint line. Only the raider sees them.
+   */
+  function drawPathFlags(flags: readonly Point[], colour: string, from?: Point) {
+    if (flags.length === 0) return;
+    ctx!.strokeStyle = colour;
+    ctx!.globalAlpha = 0.5;
+    ctx!.setLineDash([3, 3]);
+    ctx!.beginPath();
+    const points = from ? [from, ...flags] : flags;
+    points.forEach((p, i) => {
+      const x = (p.x + 0.5) * TILE_SIZE;
+      const y = (p.y + 0.5) * TILE_SIZE;
+      if (i === 0) ctx!.moveTo(x, y);
+      else ctx!.lineTo(x, y);
+    });
+    ctx!.stroke();
+    ctx!.setLineDash([]);
+    ctx!.globalAlpha = 1;
+    flags.forEach((f, i) => drawPennant(f, colour, 0.9, String(i + 1)));
+  }
+
+  /**
+   * The raiders' paths: a wash over each painted tile, and a flag on each stretch's end, where
+   * enemies leave it. Only raiders see them.
+   */
+  function drawRaidPaths(state: GameState) {
+    if (state.raidPaths.length === 0) return;
+    ctx!.fillStyle = COLOURS.raidPath;
+    ctx!.globalAlpha = 0.3;
+    for (const i of state.raidPaths) {
+      const x = i % state.width;
+      const y = Math.floor(i / state.width);
+      ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    }
+    ctx!.globalAlpha = 1;
+    if (pathEnds.paths !== state.raidPaths) {
+      pathEnds = { paths: state.raidPaths, ends: stretchEnds(state) };
+    }
+    for (const i of pathEnds.ends) {
+      drawPennant({ x: i % state.width, y: Math.floor(i / state.width) }, COLOURS.raidPathEnd);
+    }
+  }
+
   /** A border just inside a tile. */
   function outlineTile(p: Point, colour: string) {
     ctx!.strokeStyle = colour;
@@ -872,6 +1060,8 @@ export function createRenderer(canvas: HTMLCanvasElement) {
         ctx!.fillText("+", (effect.x + 0.5) * TILE_SIZE, (effect.y + 0.2) * TILE_SIZE - rise);
       } else if (effect.kind === "burst") {
         drawBurst(effect);
+      } else if (effect.kind === "flag") {
+        drawFlag(effect);
       } else {
         if (effect.ttl > EFFECT_TICKS) continue; // the shot is still in the air
         const size = (effect.radius * 2 + 1) * TILE_SIZE;
@@ -961,8 +1151,11 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   }
 
   function drawEnemies(state: GameState, enemies: GameState["enemies"]) {
+    // A raider's own enemy gets a ring, on their screen only: nobody else can tell it apart.
+    const own = state.players[viewer]?.raid?.enemyId ?? null;
     for (const enemy of enemies) {
       if (!canSeeEnemiesAt(state, enemy.x, enemy.y, viewer)) continue;
+      if (enemy.id === own) drawOwnRing(enemy);
       const kind = ENEMY_KINDS[enemy.kind];
       ctx!.font = enemyFont(kind.variants[enemy.variant].size);
       ctx!.fillStyle = ENEMY_COLOURS[enemy.kind];
@@ -973,6 +1166,11 @@ export function createRenderer(canvas: HTMLCanvasElement) {
 
   /** A health bar over a tile; `front` colours what's left (always at least a sliver). */
   function drawHpBar(x: number, y: number, fraction: number, front = COLOURS.hpFront) {
+    if (!barsShown) return;
+    if (iso) {
+      drawUprightBar(x, y, fraction, front);
+      return;
+    }
     const left = x * TILE_SIZE + 2;
     const top = y * TILE_SIZE;
     const barWidth = TILE_SIZE - 4;
@@ -991,7 +1189,176 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     }
   }
 
+  /**
+   * Lifts what's drawn next by a block's height (in map pixels): up the screen on the flat map,
+   * and up off the ground over the 3D view.
+   */
+  function liftBy(height: number) {
+    if (!iso) {
+      ctx!.translate(0, -height);
+      return;
+    }
+    const m = ctx!.getTransform();
+    const { cam, dpr } = iso;
+    const up = (height / TILE_SIZE) * ISO.heightScale * Math.cos(cam.pitch) * tilePixels(cam) * dpr;
+    ctx!.setTransform(m.a, m.b, m.c, m.d, m.e, m.f - up);
+  }
+
+  /** Map pixels to the screen through the iso view: the ground plane is an affine map. */
+  function isoTransform(cam: Camera, dpr: number) {
+    const origin = tileToScreen(cam, 0, 0);
+    const east = tileToScreen(cam, 1, 0);
+    const south = tileToScreen(cam, 0, 1);
+    const k = dpr / TILE_SIZE;
+    ctx!.setTransform(
+      (east.x - origin.x) * k,
+      (east.y - origin.y) * k,
+      (south.x - origin.x) * k,
+      (south.y - origin.y) * k,
+      origin.x * dpr,
+      origin.y * dpr,
+    );
+  }
+
+  /** A health bar over the 3D view: upright on screen, over the top of what it's for. */
+  function drawUprightBar(x: number, y: number, fraction: number, front: string) {
+    const { cam, state, dpr } = iso!;
+    const tileX = Math.round(x);
+    const tileY = Math.round(y);
+    const standing = blockHeight(state, tileX, tileY) > 0 ? 0.25 : 1;
+    const height = (blockHeight(state, tileX, tileY) / TILE_SIZE) * ISO.heightScale + standing;
+    const at = tileToScreen(cam, x + 0.5, y + 0.5, height);
+    const width = Math.max(12, tilePixels(cam) * 0.9);
+    const m = ctx!.getTransform();
+    ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx!.fillStyle = COLOURS.hpBack;
+    ctx!.fillRect(at.x - width / 2, at.y, width, 3);
+    ctx!.fillStyle = front;
+    ctx!.fillRect(at.x - width / 2, at.y, Math.max(1, width * fraction), 3);
+    ctx!.setTransform(m);
+  }
+
+  /** Each keep's HP over the 3D view, upright over its middle. */
+  function drawUprightKeepHp(state: GameState, cam: Camera, dpr: number) {
+    ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx!.font = `${Math.round(Math.max(12, tilePixels(cam) * 0.8))}px ${GLYPH_FONTS}`;
+    ctx!.lineWidth = 3;
+    ctx!.lineJoin = "round";
+    ctx!.strokeStyle = "rgba(0, 0, 0, 0.7)";
+    ctx!.fillStyle = COLOURS.keepGlyph;
+    for (const keep of state.keeps) {
+      const centre = keep.size / 2;
+      const top = (blockHeight(state, keep.x, keep.y) / TILE_SIZE) * ISO.heightScale;
+      const at = tileToScreen(cam, keep.x + centre, keep.y + centre, top + 0.6);
+      const text = String(Math.ceil(keep.hp));
+      ctx!.strokeText(text, at.x, at.y);
+      ctx!.fillText(text, at.x, at.y);
+    }
+    ctx!.lineWidth = 1;
+  }
+
   return {
+    /**
+     * The whole map drawn flat, every tile, at `pixelsPerTile`: for the 3D view's ground and
+     * block tops. No bars (they're drawn over the 3D view), no shadows or lift; fog as a tint.
+     */
+    renderFlat(state: GameState, viewer_: PlayerId, pixelsPerTile: number) {
+      viewer = viewer_;
+      hover = null;
+      now = performance.now();
+      const width = state.width * pixelsPerTile;
+      const height = state.height * pixelsPerTile;
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+      const scale = pixelsPerTile / TILE_SIZE;
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      view = { x0: 0, y0: 0, x1: state.width - 1, y1: state.height - 1 };
+      textured = pixelsPerTile >= TEXTURE_MIN_TILE_PX;
+      barsShown = false;
+      const showOwners = Object.keys(state.players).length > 1;
+      for (let y = 0; y < state.height; y++) {
+        for (let x = 0; x < state.width; x++) {
+          drawTileContents(state, x, y, showOwners);
+          drawEnclosureTint(state, x, y, 0);
+        }
+      }
+      drawDoors(state);
+      barsShown = true;
+      if (!state.fog) return;
+      const tiers = getSight(state, viewer);
+      ctx.fillStyle = FOG.colour;
+      for (let i = 0; i < tiers.length; i++) {
+        if (tiers[i] === IN_SIGHT) continue;
+        ctx.globalAlpha = tiers[i] === SEEN ? FOG.seen.opacity : 1;
+        const x = i % state.width;
+        const y = (i - x) / state.width;
+        ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      }
+      ctx.globalAlpha = 1;
+    },
+
+    /**
+     * What goes over the 3D view, on a see-through canvas: effects, builds on the way, the
+     * ghost and range, the hover edge, raiders' paths and flags through the iso transform, and
+     * health bars and keeps' HP upright.
+     */
+    renderOverlay(state: GameState, ui: UiState, pending: readonly PendingBuild[] = []) {
+      viewer = ui.playerId;
+      hover = ui.hover;
+      now = performance.now();
+      const cam = ui.camera;
+      const dpr = canvas.width / cam.viewWidth;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      iso = { cam, state, dpr };
+      isoTransform(cam, dpr);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      view = visibleTiles(cam);
+      if (ui.showFlow) drawFlow(state);
+      drawEffects(state);
+      drawPending(pending);
+      if (!ui.pickerOpen) {
+        drawRange(state, ui);
+        drawGhost(state, ui);
+      }
+      drawHoverEdge(state, ui);
+      const raid = state.players[viewer]?.raid;
+      const own = raid ? state.enemies.find((e) => e.id === raid.enemyId) : undefined;
+      if (raid) {
+        drawRaidPaths(state);
+        if (ui.raidTarget && raid.enemyId !== null)
+          outlineTile(ui.raidTarget, playerColour(viewer));
+        drawPathFlags(raid.plan, playerColour(viewer), own);
+      }
+      if (own) drawOwnRing(own);
+      // Health bars, upright over what they're for.
+      for (const structure of Object.values(state.structures)) {
+        const { x, y } = structure;
+        if (x < view.x0 || x > view.x1 || y < view.y0 || y > view.y1) continue;
+        if (!isExplored(state, x, y, viewer)) continue;
+        drawBars(structure, structure);
+      }
+      for (let y = view.y0; y <= view.y1; y++) {
+        for (let x = view.x0; x <= view.x1; x++) {
+          if (state.resources[y * state.width + x] > 0) drawResourceLeft(state, x, y);
+        }
+      }
+      for (const unit of state.units) {
+        if (canSeeEnemiesAt(state, unit.x, unit.y, viewer)) drawHealth(`u${unit.id}`, unit);
+      }
+      for (const enemy of state.enemies) {
+        if (canSeeEnemiesAt(state, enemy.x, enemy.y, viewer)) drawHealth(`e${enemy.id}`, enemy);
+      }
+      drawUprightKeepHp(state, cam, dpr);
+      iso = null;
+      hpBars.endFrame();
+    },
+
     render(state: GameState, ui: UiState, pending: readonly PendingBuild[] = []) {
       viewer = ui.playerId;
       hover = ui.hover;
@@ -1013,11 +1380,24 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       drawKeepHp(state);
       if (ui.showFlow) drawFlow(state);
       drawEffects(state);
-      drawFog(state, ui.curtain);
+      drawFog(state);
       if (hour !== undefined) drawNight(state, darknessAt(hour));
       drawPending(pending);
-      drawRange(state, ui);
-      drawGhost(state, ui);
+      // While the build menu is open, what's chosen in it isn't on the map yet: no ghost or range.
+      if (!ui.pickerOpen) {
+        drawRange(state, ui);
+        drawGhost(state, ui);
+      }
+      drawHoverEdge(state, ui);
+      const raid = state.players[viewer]?.raid;
+      if (raid) {
+        // The paths every free enemy keeps to, the raider's target, and their enemy's flags.
+        drawRaidPaths(state);
+        if (ui.raidTarget && raid.enemyId !== null)
+          outlineTile(ui.raidTarget, playerColour(viewer));
+        const own = state.enemies.find((e) => e.id === raid.enemyId);
+        drawPathFlags(raid.plan, playerColour(viewer), own);
+      }
       hpBars.endFrame();
     },
   };

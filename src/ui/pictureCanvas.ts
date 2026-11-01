@@ -1,13 +1,17 @@
 // A player's picture drawn as a little piece of map: each tile at its height in the game, with
 // a darker front face and a shadow down and to the right, as render/canvas.ts draws blocks. On
 // the player select screen a picture lies flat until hovered; then its tiles rise out of the
-// ground one after another, as if being built, and sink back when the pointer leaves.
+// ground one after another, as if being built, and sink back when the pointer leaves. A
+// campaign level's icon is drawn the same way, a bigger square of tiles.
 import { STRUCTURES, type StructureStats } from "../sim/config";
 import type { StructureKind } from "../sim/types";
 import { COLOURS, TILE_SIZE } from "../render/palette";
 import { PICTURE_CELLS, pictureTile, type Picture } from "./picture";
 
-/** How long one tile takes to rise, and how far apart the tiles start (ms). */
+/**
+ * How long one tile takes to rise, and how far apart a player's picture's tiles start (ms). A
+ * bigger square's tiles start closer together, so it takes no longer to build.
+ */
 const RISE_MS = 220;
 const STAGGER_MS = 60;
 const SHADOW = "rgba(0, 0, 0, 0.35)";
@@ -41,7 +45,10 @@ export interface PictureView {
   raise(up: boolean): void;
 }
 
-/** A canvas showing `picture` with tiles `cell` CSS pixels across, flat to start with. */
+/**
+ * A canvas showing `picture` (a square of tiles, row by row: 3x3 for a player) with tiles `cell`
+ * CSS pixels across, flat to start with.
+ */
 export function createPictureView(
   picture: Picture,
   cell: number,
@@ -49,12 +56,15 @@ export function createPictureView(
 ): PictureView {
   const canvas = document.createElement("canvas");
   canvas.className = "picture-canvas";
+  const tiles = picture.length;
+  const across = Math.round(Math.sqrt(tiles));
+  const stagger = (STAGGER_MS * (PICTURE_CELLS - 1)) / Math.max(1, tiles - 1);
   const scale = cell / TILE_SIZE;
   const top = roomAbove(cell); // room for the top row's lifted tops
   // Room for shadows off the right edge, and as much on the left so the tiles sit centred.
   const side = Math.ceil((MAX_HEIGHT / 2) * scale);
-  const width = cell * 3 + side * 2;
-  const height = cell * 3 + top;
+  const width = cell * across + side * 2;
+  const height = cell * across + top;
   const dpr = window.devicePixelRatio || 1;
   canvas.width = Math.round(width * dpr);
   canvas.height = Math.round(height * dpr);
@@ -63,7 +73,7 @@ export function createPictureView(
   const ctx = canvas.getContext("2d")!;
   const heights = picture.map((id) => tileHeight(id) * scale);
   // Rising runs `clock` from 0 up to the end of the last tile's rise; sinking runs it back.
-  const end = RISE_MS + STAGGER_MS * (PICTURE_CELLS - 1);
+  const end = RISE_MS + stagger * (tiles - 1);
   let clock = options.raised ? end : 0;
   let target = clock;
   let last: number | null = null;
@@ -71,7 +81,7 @@ export function createPictureView(
 
   /** How far up tile i is, 0 (flat) to 1 (its full height), eased. */
   const progress = (i: number) => {
-    const t = Math.min(1, Math.max(0, (clock - i * STAGGER_MS) / RISE_MS));
+    const t = Math.min(1, Math.max(0, (clock - i * stagger) / RISE_MS));
     return 1 - (1 - t) ** 3;
   };
 
@@ -80,23 +90,24 @@ export function createPictureView(
     ctx.clearRect(-side, -top, width, height);
     const h = (i: number) => heights[i] * progress(i);
     // Ground under everything, then shadows, then each row's blocks back to front.
-    for (let i = 0; i < PICTURE_CELLS; i++) {
-      const x = (i % 3) * cell;
-      const y = Math.floor(i / 3) * cell;
+    for (let i = 0; i < tiles; i++) {
+      const x = (i % across) * cell;
+      const y = Math.floor(i / across) * cell;
       ctx.fillStyle = h(i) > 0 ? COLOURS.ground : pictureTile(picture[i]).bg;
       ctx.fillRect(x, y, cell, cell);
     }
     ctx.fillStyle = SHADOW;
-    for (let i = 0; i < PICTURE_CELLS; i++) {
-      if (h(i) > 0) ctx.fillRect((i % 3) * cell + h(i) / 2, Math.floor(i / 3) * cell, cell, cell);
+    for (let i = 0; i < tiles; i++) {
+      if (h(i) > 0)
+        ctx.fillRect((i % across) * cell + h(i) / 2, Math.floor(i / across) * cell, cell, cell);
     }
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.font = `${Math.round(cell * 0.8)}px ${FONT}`;
-    for (let i = 0; i < PICTURE_CELLS; i++) {
+    for (let i = 0; i < tiles; i++) {
       const tile = pictureTile(picture[i]);
-      const x = (i % 3) * cell;
-      const y = Math.floor(i / 3) * cell;
+      const x = (i % across) * cell;
+      const y = Math.floor(i / across) * cell;
       const lift = h(i);
       if (lift > 0) {
         // The front face: the tile's colour, darkened; its top sits `lift` higher.

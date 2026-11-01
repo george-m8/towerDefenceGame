@@ -170,6 +170,24 @@ describe("feel", () => {
     expect(Object.values(b.state!.structures).some((s) => s.x === x && s.y === y)).toBe(true);
   });
 
+  it("a long drag of builds is batched under the server's rate limit, every one answered", async () => {
+    const { b } = await twoSessions();
+    const errors: string[] = [];
+    const results: CommandResult[] = [];
+    b.onError = (reason) => errors.push(reason);
+    b.onResult = (r) => results.push(r);
+    const { x, y } = openTile(b.state!);
+    // 100 at once (one mouse move), then 3 every 5 ms: far over 40 messages a second unbatched.
+    for (let i = 0; i < 100; i++) b.send({ type: "build", kind: "wall", x, y });
+    for (let i = 0; i < 40; i++) {
+      for (let j = 0; j < 3; j++) b.send({ type: "build", kind: "wall", x, y });
+      await new Promise((r) => setTimeout(r, 5));
+    }
+    await waitFor(() => results.length === 220, "every result");
+    expect(results.filter((r) => r.ok)).toHaveLength(1); // one wall; the rest find it built
+    expect(errors).toEqual([]);
+  });
+
   it("drops a refused build from pending", async () => {
     const { b } = await twoSessions();
     const keep = b.state!.keeps[0];

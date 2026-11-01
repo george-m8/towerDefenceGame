@@ -119,7 +119,7 @@ export const BUILD_BORDER_LONG = 0.75;
  * every map glyph, letters and building symbols such as ⛫ ⌂ 𐤄 alike (see GLYPHS.md); the usual
  * symbol fonts are only a fallback.
  */
-const GLYPH_FONTS = `Unifont, "Apple Symbols", "Segoe UI Symbol", "Segoe UI Historic", "Noto Sans Symbols 2", monospace`;
+export const GLYPH_FONTS = `Unifont, "Apple Symbols", "Segoe UI Symbol", "Segoe UI Historic", "Noto Sans Symbols 2", monospace`;
 /** Unifont's letters are half width, so two-letter codes (like Ti) fit a tile at this size too. */
 export const GLYPH_FONT = `${TILE_SIZE - 4}px ${GLYPH_FONTS}`;
 /** Every keep tile but the middle one (which has its HP over it): a rook. */
@@ -176,6 +176,8 @@ export const COLOURS = {
   spawnGlyph: "#8a3a3a",
   keep: "#6b6b6b",
   keepGlyph: "#ffffff",
+  /** The white edge round the tile under the pointer, always shown. */
+  hoverEdge: "#ffffff",
   ghostOk: "rgba(255, 255, 255, 0.35)",
   ghostBad: "rgba(255, 60, 60, 0.45)",
   ghostSell: "rgba(255, 210, 60, 0.55)",
@@ -208,6 +210,12 @@ export const COLOURS = {
   aimLine: "#ff6b6b",
   splash: "rgba(255, 150, 40, 0.45)",
   heal: "#5ee36a",
+  /** The pole of the flag a raider's enemy leaves where it died (the pennant is theirs). */
+  flagPole: "#e6e1c1",
+  /** The raiders' paths, washed over the tiles they painted. */
+  raidPath: "#f4efcf",
+  /** The flag on each raiders' path's end, where enemies leave it. */
+  raidPathEnd: "#d9a13b",
   spikesUp: "#c8c8c8",
   spikesUpGlyph: "#ffffff",
   trapTarget: "rgba(255, 200, 200, 0.35)",
@@ -382,6 +390,8 @@ export const TERRAIN_TEXTURES: Record<Terrain, TextureStyle> = {
 };
 /** The keep's stone walls. */
 export const KEEP_TEXTURE: TextureStyle = "stone";
+/** Wisps over the fog of war's top. */
+export const FOG_TEXTURE: TextureStyle = "haze";
 /** Structures drawn textured; the rest are flat colour. */
 export const STRUCTURE_TEXTURES: Partial<Record<StructureKind, TextureStyle>> = {
   wall: "stone",

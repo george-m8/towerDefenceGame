@@ -17,3 +17,9 @@ declare module "virtual:items" {
   const items: Record<string, import("./sim/itemsFile").ItemsFile>;
   export default items;
 }
+
+declare module "virtual:levels" {
+  /** The campaign levels, a folder each in levels/, read and checked, in order (tools/levels.ts). */
+  const levels: Record<string, import("./sim/levelFile").Level>;
+  export default levels;
+}

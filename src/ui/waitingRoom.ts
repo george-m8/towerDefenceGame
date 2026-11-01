@@ -12,6 +12,7 @@ export function createWaitingRoom(root: HTMLElement, session: NetworkSession) {
       <p>Room <strong data-field="room"></strong> · <span data-field="mode"></span></p>
       <button class="button" data-action="invite">Copy invite link</button>
       <ul class="players waiting-players" data-field="players"></ul>
+      <button class="button" data-action="role" hidden></button>
       <button class="button" data-action="start">Start game</button>
       <p data-field="waiting"></p>
     </div>
@@ -22,10 +23,14 @@ export function createWaitingRoom(root: HTMLElement, session: NetworkSession) {
   const waiting = root.querySelector<HTMLElement>('[data-field="waiting"]')!;
   const invite = root.querySelector<HTMLButtonElement>('[data-action="invite"]')!;
   const start = root.querySelector<HTMLButtonElement>('[data-action="start"]')!;
+  const role = root.querySelector<HTMLButtonElement>('[data-action="role"]')!;
   let lastPlayers = "";
+  let raiding = false;
 
   invite.addEventListener("click", () => copyInviteLink(invite, session.room));
   start.addEventListener("click", () => session.start());
+  // Raiders play the enemy: Endless only, picked before the game starts.
+  role.addEventListener("click", () => session.setRole(raiding ? "defender" : "raider"));
 
   return {
     update(state: GameState | null) {
@@ -38,6 +43,9 @@ export function createWaitingRoom(root: HTMLElement, session: NetworkSession) {
       const pvp = lobby.mode === "pvp";
       mode.textContent = pvp ? "PvP" : "Endless";
       start.hidden = !isHost;
+      raiding = state.players[session.playerId]?.role === "raider";
+      role.hidden = pvp;
+      role.textContent = raiding ? "Play as a defender instead" : "Play as a raider (the enemy)";
       // PvP is one against one: the host can only start once the rival is in.
       const inRoom = Object.values(state.players).filter((p) => p.connected).length;
       start.disabled = pvp && inRoom !== 2;
@@ -53,7 +61,7 @@ export function createWaitingRoom(root: HTMLElement, session: NetworkSession) {
         .filter((p) => p.connected)
         .map((p) => ({
           id: p.id,
-          label: `${p.name}${p.id === session.playerId ? " (you)" : ""}${p.id === lobby.host ? " - host" : ""}`,
+          label: `${p.name}${p.id === session.playerId ? " (you)" : ""}${p.id === lobby.host ? " - host" : ""}${p.role === "raider" ? " - raider" : ""}`,
         }));
       const key = JSON.stringify(rows);
       if (key === lastPlayers) return;

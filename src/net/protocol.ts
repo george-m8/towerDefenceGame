@@ -1,5 +1,12 @@
 // The messages between browser and game server. Shared by both, so no Node or DOM APIs here.
-import { MAP_SIZES, STRUCTURES, type MapSize, type StructureStats } from "../sim/config";
+import {
+  ENEMY_KINDS,
+  MAP_SIZES,
+  STRUCTURES,
+  type EnemyKindId,
+  type MapSize,
+  type StructureStats,
+} from "../sim/config";
 import type {
   EnemiesCome,
   Command,
@@ -10,6 +17,7 @@ import type {
   GameMode,
   GameState,
   PlayerId,
+  Role,
   Structure,
   StructureKind,
   Unit,
@@ -23,15 +31,30 @@ const MAX_TOKEN_LENGTH = 64;
 /** Coordinates are checked against the map by the sim; this only bounds the numbers. */
 const MAX_COORDINATE = 4096;
 
+/**
+ * Commands per `commands` message. The longest command is about 105 characters, so a full batch
+ * stays well under the server's 4 KB message limit.
+ */
+export const MAX_COMMANDS_PER_MESSAGE = 32;
+
 /** Commands a player may send online (no debug commands). */
 export type OnlineCommand = Exclude<Command, DebugCommand>;
+
+export interface SequencedCommand {
+  seq: number;
+  command: OnlineCommand;
+}
 
 export type ClientMessage =
   | { type: "create"; name: string; mode?: GameMode; size?: MapSize; enemiesCome?: EnemiesCome }
   | { type: "join"; room: string; name: string }
   | { type: "rejoin"; room: string; token: string }
-  | { type: "command"; seq: number; command: OnlineCommand }
+  | ({ type: "command" } & SequencedCommand)
+  /** Several commands at once (e.g. a dragged line of walls), answered one result each. */
+  | { type: "commands"; commands: SequencedCommand[] }
   | { type: "restart" }
+  /** In the waiting room: play as a defender or a raider (Endless only). */
+  | { type: "setRole"; role: Role }
   /** Host only: leave the waiting room and start the game. `fog: false` is the ?fog=off dev switch. */
   | { type: "start"; fog?: false };
 
@@ -126,6 +149,8 @@ export type StateUpdate = Omit<Pick<ClientState, DynamicFields>, "enemies" | "un
   };
   /** The map features (chests), when one was claimed. */
   features?: ClientState["features"];
+  /** The raiders' paths, when they were painted. */
+  raidPaths?: ClientState["raidPaths"];
 };
 
 export type ServerMessage =
@@ -191,8 +216,26 @@ export function parseClientMessage(raw: string): ParseResult {
       const command = parseCommand(data.command);
       return command ? ok({ type: "command", seq: data.seq, command }) : fail("Bad command");
     }
+    case "commands": {
+      const list = data.commands;
+      if (!Array.isArray(list) || list.length === 0 || list.length > MAX_COMMANDS_PER_MESSAGE) {
+        return fail("Bad commands");
+      }
+      const commands: SequencedCommand[] = [];
+      for (const item of list) {
+        if (!isRecord(item) || !isInt(item.seq, 0, Number.MAX_SAFE_INTEGER)) return fail("Bad seq");
+        const command = parseCommand(item.command);
+        if (!command) return fail("Bad command");
+        commands.push({ seq: item.seq, command });
+      }
+      return ok({ type: "commands", commands });
+    }
     case "restart":
       return ok({ type: "restart" });
+    case "setRole":
+      return data.role === "defender" || data.role === "raider"
+        ? ok({ type: "setRole", role: data.role })
+        : fail("Bad role");
     case "start":
       return ok(data.fog === false ? { type: "start", fog: false } : { type: "start" });
     default:
@@ -207,7 +250,27 @@ function parseCommand(data: unknown): OnlineCommand | null {
     case "toggleFastForward":
     case "voteSkipToNight":
     case "sendWave":
+    case "stopInteract":
+    case "clearPaths":
       return { type: data.type };
+    case "paintPath": {
+      if (!isCoordinate(data.x) || !isCoordinate(data.y)) return null;
+      if (data.erase === undefined) return { type: "paintPath", x: data.x, y: data.y };
+      return data.erase === true ? { type: "paintPath", x: data.x, y: data.y, erase: true } : null;
+    }
+    case "switchEnemy":
+      if (data.kind === undefined) return { type: "switchEnemy" };
+      return typeof data.kind === "string" && Object.hasOwn(ENEMY_KINDS, data.kind)
+        ? { type: "switchEnemy", kind: data.kind as EnemyKindId }
+        : null;
+    case "steer":
+    case "interact": {
+      if (!isCoordinate(data.x) || !isCoordinate(data.y)) return null;
+      if (data.queue === undefined) return { type: data.type, x: data.x, y: data.y };
+      return data.queue === true ? { type: data.type, x: data.x, y: data.y, queue: true } : null;
+    }
+    case "sprint":
+      return typeof data.on === "boolean" ? { type: "sprint", on: data.on } : null;
     case "sell":
       return isCoordinate(data.x) && isCoordinate(data.y)
         ? { type: "sell", x: data.x, y: data.y }

@@ -92,13 +92,14 @@ export function fogSpans(
  * The fog as an image one pixel wide per tile and full height, starting `lift` pixels above
  * the map (fog on the top row is raised above it). Drawn stretched across the map with
  * smoothing off, every tile keeps flat colours and hard edges, with no seams between
- * see-through tiles. Rebuilt only when sight changes.
+ * see-through tiles. Rebuilt only when sight changes. Also gives the levels it was drawn from,
+ * for the mist texture laid over it.
  */
 export function fogImage(
   tier: Uint8Array,
   width: number,
   height: number,
-): { image: HTMLCanvasElement; lift: number } {
+): { image: HTMLCanvasElement; lift: number; levels: (FogLevel | undefined)[] } {
   const levels = fogLevels(tier, width, height);
   const lift = Math.max(
     FOG.seen.height,
@@ -124,5 +125,5 @@ export function fogImage(
       }
     }
   }
-  return { image: canvas, lift };
+  return { image: canvas, lift, levels };
 }

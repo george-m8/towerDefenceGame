@@ -2,6 +2,7 @@
 // the panels shown over the map; Debug: test options), switched on and off there; Journal
 // opens the monster journal, and Settings the settings window. Menu and Settings buttons show
 // as pressed while open.
+import { KEYBOARD, keyAction, type KeyboardScheme } from "./controls";
 
 /** One row of a toggle menu. */
 export interface ToggleItem {
@@ -34,6 +35,8 @@ export function createMapButtons(
     settings: HTMLElement;
     /** Opens or closes the monster journal. */
     journal: () => void;
+    /** The keyboard's bindings, with the player's remaps (the debug menu's key is one). */
+    keyboard?: () => KeyboardScheme;
   },
 ) {
   root.innerHTML = `
@@ -94,7 +97,10 @@ export function createMapButtons(
   window.addEventListener("keydown", (e) => {
     if (e.code === "Escape" && !settings.hidden) showSettings(false);
     // ` opens and closes the debug menu (not while typing a name or code). D is for panning.
-    if (e.code === "Backquote" && !(e.target instanceof HTMLInputElement)) {
+    if (
+      keyAction(options.keyboard?.() ?? KEYBOARD, e.code) === "debugMenu" &&
+      !(e.target instanceof HTMLInputElement)
+    ) {
       debugMenu.show(debugMenu.menu.hidden === true);
     }
   });

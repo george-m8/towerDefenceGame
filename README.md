@@ -18,6 +18,14 @@ npm run dev
 
 Then open http://localhost:5173, click (or press any key) past the title screen, pick who's playing (or add a **New player**, with a name and a picture: a 3x3 grid of map tiles you choose, or Shuffle for a random one. Players are saved on this device, the last one first; hovering one builds their picture up, ✎ changes one and ✕ removes one), then press **Solo**. To play with friends, see [Playing together](#playing-together).
 
+New to it? The game explains itself as you go:
+
+- **Hover anything** on the map (a tower, a building, an enemy, a unit) and the **Info** box (top right, under the minimap) says what it is, what it does and its numbers.
+- **Hover anything in the build picker** (`1`, or the Build box) for a card with its cost, what it does, its numbers and tips, before you buy it.
+- **Turn things before placing them** with `R`, or the Rotate button that appears beside the tool. The faint `R ⟳` by the price means the thing you're placing can be turned.
+- **Build inside your walls**: inside the keep's walls (the warm yellow shade) everything costs 50% less, inside other closed rings of walls 25% less. The price by the pointer shows the full price struck through when you're saving.
+- Your **gold**, **income** (gold per minute) and the **wave** are at the bottom right. Click any of them to choose which stats to show. The View menu shows and hides Map, Info and Keys; both are remembered on this device.
+
 ## How to play
 
 Enemies spawn from the red strip on the left edge and walk to your keep (`⛫`, 300 HP). An enemy that reaches the keep stays there and keeps hitting it until it's killed; at 0 HP the keep falls and the game ends. Waves never stop, and each one is bigger and tougher than the last.
@@ -89,32 +97,32 @@ The first time a kind of enemy comes into sight (not while it's hidden in fog), 
 
 ### Structures
 
-Open the build picker with the Build box or `1` / `2` / `3` for the **Defence**, **Civic** and **Offence** tabs, then click a tool.
+Open the build picker with the Build box or `1` / `2` / `3` for the **Towers**, **Units** and **Civic** tabs (tabs along the bottom), then click a tool or press its number: `1`-`9`, then `0`, as shown beside it. So `1` `1` is a wall, `1` `2` a gate, `3` `1` a house. Towers has **Walls** and **Towers** subtitles; Units has **Static** (guards that hold the tiles in front of their building) and **Exploring** (units that go out across the map).
 
 | Tab | Structure | Glyph | Cost | What it does |
 |---|---|---|---|---|
-| Defence | Wall | `#` | 5 | Blocks movement. 50 HP. Towers can be built on top. |
-| Defence | Archer | fletched arrow, pointing where it faces | 25 | Range 5, 6 damage every 1s, single target. Fixed 90° arc. |
-| Defence | Cannon | `C` | 50 | Range 4, 15 damage every 2.5s, hits a 3x3 area. Turns 90°/s. |
-| Defence | Catapult | `P` | 80 | Range 3-9, 30 damage every 5s, hits a 5x5 area. Can't hit enemies closer than 3 tiles. Turns 30°/s. |
-| Defence | Floor spikes | `^` | 15 | Walkable. Every 1.5s spikes come up and deal 15 damage to every enemy on the tile. |
-| Defence | Wall spikes | arrow `↑→↓←` | 20 | A wall section that fires every 2s, dealing 20 damage to the one tile it faces. Press `R` to rotate before placing. |
-| Defence | Bridge | `=` | 10 | Only on river tiles. Makes the river walkable there (for enemies too). |
-| Defence | Watchtower | `T` | 20 | Doesn't attack. Sees all round, as far as a cannon (see [Fog of war](#fog-of-war)). Stands on open ground or a wall, like a tower. |
-| Defence | Gate | `∩` | 15 | Part of a wall that enemies walk straight through. Still closes a ring of walls, so the area inside counts as enclosed (and keeps its discount). |
-| Defence | Guardhouse | `⛨` | 60 | Sends out up to 3 swordsmen, one every 30s, to guard the tiles in front of it. Placed facing a way (`R`). See [Guards](#guards). |
-| Defence | Archery post | `➶` | 70 | Sends out up to 3 archers who shoot from the tiles in front of it. Placed facing a way. |
-| Defence | Paladin hall | `✠` | 90 | Sends out up to 3 paladins who hold the tiles in front of it. Placed facing a way. |
-| Offence | Scout camp | `⚑` | 40 | Sends out up to 2 scouts, one every 45s, to explore the fog. See [Field units](#field-units). |
-| Offence | Barracks | `Ba` | 80 | Sends out up to 4 soldiers, one every 30s, who hunt enemies and (in PvP) attack the rival keep. |
-| Offence | Archery range | `◎` | 90 | Sends out up to 4 rangers, one every 30s, who do the same from range. |
+| Towers (Walls) | Wall | `#` | 5 | Blocks movement. 50 HP. Towers can be built on top. |
+| Towers (Walls) | Gate | `∩` | 15 | Part of a wall that enemies walk straight through. Still closes a ring of walls, so the area inside counts as enclosed (and keeps its discount). Build one on your own wall to swap it (the wall is refunded as if sold; not with a tower on it). |
+| Towers (Walls) | Bridge | `=` | 10 | Only on river tiles. Makes the river walkable there (for enemies too). |
+| Towers (Walls) | Watchtower | `T` | 20 | Doesn't attack. Sees all round, as far as a cannon (see [Fog of war](#fog-of-war)). Stands on open ground or a wall, like a tower. |
+| Towers (Towers) | Archer | fletched arrow, pointing where it faces | 25 | Range 5, 6 damage every 1s, single target. Fixed 90° arc. |
+| Towers (Towers) | Cannon | `C` | 50 | Range 4, 15 damage every 2.5s, hits a 3x3 area. Turns 90°/s. |
+| Towers (Towers) | Catapult | `P` | 80 | Range 3-9, 30 damage every 5s, hits a 5x5 area. Can't hit enemies closer than 3 tiles. Turns 30°/s. |
+| Towers (Towers) | Floor spikes | `^` | 15 | Walkable. Every 1.5s spikes come up and deal 15 damage to every enemy on the tile. |
+| Towers (Towers) | Wall spikes | arrow `↑→↓←` | 20 | A wall section that fires every 2s, dealing 20 damage to the one tile it faces. Press `R` to rotate before placing. |
+| Units (Static) | Guardhouse | `⛨` | 60 | Sends out up to 3 swordsmen, one every 30s, to guard the tiles in front of it. Placed facing a way (`R`). See [Guards](#guards). |
+| Units (Static) | Archery post | `➶` | 70 | Sends out up to 3 archers who shoot from the tiles in front of it. Placed facing a way. |
+| Units (Static) | Paladin hall | `✠` | 90 | Sends out up to 3 paladins who hold the tiles in front of it. Placed facing a way. |
+| Units (Exploring) | Scout camp | `⚑` | 40 | Sends out up to 2 scouts, one every 45s, to explore the fog. See [Field units](#field-units). |
+| Units (Exploring) | Barracks | `Ba` | 80 | Sends out up to 4 soldiers, one every 30s, who hunt enemies and (in PvP) attack the rival keep. |
+| Units (Exploring) | Archery range | `◎` | 90 | Sends out up to 4 rangers, one every 30s, who do the same from range. |
 | Civic | House | `⌂` | 40 | +2 gold every 5s. Blocks movement. |
 | Civic | Shop | `¤` | 70 | +4 gold every 5s. Blocks movement. |
 | Civic | Farmhouse | `Fa` | 50 | +1 gold every 10s for each field joined to it (up to 8). Blocks movement. See [Farms](#farms-and-town). |
 | Civic | Farmland | `𐤄` | 3 | A field: walkable, 10 HP. Counts for a farmhouse it's joined to. Heavy enemies trample it. |
+| Civic | Forager hut | `Fo` | 40 | Sends out up to 5 foragers to pick berry bushes. Blocks movement. |
 | Civic | Timber yard | `Ti` | 60 | Sends out up to 5 lumberjacks, one a minute, to chop trees for gold. Blocks movement. |
 | Civic | Mine | `Mi` | 100 | Sends out up to 5 miners to mine rock (gold-veined rock pays 3x). Blocks movement. |
-| Civic | Forager hut | `Fo` | 40 | Sends out up to 5 foragers to pick berry bushes. Blocks movement. |
 | Every tab (`X`) | Sell | `$` | - | Refunds 50% of cost, less if damaged. Sells the top layer first (a tower before the wall under it). Also clears trees. |
 
 ### Doors
@@ -123,7 +131,7 @@ Every building that sends out units (gatherers, guard and offensive buildings) h
 
 ### Guards
 
-Guard buildings (Defence tab) each make one kind of guard, free, up to 3 at a time (a new one every 30 seconds while short). Build one facing where you want it guarded (`R` rotates): its guards stand on the open tiles in front of it, two rows of three, the middle first, sharing a tile if there's little room. Build over a spot and its guard moves to the next.
+Guard buildings (Units tab, Static) each make one kind of guard, free, up to 3 at a time (a new one every 30 seconds while short). Build one facing where you want it guarded (`R` rotates): its guards stand on the open tiles in front of it, two rows of three, the middle first, sharing a tile if there's little room. Build over a spot and its guard moves to the next.
 
 | Guard | Glyph | HP | Armour | Hit | Range | What it does |
 |---|---|---|---|---|---|---|
@@ -135,7 +143,7 @@ Armour is taken off each hit a guard takes (at least 1 always gets through). Ene
 
 ### Field units
 
-Offensive buildings (Offence tab) send units out across the map. They only ever walk on land your side has explored.
+Offensive buildings (Units tab, Exploring) send units out across the map. They only ever walk on land your side has explored.
 
 | Unit | Glyph | HP | Armour | Hit | Range | What it does |
 |---|---|---|---|---|---|---|
@@ -235,21 +243,25 @@ Towers always shoot the enemy closest to the keep. Traps fire on a fixed timer f
 
 | Input | Action |
 |---|---|
-| `1` / `2` / `3`, or the Build box | Open the build picker on the Defence, Civic or Offence tab; click a tool to select it |
+| `1` / `2` / `3`, or the Build box | Open the build picker on the Towers, Units or Civic tab |
+| `1`-`9`, `0` (picker open) | Select that item in the open tab (its number is beside it); the first ten in each tab are numbered |
 | `X` | Select sell |
 | Left click | Place (or sell) |
 | Left drag | Paint walls, spikes, bridges, gates, farmland, or sell/clear along the dragged tiles |
-| Right click or `Esc` | Clear the selected tool |
-| `R` | Rotate the facing of the tower or wall spikes you're placing |
+| `Esc` | Close the build picker; with it closed, clear the selected tool |
+| Right click | Clear the selected tool |
+| `R`, or the Rotate button beside the tool | Rotate the facing of the tower, trap or building you're placing (only shown for things that turn) |
 | `Space` or Pause button | Pause / resume (you can still build while paused) |
 | `F` or `>>` button | Toggle fast forward (2x game speed) |
 | Skip to night button | By day, with enemies at night: skip to the early evening (17:00), when you're ready for enemies. No gold for it. A vote in co-op |
 | `` ` `` or Debug button | Open the Debug menu: test options, Show paths (arrows show where enemies will walk; red means "will attack this"), Sun slider (two sliders over the map: **Across** moves the sun from the left horizon to the right, **Arc** sets how its path leans: up to 90° over the top of the sky (90° straight overhead), past 90° over the bottom, so shadows fall behind blocks; shadows follow. Off puts the sun back), Day/night (a **Time** slider and **Play**: the sun rises on a shallow arc, is overhead at noon and leans back for long evening shadows, then night darkens the map and morning comes round again, a whole day in 96 seconds; off puts the daylight back. In a game at night, it shows the game's own time instead, and solo its slider moves it), and the Damage tool (offline: each click takes 35% of its full amount off the top thing on the tile, an enemy, unit, tower, structure, the keep or a tree/rock/bush, and at 0 it's destroyed or used up as in play, paying nobody; right-click or `Esc` ends it) |
 | `J` | Open or close the monster journal (`Esc` also closes it) |
-| Hover a tile | Show its details in the Info box, and a tower's range |
+| Hover a tile | Show its details in the Info box (what it is, what it does, its numbers), and a tower's range |
+| Hover a build picker item | Show its card: cost, what it does, numbers, traits and tips |
 | `W` `A` `S` `D` or arrow keys | Move the view around the map |
 | Mouse wheel, or `+` / `-` | Zoom in and out (the wheel zooms around the cursor) |
 | Minimap (top of the panel) | Click or drag to move the view there; the white box is what you're looking at |
+| `⤢` button on the minimap | The whole map full screen, in the minimap's pixels: click or drag to move the view (it stays open); `×`, `Esc` or zooming in (wheel, `+`) closes it, the wheel landing on the tile under the pointer |
 | `-` / `+` / `Fit` buttons | Zoom out, zoom in, or show the whole map |
 
 Sending a wave early has no button: the `sendWave` command (start the next wave now, for +1 gold per second of countdown skipped) is still in the game, but isn't planned for players. It's kept for testing, or to bring back later.
@@ -284,7 +296,7 @@ Painting terrain under something that can't stand on it removes that thing, and 
 
 ## Items editor
 
-Open http://localhost:5173/?items-editor (or `?items-editor=example` to open `items/example.items`), or press **Items** in the map editor's toolbar (**Maps** goes back), to choose what players may build and how many of each they can have **at a time**. There's a row per structure, grouped like the build picker (Defence, Civic, Offence):
+Open http://localhost:5173/?items-editor (or `?items-editor=example` to open `items/example.items`), or press **Items** in the map editor's toolbar (**Maps** goes back), to choose what players may build and how many of each they can have **at a time**. There's a row per structure, grouped like the build picker (Towers, Units, Civic):
 
 - **Allowed:** untick it and the structure can't be built at all; it isn't offered in the build picker.
 - **Max at once:** blank (the default) means no limit. With a number, a player can have that many standing (built or still going up); selling one frees a place. The build picker shows `2/5` beside a limited structure, and nothing beside an unlimited one.
@@ -301,6 +313,35 @@ An `.items` file is JSON, and a structure that isn't listed has no limit:
   "limits": { "archer": 6, "cannon": 3, "paladinHall": 0 }
 }
 ```
+
+## Campaign levels
+
+Solo, **Campaign** on the mode screen opens the level select screen: a 4x3 grid of levels, each with its icon (built up on hover), up to three stars and its name. Only the first level is open to start with; each one after unlocks once the one before has a star. Locked levels are greyed out with no name or stars, and slots with no level yet are greyed-out ground. Stars are kept per player on the device, the best for each level.
+
+A level is won by beating its waves (5 to start with) with the keep standing: no wave comes after the last, and once every enemy of it is dead the level is complete. The stars go by the keep's health then: 3 stars untouched (100%), 2 at 50% or more, 1 otherwise. **Play again** replays it; **Levels** goes back to the level select screen (`?levels`). Open a level directly with `?solo&level=<folder>`.
+
+A level is a folder in [`levels/`](levels/), played in folder-name order (so they're numbered: `01-starter`). It holds one `.map` file, at most one `.items` file, and one `.level` file (any names). A folder with something wrong is skipped with a warning when the dev server starts. `01-starter` is the first level; `02-example-xs` to `06-example-xl` are examples on generated maps, one of each size. The `.level` file is JSON:
+
+```json
+{
+  "format": "keep-defence-level",
+  "version": 1,
+  "title": "Starter",
+  "icon": [
+    ["land:river", "land:river", "land:tree"],
+    ["enemy:goblin", "land:ground", "keep"],
+    ["land:sea", "land:sea", "land:sea"]
+  ],
+  "mode": "endless",
+  "win": { "waves": 5, "stars": { "3": 100, "2": 50 } },
+  "fog": true,
+  "dayNight": { "enemiesCome": "night" }
+}
+```
+
+A level's game mode is in its `.level` file (`"endless"` or `"pvp"`, defaulting to `"endless"`; only Endless levels show for now), so its `.map` file has no `mode` of its own (one that does is refused). `win` is what it takes to win: `waves` to beat, and `stars`, the keep health (a percentage) needed for 3 and for 2 stars; it defaults to the 5 waves, 100% and 50% above. `fog` defaults to `true` and `dayNight.enemiesCome` (`"always"` or `"night"`) to `"always"`. Fields the game doesn't know yet are kept, so more settings can be added later.
+
+The `icon` is the map simplified to a square of tiles (the player picture's tile names, row by row): 3x3 for an XXS map, 4x4 for XS, and so on up to 8x8 for XL. Each tile is a block of the map: the keep, an enemy where a spawn zone is, or else the terrain other than open ground there's most of (if there's at least a line of it across the block), or ground. `npm run level-icons` saves an icon into each `.level` file that has none of the right size, leaving hand-made ones be; `npm run level-icons -- --all` remakes them all. A level without one gets one made when the game loads, with a warning.
 
 ## Sound and music
 

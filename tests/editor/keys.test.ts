@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { editorKey } from "../../src/editor/keys";
-import { GAME_ONLY_KEYS } from "../../src/ui/input";
-import { BUILD_TABS, TOOLS } from "../../src/ui/state";
+import { KEYBOARD } from "../../src/ui/controls";
 
 const press = (code: string, mods: { ctrl?: boolean; meta?: boolean; shift?: boolean } = {}) =>
   editorKey({
@@ -32,23 +31,8 @@ describe("the editor's keys", () => {
   });
 
   it("never takes a key the game uses, so no game key means something else here", () => {
-    const gameKeys = [
-      ...BUILD_TABS.map((t) => t.key),
-      ...TOOLS.flatMap((t) => (t.key ? [t.key] : [])),
-      ...GAME_ONLY_KEYS,
-      "KeyR",
-      "Escape",
-      "Equal",
-      "Minus",
-      "KeyW",
-      "KeyA",
-      "KeyS",
-      "KeyD",
-      "ArrowLeft",
-      "ArrowRight",
-      "ArrowUp",
-      "ArrowDown",
-    ];
+    const gameKeys = Object.values(KEYBOARD.bindings).flat();
+    expect(gameKeys).toContain("KeyR");
     for (const code of gameKeys) expect(press(code), code).toBeNull();
   });
 });

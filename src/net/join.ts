@@ -5,13 +5,16 @@ import { MAX_NAME_LENGTH } from "./protocol";
 import type { JoinIntent } from "./networkSession";
 
 export type PageIntent =
-  | { mode: "menu"; room?: string }
+  /** `levels`: straight on to the level select screen after the intro (back from a level). */
+  | { mode: "menu"; room?: string; levels?: true }
   /**
    * `map`: a map in maps/ to play (by name), instead of a generated one. `items`: an items file
    * in items/ (by name) limiting what can be built. `enemiesCome: "night"`: enemies at night.
+   * `level`: a campaign level in levels/ (by folder name), which brings all of those itself.
    */
   | {
       mode: "offline";
+      level?: string;
       size?: MapSize;
       map?: string;
       items?: string;
@@ -25,6 +28,8 @@ export type PageIntent =
  * `?solo` plays offline. `&size=L` picks the map size when playing solo or creating a room;
  * `&map=river-crossing` plays maps/river-crossing.map solo, and `&items=towers-only` plays solo
  * with the limits in items/towers-only.items; `&night` plays solo with enemies at night.
+ * `?solo&level=01-starter` plays the campaign level in levels/01-starter/, and `?levels` opens
+ * the level select screen (after the intro) for the player picked last.
  * Anything else, or a missing name, opens the start screen (with the room code filled in).
  */
 export function readJoinIntent(search: string): PageIntent {
@@ -33,7 +38,9 @@ export function readJoinIntent(search: string): PageIntent {
   const size = sizeParam && Object.hasOwn(MAP_SIZES, sizeParam) ? (sizeParam as MapSize) : null;
   const map = params.get("map");
   const items = params.get("items");
+  const level = params.get("level");
   if (params.has("solo")) {
+    if (level && MAP_NAME_PATTERN.test(level)) return { mode: "offline", level };
     return {
       mode: "offline",
       ...(size ? { size } : {}),
@@ -53,7 +60,8 @@ export function readJoinIntent(search: string): PageIntent {
       ...(size ? { size } : {}),
     };
   }
-  return room ? { mode: "menu", room } : { mode: "menu" };
+  if (room) return { mode: "menu", room };
+  return params.has("levels") ? { mode: "menu", levels: true } : { mode: "menu" };
 }
 
 /** The dev switch `?fog=off` turns fog of war off (for testing in the browser). */
