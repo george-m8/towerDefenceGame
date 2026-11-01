@@ -25,7 +25,7 @@ import { addCue, updateCues } from "./cues";
 import { updateEffects } from "./effects";
 import { initialExplored, revealKeep } from "./fog";
 import { claimKeepWalls, placeKeepWalls } from "./keepWalls";
-import { createFlood, kingDrowned, planKing, updateFlood } from "./flood";
+import { createFlood, kingDrowned, kingHome, planKing, updateFlood } from "./flood";
 import { createJourney, moveCamp, populateJourney, reachedHome, updateJourney } from "./journey";
 import { floodLayout, generateTerrain, journeyLayout, layoutFor, type MapLayout } from "./mapgen";
 import type { ItemsFile } from "./itemsFile";
@@ -73,6 +73,8 @@ export interface GameOptions {
   enemiesCome?: EnemiesCome;
   /** A campaign level's last wave: beating it wins (default none: waves go on). */
   lastWave?: number;
+  /** No looking back: a keep this many tiles on, reaching which wins (default none: on for ever). */
+  floodGoal?: number;
 }
 
 export function createGame(seed: number, options: GameOptions = {}): GameState {
@@ -91,7 +93,8 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
   const journey = mode === "journey" && !file ? journeyLayout(width, height, seed) : null;
   // No looking back's is made with a clear patch round the king's start (see floodLayout), and
   // there's no keep at all.
-  const flooding = mode === "flood" && !file ? floodLayout(width, height, seed) : null;
+  const flooding =
+    mode === "flood" && !file ? floodLayout(width, height, seed, options.floodGoal ?? null) : null;
   const generated: MapLayout = file
     ? {
         width,
@@ -169,7 +172,9 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     rngState: seed,
     fog: options.fog ?? true,
     journey: journey ? createJourney(journey.home) : null,
-    flood: flooding ? createFlood(flooding.king, width, height) : null,
+    flood: flooding
+      ? createFlood(flooding.king, width, height, options.floodGoal ?? null, flooding.home)
+      : null,
     explored: [],
   };
   if (mode !== "endless") state.wave.countdown = Infinity; // only Endless has waves
@@ -262,7 +267,7 @@ export function tick(state: GameState): void {
       state.winner = state.keeps.find((keep) => keep.hp > 0)?.owner ?? null;
     }
     addCue(state, "gameOver");
-  } else if (!state.gameOver && (lastWaveBeaten(state) || reachedHome(state))) {
+  } else if (!state.gameOver && (lastWaveBeaten(state) || reachedHome(state) || kingHome(state))) {
     state.gameOver = true;
     state.won = true;
   }

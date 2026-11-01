@@ -508,6 +508,7 @@ function startSession(intent: Exclude<PageIntent, { mode: "menu" }>) {
           fog: fog && intent.fog !== false,
           size: intent.size,
           mode: intent.game,
+          ...(intent.goal ? { floodGoal: intent.goal } : {}),
         })
       : soloSession(map, items, intent.size, fog && intent.fog !== false, intent.enemiesCome);
   } else {

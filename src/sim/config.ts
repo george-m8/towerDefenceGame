@@ -1146,6 +1146,8 @@ export const FLOOD = {
     ],
     rough: 1.5,
   },
+  /** How fast a tile beside lava fills, as a share of the lava's speed: it keeps up, just. */
+  flowRate: 1.25,
   /** Tiles ahead of the lava that glow, to show what it takes next. */
   warnTiles: 4,
   /** New land is generated this many columns at a time... */
@@ -1156,9 +1158,14 @@ export const FLOOD = {
    */
   shiftColumns: 3,
   aheadTiles: 48,
+  /** A goal game's land stops coming once this many tiles past the keep are on the map. */
+  pastKeep: 8,
   /** Rows open on both sides of where new land joins the old, at least. */
   seamRows: 3,
 };
+
+/** No looking back's goals to pick from: 0 goes on for ever; else a keep that far on, in tiles. */
+export const FLOOD_GOALS = [0, 250, 500, 1000];
 
 /** Selling refunds this fraction of cost, scaled by remaining HP. */
 export const SELL_REFUND = 0.5;

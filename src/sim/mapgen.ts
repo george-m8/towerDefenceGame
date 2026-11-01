@@ -105,13 +105,18 @@ export function floodLayout(
   width: number,
   height: number,
   seed: number,
-): { layout: MapLayout; king: Point } {
+  /** A keep to reach, `goal` tiles on from the king, if it falls on this map. */
+  goal: number | null = null,
+): { layout: MapLayout; king: Point; home: Point | null } {
   const rng = { rngState: seed ^ 0x5bd1e995 };
   const y = randomInt(rng, 6, height - 7);
-  return {
-    layout: { width, height, keeps: [{ x: 0, y: y - 1, size: KEEP_SIZE }], spawnTiles: [] },
-    king: { x: 1, y },
-  };
+  const king = { x: 1, y };
+  const keeps = [{ x: 0, y: y - 1, size: KEEP_SIZE }];
+  // The keep goes in with a keep's clear patch round it, so it's on open ground you can reach.
+  const homeX = goal === null ? Infinity : king.x + goal;
+  const home = homeX + KEEP_SIZE < width - 1 ? { x: homeX, y: Math.floor(height / 2) - 1 } : null;
+  if (home) keeps.push({ ...home, size: KEEP_SIZE });
+  return { layout: { width, height, keeps, spawnTiles: [] }, king, home };
 }
 
 /**
@@ -119,17 +124,17 @@ export function floodLayout(
  * own: a river with fords, coast only top or bottom, rocks, forests, ruins and chests. Its keep
  * (for the generator's checks: everything walkable joins up) is a small clear patch in the middle.
  */
-export function generateChunk(width: number, height: number, seed: number): MapGenResult {
+export function generateChunk(
+  width: number,
+  height: number,
+  seed: number,
+  /** Where its keep's clear patch goes across it (default: the middle); a goal's keep goes there. */
+  keepX = Math.floor(width / 2) - 1,
+): MapGenResult {
   const layout: MapLayout = {
     width,
     height,
-    keeps: [
-      {
-        x: Math.floor(width / 2) - 1,
-        y: Math.floor(height / 2) - 1,
-        size: KEEP_SIZE,
-      },
-    ],
+    keeps: [{ x: keepX, y: Math.floor(height / 2) - 1, size: KEEP_SIZE }],
     spawnTiles: [],
   };
   return generateTerrain(layout, seed, { ...MAP_GEN, keepClearRadius: 1 });

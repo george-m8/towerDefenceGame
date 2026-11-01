@@ -7,7 +7,7 @@
 // The map never ends: as the king nears its right edge, the column furthest behind (lava, or soon
 // to be) is dropped, everything moves a column left, and a column of new land comes in on the
 // right (see shiftWorld). The camera moves with it.
-import { FLOOD, TERRAIN, TICK_RATE } from "./config";
+import { FLOOD, KEEP_SIZE, TERRAIN, TICK_RATE } from "./config";
 import { exploreKingSight, isExplored } from "./fog";
 import {
   EMPTY,
@@ -26,7 +26,13 @@ import { generateChunk, type MapGenResult } from "./mapgen";
 import { startingWork, startingWorth } from "./resources";
 import type { CommandResult, Flood, GameState, Land, PlayerId, Point, Terrain } from "./types";
 
-export function createFlood(king: Point, width: number, height: number): Flood {
+export function createFlood(
+  king: Point,
+  width: number,
+  height: number,
+  goal: number | null = null,
+  home: Point | null = null,
+): Flood {
   return {
     king,
     progress: 0,
@@ -36,10 +42,46 @@ export function createFlood(king: Point, width: number, height: number): Flood {
     front: 0,
     // Lava comes in from beyond the left edge: every tile of it is next to it.
     edge: Array.from({ length: height }, (_, y) => y * width),
+    fill: new Array<number>(height).fill(0),
+    glow: [],
     shifted: 0,
     startX: king.x,
     land: null,
+    goal,
+    home: home && { worldX: home.x, y: home.y },
   };
+}
+
+/** Where the keep is on the map (its top-left tile), if it's on it yet. */
+export function homeOnMap(state: GameState): Point | null {
+  const flood = state.flood;
+  if (!flood?.home) return null;
+  const x = flood.home.worldX - flood.shifted;
+  return x + KEEP_SIZE > 0 && x < state.width ? { x, y: flood.home.y } : null;
+}
+
+/** Whether (x, y) is part of the keep the king's going to. */
+export function isFloodHome(state: GameState, x: number, y: number): boolean {
+  const home = homeOnMap(state);
+  return !!home && x >= home.x && y >= home.y && x < home.x + KEEP_SIZE && y < home.y + KEEP_SIZE;
+}
+
+/** Tiles still to go to the keep (a goal game only; 0 once there). */
+export function tilesToGoal(flood: Flood): number | null {
+  if (flood.goal === null) return null;
+  const at = flood.home ? flood.home.worldX - 1 - flood.startX : flood.goal;
+  return Math.max(0, at - distanceTravelled(flood));
+}
+
+/** The king is next to (or on) the keep: a goal game won. */
+export function kingHome(state: GameState): boolean {
+  const flood = state.flood;
+  const home = homeOnMap(state);
+  if (!flood || !home) return false;
+  const { x, y } = flood.king;
+  const dx = Math.max(home.x - x, 0, x - (home.x + KEEP_SIZE - 1));
+  const dy = Math.max(home.y - y, 0, y - (home.y + KEEP_SIZE - 1));
+  return Math.max(dx, dy) <= 1;
 }
 
 /** Where the king is drawn: part way from his tile to the next on his way. */
@@ -116,16 +158,73 @@ export function lavaStartsIn(state: GameState): number {
   return Math.max(0, Math.ceil(FLOOD.graceSeconds - state.tick / TICK_RATE));
 }
 
+/** The glow's tiles, looked up by place: worked out once for each tick's flood.glow. */
+const glows = new WeakMap<number[], Map<number, number>>();
+
 /**
- * How soon lava takes (x, y): null if under already or more than FLOOD.warnTiles ahead of it,
- * else 0 to 1, higher nearer the lava.
+ * How soon lava takes (x, y), for its glow: 0 to 1, higher nearer (1: filling now), or null if
+ * it won't be soon: under already, more than FLOOD.warnTiles on from it, or out of its reach
+ * (a wall, or land walls shut in). See lavaGlow.
  */
 export function lavaWarning(state: GameState, x: number, y: number): number | null {
-  const flood = state.flood;
-  if (!flood || terrainAt(state, x, y) === "lava") return null;
-  const ahead = aheadOfLava(state, x, y);
-  if (ahead > FLOOD.warnTiles) return null;
-  return Math.min(1, 1 - ahead / FLOOD.warnTiles + 1 / FLOOD.warnTiles);
+  const glow = state.flood?.glow;
+  if (!glow) return null;
+  let byPlace = glows.get(glow);
+  if (!byPlace) {
+    byPlace = new Map();
+    for (let k = 0; k < glow.length; k += 3)
+      byPlace.set(glow[k] * 65536 + glow[k + 1], glow[k + 2]);
+    glows.set(glow, byPlace);
+  }
+  return byPlace.get(x * 65536 + y) ?? null;
+}
+
+/**
+ * The tiles the lava will take soon, and how soon (see lavaWarning), as [x, y, warning] in a
+ * row: out from the tiles beside it, only through tiles it can take, up to FLOOD.warnTiles steps
+ * and FLOOD.warnTiles on from its edge.
+ */
+function lavaGlow(state: GameState, flood: Flood): number[] {
+  const { width } = state;
+  const steps = new Map<number, number>();
+  const queue: number[] = [];
+  flood.edge.forEach((i) => {
+    const x = i % width;
+    if (holdsLava(state, x, (i - x) / width) || steps.has(i)) return;
+    steps.set(i, 0);
+    queue.push(i);
+  });
+  const glow: number[] = [];
+  flood.edge.forEach((i, k) => {
+    if (!steps.has(i)) return;
+    const x = i % width;
+    const y = (i - x) / width;
+    const ahead = aheadOfLava(state, x, y);
+    if (ahead <= FLOOD.warnTiles) glow.push(x, y, Math.max(nearness(ahead), flood.fill[k]));
+  });
+  for (let head = 0; head < queue.length; head++) {
+    const i = queue[head];
+    const step = steps.get(i)!;
+    if (step >= FLOOD.warnTiles) continue;
+    const x = i % width;
+    for (const n of besideOnMap(state, x, (i - x) / width)) {
+      if (steps.has(n) || state.terrain[n] === "lava") continue;
+      const nx = n % width;
+      const ny = (n - nx) / width;
+      if (holdsLava(state, nx, ny)) continue;
+      const ahead = aheadOfLava(state, nx, ny);
+      if (ahead > FLOOD.warnTiles) continue;
+      steps.set(n, step + 1);
+      queue.push(n);
+      glow.push(nx, ny, nearness(ahead + step + 1) * 0.9);
+    }
+  }
+  return glow;
+}
+
+/** A tile `ahead` tiles on from the lava's edge: how near, 0 (FLOOD.warnTiles on) to 1. */
+function nearness(ahead: number): number {
+  return Math.min(1, Math.max(0, 1 - ahead / FLOOD.warnTiles + 1 / FLOOD.warnTiles));
 }
 
 /**
@@ -230,15 +329,21 @@ export function kingPath(state: GameState, flood: Flood): Point[] {
   return path;
 }
 
-/** Once a tick: the king walks, the lava creeps, and the world moves on if he's near its edge. */
+/**
+ * Once a tick: the king walks, the lava creeps, and the world moves on if he's near its edge
+ * (in a goal game, not once the keep's well on the map: the land stops there).
+ */
 export function updateFlood(state: GameState): void {
   const flood = state.flood;
   if (!flood) return;
   walkKing(state, flood);
   flood.front = Math.min(state.width, flood.front + lavaSpeed(state) / TICK_RATE);
   spreadLava(state, flood);
+  flood.glow = lavaGlow(state, flood);
   // The world moves on a few columns at a time, so new land comes in a few lines at a time.
-  if (flood.king.x >= state.width - aheadTiles(state)) {
+  const home = homeOnMap(state);
+  const landEnds = home !== null && home.x + KEEP_SIZE + FLOOD.pastKeep <= state.width;
+  if (!landEnds && flood.king.x >= state.width - aheadTiles(state)) {
     for (let i = 0; i < FLOOD.shiftColumns; i++) shiftWorld(state);
   }
 }
@@ -275,33 +380,48 @@ function nextWay(state: GameState, flood: Flood): void {
   }
 }
 
-/** Whether lava stops at (x, y): a finished wall holds it (and a tower on it), however long. */
+/**
+ * Whether lava stops at (x, y): a finished wall holds it (and a tower on it), however long, and
+ * so does the keep.
+ */
 function holdsLava(state: GameState, x: number, y: number): boolean {
+  if (isFloodHome(state, x, y)) return true;
   const base = baseAt(state, x, y);
   return base !== undefined && base.kind === "wall" && isBuilt(base);
 }
 
 /**
  * The lava takes the tiles beside it that its edge (and their roughness) has passed, but for
- * walls, which it flows round. It spreads a tile a tick, so through a gap it pours in quickly
- * but not all at once. `flood.edge` keeps the tiles beside it not yet under (walls too, in case
- * they go).
+ * walls, which it flows round. A tile it can take fills at the lava's pace (FLOOD.flowRate times
+ * its speed, never slower than it starts), and goes under once full, so lava creeps round a
+ * corner or through a gap as it creeps on everywhere else. `flood.edge` keeps the tiles beside
+ * it not yet under (walls too, in case they go), and `flood.fill` how full each is.
  */
 function spreadLava(state: GameState, flood: Flood): void {
   const { width } = state;
-  const next = new Set<number>();
-  for (const i of flood.edge) {
-    if (state.terrain[i] === "lava") continue;
+  const rate = (Math.max(lavaSpeed(state), FLOOD.lavaSpeed.start) * FLOOD.flowRate) / TICK_RATE;
+  const next = new Map<number, number>();
+  flood.edge.forEach((i, k) => {
+    if (state.terrain[i] === "lava") return;
     const x = i % width;
     const y = (i - x) / width;
     if (holdsLava(state, x, y) || aheadOfLava(state, x, y) > 0) {
-      next.add(i);
-      continue;
+      next.set(i, holdsLava(state, x, y) ? 0 : flood.fill[k]);
+      return;
+    }
+    const fill = flood.fill[k] + rate;
+    if (fill < 1) {
+      next.set(i, fill);
+      return;
     }
     sinkTile(state, flood, x, y);
-    for (const n of besideOnMap(state, x, y)) if (state.terrain[n] !== "lava") next.add(n);
-  }
-  flood.edge = [...next];
+    next.delete(i);
+    for (const n of besideOnMap(state, x, y)) {
+      if (state.terrain[n] !== "lava" && !next.has(n)) next.set(n, 0);
+    }
+  });
+  flood.edge = [...next.keys()];
+  flood.fill = [...next.values()];
 }
 
 /** The tiles beside the lava not yet under (or, on the left edge, beside where it comes from). */
@@ -392,6 +512,7 @@ export function shiftWorld(state: GameState): void {
   flood.path = flood.path.filter((p) => p.x >= 1).map(moved);
   flood.front -= 1;
   flood.edge = lavaEdgeTiles(state);
+  flood.fill = flood.edge.map(() => 0);
   flood.shifted += 1;
   for (const ruin of land.ruins.filter((r) => r.x === column)) {
     const r = placeStructure(state, "ruin", width - 1, ruin.y, "N", null);
@@ -430,9 +551,26 @@ function nextLand(state: GameState): Land {
         },
       };
   const n = FLOOD.chunkColumns;
-  let chunk = generateChunk(n, height, chunkSeed(state, 0));
+  // A goal game's keep goes in the piece of land its column falls in, on that piece's clear
+  // patch (so it's on open ground you can reach): column c of the piece comes in at
+  // `shifted + width + c` across the world.
+  const start = flood.shifted + width;
+  const goalX = flood.goal === null || flood.home ? null : flood.startX + flood.goal;
+  const keepX =
+    goalX !== null && goalX < start + n
+      ? Math.min(Math.max(goalX - start, 2), n - KEEP_SIZE - 2)
+      : undefined;
+  let chunk = generateChunk(n, height, chunkSeed(state, 0), keepX);
   for (let attempt = 1; attempt < 20 && !joinsOn(before, chunk, height); attempt++) {
-    chunk = generateChunk(n, height, chunkSeed(state, attempt));
+    chunk = generateChunk(n, height, chunkSeed(state, attempt), keepX);
+  }
+  if (keepX !== undefined) {
+    const home = { worldX: start + keepX, y: Math.floor(height / 2) - 1 };
+    flood.home = home;
+    // Nothing on the keep's tiles.
+    const offKeep = (p: { x: number; y: number }) =>
+      p.x < keepX || p.x >= keepX + KEEP_SIZE || p.y < home.y || p.y >= home.y + KEEP_SIZE;
+    chunk = { ...chunk, ruins: chunk.ruins.filter(offKeep), chests: chunk.chests.filter(offKeep) };
   }
   flood.land = {
     width: n,

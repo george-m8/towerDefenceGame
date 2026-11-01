@@ -218,13 +218,24 @@ export interface Flood {
   path: Point[];
   /** How far in from the left the lava has come, in tiles, on average (see lavaEdge). */
   front: number;
-  /** The tiles beside the lava not yet under (tile indices): where it spreads to next. */
+  /** The tiles beside the lava not yet under (tile indices): where it spreads to next... */
   edge: number[];
+  /** ...and how full of lava each is (0 to 1: under once full). */
+  fill: number[];
+  /** The tiles about to go under, for their glow, as [x, y, warning] in a row (see lavaWarning). */
+  glow: number[];
   /** Columns the world has moved on by (see shiftWorld), and the column he started on. */
   shifted: number;
   startX: number;
   /** The new land still to come in on the right, a column at a time (see shiftWorld). */
   land: Land | null;
+  /**
+   * A goal: the tiles across the world (from where he started) that the keep stands at, and
+   * reaching it wins; null goes on for ever. `home` is the keep once it's in the world (its
+   * top-left tile, its column counted across the world as `shifted` is), KEEP_SIZE square.
+   */
+  goal: number | null;
+  home: { worldX: number; y: number } | null;
 }
 
 /** A piece of new land for No looking back, generated whole and handed out a column at a time. */

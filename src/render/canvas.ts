@@ -100,7 +100,7 @@ import {
   GLYPH_FONTS,
 } from "./palette";
 import { isHomeTile } from "../sim/journey";
-import { kingAt, lavaWarning } from "../sim/flood";
+import { homeOnMap, isFloodHome, kingAt, lavaWarning } from "../sim/flood";
 import { fromView, type Rotation } from "./rotation";
 import { fogImage, fogSpans, type FogLevel } from "./fog";
 import { createHpBarTracker } from "./hpBars";
@@ -165,11 +165,16 @@ function lavaHeight(state: GameState, x: number, y: number): number {
   return LAVA_HEIGHT;
 }
 
+/** The keep at the end of Journey home, or of a No looking back goal game, covering (x, y). */
+function homeKeepAt(state: GameState, x: number, y: number) {
+  if (isHomeTile(state, x, y)) return { ...state.journey!.home, size: KEEP_SIZE };
+  if (isFloodHome(state, x, y)) return { ...homeOnMap(state)!, size: KEEP_SIZE };
+  return undefined;
+}
+
 export function blockHeight(state: GameState, x: number, y: number): number {
-  // Journey home's keep at the end stands like any keep.
-  const keep =
-    keepAt(state, x, y) ??
-    (isHomeTile(state, x, y) ? { ...state.journey!.home, size: KEEP_SIZE } : undefined);
+  // The keep at a journey's end stands like any keep.
+  const keep = keepAt(state, x, y) ?? homeKeepAt(state, x, y);
   if (keep) {
     // The corners stand a little taller, like towers, round a low middle.
     const last = keep.size - 1;
@@ -351,7 +356,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     if (base && !isBuilt(base)) drawTerrain(state, x, y);
     if (base) drawStructure(base);
     else if (isKeepTile(state, x, y)) drawKeepTile(state, x, y);
-    else if (isHomeTile(state, x, y)) drawHomeTile(state, x, y);
+    else if (homeKeepAt(state, x, y)) drawHomeTile(state, x, y);
     else if (isSpawnTile(state, x, y)) drawTile(x, y, COLOURS.spawn, ".", COLOURS.spawnGlyph);
     else drawTerrain(state, x, y);
     const mount = mountAt(state, x, y);
@@ -530,9 +535,9 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     }
   }
 
-  /** Journey home's keep, where the camp is heading: a keep, with no HP to show. */
+  /** The keep at a journey's end (Journey home, or a No looking back goal): no HP to show. */
   function drawHomeTile(state: GameState, x: number, y: number) {
-    const { home } = state.journey!;
+    const home = homeKeepAt(state, x, y)!;
     drawTile(x, y, COLOURS.keep);
     drawTexture(x, y, KEEP_TEXTURE);
     if (x !== home.x + 1 || y !== home.y + 1) drawGlyph(x, y, KEEP_GLYPH, COLOURS.keepGlyph);

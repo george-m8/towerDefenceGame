@@ -8,7 +8,13 @@ import { incomePerMinute } from "../sim/economy";
 import { isSpawningTime } from "../sim/clock";
 import { isLastWave } from "../sim/waves";
 import { tilesFromHome } from "../sim/journey";
-import { distanceTravelled, lavaBehindKing, lavaSpeed, lavaStartsIn } from "../sim/flood";
+import {
+  distanceTravelled,
+  lavaBehindKing,
+  lavaSpeed,
+  lavaStartsIn,
+  tilesToGoal,
+} from "../sim/flood";
 import type { GameState, PlayerId } from "../sim/types";
 
 export type StatId = "gold" | "income" | "keep" | "wave" | "next" | "rival" | "mode" | "seed";
@@ -38,7 +44,10 @@ export function statList(state: GameState, playerId: PlayerId): Stat[] {
         value: startsIn > 0 ? `starts in ${startsIn}s` : `${tiles(lavaBehindKing(state))} behind`,
       },
       { id: "keep", label: "Distance", value: tiles(distanceTravelled(state.flood)) },
-      { id: "next", label: "Lava speed", value: `${lavaSpeed(state).toFixed(2)} tiles/s` },
+      // A goal game: how far still to the keep; else how fast the lava's coming.
+      tilesToGoal(state.flood) === null
+        ? { id: "next", label: "Lava speed", value: `${lavaSpeed(state).toFixed(2)} tiles/s` }
+        : { id: "next", label: "Keep", value: `${tiles(tilesToGoal(state.flood)!)} to go` },
       { id: "seed", label: "Seed", value: String(state.seed) },
     );
     return stats;

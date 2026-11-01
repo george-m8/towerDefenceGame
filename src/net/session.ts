@@ -63,6 +63,8 @@ export function createLocalSession(
     lastWave?: number;
     /** Journey home or No looking back (solo only); Endless otherwise. */
     mode?: "journey" | "flood";
+    /** No looking back: the keep to reach, in tiles (none: on for ever). */
+    floodGoal?: number;
   } = {},
 ): Session {
   let state = createGame(seed, options);
