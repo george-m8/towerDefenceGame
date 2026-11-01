@@ -1,5 +1,5 @@
 import { GRID_HEIGHT, GRID_WIDTH, type MapSize } from "./sim/config";
-import { followActiveArea, moveWithWorld } from "./ui/lavaCamera";
+import { createKingFollow, moveWithWorld } from "./ui/lavaCamera";
 import { createRenderer } from "./render/canvas";
 import { toView, turnFacing, turnView, viewOf } from "./render/rotation";
 import { GLYPH_FONT, TERRAIN_STYLES } from "./render/palette";
@@ -191,6 +191,8 @@ let centredFor = "";
 /** No looking back: how far the world had moved on (and in which game), last frame. */
 let worldShifted = 0;
 let worldShiftedFor = "";
+/** No looking back: the camera's glide after the king when the world moves on. */
+const kingFollow = createKingFollow();
 
 /** Fits the canvas to the space CSS gives it, at the screen's pixel density. */
 function fitCanvas(mapWidth: number, mapHeight: number) {
@@ -799,15 +801,17 @@ function frame(now: number) {
       }
       input.frame(seconds);
       followRaider(state);
-      // No looking back: the view moves with the world as new land comes, and keeps to the land
-      // in play, ahead of the lava.
+      // No looking back: the camera's yours, but when the world moves on (new land coming in
+      // as the king walks), it moves with the world and then glides after him.
       if (state.flood) {
         const moved = state.flood.shifted - worldShifted;
-        if (moved > 0 && worldShiftedFor === mapKey) {
+        if (worldShiftedFor !== mapKey) kingFollow.stop();
+        else if (moved > 0) {
           moveWithWorld(ui.camera, moved, state.width, state.height, ui.rotation);
+          kingFollow.worldMoved(ui.camera);
         }
         [worldShifted, worldShiftedFor] = [state.flood.shifted, mapKey];
-        followActiveArea(ui.camera, state.flood, state.width, state.height, ui.rotation, seconds);
+        kingFollow.frame(ui.camera, state.flood, state.width, state.height, ui.rotation, seconds);
       }
       updateCurtain(now);
       const viewUi = turnedUi(state);

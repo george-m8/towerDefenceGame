@@ -44,7 +44,7 @@ An endless solo mode about keeping moving. You have no keep of your own. Your **
 
 - Once the king is within `aheadTiles` (48, at most half the map's width) of the map's right edge, the world moves on `shiftColumns` (3) columns, a column at a time. The leftmost column is dropped, with all on it (structures removed, units killed). Everything else moves a column left: every tile layer, structures, units (whose ways are found again), chests, the king, his flags and way, and the lava's front. A column of new land comes in on the right.
 - New land is generated `chunkColumns` (40) columns at a time, as its own map (a river with fords, coast only top or bottom, rocks, forests, ruins, chests, resources), seeded by the game's seed and how far the world has moved. It's handed out a column at a time. A new piece is generated again (up to 20 tries) until you can walk from the left of the land before it right across the new piece, with ruins counted as in the way, and at least `seamRows` (3) open rows where they join.
-- The camera moves with the world, so the view doesn't jump; the 3D view repaints its ground at once.
+- The camera moves with the world, so the view doesn't jump, then glides after the king (see "The camera"); the 3D view repaints its ground at once.
 
 **Building**
 
@@ -52,12 +52,12 @@ An endless solo mode about keeping moving. You have no keep of your own. Your **
 
 **The camera** (`src/ui/lavaCamera.ts`)
 
-- It keeps to the land in play. It shows no more than `LAVA_SHOWN` (3) tiles back over the lava's front, so it's pushed on as the lava comes, and it keeps the king (where he is, part way between tiles) at least `MARGIN` (4) tiles from its edges. It glides to where those rules want it (`GLIDE_RATE`) rather than jumping. Otherwise panning, zooming and looking ahead are free. With the view turned, the lava's side of the screen turns with it.
+- It's the player's to pan and zoom: nothing pushes it on or holds it back.
+- When the world moves on, the camera moves with it at once (`moveWithWorld`), so what's on screen stays put, and then glides (`GLIDE_RATE`) along the way the lava runs until the king is `FOLLOW_AT` (35%) across the screen from the lava's side, with the new land ahead of him in view. It stops there, at the map's edge, or as soon as the player pans.
 
 **The 3D view** (`?3d`)
 
 - Lava and its height come from the shared terrain and block heights. The king stands as a glyph card, like units, a little taller. His flags and way are drawn over the view on the tops they're on. The lava's glow is painted into the map's texture, without the pulse.
-- The camera rule works from the ground point in the middle of the screen.
 
 ## Balance
 

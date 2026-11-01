@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { createGame } from "../../src/sim/game";
-import { centerOn, createCamera, setViewport, tilePixels, viewCentre } from "../../src/ui/camera";
-import { LAVA_SHOWN, MARGIN, followActiveArea } from "../../src/ui/lavaCamera";
-import { fromView, toView, viewSize, type Rotation } from "../../src/render/rotation";
-import type { GameState } from "../../src/sim/types";
+import { createCamera, setViewport, tilePixels, viewCentre } from "../../src/ui/camera";
+import { FOLLOW_AT, createKingFollow, followTarget, moveWithWorld } from "../../src/ui/lavaCamera";
+import { toView, viewSize, type Rotation } from "../../src/render/rotation";
 
 /** A No looking back game, its camera showing 30 by 20 tiles, turned `turns` quarter turns. */
 function setup(turns: Rotation = 0) {
@@ -14,84 +13,50 @@ function setup(turns: Rotation = 0) {
   return { state, cam };
 }
 
-const span = (cam: ReturnType<typeof createCamera>) => ({
-  x: cam.viewWidth / tilePixels(cam),
-  y: cam.viewHeight / tilePixels(cam),
-});
-
-function follow(state: GameState, cam: ReturnType<typeof createCamera>, turns: Rotation = 0) {
-  followActiveArea(cam, state.flood!, state.width, state.height, turns);
-}
+const across = (cam: ReturnType<typeof createCamera>) => cam.viewWidth / tilePixels(cam);
 
 describe("No looking back's camera", () => {
-  it("is pushed on by the lava, showing only a little of it", () => {
-    const { state, cam } = setup();
-    state.flood!.king = { x: 60, y: 30 };
-    state.flood!.front = 40;
-    cam.x = 0;
-    cam.y = 20;
-    follow(state, cam);
-    expect(cam.x).toBe(40 - LAVA_SHOWN);
-  });
-
-  it("leaves looking ahead alone", () => {
-    const { state, cam } = setup();
-    state.flood!.king = { x: 60, y: 30 };
-    state.flood!.front = 40;
-    cam.x = 50;
-    cam.y = 20;
-    follow(state, cam);
-    expect(cam.x).toBe(50);
-  });
-
-  it("keeps the king in view, a few tiles in from its edge", () => {
-    const { state, cam } = setup();
-    state.flood!.king = { x: 100, y: 60 };
-    cam.x = 10;
-    cam.y = 5;
-    follow(state, cam);
-    expect(cam.x + span(cam).x).toBe(101 + MARGIN);
-    expect(cam.y + span(cam).y).toBe(61 + MARGIN);
-  });
-
-  it("holds the lava back, and keeps the king in view, whichever way the view is turned", () => {
+  it("moves with the world, so what's on screen stays put", () => {
     for (const turns of [0, 1, 2, 3] as Rotation[]) {
       const { state, cam } = setup(turns);
-      state.flood!.king = { x: 58, y: 50 };
-      state.flood!.front = 50;
-      // Looking at the lava, back at the map's left edge.
-      const lava = toView({ x: 0, y: 50 }, turns, state.width, state.height);
-      centerOn(cam, lava.x, lava.y);
-      follow(state, cam, turns);
-      // The map columns of the tiles at the view's corners: none deeper into the lava than shown.
-      const { x, y } = span(cam);
-      const corners = [
-        { x: cam.x, y: cam.y },
-        { x: cam.x + x - 1e-6, y: cam.y },
-        { x: cam.x, y: cam.y + y - 1e-6 },
-        { x: cam.x + x - 1e-6, y: cam.y + y - 1e-6 },
-      ].map((p) =>
-        fromView({ x: Math.floor(p.x), y: Math.floor(p.y) }, turns, state.width, state.height),
-      );
-      expect(Math.min(...corners.map((p) => p.x))).toBe(50 - LAVA_SHOWN);
-      const king = toView(state.flood!.king, turns, state.width, state.height);
-      expect(king.x).toBeGreaterThanOrEqual(cam.x);
-      expect(king.x + 1).toBeLessThanOrEqual(cam.x + x);
-      expect(king.y).toBeGreaterThanOrEqual(cam.y);
-      expect(king.y + 1).toBeLessThanOrEqual(cam.y + y);
+      const before = { x: 40, y: 30 };
+      // Where map tile (50, 40) is on screen, before and after the world moves on 3 columns.
+      cam.x = before.x;
+      cam.y = before.y;
+      const tile = toView({ x: 50, y: 40 }, turns, state.width, state.height);
+      const onScreen = { x: tile.x - cam.x, y: tile.y - cam.y };
+      moveWithWorld(cam, 3, state.width, state.height, turns);
+      const moved = toView({ x: 47, y: 40 }, turns, state.width, state.height);
+      expect({ x: moved.x - cam.x, y: moved.y - cam.y }).toEqual(onScreen);
     }
   });
-  it("over the 3D view, keeps the middle of the screen on from the lava and near the king", () => {
+
+  it("is left alone until the world moves on, then glides to put the king ahead of the lava", () => {
     const { state, cam } = setup();
-    cam.iso = true;
-    state.flood!.king = { x: 60, y: 30 };
-    state.flood!.front = 40;
-    centerOn(cam, 10, 30);
-    follow(state, cam);
-    const reach = span(cam).x / 2;
-    expect(viewCentre(cam).x).toBeCloseTo(40 - LAVA_SHOWN + reach);
-    centerOn(cam, 120, 30);
-    follow(state, cam);
-    expect(viewCentre(cam).x).toBeCloseTo(60.5 + reach - MARGIN);
+    state.flood!.king = { x: 80, y: 30 };
+    cam.x = 10;
+    cam.y = 20;
+    const follow = createKingFollow();
+    follow.frame(cam, state.flood!, state.width, state.height, 0, 0.1);
+    expect(cam.x).toBe(10); // nothing pushes it
+    follow.worldMoved(cam);
+    for (let i = 0; i < 300; i++)
+      follow.frame(cam, state.flood!, state.width, state.height, 0, 1 / 60);
+    const target = followTarget(cam, state.flood!, state.width, state.height, 0);
+    expect(viewCentre(cam).x).toBeCloseTo(target.x, 1);
+    expect(80.5 - cam.x).toBeCloseTo(FOLLOW_AT * across(cam), 1);
+  });
+
+  it("stops gliding when you pan", () => {
+    const { state, cam } = setup();
+    state.flood!.king = { x: 80, y: 30 };
+    cam.x = 10;
+    const follow = createKingFollow();
+    follow.worldMoved(cam);
+    follow.frame(cam, state.flood!, state.width, state.height, 0, 1 / 60);
+    cam.x = 5; // panned
+    follow.frame(cam, state.flood!, state.width, state.height, 0, 1 / 60);
+    follow.frame(cam, state.flood!, state.width, state.height, 0, 1 / 60);
+    expect(cam.x).toBe(5);
   });
 });
