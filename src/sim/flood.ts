@@ -58,6 +58,7 @@ export function createFlood(
     edge: Array.from({ length: height }, (_, y) => y * width),
     fill: new Array<number>(height).fill(0),
     glow: [],
+    cooling: {},
     shifted: 0,
     land: null,
     goal,
@@ -414,6 +415,7 @@ export function updateFlood(state: GameState): void {
   for (const royal of livingRoyals(flood)) walkRoyal(state, royal);
   flood.front = Math.min(state.width, flood.front + lavaSpeed(state) / TICK_RATE);
   spreadLava(state, flood);
+  if (state.tick % TICK_RATE === 0) coolLava(state, flood);
   fallRoyals(state, flood);
   flood.glow = lavaGlow(state, flood);
   for (const royal of livingRoyals(flood)) {
@@ -535,15 +537,92 @@ function spreadLava(state: GameState, flood: Flood): void {
   flood.fill = [...next.values()];
 }
 
+/**
+ * Lava that's still joined (through lava, not walls or ruins on it) to where it comes in on the
+ * left edge: per tile, 1 if so.
+ */
+function liveLava(state: GameState): Uint8Array {
+  const { width, height } = state;
+  const live = new Uint8Array(width * height);
+  const flows = (i: number) => {
+    const x = i % width;
+    return state.terrain[i] === "lava" && !holdsLava(state, x, (i - x) / width);
+  };
+  const queue: number[] = [];
+  for (let y = 0; y < height; y++) {
+    const i = y * width;
+    if (flows(i)) {
+      live[i] = 1;
+      queue.push(i);
+    }
+  }
+  for (let head = 0; head < queue.length; head++) {
+    const i = queue[head];
+    const x = i % width;
+    for (const n of besideOnMap(state, x, (i - x) / width)) {
+      if (live[n] || !flows(n)) continue;
+      live[n] = 1;
+      queue.push(n);
+    }
+  }
+  return live;
+}
+
+/**
+ * Once a second: lava walled off from where it comes in stops spreading (the tiles beside only
+ * it come off `flood.edge`), and cools back to ground from its edges in, a tile of it beside land
+ * (or a wall) cooling once it's been cut off and beside land FLOOD.coolSeconds. So a pocket the
+ * players wall off dies away, a ring at a time, and its land can be used again. If a wall goes,
+ * what's left of it joins the lava again.
+ */
+function coolLava(state: GameState, flood: Flood): void {
+  const { width, height } = state;
+  const live = liveLava(state);
+  // Only tiles beside live lava (or where it comes in) go on spreading.
+  const edge: number[] = [];
+  const fill: number[] = [];
+  flood.edge.forEach((i, k) => {
+    const x = i % width;
+    const y = (i - x) / width;
+    if (x === 0 || besideOnMap(state, x, y).some((n) => live[n])) {
+      edge.push(i);
+      fill.push(flood.fill[k]);
+    }
+  });
+  flood.edge = edge;
+  flood.fill = fill;
+  const cooling: Record<number, number> = {};
+  for (let i = 0; i < width * height; i++) {
+    if (state.terrain[i] !== "lava" || live[i]) continue;
+    const x = i % width;
+    const y = (i - x) / width;
+    // The lava beyond the left edge is live: a tile there never cools.
+    if (x === 0) continue;
+    const beside = besideOnMap(state, x, y);
+    const byLand = beside.some(
+      (n) => state.terrain[n] !== "lava" || holdsLava(state, n % width, Math.floor(n / width)),
+    );
+    if (!byLand) continue;
+    const key = (x + flood.shifted) * 65536 + y;
+    const seconds = (flood.cooling[key] ?? 0) + 1;
+    if (seconds >= FLOOD.coolSeconds) {
+      state.terrain[i] = "ground";
+      state.gridVersion++;
+    } else cooling[key] = seconds;
+  }
+  flood.cooling = cooling;
+}
+
 /** The tiles beside the lava not yet under (or, on the left edge, beside where it comes from). */
 function lavaEdgeTiles(state: GameState): number[] {
   const { width, height } = state;
+  const live = liveLava(state);
   const edge: number[] = [];
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const i = y * width + x;
       if (state.terrain[i] === "lava") continue;
-      if (x === 0 || besideOnMap(state, x, y).some((n) => state.terrain[n] === "lava")) {
+      if (x === 0 || besideOnMap(state, x, y).some((n) => live[n])) {
         edge.push(i);
       }
     }
@@ -666,7 +745,7 @@ export function shiftLayer<T>(layer: T[], width: number, height: number, n: numb
 
 /** The No looking back state the clients get: what the server alone needs left out. */
 export function clientFlood(flood: Flood | null): Flood | null {
-  return flood && { ...flood, edge: [], fill: [], land: null };
+  return flood && { ...flood, edge: [], fill: [], cooling: {}, land: null };
 }
 
 /**

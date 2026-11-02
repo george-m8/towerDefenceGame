@@ -228,6 +228,12 @@ export interface Flood {
   fill: number[];
   /** The tiles about to go under, for their glow, as [x, y, warning] in a row (see lavaWarning). */
   glow: number[];
+  /**
+   * Lava walled off from where it comes in, cooling (see coolLava): seconds each tile of it has
+   * been cut off and beside land, by its place in the world (column across the world * 65536 +
+   * row).
+   */
+  cooling: Record<number, number>;
   /** Columns the world has moved on by (see shiftWorld). */
   shifted: number;
   /** The new land still to come in on the right, a column at a time (see shiftWorld). */

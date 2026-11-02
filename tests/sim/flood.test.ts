@@ -633,3 +633,36 @@ describe("walls on lava", () => {
     expect(canBuild(state, ME, "wall", 6, y + 6).ok).toBe(false);
   });
 });
+
+describe("walled-off lava", () => {
+  it("stops spreading and cools back to ground, from its edges in", () => {
+    const state = blankFlood();
+    royal(state).at = { x: 40, y: 10 };
+    // A wall down column 5, but for a gap at row 20.
+    for (let y = 0; y < state.height; y++) {
+      if (y !== 20) placeStructure(state, "wall", 5, y, "N", ME).buildLeft = 0;
+    }
+    state.flood!.front = 6;
+    run(state, 30 * TICK_RATE);
+    state.flood!.front = 14;
+    run(state, 6 * TICK_RATE);
+    const beyond = () => {
+      let n = 0;
+      for (let y = 0; y < state.height; y++) {
+        for (let x = 6; x < 30; x++) if (state.terrain[tileIndex(state, x, y)] === "lava") n++;
+      }
+      return n;
+    };
+    expect(beyond()).toBeGreaterThan(3); // through the gap, and spreading
+    // Wall the gap: what's through is cut off.
+    placeStructure(state, "wall", 5, 20, "N", ME).buildLeft = 0;
+    state.flood!.front = 25;
+    run(state, 2 * TICK_RATE);
+    const cut = beyond();
+    run(state, 60 * TICK_RATE);
+    expect(beyond()).toBe(0);
+    expect(cut).toBeGreaterThan(0);
+    // The live lava on the other side is still there.
+    expect(state.terrain[tileIndex(state, 2, 10)]).toBe("lava");
+  });
+});

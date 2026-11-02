@@ -1148,6 +1148,11 @@ export const FLOOD = {
     ],
     rough: 1.5,
   },
+  /**
+   * Lava walled off from where it comes in (the left edge) cools back to ground, from its edges
+   * in: a tile of it beside land cools after this long.
+   */
+  coolSeconds: 4,
   /** How fast a tile beside lava fills, as a share of the lava's speed: it keeps up, just. */
   flowRate: 1.25,
   /** Tiles ahead of the lava that glow, to show what it takes next. */
