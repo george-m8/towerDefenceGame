@@ -194,10 +194,8 @@ function lavaHeight(state: GameState, x: number, y: number): number {
 
 /** How much lava and water bubble: each tile rises and falls by up to this share of its height. */
 const BUBBLE = 0.2;
-/** Rivers and the sea lie flat, but for a surface this high (in pixels) to ripple. */
-const SURFACE = 1;
-/** Rivers and the sea ripple by this share of SURFACE. */
-const RIPPLE = 0.5;
+/** Rivers and the sea ripple down to this deep below the ground (in pixels), and back up to it. */
+const DIP = 2;
 
 /** Terrain that bubbles (lava) or ripples (water). */
 const RIPPLING = new Set<Terrain>(["lava", "floodwater", "river", "sea"]);
@@ -220,8 +218,9 @@ export function drawnHeight(state: GameState, x: number, y: number, ms: number):
   const speed = 0.0015 + ((h >>> 10) % 1000) * 0.0000025; // radians a millisecond
   // Two beats, so it heaves rather than pulses.
   const wave = 0.7 * Math.sin(ms * speed + phase) + 0.3 * Math.sin(ms * speed * 2.3 + phase * 3);
-  // No looking back's lava and floodwater stand up; rivers and the sea get a surface.
-  return height > 0 ? height * (1 + BUBBLE * wave) : SURFACE * (1 + RIPPLE * wave);
+  // No looking back's lava and floodwater stand up; rivers and the sea dip below the ground,
+  // never above it.
+  return height > 0 ? height * (1 + BUBBLE * wave) : -DIP * ((1 - wave) / 2);
 }
 
 /** A No looking back goal game's keep, covering (x, y). */
@@ -411,6 +410,25 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     ctx!.fill();
   }
 
+  /**
+   * A tile `depth` pixels below the ground (a river or the sea dipping): its contents that much
+   * lower, under the bank behind it (as far down as the tile behind isn't already).
+   */
+  function drawSunk(state: GameState, x: number, y: number, depth: number, showOwners: boolean) {
+    ctx!.save();
+    ctx!.beginPath();
+    ctx!.rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    ctx!.clip();
+    ctx!.translate(0, depth);
+    drawTileContents(state, x, y, showOwners);
+    ctx!.restore();
+    drawEnclosureTint(state, x, y, 0);
+    const bank = depth - Math.max(0, -heightAt(x, y - 1));
+    if (bank <= 0) return;
+    ctx!.fillStyle = COLOURS.bank;
+    ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, bank);
+  }
+
   function drawTileContents(state: GameState, x: number, y: number, showOwners: boolean) {
     const base = baseAt(state, x, y);
     // A construction site shows the ground through it.
@@ -438,8 +456,13 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     // block's lifted top covers the row behind it.
     for (let y = y0; y <= y1; y++) {
       for (let x = x0; x <= x1; x++) {
-        if (heightAt(x, y) > 0) {
+        const h = heightAt(x, y);
+        if (h > 0) {
           drawGround(x, y);
+          continue;
+        }
+        if (h < 0) {
+          drawSunk(state, x, y, -h, showOwners);
           continue;
         }
         drawTileContents(state, x, y, showOwners);
@@ -476,7 +499,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       drawEnemies(state, enemiesByRow.get(y - 1) ?? []);
       for (let x = x0; x <= x1; x++) {
         const h = heightAt(x, y);
-        if (h === 0) continue;
+        if (h <= 0) continue;
         // Front face: the block's colour, darkened; the top sits h pixels higher.
         ctx!.fillStyle = blockSideColour(state, x, y);
         ctx!.fillRect(x * TILE_SIZE, (y + 1) * TILE_SIZE - h, TILE_SIZE, h);

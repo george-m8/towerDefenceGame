@@ -56,6 +56,9 @@ const CARD_TILES = 1.1;
 /** No looking back's royals stand a little taller than the rest. */
 const ROYAL_CARD_TILES = 1.5;
 
+/** How thick the slab of a river or the sea is below the ground, in tiles (see blockAt). */
+const SUNK_DEPTH = 0.25;
+
 /** A tower on a wall's ramparts: how tall they stand above its top, in tiles, and their merlons. */
 const RAMPART_TILES = 0.3;
 const MERLONS = 3;
@@ -278,9 +281,22 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
   /** The map's size in tiles, for the block tops' UVs. */
   const mapSize = { value: new THREE.Vector2(1, 1) };
 
+  // Holes in the ground where rivers and the sea dip below it (see drawnHeight): a texel a tile,
+  // set where there's one, laid out as the map texture is (its first row the map's last).
+  const holes = { value: new THREE.DataTexture(new Uint8Array(4), 1, 1) };
+  const groundMaterial = new THREE.MeshLambertMaterial({ map: mapTexture });
+  groundMaterial.onBeforeCompile = (shader) => {
+    shader.uniforms.holes = holes;
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", "#include <common>\nuniform sampler2D holes;")
+      .replace(
+        "#include <map_fragment>",
+        "if (texture2D(holes, vMapUv).r > 0.5) discard;\n#include <map_fragment>",
+      );
+  };
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2).translate(0.5, 0, 0.5),
-    new THREE.MeshLambertMaterial({ map: mapTexture }),
+    groundMaterial,
   );
   ground.receiveShadow = true;
   scene.add(ground);
@@ -365,6 +381,15 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
   /** The blocks of bare lava and water, as [instance, x, y] in a row, to bubble each frame. */
   let lavaBlocks: number[] = [];
 
+  /**
+   * A block `h` tiles high at (x, y) into `matrix`. Below the ground (a river or the sea dipping),
+   * it's a slab SUNK_DEPTH thick with its top there, seen through a hole in the ground.
+   */
+  function blockAt(h: number, x: number, y: number) {
+    if (h >= 0) matrix.makeScale(1, h, 1).setPosition(x + 0.5, 0, y + 0.5);
+    else matrix.makeScale(1, SUNK_DEPTH, 1).setPosition(x + 0.5, h - SUNK_DEPTH, y + 0.5);
+  }
+
   let painted: { key: string; tiers: Uint8Array | null; at: number; shifted: number } = {
     key: "",
     tiers: null,
@@ -407,12 +432,16 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
     const mesh = blocks.reserve(count);
     const walls = ramparts.reserve(crowned * 4);
     lavaBlocks = [];
+    const holed = new Uint8Array(width * height * 4);
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const h = (drawnHeight(state, x, y, now) / TILE_SIZE) * ISO.heightScale;
         const tier = tiers?.[y * width + x];
-        if (h <= 0 || tier === UNEXPLORED) continue;
-        matrix.makeScale(1, h, 1).setPosition(x + 0.5, 0, y + 0.5);
+        // Rivers and the sea dip below the ground, through a hole in it.
+        const sinks = bubbles(state, x, y) && blockHeight(state, x, y) === 0;
+        if ((h <= 0 && !sinks) || tier === UNEXPLORED) continue;
+        if (sinks) holed[((height - 1 - y) * width + x) * 4] = 255;
+        blockAt(h, x, y);
         mesh.setMatrixAt(mesh.count, matrix);
         if (bubbles(state, x, y)) lavaBlocks.push(mesh.count, x, y);
         // The sides' colour: the block's own (a tower on a wall, the wall's), misted like its top where it's only been seen.
@@ -436,6 +465,9 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
     }
     blocks.done();
     ramparts.done();
+    holes.value.dispose();
+    holes.value = new THREE.DataTexture(holed, width, height);
+    holes.value.needsUpdate = true;
   }
 
   /** Lava's and water's blocks rise and fall a little, every frame (see drawnHeight). */
@@ -444,8 +476,7 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
     if (!mesh) return;
     for (let k = 0; k < lavaBlocks.length; k += 3) {
       const [i, x, y] = [lavaBlocks[k], lavaBlocks[k + 1], lavaBlocks[k + 2]];
-      const h = (drawnHeight(state, x, y, now) / TILE_SIZE) * ISO.heightScale;
-      matrix.makeScale(1, h, 1).setPosition(x + 0.5, 0, y + 0.5);
+      blockAt((drawnHeight(state, x, y, now) / TILE_SIZE) * ISO.heightScale, x, y);
       mesh.setMatrixAt(i, matrix);
     }
     if (lavaBlocks.length > 0) mesh.instanceMatrix.needsUpdate = true;

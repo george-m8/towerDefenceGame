@@ -126,14 +126,19 @@ describe("No looking back's lava", () => {
     expect(Math.max(...five)).toBeLessThanOrEqual(1.2);
     expect(Math.max(...five) - Math.min(...five)).toBeGreaterThan(0.15);
     expect(over(6)).not.toEqual(five);
-    // Rivers, the sea and floodwater ripple; a river gets a surface to ripple.
+    // Floodwater ripples as lava bubbles; rivers and the sea dip below the ground and back up to
+    // it, never above.
     at(7, "river");
     at(8, "sea");
     at(9, "floodwater");
     for (const x of [7, 8, 9]) {
       const heights = over(x);
-      expect(Math.min(...heights)).toBeGreaterThan(0);
       expect(Math.max(...heights) - Math.min(...heights)).toBeGreaterThan(0.1);
+      if (x === 9) expect(Math.min(...heights)).toBeGreaterThan(0);
+      else {
+        expect(Math.max(...heights)).toBeLessThanOrEqual(0);
+        expect(Math.min(...heights)).toBeGreaterThanOrEqual(-2);
+      }
     }
     // Not ground, nor a bridge on a river, nor lava with a wall on it.
     expect(drawnHeight(state, 10, 20, 1234)).toBe(0);

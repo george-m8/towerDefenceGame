@@ -165,6 +165,8 @@ export function enemyFont(size: EnemyVariant["size"]): string {
 export const COLOURS = {
   /** Grass. */
   ground: "#24361b",
+  /** The earth bank behind a river or the sea, where it dips below the ground. */
+  bank: "#1c160c",
   /** Beyond the map's edge, when the whole map fits with room to spare. */
   offMap: "#15110b",
   /** The view's outline on the minimap. */
