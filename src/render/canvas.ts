@@ -142,6 +142,8 @@ export function isDamagedWall(structure: Structure): boolean {
 const ROCK_HEIGHT = 4;
 /** A wall's height (a finished one, unbattered). */
 const WALL_HEIGHT = 6;
+/** No looking back's hills: high ground, and what's on them stands that much higher. */
+const HILL_HEIGHT = 3;
 /** No looking back's lava: half a wall high where it's deep, lower towards its fringes. */
 const LAVA_HEIGHT = WALL_HEIGHT / 2;
 /** Its water lies lower, a third of a wall at its deepest. */
@@ -190,9 +192,11 @@ export function blockHeight(state: GameState, x: number, y: number): number {
   const mount = built(mountAt(state, x, y));
   // A battered wall sinks a little, and a tower on it with it.
   const sunk = base && isDamagedWall(base) ? 1 : 0;
-  if (mount) return base ? 11 - sunk : 8;
-  if (base) return STRUCTURES[base.kind].blocksMovement ? WALL_HEIGHT - sunk : 0;
   const terrain = terrainAt(state, x, y);
+  const hill = terrain === "hill" ? HILL_HEIGHT : 0;
+  if (mount) return hill + (base ? 11 - sunk : 8);
+  if (base) return hill + (STRUCTURES[base.kind].blocksMovement ? WALL_HEIGHT - sunk : 0);
+  if (hill) return hill;
   if (isFlooded(terrain)) return lavaHeight(state, x, y);
   if (terrain === "tree") return 7;
   if (terrain === "rock" || terrain === "goldRock") {

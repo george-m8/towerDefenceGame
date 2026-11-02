@@ -743,7 +743,7 @@ function showSettingsScreen(
         ).join("")}
       </div>
       <div class="map-sizes" role="radiogroup" aria-label="Flood">
-        <span title="Lava takes everything but walls and ruins. Water leaves trees, rocks and bushes standing too, and goes round them">Flood</span>
+        <span title="Lava takes everything but walls, ruins, hills and rocks. Water leaves trees and bushes standing too, and goes round them">Flood</span>
         ${(Object.keys(FLOOD_LIQUIDS) as FloodLiquid[])
           .map(
             (l) =>

@@ -12,6 +12,7 @@
 // to be) is dropped, everything moves a column left, and a column of new land comes in on the
 // right (see shiftWorld). The camera moves with it.
 import { FLOOD, FLOOD_LIQUIDS, KEEP_SIZE, RESOURCES, TERRAIN, TICK_RATE } from "./config";
+import { withHills } from "./floodHills";
 import { withRuins } from "./floodRuins";
 import { placeSwarm } from "./floodSwarms";
 import { randomInt } from "./rng";
@@ -503,11 +504,14 @@ function nextWay(state: GameState, royal: Royal): void {
 
 /**
  * Whether lava stops at (x, y): a finished wall or a ruin (an old wall) holds it, and a tower on
- * it, however long; so does a goal's keep. Water leaves trees, rocks and bushes standing too.
+ * it, however long; so does a goal's keep, a hill (high ground) and rock. Water leaves trees and
+ * bushes standing too.
  */
 function holdsLava(state: GameState, x: number, y: number): boolean {
-  if (isFloodHome(state, x, y)) return true;
-  if (state.flood?.liquid === "water" && terrainAt(state, x, y) in RESOURCES) return true;
+  const terrain = terrainAt(state, x, y);
+  if (isFloodHome(state, x, y) || terrain === "hill") return true;
+  if (terrain === "rock" || terrain === "goldRock") return true;
+  if (state.flood?.liquid === "water" && terrain in RESOURCES) return true;
   const base = baseAt(state, x, y);
   return base !== undefined && (base.kind === "wall" || base.kind === "ruin") && isBuilt(base);
 }
@@ -795,12 +799,16 @@ function nextLand(state: GameState): Land {
       : undefined;
   // Its ruins go in before the check, so they never block the way on.
   const keepArea = keepX === undefined ? null : { x: keepX, y: Math.floor(height / 2) - 1 };
-  const generate = (attempt: number) =>
-    withRuins(generateChunk(n, height, chunkSeed(state, attempt), keepX), n, height, {
-      seed: chunkSeed(state, attempt),
+  const generate = (attempt: number) => {
+    const seed = chunkSeed(state, attempt);
+    const land = generateChunk(n, height, seed, keepX);
+    const terrain = withHills(land.terrain, n, height, seed, FLOOD.hills.perPiece);
+    return withRuins({ ...land, terrain }, n, height, {
+      seed,
       keep: keepArea,
       count: FLOOD.ruins.perPiece,
     });
+  };
   let chunk = generate(0);
   for (let attempt = 1; attempt < 20 && !joinsOn(before, chunk, height); attempt++) {
     chunk = generate(attempt);
@@ -875,7 +883,7 @@ function joinsOn(
 }
 
 /**
- * The starting map with ruins too (see floodRuins.ts), as many for its width as new land gets,
+ * The starting map with hills (see floodHills.ts) and ruins (see floodRuins.ts) too, as many for its width as new land gets,
  * clear of the royals' start and a goal's keep, and only where they leave a way from the start to
  * the map's right edge (tried a few times, else none).
  */
@@ -887,7 +895,10 @@ export function withStartingRuins(
   start: Point,
   home: Point | null,
 ): Pick<MapGenResult, "terrain" | "ruins" | "chests"> & { ruinSwarms: Point[] } {
-  const count = Math.round((width / FLOOD.chunkColumns) * FLOOD.ruins.perPiece);
+  const pieces = width / FLOOD.chunkColumns;
+  const count = Math.round(pieces * FLOOD.ruins.perPiece);
+  const hills = Math.round(pieces * FLOOD.hills.perPiece);
+  map = { ...map, terrain: withHills(map.terrain, width, height, seed, hills) };
   for (let attempt = 0; attempt < 10; attempt++) {
     const ruins = withRuins(map, width, height, {
       seed: (seed ^ Math.imul(attempt + 1, 0x632be5ab)) | 0,

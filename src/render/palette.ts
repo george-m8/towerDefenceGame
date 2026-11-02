@@ -387,6 +387,7 @@ export const TERRAIN_STYLES: Record<
   berries: { bg: "#2f5a2a", glyph: "\u{1FAD0}\uFE0E", fg: "#7a3b4f" },
   lava: { bg: "#8a2a0c", glyph: "≈", fg: "#f2a23a" },
   floodwater: { bg: "#245d8f", glyph: "≈", fg: "#9fd0f2" },
+  hill: { bg: "#4a4128" },
 };
 
 /** The texture over each kind of terrain (see render/textures.ts). */
@@ -402,6 +403,7 @@ export const TERRAIN_TEXTURES: Record<Terrain, TextureStyle> = {
   berries: "speckle",
   lava: "ripple",
   floodwater: "ripple",
+  hill: "pebbles",
 };
 /** The keep's stone walls. */
 export const KEEP_TEXTURE: TextureStyle = "stone";

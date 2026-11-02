@@ -64,6 +64,7 @@ const TERRAIN_DESCRIPTIONS: Record<Terrain, string> = {
   berries: "Berry bush",
   lava: "Lava - nothing crosses it",
   floodwater: "Floodwater - nothing crosses it",
+  hill: "Hill - high ground, above the flood",
 };
 
 /** Human-readable lines describing what is on a tile, for the hover info box. */

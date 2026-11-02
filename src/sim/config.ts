@@ -1191,6 +1191,16 @@ export const FLOOD = {
     resources: ["goldRock", "tree", "berries"] satisfies Terrain[],
     swarmChance: 0.4,
   },
+  /**
+   * Hills (see floodHills.ts): high ground the flood never takes, up to `perPiece` on each piece
+   * of new land (and as many for its width on the starting map), each a rough oval `across` by
+   * `down` tiles, over open ground only.
+   */
+  hills: {
+    perPiece: 3,
+    across: { min: 4, max: 10 },
+    down: { min: 3, max: 7 },
+  },
   /** A goal game's land stops coming once this many tiles past the keep are on the map. */
   pastKeep: 8,
   /** Rows open on both sides of where new land joins the old, at least. */
@@ -1201,13 +1211,17 @@ export const FLOOD = {
 export const FLOOD_GOALS = [0, 250, 500, 1000];
 
 /**
- * What No looking back's flood is: lava takes everything in its way but walls and ruins; water
- * leaves trees, rocks and bushes standing too, and goes round them. `terrain` is what a tile
+ * What No looking back's flood is: lava takes everything in its way but walls, ruins, hills and
+ * rock; water leaves trees and bushes standing too, and goes round them. `terrain` is what a tile
  * under it becomes.
  */
 export const FLOOD_LIQUIDS = {
-  lava: { name: "Lava", terrain: "lava", spares: "walls and ruins" },
-  water: { name: "Water", terrain: "floodwater", spares: "walls, ruins, trees, rocks and bushes" },
+  lava: { name: "Lava", terrain: "lava", spares: "walls, ruins, hills and rocks" },
+  water: {
+    name: "Water",
+    terrain: "floodwater",
+    spares: "walls, ruins, hills, rocks, trees and bushes",
+  },
 } as const satisfies Record<string, { name: string; terrain: string; spares: string }>;
 
 /** Selling refunds this fraction of cost, scaled by remaining HP. */
@@ -1233,6 +1247,8 @@ export const TERRAIN = {
   berries: { name: "Berry bush", walkable: true, buildable: "none" },
   /** No looking back's lava (see sim/flood.ts). */
   lava: { name: "Lava", walkable: false, buildable: "none" },
+  /** High ground: No looking back's flood never takes it (see sim/floodHills.ts). */
+  hill: { name: "Hill", walkable: true, buildable: "any" },
   /** No looking back's flood, when it's water (see FLOOD_LIQUIDS). */
   floodwater: { name: "Floodwater", walkable: false, buildable: "none" },
 } satisfies Record<string, TerrainStats>;

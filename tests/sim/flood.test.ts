@@ -330,6 +330,30 @@ describe("the lava", () => {
   });
 });
 
+describe("hills", () => {
+  it("stand above the flood: it goes round them, and they can be walked and built on", () => {
+    const state = blankFlood();
+    royal(state).at = { x: 40, y: 10 };
+    for (let y = 19; y <= 21; y++) {
+      for (let x = 3; x <= 5; x++) state.terrain[tileIndex(state, x, y)] = "hill";
+    }
+    state.flood!.front = 20;
+    run(state, 30 * TICK_RATE);
+    expect(state.terrain[tileIndex(state, 4, 20)]).toBe("hill");
+    expect(state.terrain[tileIndex(state, 6, 20)]).toBe("lava");
+    expect(isWalkable(state, 4, 20)).toBe(true);
+    expect(lavaWarning(state, 3, 20)).toBeNull();
+  });
+
+  it("are on the starting map and the new land", () => {
+    const state = floodGame();
+    const hills = () => state.terrain.filter((t) => t === "hill").length;
+    expect(hills()).toBeGreaterThan(0);
+    for (let i = 0; i < 3 * FLOOD.chunkColumns; i++) shiftWorld(state);
+    expect(hills()).toBeGreaterThan(0);
+  });
+});
+
 describe("water", () => {
   /** A tree, a rock and a bush in the flood's way, and a tower, and the flood far past them. */
   function inTheWay(liquid?: FloodLiquid) {
@@ -358,9 +382,9 @@ describe("water", () => {
     expect(lavaWarning(state, 3, 20)).toBeNull();
   });
 
-  it("isn't how lava goes: that takes them", () => {
+  it("isn't how lava goes: that takes trees and bushes (but not rock)", () => {
     const { at } = inTheWay();
-    expect([at(3), at(5), at(7)]).toEqual(Array(3).fill("lava"));
+    expect([at(3), at(5), at(7)]).toEqual(["lava", "rock", "lava"]);
   });
 
   it("takes a royal it reaches", () => {
