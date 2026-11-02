@@ -56,6 +56,12 @@ An endless mode about keeping moving, solo or co-op. You have no keep of your ow
 - Each tick an escort fights anything in reach (as a guard does). One that closes in to fight (range 1, the soldier) goes after the enemy in its sight nearest its royal, within `escortChase` (4) tiles of it. Otherwise it walks to its spot beside the royal, or anywhere beside it if that's blocked, and stands there. Its royal fallen, it stands where it is and fights.
 - One that falls (to a swarm, or the lava) is gone for good.
 
+**Ruined forts** (`FLOOD.forts`; `withForts` in flood.ts)
+
+- Each piece of new land gets up to `perPiece` (2) forts, fewer where they'd overlap each other or a goal's keep: a closed square ring of ruins (full HP) `size` (7-9) tiles across, clear of the piece's edges, with open ground inside and a chest of `chestGold` (60-150) in the middle. They go in before the walk-across check, so they never block the way on.
+- Ruins hold lava, so the inside stays dry. There's no way in: sell a ruin (they're nobody's) to open one.
+- `swarmChance` (half) of them have a swarm shut inside, placed when the land round the middle has come in (it can't get out until a ruin goes).
+
 **Swarms** (`src/sim/floodSwarms.ts`)
 
 - On the starting map, about one per `FLOOD.swarm.tilesPerSwarm` (900) tiles, 4-8 enemies each round a middle at least `swarm.spacing` (10) from other swarms and `swarm.clearOfStart` (20) from the royals' start. Each piece of new land brings as many for its size, placed when the land round their middle has come in. A swarm is as tough as wave 1 + one for each `FLOOD.tilesPerWave` (40) tiles across the world from the royals' start, up to `hardestWave` (25).

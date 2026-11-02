@@ -1165,6 +1165,17 @@ export const FLOOD = {
    */
   shiftColumns: 3,
   aheadTiles: 48,
+  /**
+   * Ruined forts in each piece of new land (at most this many; fewer where they'd overlap):
+   * closed square rings of ruins this many tiles across, lava-proof, a chest of this much gold in
+   * the middle, and this share with a swarm shut in.
+   */
+  forts: {
+    perPiece: 2,
+    size: { min: 7, max: 9 },
+    swarmChance: 0.5,
+    chestGold: { min: 60, max: 150 },
+  },
   /** A goal game's land stops coming once this many tiles past the keep are on the map. */
   pastKeep: 8,
   /** Rows open on both sides of where new land joins the old, at least. */

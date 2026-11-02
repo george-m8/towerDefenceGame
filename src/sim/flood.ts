@@ -12,7 +12,7 @@
 // right (see shiftWorld). The camera moves with it.
 import { FLOOD, KEEP_SIZE, TERRAIN, TICK_RATE } from "./config";
 import { placeSwarm } from "./floodSwarms";
-import { randomInt } from "./rng";
+import { nextRandom, randomInt } from "./rng";
 import { canStand, spawnUnit } from "./units";
 import { exploreRoyalSight, isExplored } from "./fog";
 import {
@@ -784,9 +784,16 @@ function nextLand(state: GameState): Land {
     goalX !== null && goalX < start + n
       ? Math.min(Math.max(goalX - start, 2), n - KEEP_SIZE - 2)
       : undefined;
-  let chunk = generateChunk(n, height, chunkSeed(state, 0), keepX);
+  // Its forts go in before the check, so they never block the way on.
+  const keepArea = keepX === undefined ? null : { x: keepX, y: Math.floor(height / 2) - 1 };
+  const generate = (attempt: number) =>
+    withForts(generateChunk(n, height, chunkSeed(state, attempt), keepX), n, height, {
+      seed: chunkSeed(state, attempt),
+      keep: keepArea,
+    });
+  let chunk = generate(0);
   for (let attempt = 1; attempt < 20 && !joinsOn(before, chunk, height); attempt++) {
-    chunk = generateChunk(n, height, chunkSeed(state, attempt), keepX);
+    chunk = generate(attempt);
   }
   if (keepX !== undefined) {
     const home = { worldX: start + keepX, y: Math.floor(height / 2) - 1 };
@@ -797,7 +804,7 @@ function nextLand(state: GameState): Land {
     chunk = { ...chunk, ruins: chunk.ruins.filter(offKeep), chests: chunk.chests.filter(offKeep) };
   }
   flood.land = {
-    swarms: swarmMiddles(chunk, n, height, chunkSeed(state, 0)),
+    swarms: [...swarmMiddles(chunk, n, height, chunkSeed(state, 0)), ...chunk.fortSwarms],
     width: n,
     next: 0,
     terrain: chunk.terrain,
@@ -855,6 +862,52 @@ function joinsOn(
     }
   }
   return false;
+}
+
+/**
+ * A piece of new land with its ruined forts (FLOOD.forts): closed square rings of ruins, open
+ * ground inside with a chest in the middle, which lava can't get into (ruins hold it); some
+ * have a swarm shut in. Sell a ruin to get in. Placed with their own RNG, clear of the land's
+ * edges and a goal's keep, over whatever was there.
+ */
+function withForts(
+  chunk: MapGenResult,
+  n: number,
+  height: number,
+  { seed, keep }: { seed: number; keep: Point | null },
+): MapGenResult & { fortSwarms: Point[] } {
+  const rng = { rngState: seed ^ 0x2f6b8c1d };
+  const { perPiece, size, swarmChance, chestGold } = FLOOD.forts;
+  const terrain = [...chunk.terrain];
+  let ruins = chunk.ruins;
+  let chests = chunk.chests;
+  const fortSwarms: Point[] = [];
+  const placed: { x: number; y: number; side: number }[] = [];
+  for (let f = 0; f < perPiece; f++) {
+    const side = randomInt(rng, size.min, size.max);
+    const x = randomInt(rng, 1, n - side - 1);
+    const y = randomInt(rng, 2, height - side - 2);
+    const overlaps = (a: { x: number; y: number; side: number }) =>
+      x < a.x + a.side + 2 && a.x < x + side + 2 && y < a.y + a.side + 2 && a.y < y + side + 2;
+    if (placed.some(overlaps)) continue;
+    if (keep && overlaps({ ...keep, side: KEEP_SIZE })) continue;
+    placed.push({ x, y, side });
+    const inFort = (p: { x: number; y: number }) =>
+      p.x >= x && p.x < x + side && p.y >= y && p.y < y + side;
+    ruins = ruins.filter((r) => !inFort(r));
+    chests = chests.filter((c) => !inFort(c));
+    for (let dy = 0; dy < side; dy++) {
+      for (let dx = 0; dx < side; dx++) {
+        terrain[(y + dy) * n + x + dx] = "ground";
+        const ring = dx === 0 || dy === 0 || dx === side - 1 || dy === side - 1;
+        if (ring) ruins = [...ruins, { x: x + dx, y: y + dy, hpFraction: 1 }];
+      }
+    }
+    const middle = { x: x + Math.floor(side / 2), y: y + Math.floor(side / 2) };
+    chests = [...chests, { ...middle, gold: randomInt(rng, chestGold.min, chestGold.max) }];
+    if (nextRandom(rng) < swarmChance) fortSwarms.push(middle);
+  }
+  return { ...chunk, terrain, ruins, chests, fortSwarms };
 }
 
 /**

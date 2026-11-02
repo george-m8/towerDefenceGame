@@ -666,3 +666,40 @@ describe("walled-off lava", () => {
     expect(state.terrain[tileIndex(state, 2, 10)]).toBe("lava");
   });
 });
+
+describe("ruined forts", () => {
+  it("come with new land: closed rings of ruins with a chest inside, which lava can't get into", () => {
+    const state = blankFlood();
+    for (let i = 0; i < 3 * FLOOD.chunkColumns; i++) shiftWorld(state);
+    // A chest walled in: from it, over tiles not ruins, the map's left edge can't be reached.
+    const shutIn = state.features.filter((chest) => {
+      const seen = new Set([tileIndex(state, chest.x, chest.y)]);
+      const queue = [{ x: chest.x, y: chest.y }];
+      for (let head = 0; head < queue.length; head++) {
+        const { x, y } = queue[head];
+        if (x === 0) return false;
+        for (const [nx, ny] of [
+          [x + 1, y],
+          [x - 1, y],
+          [x, y + 1],
+          [x, y - 1],
+        ]) {
+          if (nx < 0 || ny < 0 || nx >= state.width || ny >= state.height) continue;
+          if (seen.has(tileIndex(state, nx, ny))) continue;
+          if (state.structures[state.base[tileIndex(state, nx, ny)]]?.kind === "ruin") continue;
+          seen.add(tileIndex(state, nx, ny));
+          queue.push({ x: nx, y: ny });
+        }
+      }
+      return true;
+    });
+    expect(shutIn.length).toBeGreaterThan(0);
+    // Lava everywhere around: inside stays dry.
+    const [chest] = shutIn;
+    state.flood!.front = state.width + 10;
+    state.flood!.royals = []; // nobody walking on (the world stays put), nobody to fall
+    run(state, 120 * TICK_RATE);
+    expect(state.terrain[tileIndex(state, chest.x - 5, chest.y - 5)]).toBe("lava");
+    expect(state.terrain[tileIndex(state, chest.x, chest.y)]).not.toBe("lava");
+  }, 60_000);
+});
