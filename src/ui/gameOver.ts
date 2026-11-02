@@ -49,20 +49,26 @@ export function createGameOverDialog(
       levels.hidden = win === null;
       restart.textContent = "Restart";
       if (state.flood) {
-        // Endless, the lava always wins in the end, and how far he got is the score; with a
-        // goal, reaching the keep wins.
+        // Endless, the lava always wins in the end, and how far the royals got is the score;
+        // with a goal, reaching the keep wins.
         const distance = distanceTravelled(state.flood);
         const tiles = `${distance} tile${distance === 1 ? "" : "s"}`;
-        title.textContent = state.won
-          ? "The king made it to the keep!"
-          : state.flood.kingHp <= 0
-            ? "The king has fallen."
-            : "The lava took the king.";
-        summary.textContent = state.won
-          ? `He walked ${tiles} to it, in ${time}. Map seed ${state.seed}.`
-          : state.flood.goal !== null
-            ? `He got ${tiles}, ${tilesToGoal(state.flood)} short of the keep, in ${time}. Map seed ${state.seed}.`
-            : `He got ${tiles}, in ${time}. Map seed ${state.seed}.`;
+        const { royals } = state.flood;
+        const [only] = royals;
+        const short =
+          state.flood.goal !== null ? `, ${tilesToGoal(state.flood)} short of the keep` : "";
+        if (state.won) {
+          title.textContent = "Made it to the keep!";
+          summary.textContent = `${tiles}, in ${time}. Map seed ${state.seed}.`;
+        } else if (royals.length === 1 && only) {
+          const who = `The ${only.title}`;
+          title.textContent =
+            only.fallen === "lava" ? `The lava took the ${only.title}.` : `${who} has fallen.`;
+          summary.textContent = `${who} got ${tiles}${short}, in ${time}. Map seed ${state.seed}.`;
+        } else {
+          title.textContent = "All the royals have fallen.";
+          summary.textContent = `They got ${tiles}${short}, in ${time}. Map seed ${state.seed}.`;
+        }
         return;
       }
       if (state.mode === "pvp") {

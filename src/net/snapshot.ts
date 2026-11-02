@@ -1,6 +1,7 @@
 // Turns the server's GameState into what clients receive. Shared and pure.
 import { ENEMY_KIND_ORDER, UNIT_KIND_ORDER } from "../sim/config";
 import { livingLeader } from "../sim/enemies";
+import { clientFlood, shiftLayer } from "../sim/flood";
 import type { Enemy, GameState, Structure, Unit } from "../sim/types";
 import type {
   ClientEnemy,
@@ -17,6 +18,7 @@ export function toClientState(state: GameState): ClientState {
   const { flows: _flows, rngState: _rng, enemies, units, structures, ...rest } = state;
   return {
     ...rest,
+    flood: clientFlood(state.flood),
     enemies: enemies.map((e) => toClientEnemy(state, e)),
     units: units.map(toClientUnit),
     structures: toClientStructures(structures),
@@ -44,6 +46,8 @@ export interface SentState {
   enemies: Set<number>;
   /** Units whose kind and owner the clients already have. */
   units: Set<number>;
+  /** No looking back: how far the world had moved on (the layers above are moved with it). */
+  shifted: number;
 }
 
 /** A baseline matching `state` as it is now (what a welcome snapshot carries). */
@@ -63,6 +67,7 @@ export function sentStateOf(state: GameState): SentState {
     ),
     enemies: new Set(state.enemies.map((e) => e.id)),
     units: new Set(state.units.map((u) => u.id)),
+    shifted: state.flood?.shifted ?? 0,
   };
 }
 
@@ -88,7 +93,17 @@ export function toUpdate(state: GameState, sent: SentState): StateUpdate {
     speed: state.speed,
     gameOver: state.gameOver,
     fog: state.fog,
+    flood: clientFlood(state.flood),
   };
+
+  // No looking back's world has moved on: the clients move their layers with it (seeing that
+  // `flood.shifted` has gone up), and so does the record of what they have, so only the new
+  // columns (and real changes) are sent below.
+  const moved = (state.flood?.shifted ?? 0) - sent.shifted;
+  if (moved > 0) {
+    shiftLayers(sent, state.width, state.height, moved);
+    sent.shifted += moved;
+  }
 
   sent.enemies = new Set(state.enemies.map((e) => e.id));
   sent.units = new Set(state.units.map((u) => u.id));
@@ -138,6 +153,23 @@ export function toUpdate(state: GameState, sent: SentState): StateUpdate {
     sent.raidPaths = state.raidPaths;
   }
   return update;
+}
+
+/**
+ * The tile layers as a client has them, moved on `n` columns (see shiftLayer): what comes in on
+ * the right is a blank (open ground, nothing on it, unexplored) until the tile changes arrive.
+ */
+export function shiftLayers(
+  layers: Pick<SentState, "terrain" | "base" | "mount" | "explored" | "resources">,
+  width: number,
+  height: number,
+  n: number,
+): void {
+  shiftLayer(layers.terrain, width, height, n, "ground");
+  shiftLayer(layers.base, width, height, n, 0);
+  shiftLayer(layers.mount, width, height, n, 0);
+  shiftLayer(layers.explored, width, height, n, 0);
+  shiftLayer(layers.resources, width, height, n, 0);
 }
 
 /** Tiles of one layer that differ from what was sent, as [index, value]; `sent` catches up. */

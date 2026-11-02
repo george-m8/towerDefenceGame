@@ -39,6 +39,7 @@ import type {
   Point,
   Structure,
   StructureKind,
+  Royal,
 } from "../sim/types";
 import type { PendingBuild } from "../net/session";
 import { isBuildTool, type UiState } from "../ui/state";
@@ -94,10 +95,10 @@ import {
   playerColour,
   DOOR_ALPHA,
   KEEP_GLYPH,
-  KING_GLYPH,
+  ROYAL_GLYPHS,
   GLYPH_FONTS,
 } from "./palette";
-import { homeOnMap, isFloodHome, kingAt, lavaWarning } from "../sim/flood";
+import { homeOnMap, isFloodHome, lavaWarning, livingRoyals, royalAt, royalOf } from "../sim/flood";
 import { fromView, type Rotation } from "./rotation";
 import { fogImage, fogSpans, type FogLevel } from "./fog";
 import { createHpBarTracker } from "./hpBars";
@@ -572,19 +573,43 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   }
 
   /**
-   * No looking back: the king's plan, drawn as a raider's (numbered flags, joined from him by a
-   * faint line), with his way to the next flag as a dot a tile;
-   * then, on the flat map, the king, part way to his next tile (the 3D view stands him up as a
-   * card). Each sits on its tile's top.
+   * No looking back's royals still standing, each in its player's colour: on the flat map, part
+   * way to its next tile (the 3D view stands each up as a card), with its HP over it once hurt.
+   * The viewer's own royal's plan goes under it, drawn as a raider's (numbered flags, joined from
+   * it by a faint line), with its way to the next flag as a dot a tile. Each sits on its tile's top.
    */
-  function drawKing(state: GameState) {
+  function drawRoyals(state: GameState) {
     const flood = state.flood;
     if (!flood) return;
-    const colour = playerColour(flood.owner);
+    const own = royalOf(flood, viewer);
+    if (own) drawRoyalPlan(state, own);
+    for (const royal of livingRoyals(flood)) {
+      const at = onTop(state, royalAt(royal));
+      if (royal.hp < royal.maxHp) drawHpBar(at.x, at.y - 0.2, royal.hp / royal.maxHp);
+      if (iso) continue;
+      const x = (at.x + 0.5) * TILE_SIZE;
+      const y = (at.y + 0.5) * TILE_SIZE;
+      ctx!.fillStyle = playerColour(royal.owner);
+      ctx!.beginPath();
+      ctx!.arc(x, y, TILE_SIZE * 0.45, 0, Math.PI * 2);
+      ctx!.fill();
+      ctx!.strokeStyle = COLOURS.keepGlyph;
+      ctx!.lineWidth = 1.5;
+      ctx!.stroke();
+      ctx!.lineWidth = 1;
+      ctx!.font = GLYPH_FONT;
+      ctx!.fillStyle = COLOURS.keepGlyph;
+      ctx!.fillText(ROYAL_GLYPHS[royal.title], x, y + 1);
+    }
+  }
+
+  /** A royal's flags and its way to the next (see drawRoyals). */
+  function drawRoyalPlan(state: GameState, royal: Royal) {
+    const colour = playerColour(royal.owner);
     ctx!.fillStyle = colour;
     ctx!.globalAlpha = 0.5;
     const dot = TILE_SIZE / 4;
-    for (const p of flood.path) {
+    for (const p of royal.path) {
       const at = onTop(state, p);
       ctx!.fillRect(
         (at.x + 0.5) * TILE_SIZE - dot / 2,
@@ -594,30 +619,11 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       );
     }
     ctx!.globalAlpha = 1;
-    const king = onTop(state, kingAt(flood));
     drawPathFlags(
-      flood.plan.map((p) => onTop(state, p)),
+      royal.plan.map((p) => onTop(state, p)),
       colour,
-      king,
+      onTop(state, royalAt(royal)),
     );
-    // Hurt by a swarm: his HP over him, as anything's.
-    if (flood.kingHp < flood.kingMaxHp) {
-      drawHpBar(king.x, king.y - 0.2, flood.kingHp / flood.kingMaxHp);
-    }
-    if (iso) return;
-    const kx = (king.x + 0.5) * TILE_SIZE;
-    const ky = (king.y + 0.5) * TILE_SIZE;
-    ctx!.fillStyle = colour;
-    ctx!.beginPath();
-    ctx!.arc(kx, ky, TILE_SIZE * 0.45, 0, Math.PI * 2);
-    ctx!.fill();
-    ctx!.strokeStyle = COLOURS.keepGlyph;
-    ctx!.lineWidth = 1.5;
-    ctx!.stroke();
-    ctx!.lineWidth = 1;
-    ctx!.font = GLYPH_FONT;
-    ctx!.fillStyle = COLOURS.keepGlyph;
-    ctx!.fillText(KING_GLYPH, kx, ky + 1);
   }
 
   /**
@@ -1467,7 +1473,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
         drawGhost(state, ui);
       }
       drawHoverEdge(state, ui);
-      drawKing(state);
+      drawRoyals(state);
       const raid = state.players[viewer]?.raid;
       const own = raid ? state.enemies.find((e) => e.id === raid.enemyId) : undefined;
       if (raid) {
@@ -1531,7 +1537,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
         drawGhost(state, ui);
       }
       drawHoverEdge(state, ui);
-      drawKing(state);
+      drawRoyals(state);
       const raid = state.players[viewer]?.raid;
       if (raid) {
         // The paths every free enemy keeps to, the raider's target, and their enemy's flags.

@@ -29,6 +29,8 @@ export type JoinIntent =
       size?: MapSize;
       fog?: false;
       enemiesCome?: "night";
+      /** No looking back: a keep this many tiles on (none: on for ever). */
+      goal?: number;
     }
   | { mode: "join"; room: string; name: string };
 
@@ -218,6 +220,7 @@ export function createNetworkSession(
         ...(create?.game ? { mode: create.game } : {}),
         ...(create?.size ? { size: create.size } : {}),
         ...(create?.enemiesCome ? { enemiesCome: create.enemiesCome } : {}),
+        ...(create?.goal ? { goal: create.goal } : {}),
       });
     }
   }

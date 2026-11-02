@@ -24,6 +24,7 @@ export function openRoom(
   mode: GameMode = "endless",
   size: MapSize = DEFAULT_MAP_SIZE,
   enemiesCome: EnemiesCome = "always",
+  goal?: number,
 ): Room {
   let code: string;
   do code = randomCode();
@@ -35,6 +36,7 @@ export function openRoom(
     mode,
     size,
     enemiesCome,
+    goal,
   );
   registry.rooms.set(code, room);
   return room;

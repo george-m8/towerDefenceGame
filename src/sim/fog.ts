@@ -14,7 +14,7 @@ import {
   type StructureStats,
 } from "./config";
 import { inBounds } from "./grid";
-import type { Facing, GameState, Keep, PlayerId, StructureKind, Unit } from "./types";
+import type { Facing, GameState, Keep, PlayerId, StructureKind, Unit, Royal } from "./types";
 
 export const UNEXPLORED = 0;
 export const SEEN = 1;
@@ -115,8 +115,6 @@ export function initialExplored(state: GameState): number[] {
     if (state.mode !== "pvp") forEachKeepSightTile(state, keep, (i) => (explored[i] |= 1));
   }
   for (const p of state.spawnTiles) explored[p.y * state.width + p.x] |= 1;
-  const king = state.flood?.king;
-  if (king) forEachCircleTile(state, king.x, king.y, FLOOD.kingSight, (i) => (explored[i] |= 1));
   return explored;
 }
 
@@ -140,13 +138,10 @@ export function unitMoved(state: GameState, unit: Unit): void {
   state.sightVersion++;
 }
 
-/** No looking back: the king has moved; what he sees now is explored, for good. */
-export function exploreKingSight(state: GameState): void {
-  const flood = state.flood!;
-  const bit = 1 << teamOf(state, flood.owner);
-  forEachCircleTile(state, flood.king.x, flood.king.y, FLOOD.kingSight, (i) =>
-    explore(state, i, bit),
-  );
+/** No looking back: a royal has moved (or arrived); what it sees now is explored, for good. */
+export function exploreRoyalSight(state: GameState, royal: Royal): void {
+  const bit = 1 << teamOf(state, royal.owner);
+  forEachCircleTile(state, royal.at.x, royal.at.y, FLOOD.royalSight, (i) => explore(state, i, bit));
   state.sightVersion++;
 }
 
@@ -252,9 +247,11 @@ function findSight(state: GameState, team: number): Uint8Array {
       forEachKeepSightTile(state, keep, see);
     }
   }
-  const flood = state.flood;
-  if (flood && teamOf(state, flood.owner) === team) {
-    forEachCircleTile(state, flood.king.x, flood.king.y, FLOOD.kingSight, see);
+  // No looking back's royals still standing.
+  for (const royal of state.flood?.royals ?? []) {
+    if (royal.fallen === null && teamOf(state, royal.owner) === team) {
+      forEachCircleTile(state, royal.at.x, royal.at.y, FLOOD.royalSight, see);
+    }
   }
   // Ruins have no sight, so only what players built counts.
   for (const structure of Object.values(state.structures)) {

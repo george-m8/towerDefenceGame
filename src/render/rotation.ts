@@ -175,13 +175,16 @@ export function viewOf(state: GameState, turns: Rotation): GameState {
     const b = cornerToView(keep.x + keep.size, keep.y + keep.size, turns, w, h);
     return { ...keep, x: Math.min(a.x, b.x), y: Math.min(a.y, b.y) };
   });
-  // No looking back's king, his flags and his way.
+  // No looking back's royals, their flags and their ways.
   if (state.flood) {
     view.flood = {
       ...state.flood,
-      king: toView(state.flood.king, turns, w, h),
-      plan: state.flood.plan.map((p) => toView(p, turns, w, h)),
-      path: state.flood.path.map((p) => toView(p, turns, w, h)),
+      royals: state.flood.royals.map((royal) => ({
+        ...royal,
+        at: toView(royal.at, turns, w, h),
+        plan: royal.plan.map((p) => toView(p, turns, w, h)),
+        path: royal.path.map((p) => toView(p, turns, w, h)),
+      })),
     };
   }
   return view;

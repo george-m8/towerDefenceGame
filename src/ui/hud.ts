@@ -15,7 +15,7 @@ import { discountAt, priceAt } from "../sim/enclosures";
 import { refundFor } from "../sim/economy";
 import { ownedCount, topAt } from "../sim/grid";
 import type { GameState, PlayerId, StructureKind } from "../sim/types";
-import { ARROW_SYMBOLS, GLYPHS, KING_GLYPH, facingArrow, glyphFor } from "../render/palette";
+import { ARROW_SYMBOLS, GLYPHS, ROYAL_GLYPHS, facingArrow, glyphFor } from "../render/palette";
 import {
   BUILD_TABS,
   TOOLS,
@@ -58,7 +58,7 @@ export function hudContent(state: GameState, ui: UiState): HudContent {
   }
   if (ui.tool === "route") {
     return {
-      tool: { glyph: KING_GLYPH, name: "King's flags (Shift: add)" },
+      tool: { glyph: ROYAL_GLYPHS.king, name: "Royal's flags (Shift: add)" },
       cost: null,
       time: null,
       short: false,

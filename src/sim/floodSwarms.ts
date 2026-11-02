@@ -1,30 +1,31 @@
 // No looking back's swarms: groups of enemies idling round the map, tougher the further on they
-// are, more coming in with each piece of new land. One that sees the king (or is hurt) wakes its
-// whole swarm, and they come for him, round what's in the way (they don't break walls), hitting
-// him once they reach him. They give up once they've lost sight of him for a while, and go back.
-// The king falling to them ends the game, as the lava does.
+// are, more coming in with each piece of new land. One that sees a royal (or is hurt) wakes its
+// whole swarm, and they come for the nearest royal, round what's in the way (they don't break
+// walls), hitting it once they reach it. They give up once they've lost sight of the royals for a
+// while, and go back.
+// A royal they bring down has fallen, as one the lava reaches has.
 import { ENEMY_KINDS, FLOOD, TICK_RATE, type EnemyKindId } from "./config";
 import { attackUnit, spawnEnemy, unitToFight } from "./enemies";
 import { atTileCentre } from "./movement";
-import { kingAt } from "./flood";
+import { livingRoyals, royalAt } from "./flood";
 import { blocksAt, inBounds } from "./grid";
 import { canCross } from "./pathfinding";
 import { headFor, roam } from "./raiders";
 import { nextRandom, randomInt } from "./rng";
-import type { Enemy, GameState, Point } from "./types";
+import type { Enemy, Flood, GameState, Point, Royal } from "./types";
 
-/** How tough a swarm is, by how far across the world (from the king's start) it is. */
+/** How tough a swarm is, by how far across the world (from the royals' start) it is. */
 export function swarmWave(state: GameState, x: number): number {
-  const across = x + state.flood!.shifted - state.flood!.startX;
+  const across = x + state.flood!.shifted - state.flood!.start.x;
   return Math.min(FLOOD.hardestWave, 1 + Math.max(0, Math.floor(across / FLOOD.tilesPerWave)));
 }
 
 /**
- * The swarms on the starting map, spread over it clear of the king's start. Called once, when
+ * The swarms on the starting map, spread over it clear of the royals' start. Called once, when
  * the game is made, with the state's RNG.
  */
 export function populateFlood(state: GameState): void {
-  const king = state.flood!.king;
+  const start = state.flood!.start;
   const { tilesPerSwarm, spacing, clearOfStart } = FLOOD.swarm;
   const count = Math.round((state.width * state.height) / tilesPerSwarm);
   const middles: Point[] = [];
@@ -36,7 +37,7 @@ export function populateFlood(state: GameState): void {
       };
       if (
         !isOpen(state, p.x, p.y) ||
-        Math.hypot(p.x - king.x, p.y - king.y) < clearOfStart ||
+        Math.hypot(p.x - start.x, p.y - start.y) < clearOfStart ||
         middles.some((m) => Math.hypot(p.x - m.x, p.y - m.y) < spacing)
       ) {
         continue;
@@ -102,29 +103,28 @@ function wake(state: GameState, enemy: Enemy): void {
 }
 
 /**
- * One tick of a swarm member's mind: seeing the king (or being hurt) wakes its swarm; awake, it
- * comes for him and hits him once it's beside him, and on the way stops to fight any of the
- * player's units beside it (his escort, say), as wave enemies do; asleep, it stands at its post
- * or heads back there (or, its post gone with the land behind, wanders).
+ * One tick of a swarm member's mind: seeing a royal (or being hurt) wakes its swarm; awake, it
+ * comes for the nearest royal and hits it once it's beside it, and on the way stops to fight any
+ * of the players' units beside it (an escort, say), as wave enemies do; asleep, it stands at its
+ * post or heads back there (or, its post gone with the land behind, wanders).
  */
-export function chaseKing(state: GameState, enemy: Enemy): void {
+export function chaseRoyals(state: GameState, enemy: Enemy): void {
   const flood = state.flood!;
   const mind = enemy.swarm!;
-  const king = kingAt(flood);
+  const royal = nearestRoyal(flood, enemy);
   const hurt = enemy.hp < mind.hp;
   mind.hp = enemy.hp;
-  if (hurt || Math.hypot(enemy.x - king.x, enemy.y - king.y) <= FLOOD.swarm.sight) {
-    wake(state, enemy);
-  }
-  if (mind.alert > 0) {
+  if (hurt || (royal && royal.distance <= FLOOD.swarm.sight)) wake(state, enemy);
+  if (mind.alert > 0 && royal) {
     mind.alert--;
+    const { at } = royal.royal;
     const close = Math.max(
-      Math.abs(Math.round(enemy.x) - flood.king.x),
-      Math.abs(Math.round(enemy.y) - flood.king.y),
+      Math.abs(Math.round(enemy.x) - at.x),
+      Math.abs(Math.round(enemy.y) - at.y),
     );
     if (close <= 1) {
       if (enemy.attackCooldown === 0) {
-        flood.kingHp = Math.max(0, flood.kingHp - enemy.damage);
+        royal.royal.hp = Math.max(0, royal.royal.hp - enemy.damage);
         enemy.attackCooldown = enemy.attackInterval;
       }
       return;
@@ -135,14 +135,20 @@ export function chaseKing(state: GameState, enemy: Enemy): void {
       attackUnit(enemy, unit);
       return;
     }
-    headFor(state, enemy, flood.king);
+    headFor(state, enemy, at);
     return;
   }
   if (mind.post) headFor(state, enemy, mind.post);
   else roam(state, enemy);
 }
 
-/** Whether a swarm's enemies have had the king. */
-export function kingFallen(state: GameState): boolean {
-  return state.flood !== null && state.flood.kingHp <= 0;
+/** The royal still standing nearest an enemy, and how far (as it's drawn, part way along). */
+function nearestRoyal(flood: Flood, enemy: Enemy): { royal: Royal; distance: number } | null {
+  let best: { royal: Royal; distance: number } | null = null;
+  for (const royal of livingRoyals(flood)) {
+    const p = royalAt(royal);
+    const distance = Math.hypot(enemy.x - p.x, enemy.y - p.y);
+    if (!best || distance < best.distance) best = { royal, distance };
+  }
+  return best;
 }

@@ -24,8 +24,8 @@ import { addCue, updateCues } from "./cues";
 import { updateEffects } from "./effects";
 import { initialExplored, revealKeep } from "./fog";
 import { claimKeepWalls, placeKeepWalls } from "./keepWalls";
-import { createFlood, joinEscort, kingDrowned, kingHome, planKing, updateFlood } from "./flood";
-import { kingFallen, populateFlood } from "./floodSwarms";
+import { assignRoyals, createFlood, planKing, royalHome, royalsFallen, updateFlood } from "./flood";
+import { populateFlood } from "./floodSwarms";
 import { floodLayout, generateTerrain, layoutFor, type MapLayout } from "./mapgen";
 import type { ItemsFile } from "./itemsFile";
 import { mapFromGame, spawnTiles, terrainGrid, type MapFile } from "./mapFile";
@@ -172,11 +172,6 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
   state.explored = initialExplored(state);
   for (const name of options.players ?? ["Player 1"]) addPlayer(state, name);
   if (mode === "pvp") assignKeeps(state);
-  // The king is the player's, in their colour, and so is his escort.
-  if (state.flood) {
-    state.flood.owner = Number(Object.keys(state.players)[0] ?? 1);
-    joinEscort(state);
-  }
   updateVotes(state); // with no players, the game starts paused
   for (const spot of map.ruins) {
     const ruin = placeStructure(state, "ruin", spot.x, spot.y, "N", null);
@@ -197,6 +192,8 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     }
   } else if (state.flood && !options.blankMap) populateFlood(state);
   else if (!options.blankMap) placeKeepWalls(state);
+  // No looking back: a royal for each player there is (solo); a room's are handed out when it starts.
+  if (state.flood) assignRoyals(state);
   return state;
 }
 
@@ -250,8 +247,7 @@ export function tick(state: GameState): void {
   removeDeadUnits(state);
   collectIncome(state);
   collectFarmIncome(state);
-  const fallen =
-    state.keeps.find((keep) => keep.hp <= 0) ?? (kingDrowned(state) || kingFallen(state));
+  const fallen = state.keeps.find((keep) => keep.hp <= 0) ?? royalsFallen(state);
   if (fallen && !state.gameOver) {
     state.gameOver = true;
     // PvP: the player whose keep still stands wins.
@@ -259,7 +255,7 @@ export function tick(state: GameState): void {
       state.winner = state.keeps.find((keep) => keep.hp > 0)?.owner ?? null;
     }
     addCue(state, "gameOver");
-  } else if (!state.gameOver && (lastWaveBeaten(state) || kingHome(state))) {
+  } else if (!state.gameOver && (lastWaveBeaten(state) || royalHome(state))) {
     state.gameOver = true;
     state.won = true;
   }

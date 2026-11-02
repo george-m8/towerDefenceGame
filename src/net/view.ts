@@ -9,6 +9,8 @@ import type {
   ClientUnit,
   StateUpdate,
 } from "./protocol";
+import { shiftLayer } from "../sim/flood";
+import { shiftLayers } from "./snapshot";
 
 /** Enemies and units as an update leaves them, with every field filled in, for smoothing. */
 export interface Movers {
@@ -52,6 +54,14 @@ export function applyUpdate(view: GameState, update: StateUpdate): Movers {
       owner: u.owner ?? before?.owner ?? 0,
     };
   });
+  // No looking back's world has moved on since the last update: move the layers with it first,
+  // so the tile changes below land where they should (see shiftLayers).
+  const moved = (update.flood?.shifted ?? 0) - (view.flood?.shifted ?? 0);
+  if (moved > 0) {
+    shiftLayers(view, view.width, view.height, moved);
+    shiftLayer(view.resourceWorth, view.width, view.height, moved, 0);
+  }
+  view.flood = update.flood;
   view.tick = update.tick;
   view.gridVersion = update.gridVersion;
   view.sightVersion = update.sightVersion;

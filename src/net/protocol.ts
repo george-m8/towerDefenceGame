@@ -37,6 +37,9 @@ const MAX_COORDINATE = 4096;
  */
 export const MAX_COMMANDS_PER_MESSAGE = 32;
 
+/** The furthest No looking back goal a room can be made with, in tiles. */
+const MAX_FLOOD_GOAL = 100_000;
+
 /** Commands a player may send online (no debug commands). */
 export type OnlineCommand = Exclude<Command, DebugCommand>;
 
@@ -46,7 +49,15 @@ export interface SequencedCommand {
 }
 
 export type ClientMessage =
-  | { type: "create"; name: string; mode?: GameMode; size?: MapSize; enemiesCome?: EnemiesCome }
+  | {
+      type: "create";
+      name: string;
+      mode?: GameMode;
+      size?: MapSize;
+      enemiesCome?: EnemiesCome;
+      /** No looking back: a keep this many tiles on, reaching which wins (none: on for ever). */
+      goal?: number;
+    }
   | { type: "join"; room: string; name: string }
   | { type: "rejoin"; room: string; token: string }
   | ({ type: "command" } & SequencedCommand)
@@ -119,7 +130,8 @@ type DynamicFields =
   | "paused"
   | "speed"
   | "gameOver"
-  | "fog";
+  | "fog"
+  | "flood";
 
 /** Changed tiles of one grid layer, as [tile index, new value] pairs. */
 export type TileChanges<T> = [number, T][];
@@ -183,7 +195,9 @@ export function parseClientMessage(raw: string): ParseResult {
       if (name === null) return fail("Bad name");
       const message: ClientMessage = { type: "create", name };
       if (data.mode !== undefined) {
-        if (data.mode !== "endless" && data.mode !== "pvp") return fail("Bad mode");
+        if (data.mode !== "endless" && data.mode !== "pvp" && data.mode !== "flood") {
+          return fail("Bad mode");
+        }
         message.mode = data.mode;
       }
       if (data.size !== undefined) {
@@ -195,6 +209,10 @@ export function parseClientMessage(raw: string): ParseResult {
           return fail("Bad enemiesCome");
         }
         message.enemiesCome = data.enemiesCome;
+      }
+      if (data.goal !== undefined) {
+        if (!isInt(data.goal, 1, MAX_FLOOD_GOAL)) return fail("Bad goal");
+        message.goal = data.goal;
       }
       return ok(message);
     }
@@ -271,6 +289,11 @@ function parseCommand(data: unknown): OnlineCommand | null {
     }
     case "sprint":
       return typeof data.on === "boolean" ? { type: "sprint", on: data.on } : null;
+    case "planKing": {
+      if (!isCoordinate(data.x) || !isCoordinate(data.y)) return null;
+      if (data.queue === undefined) return { type: "planKing", x: data.x, y: data.y };
+      return data.queue === true ? { type: "planKing", x: data.x, y: data.y, queue: true } : null;
+    }
     case "sell":
       return isCoordinate(data.x) && isCoordinate(data.y)
         ? { type: "sell", x: data.x, y: data.y }

@@ -189,21 +189,37 @@ export interface SwarmMind {
   hp: number;
 }
 
-/** No looking back: the king's walk home ahead of the lava (see sim/flood.ts). */
-export interface Flood {
-  /** The tile the king stands on, and how far he is across to the next (0 to 1). */
-  king: Point;
-  progress: number;
-  /** Whose king he is: the fog he lifts is theirs. */
+/** No looking back's royals: a king, a queen, then a prince and a princess, one per player. */
+export type RoyalTitle = "king" | "queen" | "prince" | "princess";
+
+/** One of No looking back's royals (see sim/flood.ts): a player's to lead, and to keep alive. */
+export interface Royal {
+  /** Whose: they plan its way, and the fog it lifts is their team's. */
   owner: PlayerId;
-  /** His HP: swarms hit him (see floodSwarms.ts), and at 0 the game's over, as with the lava. */
-  kingHp: number;
-  kingMaxHp: number;
-  /** The next swarm's number (a swarm wakes together). */
-  swarms: number;
-  /** His flags, in the order he'll walk to them (as a raider's plan), and his way to the first. */
+  title: RoyalTitle;
+  /** The tile it stands on, and how far it is across to the next (0 to 1). */
+  at: Point;
+  progress: number;
+  /** Its flags, in the order it'll walk to them (as a raider's plan), and its way to the first. */
   plan: Point[];
   path: Point[];
+  /** Swarms hit it (see floodSwarms.ts). */
+  hp: number;
+  maxHp: number;
+  /** How it fell, once it has: gone for good, and once all have, the game's over. */
+  fallen: "lava" | "swarm" | null;
+}
+
+/** No looking back: the royals' walk on ahead of the lava (see sim/flood.ts). */
+export interface Flood {
+  /** One per player (handed out when the game starts; see assignRoyals). */
+  royals: Royal[];
+  /** Where the first starts, and the column the distance is counted from. */
+  start: Point;
+  /** The furthest any royal has got, in tiles across the world from the start: the score. */
+  best: number;
+  /** The next swarm's number (a swarm wakes together). */
+  swarms: number;
   /** How far in from the left the lava has come, in tiles, on average (see lavaEdge). */
   front: number;
   /** The tiles beside the lava not yet under (tile indices): where it spreads to next... */
@@ -212,13 +228,12 @@ export interface Flood {
   fill: number[];
   /** The tiles about to go under, for their glow, as [x, y, warning] in a row (see lavaWarning). */
   glow: number[];
-  /** Columns the world has moved on by (see shiftWorld), and the column he started on. */
+  /** Columns the world has moved on by (see shiftWorld). */
   shifted: number;
-  startX: number;
   /** The new land still to come in on the right, a column at a time (see shiftWorld). */
   land: Land | null;
   /**
-   * A goal: the tiles across the world (from where he started) that the keep stands at, and
+   * A goal: the tiles across the world (from the royals' start) that the keep stands at, and
    * reaching it wins; null goes on for ever. `home` is the keep once it's in the world (its
    * top-left tile, its column counted across the world as `shifted` is), KEEP_SIZE square.
    */
@@ -273,8 +288,8 @@ export interface Unit {
   siegeBlockedAt: number;
   /** It needs a path but the tick's search budget ran out: it goes first next tick. */
   waitingForPath: boolean;
-  /** No looking back: one of the king's escort, at this spot beside him (see sim/units.ts). */
-  escort?: Point;
+  /** No looking back: one of a royal's escort (that royal's index), at this spot beside it. */
+  escort?: { x: number; y: number; royal: number };
 }
 
 /** Short-lived visual events recorded by the simulation for the renderer. */

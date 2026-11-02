@@ -1,4 +1,6 @@
 // The waiting room: who's in, the invite link, and the host's Start button.
+import { FLOOD } from "../sim/config";
+import { GAME_MODES } from "./startScreen";
 import type { GameState } from "../sim/types";
 import { playerName } from "../sim/players";
 import type { NetworkSession } from "../net/networkSession";
@@ -41,10 +43,12 @@ export function createWaitingRoom(root: HTMLElement, session: NetworkSession) {
       room.textContent = session.room ?? "";
       const isHost = lobby.host === session.playerId;
       const pvp = lobby.mode === "pvp";
-      mode.textContent = pvp ? "PvP" : "Endless";
+      const flood = lobby.mode === "flood";
+      mode.textContent = GAME_MODES.find((m) => m.mode === lobby.mode)?.name ?? "Endless";
       start.hidden = !isHost;
       raiding = state.players[session.playerId]?.role === "raider";
-      role.hidden = pvp;
+      // Raiders are Endless's (and PvP's players are both defenders).
+      role.hidden = pvp || flood;
       role.textContent = raiding ? "Play as a defender instead" : "Play as a raider (the enemy)";
       // PvP is one against one: the host can only start once the rival is in.
       const inRoom = Object.values(state.players).filter((p) => p.connected).length;
@@ -57,11 +61,17 @@ export function createWaitingRoom(root: HTMLElement, session: NetworkSession) {
           : "Start when everyone is in."
         : `Waiting for ${lobby.host === null ? "the host" : playerName(state, lobby.host)} to start...`;
 
+      // No looking back: the royal each will lead, by when they joined (as assignRoyals hands
+      // them out).
+      const ids = Object.keys(state.players)
+        .map(Number)
+        .sort((a, b) => a - b);
+      const royalOf = (id: number) => (flood ? ` - the ${FLOOD.titles[ids.indexOf(id)]}` : "");
       const rows = Object.values(state.players)
         .filter((p) => p.connected)
         .map((p) => ({
           id: p.id,
-          label: `${p.name}${p.id === session.playerId ? " (you)" : ""}${p.id === lobby.host ? " - host" : ""}${p.role === "raider" ? " - raider" : ""}`,
+          label: `${p.name}${p.id === session.playerId ? " (you)" : ""}${p.id === lobby.host ? " - host" : ""}${p.role === "raider" ? " - raider" : ""}${royalOf(p.id)}`,
         }));
       const key = JSON.stringify(rows);
       if (key === lastPlayers) return;

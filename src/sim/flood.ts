@@ -1,18 +1,20 @@
-// No looking back: a solo mode, and an endless one. You have no keep to hold: the king starts on
-// the left edge and walks on, as far as he can. You plan his way as a raider plans their
-// enemy's: a flag to walk to, then more flags after it, and he walks to each in turn by the
-// shortest way he knows (over land you've seen). Behind him lava creeps in from the left, slowly
-// at first and a little faster all the time, with a ragged edge (see lavaEdge), turning each tile
-// it reaches to lava with all that's on it, but for walls and ruins, which it flows round
-// (spreadLava). The lava touching the king ends the game; how far he got is the score.
-// The map never ends: as the king nears its right edge, the column furthest behind (lava, or soon
+// No looking back, an endless mode, solo or co-op. There's no keep to hold: each player has a
+// royal (a king, a queen, a prince, a princess) that starts on the left edge and walks on, as far
+// as it can. You plan yours's way as a raider plans their enemy's: a flag to walk to, then more
+// flags after it, and it walks to each in turn by the shortest way your team knows (over land
+// you've seen). Behind them lava creeps in from the left, slowly at first and a little faster all
+// the time, with a ragged edge (see lavaEdge), turning each tile it reaches to lava with all
+// that's on it, but for walls and ruins, which it flows round (spreadLava). A royal the lava
+// reaches, or a swarm brings down, has fallen; its player builds on with the rest of the team.
+// Once all have fallen the game's over; the furthest any got is the score.
+// The map never ends: as a royal nears its right edge, the column furthest behind (lava, or soon
 // to be) is dropped, everything moves a column left, and a column of new land comes in on the
 // right (see shiftWorld). The camera moves with it.
 import { FLOOD, KEEP_SIZE, TERRAIN, TICK_RATE } from "./config";
 import { placeSwarm } from "./floodSwarms";
 import { randomInt } from "./rng";
-import { spawnUnit } from "./units";
-import { exploreKingSight, isExplored } from "./fog";
+import { canStand, spawnUnit } from "./units";
+import { exploreRoyalSight, isExplored } from "./fog";
 import {
   EMPTY,
   baseAt,
@@ -28,35 +30,85 @@ import {
 } from "./grid";
 import { generateChunk, type MapGenResult } from "./mapgen";
 import { startingWork, startingWorth } from "./resources";
-import type { CommandResult, Flood, GameState, Land, PlayerId, Point, Terrain } from "./types";
+import type {
+  CommandResult,
+  Flood,
+  GameState,
+  Land,
+  PlayerId,
+  Point,
+  Royal,
+  Terrain,
+} from "./types";
 
 export function createFlood(
-  king: Point,
+  start: Point,
   width: number,
   height: number,
   goal: number | null = null,
   home: Point | null = null,
 ): Flood {
   return {
-    king,
-    progress: 0,
-    owner: 1,
-    kingHp: FLOOD.kingHp,
-    kingMaxHp: FLOOD.kingHp,
+    royals: [],
+    start,
+    best: 0,
     swarms: 1,
-    plan: [],
-    path: [],
     front: 0,
     // Lava comes in from beyond the left edge: every tile of it is next to it.
     edge: Array.from({ length: height }, (_, y) => y * width),
     fill: new Array<number>(height).fill(0),
     glow: [],
     shifted: 0,
-    startX: king.x,
     land: null,
     goal,
     home: home && { worldX: home.x, y: home.y },
   };
+}
+
+/**
+ * Hands each player a royal (by id: the first gets the king), on the left edge round the start,
+ * with its escort. When the game's made (solo), or when a room's host starts it.
+ */
+export function assignRoyals(state: GameState): void {
+  const flood = state.flood!;
+  const ids = Object.keys(state.players)
+    .map(Number)
+    .sort((a, b) => a - b)
+    .slice(0, FLOOD.titles.length);
+  flood.royals = ids.map((owner, i) => {
+    const y = Math.min(state.height - 2, Math.max(1, flood.start.y + FLOOD.startRows[i]));
+    const at = { x: flood.start.x, y };
+    // Somewhere it can stand: its row, or the nearest open one on the start's column.
+    for (let d = 0; d < 2 * state.height && !canStand(state, at.x, at.y); d++) {
+      const offset = d % 2 === 0 ? d / 2 : -(d + 1) / 2;
+      at.y = Math.min(state.height - 1, Math.max(0, y + offset));
+    }
+    return {
+      owner,
+      title: FLOOD.titles[i],
+      at,
+      progress: 0,
+      plan: [],
+      path: [],
+      hp: FLOOD.royalHp,
+      maxHp: FLOOD.royalHp,
+      fallen: null,
+    };
+  });
+  flood.royals.forEach((royal, i) => {
+    exploreRoyalSight(state, royal);
+    joinEscort(state, i);
+  });
+}
+
+/** The royals still standing. */
+export function livingRoyals(flood: Flood): Royal[] {
+  return flood.royals.filter((r) => r.fallen === null);
+}
+
+/** `player`'s royal, if it's still standing. */
+export function royalOf(flood: Flood, player: PlayerId): Royal | undefined {
+  return flood.royals.find((r) => r.owner === player && r.fallen === null);
 }
 
 /** Where the keep is on the map (its top-left tile), if it's on it yet. */
@@ -67,7 +119,7 @@ export function homeOnMap(state: GameState): Point | null {
   return x + KEEP_SIZE > 0 && x < state.width ? { x, y: flood.home.y } : null;
 }
 
-/** Whether (x, y) is part of the keep the king's going to. */
+/** Whether (x, y) is part of the keep the royals are going to. */
 export function isFloodHome(state: GameState, x: number, y: number): boolean {
   const home = homeOnMap(state);
   return !!home && x >= home.x && y >= home.y && x < home.x + KEEP_SIZE && y < home.y + KEEP_SIZE;
@@ -76,41 +128,41 @@ export function isFloodHome(state: GameState, x: number, y: number): boolean {
 /** Tiles still to go to the keep (a goal game only; 0 once there). */
 export function tilesToGoal(flood: Flood): number | null {
   if (flood.goal === null) return null;
-  const at = flood.home ? flood.home.worldX - 1 - flood.startX : flood.goal;
+  const at = flood.home ? flood.home.worldX - 1 - flood.start.x : flood.goal;
   return Math.max(0, at - distanceTravelled(flood));
 }
 
-/** The king is next to (or on) the keep: a goal game won. */
-export function kingHome(state: GameState): boolean {
+/** A royal is next to (or on) the keep: a goal game won. */
+export function royalHome(state: GameState): boolean {
   const flood = state.flood;
   const home = homeOnMap(state);
   if (!flood || !home) return false;
-  const { x, y } = flood.king;
-  const dx = Math.max(home.x - x, 0, x - (home.x + KEEP_SIZE - 1));
-  const dy = Math.max(home.y - y, 0, y - (home.y + KEEP_SIZE - 1));
-  return Math.max(dx, dy) <= 1;
+  return livingRoyals(flood).some(({ at: { x, y } }) => {
+    const dx = Math.max(home.x - x, 0, x - (home.x + KEEP_SIZE - 1));
+    const dy = Math.max(home.y - y, 0, y - (home.y + KEEP_SIZE - 1));
+    return Math.max(dx, dy) <= 1;
+  });
 }
 
-/** Where the king is drawn: part way from his tile to the next on his way. */
-export function kingAt(flood: Flood): Point {
-  const next = flood.progress > 0 ? flood.path[0] : undefined;
-  if (!next) return { ...flood.king };
-  const t = flood.progress;
+/** Where a royal is drawn: part way from its tile to the next on its way. */
+export function royalAt(royal: Royal): Point {
+  const next = royal.progress > 0 ? royal.path[0] : undefined;
+  if (!next) return { ...royal.at };
+  const t = royal.progress;
   return {
-    x: flood.king.x + (next.x - flood.king.x) * t,
-    y: flood.king.y + (next.y - flood.king.y) * t,
+    x: royal.at.x + (next.x - royal.at.x) * t,
+    y: royal.at.y + (next.y - royal.at.y) * t,
   };
 }
 
-/** How far the king has got from where he started, in tiles across the map: the score. */
+/** The furthest any royal has got from the start, in tiles across the world: the score. */
 export function distanceTravelled(flood: Flood): number {
-  return Math.max(0, flood.king.x + flood.shifted - flood.startX);
+  return flood.best;
 }
 
-/** Tiles from the lava's edge, in his row, to the king (0: it has him). */
-export function lavaBehindKing(state: GameState): number {
-  const { king } = state.flood!;
-  return Math.max(0, Math.floor(king.x + 1 - lavaEdge(state, king.y)));
+/** Tiles from the lava's edge, in its row, to a royal (0: it has it). */
+export function lavaBehind(state: GameState, royal: Royal): number {
+  return Math.max(0, Math.floor(royal.at.x + 1 - lavaEdge(state, royal.at.y)));
 }
 
 /**
@@ -146,10 +198,23 @@ function aheadOfLava(state: GameState, x: number, y: number): number {
   return x + 1 + roughness(state, x, y) - lavaEdge(state, y);
 }
 
-/** The lava has the king. */
-export function kingDrowned(state: GameState): boolean {
+/** Every royal has fallen (and there were some): the game's over. */
+export function royalsFallen(state: GameState): boolean {
   const flood = state.flood;
-  return flood !== null && terrainAt(state, flood.king.x, flood.king.y) === "lava";
+  return flood !== null && flood.royals.length > 0 && livingRoyals(flood).length === 0;
+}
+
+/** Royals the lava's reached, or swarms have brought down, fall. */
+function fallRoyals(state: GameState, flood: Flood): void {
+  for (const royal of livingRoyals(flood)) {
+    if (terrainAt(state, royal.at.x, royal.at.y) === "lava") royal.fallen = "lava";
+    else if (royal.hp <= 0) royal.fallen = "swarm";
+    if (royal.fallen) {
+      royal.plan = [];
+      royal.path = [];
+      state.sightVersion++;
+    }
+  }
 }
 
 /** How fast the lava creeps now, in tiles a second (0 before it starts). */
@@ -235,8 +300,8 @@ function nearness(ahead: number): number {
 }
 
 /**
- * The planKing command, as a raider plans: a flag for the king to walk to (his plan's first, its
- * others dropped), or with `queue` one more after his others. On the king himself: he stops.
+ * The planKing command, as a raider plans: a flag for the player's royal to walk to (its plan's
+ * first, its others dropped), or with `queue` one more after its others. On the royal: it stops.
  */
 export function planKing(
   state: GameState,
@@ -247,25 +312,27 @@ export function planKing(
 ): CommandResult {
   const flood = state.flood;
   if (!flood) return { ok: false, reason: "Only when there's no looking back" };
+  const royal = royalOf(flood, player);
+  if (!royal) return { ok: false, reason: "Your royal has fallen" };
   if (!inBounds(state, x, y)) return { ok: false, reason: "Off the map" };
-  if (x === flood.king.x && y === flood.king.y && !queue) {
-    flood.plan = [];
-    flood.path = [];
+  if (x === royal.at.x && y === royal.at.y && !queue) {
+    royal.plan = [];
+    royal.path = [];
     return { ok: true };
   }
   if (!isExplored(state, x, y, player)) return { ok: false, reason: "You can't see there" };
   if (terrainAt(state, x, y) === "lava") return { ok: false, reason: "That's lava" };
   if (queue) {
-    if (flood.plan.length >= FLOOD.maxFlags) return { ok: false, reason: "Too many flags" };
-    flood.plan = [...flood.plan, { x, y }];
-  } else flood.plan = [{ x, y }];
-  flood.path = kingPath(state, flood);
+    if (royal.plan.length >= FLOOD.maxFlags) return { ok: false, reason: "Too many flags" };
+    royal.plan = [...royal.plan, { x, y }];
+  } else royal.plan = [{ x, y }];
+  royal.path = royalPath(state, royal);
   return { ok: true };
 }
 
-/** Somewhere the king can step: ground (or a bridge) with nothing in the way, that you've seen. */
-function canStep(state: GameState, flood: Flood, x: number, y: number): boolean {
-  return isWalkable(state, x, y) && !blocksAt(state, x, y) && isExplored(state, x, y, flood.owner);
+/** Somewhere a royal can step: ground (or a bridge), nothing in the way, that its team's seen. */
+function canStep(state: GameState, royal: Royal, x: number, y: number): boolean {
+  return isWalkable(state, x, y) && !blocksAt(state, x, y) && isExplored(state, x, y, royal.owner);
 }
 
 /** The four tiles beside (x, y) that are on the map, as indices. */
@@ -280,22 +347,22 @@ function besideOnMap(state: GameState, x: number, y: number): number[] {
 }
 
 /**
- * The tiles from the king to his next flag, not counting where he stands, by the shortest way
- * over tiles he can step on. A flag he can't reach: to the tile nearest it that he can. Of the
+ * The tiles from a royal to its next flag, not counting where it stands, by the shortest way
+ * over tiles it can step on. A flag it can't reach: to the tile nearest it that it can. Of the
  * shortest ways, the one nearest the straight line there: each step goes to whichever tile a
- * step nearer (along the way) is nearest the flag, so he walks a staircase, not an L.
+ * step nearer (along the way) is nearest the flag, so it walks a staircase, not an L.
  */
-export function kingPath(state: GameState, flood: Flood): Point[] {
-  const goal = flood.plan[0];
+export function royalPath(state: GameState, royal: Royal): Point[] {
+  const goal = royal.plan[0];
   if (!goal) return [];
   const { width } = state;
-  const start = tileIndex(state, flood.king.x, flood.king.y);
-  const steppable = (i: number) => canStep(state, flood, i % width, Math.floor(i / width));
-  // Out from the king: what he can reach, and the tile of it nearest the flag.
+  const start = tileIndex(state, royal.at.x, royal.at.y);
+  const steppable = (i: number) => canStep(state, royal, i % width, Math.floor(i / width));
+  // Out from the royal: what it can reach, and the tile of it nearest the flag.
   const reached = new Set([start]);
   const queue = [start];
   let best = start;
-  let bestDistance = Math.hypot(flood.king.x - goal.x, flood.king.y - goal.y);
+  let bestDistance = Math.hypot(royal.at.x - goal.x, royal.at.y - goal.y);
   for (let head = 0; head < queue.length && bestDistance > 0; head++) {
     const i = queue[head];
     const x = i % width;
@@ -337,45 +404,51 @@ export function kingPath(state: GameState, flood: Flood): Point[] {
 }
 
 /**
- * Once a tick: the king walks, the lava creeps, and the world moves on if he's near its edge
- * (in a goal game, not once the keep's well on the map: the land stops there).
+ * Once a tick: the royals walk, the lava creeps, royals it (or a swarm) has had fall, and the
+ * world moves on if one's near its edge (in a goal game, not once the keep's well on the map:
+ * the land stops there).
  */
 export function updateFlood(state: GameState): void {
   const flood = state.flood;
   if (!flood) return;
-  walkKing(state, flood);
+  for (const royal of livingRoyals(flood)) walkRoyal(state, royal);
   flood.front = Math.min(state.width, flood.front + lavaSpeed(state) / TICK_RATE);
   spreadLava(state, flood);
+  fallRoyals(state, flood);
   flood.glow = lavaGlow(state, flood);
+  for (const royal of livingRoyals(flood)) {
+    flood.best = Math.max(flood.best, royal.at.x + flood.shifted - flood.start.x);
+  }
   // The world moves on a few columns at a time, so new land comes in a few lines at a time.
   const home = homeOnMap(state);
   const landEnds = home !== null && home.x + KEEP_SIZE + FLOOD.pastKeep <= state.width;
-  if (!landEnds && flood.king.x >= state.width - aheadTiles(state)) {
+  const nearEdge = livingRoyals(flood).some((r) => r.at.x >= state.width - aheadTiles(state));
+  if (!landEnds && nearEdge) {
     for (let i = 0; i < FLOOD.shiftColumns; i++) shiftWorld(state);
   }
 }
 
 /**
- * The king's escort (FLOOD.escorts), joining him when the game's made: each on its spot beside
- * him, or the nearest open tile round him. One that falls is gone for good.
+ * A royal's escort (FLOOD.escorts), joining it at the start: each on its spot beside it, or the
+ * nearest open tile round it. One that falls is gone for good.
  */
-export function joinEscort(state: GameState): void {
-  const flood = state.flood!;
-  const { x, y } = flood.king;
+function joinEscort(state: GameState, index: number): void {
+  const royal = state.flood!.royals[index];
+  const { x, y } = royal.at;
   for (const escort of FLOOD.escorts) {
-    const tries = [escort.spot, ...besideKing].map((d) => ({ x: x + d.x, y: y + d.y }));
+    const tries = [escort.spot, ...besideRoyal].map((d) => ({ x: x + d.x, y: y + d.y }));
     for (const p of tries) {
-      const unit = spawnUnit(state, escort.kind, flood.owner, p.x, p.y);
+      const unit = spawnUnit(state, escort.kind, royal.owner, p.x, p.y);
       if (unit) {
-        unit.escort = { ...escort.spot };
+        unit.escort = { ...escort.spot, royal: index };
         break;
       }
     }
   }
 }
 
-/** The tiles round the king, nearest first. */
-const besideKing = [
+/** The tiles round a royal, nearest first. */
+const besideRoyal = [
   { x: 0, y: -1 },
   { x: 0, y: 1 },
   { x: 1, y: 0 },
@@ -386,35 +459,35 @@ const besideKing = [
   { x: -1, y: 1 },
 ];
 
-/** How close to the map's right edge the king gets before new land comes (half a small map). */
+/** How close to the map's right edge a royal gets before new land comes (half a small map). */
 function aheadTiles(state: GameState): number {
   return Math.min(FLOOD.aheadTiles, Math.floor(state.width / 2));
 }
 
-function walkKing(state: GameState, flood: Flood): void {
-  if (flood.path.length === 0) nextWay(state, flood);
-  if (flood.path.length === 0) {
-    flood.progress = 0;
+function walkRoyal(state: GameState, royal: Royal): void {
+  if (royal.path.length === 0) nextWay(state, royal);
+  if (royal.path.length === 0) {
+    royal.progress = 0;
     return;
   }
-  flood.progress += FLOOD.kingSpeed / TICK_RATE;
-  if (flood.progress < 1) return;
-  flood.progress -= 1;
-  // His way, found again as he steps (what's built and seen changes as he goes).
-  nextWay(state, flood);
-  const next = flood.path[0];
+  royal.progress += FLOOD.royalSpeed / TICK_RATE;
+  if (royal.progress < 1) return;
+  royal.progress -= 1;
+  // Its way, found again as it steps (what's built and seen changes as it goes).
+  nextWay(state, royal);
+  const next = royal.path[0];
   if (!next) return;
-  flood.king = next;
-  flood.path = flood.path.slice(1);
-  exploreKingSight(state);
+  royal.at = next;
+  royal.path = royal.path.slice(1);
+  exploreRoyalSight(state, royal);
 }
 
-/** The way to his next flag; flags he's at (or as near as he can get to) are done. */
-function nextWay(state: GameState, flood: Flood): void {
-  flood.path = kingPath(state, flood);
-  while (flood.path.length === 0 && flood.plan.length > 0) {
-    flood.plan = flood.plan.slice(1);
-    flood.path = kingPath(state, flood);
+/** The way to its next flag; flags it's at (or as near as it can get to) are done. */
+function nextWay(state: GameState, royal: Royal): void {
+  royal.path = royalPath(state, royal);
+  while (royal.path.length === 0 && royal.plan.length > 0) {
+    royal.plan = royal.plan.slice(1);
+    royal.path = royalPath(state, royal);
   }
 }
 
@@ -489,7 +562,7 @@ function sinkTile(state: GameState, flood: Flood, x: number, y: number): void {
   for (const unit of state.units) if (on(unit)) unit.hp = 0;
   state.enemies = state.enemies.filter((e) => !on(e));
   state.features = state.features.filter((f) => !on(f));
-  flood.plan = flood.plan.filter((p) => !on(p));
+  for (const royal of flood.royals) royal.plan = royal.plan.filter((p) => !on(p));
   state.gridVersion++;
 }
 
@@ -554,9 +627,11 @@ export function shiftWorld(state: GameState): void {
     );
   state.effects = [];
   const moved = (p: Point) => ({ x: p.x - 1, y: p.y });
-  flood.king = moved(flood.king);
-  flood.plan = flood.plan.filter((p) => p.x >= 1).map(moved);
-  flood.path = flood.path.filter((p) => p.x >= 1).map(moved);
+  for (const royal of flood.royals) {
+    royal.at = moved(royal.at);
+    royal.plan = royal.plan.filter((p) => p.x >= 1).map(moved);
+    royal.path = royal.path.filter((p) => p.x >= 1).map(moved);
+  }
   flood.front -= 1;
   flood.edge = lavaEdgeTiles(state);
   flood.fill = flood.edge.map(() => 0);
@@ -573,6 +648,25 @@ export function shiftWorld(state: GameState): void {
   state.gridVersion++;
   state.sightVersion++;
   state.exploredVersion++;
+}
+
+/**
+ * A tile layer moved `n` columns to the left in place, as the world moving on moves it: the `n`
+ * on the left go, and the `n` on the right come in as `fill`. Online, the server's record of what
+ * it sent and each client's copy are moved this way, so only the new land goes over the wire.
+ */
+export function shiftLayer<T>(layer: T[], width: number, height: number, n: number, fill: T): void {
+  const keep = Math.max(0, width - n);
+  for (let y = 0; y < height; y++) {
+    const row = y * width;
+    for (let x = 0; x < keep; x++) layer[row + x] = layer[row + x + n];
+    for (let x = keep; x < width; x++) layer[row + x] = fill;
+  }
+}
+
+/** The No looking back state the clients get: what the server alone needs left out. */
+export function clientFlood(flood: Flood | null): Flood | null {
+  return flood && { ...flood, edge: [], fill: [], land: null };
 }
 
 /**
@@ -606,7 +700,7 @@ function nextLand(state: GameState): Land {
   // patch (so it's on open ground you can reach): column c of the piece comes in at
   // `shifted + width + c` across the world.
   const start = flood.shifted + width;
-  const goalX = flood.goal === null || flood.home ? null : flood.startX + flood.goal;
+  const goalX = flood.goal === null || flood.home ? null : flood.start.x + flood.goal;
   const keepX =
     goalX !== null && goalX < start + n
       ? Math.min(Math.max(goalX - start, 2), n - KEEP_SIZE - 2)

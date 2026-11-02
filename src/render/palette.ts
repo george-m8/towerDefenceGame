@@ -1,5 +1,5 @@
 import type { EnemyKindId, EnemyVariant, ProjectileKind } from "../sim/config";
-import type { Facing, StructureKind, Terrain } from "../sim/types";
+import type { Facing, StructureKind, Terrain, RoyalTitle } from "../sim/types";
 import type { TextureStyle } from "./textures";
 
 export const TILE_SIZE = 20;
@@ -124,8 +124,13 @@ export const GLYPH_FONTS = `Unifont, "Apple Symbols", "Segoe UI Symbol", "Segoe 
 export const GLYPH_FONT = `${TILE_SIZE - 4}px ${GLYPH_FONTS}`;
 /** Every keep tile but the middle one (which has its HP over it): a rook. */
 export const KEEP_GLYPH = "♜";
-/** No looking back's king. */
-export const KING_GLYPH = "♚";
+/** No looking back's royals: the king, the queen, a prince and a princess. */
+export const ROYAL_GLYPHS: Record<RoyalTitle, string> = {
+  king: "♚",
+  queen: "♛",
+  prince: "♔",
+  princess: "♕",
+};
 
 /** Each enemy kind's glyph colour. Variants never change it; they change the glyph size. */
 export const ENEMY_COLOURS: Record<EnemyKindId, string> = {

@@ -1,6 +1,6 @@
 // The game's stats (gold, income, keep, waves...) as label and value, for the sidebar and the
 // HUD's stat box. PvP has no waves: it shows the rival's keep and the mode instead. No looking
-// back has no keep or waves: it shows the lava, the king's HP and how far he's got. With enemies
+// back has no keep or waves: it shows the lava, your royal's HP and how far the royals have got. With enemies
 // at night, the wave stat shows the night too, and by day the next wave is "At dusk".
 import { TICK_RATE } from "../sim/config";
 import { incomePerMinute } from "../sim/economy";
@@ -8,9 +8,11 @@ import { isSpawningTime } from "../sim/clock";
 import { isLastWave } from "../sim/waves";
 import {
   distanceTravelled,
-  lavaBehindKing,
+  lavaBehind,
   lavaSpeed,
   lavaStartsIn,
+  livingRoyals,
+  royalOf,
   tilesToGoal,
 } from "../sim/flood";
 import type { GameState, PlayerId } from "../sim/types";
@@ -36,13 +38,20 @@ export function statList(state: GameState, playerId: PlayerId): Stat[] {
     // how fast the lava's coming, or how far it is to a goal's keep.
     const tiles = (n: number) => `${n} tile${n === 1 ? "" : "s"}`;
     const startsIn = lavaStartsIn(state);
+    // Yours, or (once it's fallen) how many of the team's still stand.
+    const own = royalOf(state.flood, playerId);
+    const standing = livingRoyals(state.flood).length;
+    const lava =
+      startsIn > 0
+        ? `starts in ${startsIn}s`
+        : own
+          ? `${tiles(lavaBehind(state, own))} behind`
+          : "-";
     stats.push(
-      {
-        id: "wave",
-        label: "Lava",
-        value: startsIn > 0 ? `starts in ${startsIn}s` : `${tiles(lavaBehindKing(state))} behind`,
-      },
-      { id: "keep", label: "King", value: `${state.flood.kingHp} / ${state.flood.kingMaxHp}` },
+      { id: "wave", label: "Lava", value: lava },
+      own
+        ? { id: "keep", label: titleCase(own.title), value: `${own.hp} / ${own.maxHp}` }
+        : { id: "keep", label: "Royals", value: `${standing} standing` },
       { id: "mode", label: "Distance", value: tiles(distanceTravelled(state.flood)) },
       // A goal game: how far still to the keep; else how fast the lava's coming.
       tilesToGoal(state.flood) === null
@@ -83,4 +92,9 @@ export function statList(state: GameState, playerId: PlayerId): Stat[] {
   }
   stats.push({ id: "seed", label: "Seed", value: String(state.seed) });
   return stats;
+}
+
+/** "king" as "King". */
+function titleCase(word: string): string {
+  return word[0].toUpperCase() + word.slice(1);
 }

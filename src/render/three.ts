@@ -8,7 +8,7 @@
 // renderer's own canvas (renderOverlay). World units are tiles: x east, z south, y up.
 import * as THREE from "three";
 import { ENEMY_KINDS, UNIT_KINDS } from "../sim/config";
-import { kingAt } from "../sim/flood";
+import { livingRoyals, royalAt } from "../sim/flood";
 import { SEEN, UNEXPLORED, canSeeEnemiesAt, getSight } from "../sim/fog";
 import { baseAt, isBuilt, mountAt } from "../sim/grid";
 import { ringTiles } from "../sim/keepWalls";
@@ -25,7 +25,7 @@ import {
   FOG,
   ENEMY_GLYPH_SCALE,
   GLYPH_FONTS,
-  KING_GLYPH,
+  ROYAL_GLYPHS,
   TILE_SIZE,
   playerColour,
 } from "./palette";
@@ -53,8 +53,8 @@ const SUN_LIGHT = 2;
 const NIGHT_SKY = 0.25;
 /** How tall an enemy's or unit's card stands, in tiles, before its size. */
 const CARD_TILES = 1.1;
-/** No looking back's king stands a little taller than the rest. */
-const KING_CARD_TILES = 1.5;
+/** No looking back's royals stand a little taller than the rest. */
+const ROYAL_CARD_TILES = 1.5;
 
 /** A tower on a wall's ramparts: how tall they stand above its top, in tiles, and their merlons. */
 const RAMPART_TILES = 0.3;
@@ -433,7 +433,8 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
 
   /** Enemies, units and chests: every frame, where the viewer can see them. */
   function placeMovers(state: GameState, viewer: PlayerId) {
-    const mesh = cards.reserve(state.enemies.length + state.units.length + 1);
+    const royals = state.flood?.royals.length ?? 0;
+    const mesh = cards.reserve(state.enemies.length + state.units.length + royals);
     const cell = mesh.geometry.getAttribute("cell") as THREE.InstancedBufferAttribute;
     const card = (x: number, y: number, size: number, glyph: string, colour: string) => {
       // Standing on a block (a unit on a wall), it stands on the block's top.
@@ -456,10 +457,11 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
       if (!canSeeEnemiesAt(state, unit.x, unit.y, viewer)) continue;
       card(unit.x, unit.y, CARD_TILES, UNIT_KINDS[unit.kind].glyph, playerColour(unit.owner));
     }
-    // No looking back's king, always in sight (he's what sees).
-    if (state.flood) {
-      const king = kingAt(state.flood);
-      card(king.x, king.y, KING_CARD_TILES, KING_GLYPH, playerColour(state.flood.owner));
+    // No looking back's royals, always in sight (they're what see).
+    for (const royal of state.flood ? livingRoyals(state.flood) : []) {
+      const at = royalAt(royal);
+      const glyph = ROYAL_GLYPHS[royal.title];
+      card(at.x, at.y, ROYAL_CARD_TILES, glyph, playerColour(royal.owner));
     }
     cards.done();
 

@@ -59,13 +59,14 @@ function guard(state: GameState, unit: Unit) {
 
 /**
  * No looking back's escort: it fights anything in reach; a fighter that closes in (range 1)
- * goes after enemies near the king; otherwise it walks to its spot beside him (or, if that's
- * blocked, anywhere beside him) and stands there.
+ * goes after enemies near its royal; otherwise it walks to its spot beside the royal (or, if
+ * that's blocked, anywhere beside it) and stands there. Its royal fallen, it stands and fights.
  */
 function escort(state: GameState, unit: Unit) {
   if (atTileCentre(unit) && attackNearest(state, unit)) return;
-  const king = state.flood?.king;
-  if (!king || !unit.escort) return;
+  const royal = unit.escort && state.flood?.royals[unit.escort.royal];
+  if (!royal || royal.fallen || !unit.escort) return;
+  const king = royal.at;
   const kind = kindOf(unit);
   const chase = kind.range <= 1 ? FLOOD.escortChase : 0;
   const target = chase > 0 ? enemyToChase(state, unit, king, chase) : undefined;

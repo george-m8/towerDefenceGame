@@ -15,7 +15,7 @@ import { DIRECTIONS, canCross, distanceAt, nextStep } from "./pathfinding";
 import { stepTo, walk } from "./movement";
 import { damageUnit, unitsAt } from "./units";
 import { nextRandom, randomInt } from "./rng";
-import { chaseKing } from "./floodSwarms";
+import { chaseRoyals } from "./floodSwarms";
 import { followAim, roam, steerControlled } from "./raiders";
 import { pathFieldFor } from "./raidPaths";
 import type { Enemy, GameState, Keep, PlayerId, Point, Structure, Unit } from "./types";
@@ -119,7 +119,7 @@ function advance(state: GameState, enemy: Enemy): void {
     followAim(state, enemy); // left still on its way
   else if (enemy.roamer) roam(state, enemy);
   else if (enemy.swarm && state.flood)
-    chaseKing(state, enemy); // No looking back's swarms
+    chaseRoyals(state, enemy); // No looking back's swarms
   else if (!BEHAVIOURS[ENEMY_KINDS[enemy.kind].behaviour](state, enemy)) {
     walk(enemy, speedOf(state, enemy), () => chooseNextTile(state, enemy));
   }

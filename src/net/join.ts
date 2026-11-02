@@ -28,7 +28,7 @@ export type PageIntent =
   | JoinIntent;
 
 /**
- * `?create&name=Ann` creates a room (`&game=pvp` for PvP) and `?room=ABCD&name=Bo` joins one;
+ * `?create&name=Ann` creates a room (`&game=pvp` for PvP, `&game=flood` for No looking back) and `?room=ABCD&name=Bo` joins one;
  * `?solo` plays offline. `&size=L` picks the map size when playing solo or creating a room;
  * `&map=river-crossing` plays maps/river-crossing.map solo, and `&items=towers-only` plays solo
  * with the limits in items/towers-only.items; `&night` plays solo with enemies at night, `&game=flood` plays No looking back (`&goal=500` with a keep 500 tiles on).
@@ -64,7 +64,9 @@ export function readJoinIntent(search: string): PageIntent {
       mode: "create",
       name,
       ...(params.get("game") === "pvp" ? { game: "pvp" as const } : {}),
+      ...(params.get("game") === "flood" ? { game: "flood" as const } : {}),
       ...(size ? { size } : {}),
+      ...(goal > 0 ? { goal } : {}),
     };
   }
   if (room) return { mode: "menu", room };

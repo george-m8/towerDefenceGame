@@ -22,7 +22,7 @@ export const GAME_MODES: {
   mode: GameMode;
   name: string;
   description: string;
-  /** Online only (PvP), or solo only (No looking back); neither: both. */
+  /** Online only (PvP), or solo only; neither: both. */
   online: boolean;
   solo?: true;
 }[] = [
@@ -45,7 +45,6 @@ export const GAME_MODES: {
     name: "No looking back",
     description: "Lead your king on into new land, ahead of creeping lava. How far can he get?",
     online: false,
-    solo: true,
   },
 ];
 
@@ -396,7 +395,7 @@ function chooseGame(
       options.onChoose(
         game === "endless"
           ? { mode: "create", name, size, ...fogOff, ...night }
-          : { mode: "create", name, game, size, ...fogOff },
+          : { mode: "create", name, game, size, ...fogOff, ...(goal > 0 ? { goal } : {}) },
       );
     },
   });

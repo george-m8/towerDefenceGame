@@ -3,6 +3,7 @@
 import { randomBytes } from "node:crypto";
 import { DEFAULT_MAP_SIZE, STARTING_GOLD, TICK_RATE, type MapSize } from "../src/sim/config";
 import { applyCommand, assignKeeps, createGame, tick } from "../src/sim/game";
+import { assignRoyals } from "../src/sim/flood";
 import { NO_VOTES, addPlayer, setConnected, updateVotes } from "../src/sim/players";
 import { freshRaid, raiders, setRole } from "../src/sim/raiders";
 import type {
@@ -43,6 +44,8 @@ export interface Room {
   size: MapSize;
   /** When enemies come, as the room was created with; restarts keep it. */
   enemiesCome: EnemiesCome;
+  /** No looking back: the keep to reach, as the room was created with (none: on for ever). */
+  goal?: number;
 }
 
 export type JoinResult =
@@ -56,8 +59,9 @@ export function createRoom(
   mode: GameMode = "endless",
   size: MapSize = DEFAULT_MAP_SIZE,
   enemiesCome: EnemiesCome = "always",
+  goal?: number,
 ): Room {
-  const state = createGame(seed, { players: [], mode, size, enemiesCome });
+  const state = createGame(seed, { players: [], mode, size, enemiesCome, floodGoal: goal });
   return {
     code,
     state,
@@ -71,6 +75,7 @@ export function createRoom(
     fog: true,
     size,
     enemiesCome,
+    ...(goal ? { goal } : {}),
   };
 }
 
@@ -94,6 +99,8 @@ export function startRoom(room: Room, playerId: PlayerId, fog = true): CommandRe
     }
     assignKeeps(room.state);
   }
+  // No looking back: a royal for each player in the room.
+  if (room.state.flood) assignRoyals(room.state);
   const players = Object.values(room.state.players);
   if (raiders(room.state).length === players.length) {
     return { ok: false, reason: "Someone has to defend" };
@@ -238,6 +245,7 @@ export function restartRoom(room: Room, seed: number): CommandResult {
     mode: old.mode,
     size: room.size,
     enemiesCome: room.enemiesCome,
+    floodGoal: room.goal,
   });
   for (const player of Object.values(old.players)) {
     state.players[player.id] = {
@@ -249,6 +257,7 @@ export function restartRoom(room: Room, seed: number): CommandResult {
   }
   state.nextPlayerId = old.nextPlayerId;
   if (state.mode === "pvp") assignKeeps(state);
+  if (state.flood) assignRoyals(state);
   updateVotes(state);
   room.state = state;
   room.accumulatorMs = 0;

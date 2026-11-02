@@ -8,7 +8,7 @@ import { canBuild, placeStructure, removeStructure, tileIndex } from "../../src/
 import { getSight, IN_SIGHT } from "../../src/sim/fog";
 import {
   distanceTravelled,
-  lavaBehindKing,
+  lavaBehind,
   lavaEdge,
   lavaSpeed,
   lavaWarning,
@@ -37,7 +37,9 @@ function blankFlood(): GameState {
   return state;
 }
 
-const king = (state: GameState): Point => ({ ...state.flood!.king });
+/** The (first) royal: the king. */
+const royal = (state: GameState) => state.flood!.royals[0];
+const king = (state: GameState): Point => ({ ...royal(state).at });
 
 /** Sends the king to (x, y), or (`queue`) adds it after his other flags. */
 function flag(state: GameState, p: Point, queue = false) {
@@ -48,15 +50,15 @@ function flag(state: GameState, p: Point, queue = false) {
 }
 
 /** Ticks for the king to walk `tiles` tiles, and one more. */
-const walkTicks = (tiles: number) => Math.ceil(((tiles + 1) / FLOOD.kingSpeed) * TICK_RATE);
+const walkTicks = (tiles: number) => Math.ceil(((tiles + 1) / FLOOD.royalSpeed) * TICK_RATE);
 
 describe("setting out", () => {
   it("has no keep or home: the king on the left edge, open land ahead, no waves", () => {
     const state = floodGame();
     expect(state.keeps).toEqual([]);
     const flood = state.flood!;
-    expect(flood.king.x).toBe(1);
-    expect(flood.owner).toBe(ME);
+    expect(flood.royals).toHaveLength(1);
+    expect(royal(state)).toMatchObject({ owner: ME, title: "king", at: { x: 1 }, fallen: null });
     expect(distanceTravelled(flood)).toBe(0);
     expect(state.wave.countdown).toBe(Infinity);
     // No sea on the left or right edges: the coast is only ever along the top or bottom.
@@ -70,7 +72,7 @@ describe("setting out", () => {
     const state = floodGame();
     const { x, y } = king(state);
     const sight = getSight(state, ME);
-    expect(sight[tileIndex(state, x + FLOOD.kingSight.inner, y)]).toBe(IN_SIGHT);
+    expect(sight[tileIndex(state, x + FLOOD.royalSight.inner, y)]).toBe(IN_SIGHT);
   });
 });
 
@@ -80,10 +82,10 @@ describe("the king's flags", () => {
     const start = king(state);
     const to = { x: start.x + 4, y: start.y + 2 };
     flag(state, to);
-    expect(state.flood!.path).toHaveLength(6);
+    expect(royal(state).path).toHaveLength(6);
     run(state, walkTicks(6));
     expect(king(state)).toEqual(to);
-    expect(state.flood!.plan).toEqual([]);
+    expect(royal(state).plan).toEqual([]);
     run(state, TICK_RATE);
     expect(king(state)).toEqual(to);
   });
@@ -94,7 +96,7 @@ describe("the king's flags", () => {
     flag(state, { x: x + 3, y });
     flag(state, { x: x + 3, y: y + 3 }, true);
     flag(state, { x, y: y + 3 }, true);
-    expect(state.flood!.plan).toHaveLength(3);
+    expect(royal(state).plan).toHaveLength(3);
     const visited: Point[] = [];
     for (let i = 0; i < walkTicks(9); i++) {
       tick(state);
@@ -106,7 +108,7 @@ describe("the king's flags", () => {
     expect(visited).toContainEqual({ x: x + 3, y: y + 3 });
     expect(visited).toHaveLength(10); // where he started, then the shortest way through all three
     expect(king(state)).toEqual({ x, y: y + 3 });
-    expect(state.flood!.plan).toEqual([]);
+    expect(royal(state).plan).toEqual([]);
   });
 
   it("drops his plan for a new flag, and stops when you click on him", () => {
@@ -115,9 +117,9 @@ describe("the king's flags", () => {
     flag(state, { x: x + 5, y });
     flag(state, { x: x + 5, y: y + 5 }, true);
     flag(state, { x, y: y + 4 });
-    expect(state.flood!.plan).toEqual([{ x, y: y + 4 }]);
+    expect(royal(state).plan).toEqual([{ x, y: y + 4 }]);
     flag(state, { x, y });
-    expect(state.flood!.plan).toEqual([]);
+    expect(royal(state).plan).toEqual([]);
     run(state, TICK_RATE * 2);
     expect(king(state)).toEqual({ x, y });
   });
@@ -128,7 +130,7 @@ describe("the king's flags", () => {
     const wall = placeStructure(state, "wall", x + 2, y, "N", ME);
     wall.buildLeft = 0;
     flag(state, { x: x + 4, y });
-    expect(state.flood!.path.some((p) => p.x === x + 2 && p.y === y)).toBe(false);
+    expect(royal(state).path.some((p) => p.x === x + 2 && p.y === y)).toBe(false);
     run(state, walkTicks(6));
     expect(king(state)).toEqual({ x: x + 4, y });
   });
@@ -141,13 +143,13 @@ describe("the king's flags", () => {
     flag(state, { x: x + 3, y });
     run(state, walkTicks(3));
     expect(king(state)).toEqual({ x: x + 2, y });
-    expect(state.flood!.plan).toEqual([]);
+    expect(royal(state).plan).toEqual([]);
   });
 
   it("can't be planted where you've never seen, and only so many at once", () => {
     const state = floodGame();
     const { x, y } = king(state);
-    const unseen = { x, y: y + FLOOD.kingSight.outer + 3 };
+    const unseen = { x, y: y + FLOOD.royalSight.outer + 3 };
     if (unseen.y < state.height) {
       expect(applyCommand(state, ME, { type: "planKing", ...unseen })).toMatchObject({
         ok: false,
@@ -176,8 +178,8 @@ describe("building", () => {
 describe("the lava", () => {
   it("waits, then creeps in, slowly at first and faster as it goes", () => {
     const state = floodGame();
-    state.flood!.king.x = state.width - 60; // well out of its way
-    state.flood!.king.y = Math.floor(state.height / 2);
+    royal(state).at.x = state.width - 60; // well out of its way
+    royal(state).at.y = Math.floor(state.height / 2);
     run(state, FLOOD.graceSeconds * TICK_RATE);
     expect(state.flood!.front).toBe(0);
     run(state, 10 * TICK_RATE);
@@ -192,12 +194,12 @@ describe("the lava", () => {
     expect(lavaSpeed(state)).toBeCloseTo(early + FLOOD.lavaSpeed.perMinute, 2);
     state.tick = 3600 * TICK_RATE;
     expect(lavaSpeed(state)).toBe(FLOOD.lavaSpeed.most);
-    expect(FLOOD.lavaSpeed.most).toBeGreaterThan(FLOOD.kingSpeed); // so every game ends
+    expect(FLOOD.lavaSpeed.most).toBeGreaterThan(FLOOD.royalSpeed); // so every game ends
   });
 
   it("has a ragged edge, not a straight line", () => {
     const state = floodGame();
-    state.flood!.king.x = state.width - 60;
+    royal(state).at.x = state.width - 60;
     run(state, (FLOOD.graceSeconds + 40) * TICK_RATE);
     const edges = Array.from({ length: state.height }, (_, y) => lavaEdge(state, y));
     expect(Math.max(...edges) - Math.min(...edges)).toBeGreaterThan(FLOOD.edge.reach);
@@ -211,7 +213,7 @@ describe("the lava", () => {
 
   it("glows over what it'll take soon, not beyond, and not walls or what they shut in", () => {
     const state = blankFlood();
-    state.flood!.king = { x: 40, y: 10 };
+    royal(state).at = { x: 40, y: 10 };
     // A closed ring of finished walls round (3, 20).
     for (let dy = -1; dy <= 1; dy++) {
       for (let dx = -1; dx <= 1; dx++) {
@@ -233,18 +235,18 @@ describe("the lava", () => {
     const { x, y } = king(state);
     const tower = placeStructure(state, "archer", x + 1, y + 1, "E", ME);
     flag(state, { x: x + 1, y: y + 2 });
-    state.flood!.king = { x: x + 20, y }; // out of the way
+    royal(state).at = { x: x + 20, y }; // out of the way
     // Far enough on that every row's edge, however ragged, is past them.
     state.flood!.front = x + 2 + FLOOD.edge.reach + FLOOD.edge.rough;
     run(state, 10 * TICK_RATE);
     expect(state.structures[tower.id]).toBeUndefined();
-    expect(state.flood!.plan).toEqual([]);
+    expect(royal(state).plan).toEqual([]);
     expect(state.terrain[tileIndex(state, x + 1, y)]).toBe("lava");
   });
 
   it("doesn't take walls: it flows round them, and what they shut in stays dry", () => {
     const state = blankFlood();
-    state.flood!.king = { x: 30, y: 10 };
+    royal(state).at = { x: 30, y: 10 };
     // A closed ring of finished walls round (12, 20), and a lone wall at (12, 30).
     const walls = [];
     for (let dy = -1; dy <= 1; dy++) {
@@ -269,7 +271,7 @@ describe("the lava", () => {
 
   it("doesn't take ruins either", () => {
     const state = blankFlood();
-    state.flood!.king = { x: 40, y: 10 };
+    royal(state).at = { x: 40, y: 10 };
     const ruin = placeStructure(state, "ruin", 3, 20, "N", null);
     const tower = placeStructure(state, "archer", 3, 20, "E", ME);
     tower.buildLeft = 0;
@@ -283,7 +285,7 @@ describe("the lava", () => {
 
   it("creeps through a gap and round a corner at its own pace, not all at once", () => {
     const state = blankFlood();
-    state.flood!.king = { x: 40, y: 10 };
+    royal(state).at = { x: 40, y: 10 };
     // A wall down column 5, but for a gap at row 20.
     for (let y = 0; y < state.height; y++) {
       if (y !== 20) placeStructure(state, "wall", 5, y, "N", ME).buildLeft = 0;
@@ -310,10 +312,10 @@ describe("the lava", () => {
 
   it("taking the king loses", () => {
     const state = blankFlood();
-    const { x, y } = state.flood!.king;
+    const { x, y } = royal(state).at;
     state.flood!.front = x - 6;
-    expect(lavaBehindKing(state)).toBe(Math.floor(x + 1 - lavaEdge(state, y)));
-    expect(lavaBehindKing(state)).toBeGreaterThan(0);
+    expect(lavaBehind(state, royal(state))).toBe(Math.floor(x + 1 - lavaEdge(state, y)));
+    expect(lavaBehind(state, royal(state))).toBeGreaterThan(0);
     state.flood!.front = x + 1 + FLOOD.edge.reach + FLOOD.edge.rough;
     run(state, 10 * TICK_RATE);
     expect(state.gameOver).toBe(true);
@@ -326,13 +328,14 @@ describe("new land", () => {
     const state = blankFlood();
     const n = FLOOD.chunkColumns;
     const { y } = king(state);
-    state.flood!.king = { x: 50, y };
+    royal(state).at = { x: 50, y };
     const wall = placeStructure(state, "wall", 52, y, "N", ME);
     const lost = placeStructure(state, "wall", 3, y, "N", ME);
     state.explored[tileIndex(state, 52, y)] = 1;
     state.flood!.front = 5;
     for (let i = 0; i < n; i++) shiftWorld(state);
-    expect(state.flood!.king).toEqual({ x: 50 - n, y });
+    expect(royal(state).at).toEqual({ x: 50 - n, y });
+    tick(state); // the furthest he's got is reckoned each tick
     expect(distanceTravelled(state.flood!)).toBe(50 - 1);
     expect(state.structures[wall.id]).toMatchObject({ x: 52 - n, y });
     expect(state.base[tileIndex(state, 52 - n, y)]).toBe(wall.id);
@@ -365,11 +368,11 @@ describe("new land", () => {
     const state = floodGame();
     state.fog = false;
     state.flood!.front = -Infinity;
-    state.flood!.kingHp = Infinity; // swarms come with the land; this is about the land
+    royal(state).hp = Infinity; // swarms come with the land; this is about the land
     for (let i = 0; i < 300 * TICK_RATE && !state.gameOver; i++) {
       // A flag far to the right, on his row, as near as he can get.
       if (i % TICK_RATE === 0) {
-        const { y } = state.flood!.king;
+        const { y } = royal(state).at;
         applyCommand(state, ME, { type: "planKing", x: state.width - 1, y });
       }
       tick(state);
@@ -385,7 +388,7 @@ describe("a goal", () => {
     const flood = state.flood!;
     expect(flood.goal).toBe(60);
     const home = homeOnMap(state)!;
-    expect(home.x).toBe(flood.king.x + 60);
+    expect(home.x).toBe(royal(state).at.x + 60);
     expect(isFloodHome(state, home.x + 1, home.y + 1)).toBe(true);
     expect(tilesToGoal(flood)).toBe(59);
     // Walk him there with the fog off, and the swarms out of the way.
@@ -409,7 +412,7 @@ describe("a goal", () => {
     for (let i = 0; i < 3 * FLOOD.chunkColumns && !onMap(); i++) shiftWorld(state);
     const home = homeOnMap(state)!;
     expect(home).not.toBeNull();
-    expect(home.x + state.flood!.shifted - state.flood!.startX).toBeGreaterThan(state.width);
+    expect(home.x + state.flood!.shifted - state.flood!.start.x).toBeGreaterThan(state.width);
     // On open ground.
     for (let dy = 0; dy < 3; dy++) {
       for (let dx = 0; dx < 3; dx++) {
@@ -422,7 +425,7 @@ describe("a goal", () => {
 describe("swarms", () => {
   it("wait round the map, clear of the king's start, tougher further on", () => {
     const state = floodGame();
-    const { king } = state.flood!;
+    const king = state.flood!.start;
     const swarmers = state.enemies.filter((e) => e.swarm?.post);
     expect(new Set(swarmers.map((e) => e.swarm!.id)).size).toBeGreaterThan(3);
     for (const e of swarmers) {
@@ -442,12 +445,12 @@ describe("swarms", () => {
     tick(state);
     expect(friend.swarm!.alert).toBeGreaterThan(0); // its whole swarm wakes
     run(state, 10 * TICK_RATE);
-    expect(state.flood!.kingHp).toBeLessThan(FLOOD.kingHp);
+    expect(royal(state).hp).toBeLessThan(FLOOD.royalHp);
   });
 
   it("taking all his HP loses", () => {
     const state = blankFlood();
-    state.flood!.kingHp = 0;
+    royal(state).hp = 0;
     tick(state);
     expect(state.gameOver).toBe(true);
     expect(state.won).toBe(false);
@@ -542,8 +545,64 @@ describe("the king's escort", () => {
     archer.escort = undefined; // standing still, for the test
     const goblin = spawnEnemy(state, archer.x + 1, archer.y, { kind: "goblin" });
     goblin.swarm = { post: { x: goblin.x, y: goblin.y }, id: 4, alert: 100, hp: goblin.hp };
-    state.flood!.king = { x: archer.x + 20, y: archer.y }; // well away
+    royal(state).at = { x: archer.x + 20, y: archer.y }; // well away
     run(state, 3 * TICK_RATE);
     expect(archer.hp).toBeLessThan(archer.maxHp);
+  });
+});
+
+describe("co-op", () => {
+  /** Two players: the king's (1) and the queen's (2), on open ground, no lava yet. */
+  function coop(): GameState {
+    const state = createGame(3, { mode: "flood", blankMap: true, players: ["Ann", "Bo"] });
+    state.flood!.front = -Infinity;
+    return state;
+  }
+
+  it("gives each player a royal, with an escort each", () => {
+    const state = coop();
+    const [king, queen] = state.flood!.royals;
+    expect(king).toMatchObject({ owner: 1, title: "king" });
+    expect(queen).toMatchObject({ owner: 2, title: "queen" });
+    expect(queen.at.y).not.toBe(king.at.y);
+    for (const owner of [1, 2]) {
+      expect(state.units.filter((u) => u.escort && u.owner === owner)).toHaveLength(2);
+    }
+  });
+
+  it("lets each player lead only their own royal", () => {
+    const state = coop();
+    const [king, queen] = state.flood!.royals;
+    expect(applyCommand(state, 2, { type: "planKing", x: queen.at.x + 3, y: queen.at.y })).toEqual({
+      ok: true,
+    });
+    expect(queen.plan).toHaveLength(1);
+    expect(king.plan).toEqual([]);
+  });
+
+  it("goes on when one falls: that player still builds on land the team's seen", () => {
+    const state = coop();
+    const [king, queen] = state.flood!.royals;
+    queen.hp = 0;
+    tick(state);
+    expect(queen.fallen).toBe("swarm");
+    expect(state.gameOver).toBe(false);
+    expect(applyCommand(state, 2, { type: "planKing", x: 5, y: 5 })).toMatchObject({
+      reason: "Your royal has fallen",
+    });
+    // Land the king sees is the team's, so the queen's player can build there.
+    expect(canBuild(state, 2, "wall", king.at.x + 3, king.at.y).ok).toBe(true);
+  });
+
+  it("is over once every royal has fallen", () => {
+    const state = coop();
+    const [king, queen] = state.flood!.royals;
+    queen.hp = 0;
+    tick(state);
+    expect(state.gameOver).toBe(false);
+    king.hp = 0;
+    tick(state);
+    expect(state.gameOver).toBe(true);
+    expect(state.won).toBe(false);
   });
 });

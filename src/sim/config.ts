@@ -1,4 +1,5 @@
 // All tunable game numbers live here.
+import type { RoyalTitle } from "./types";
 
 /**
  * Map sizes players pick from when starting a game, in tiles. M is the default. `keep: "right"`
@@ -1083,30 +1084,36 @@ export const PVP = {
 };
 
 /**
- * No looking back (see sim/flood.ts): the king walks to the flags you plant, as far as he can,
- * while lava creeps in behind him and new land is generated ahead.
+ * No looking back (see sim/flood.ts): each player's royal walks to the flags they plant, as far
+ * as it can, while lava creeps in behind and new land is generated ahead.
  */
 export const FLOOD = {
-  /** The king sees round himself, and so lifts the fog, as he goes. */
-  kingSight: { inner: 7, outer: 10 } satisfies SightStats,
-  /** How fast the king walks, in tiles per second. */
-  kingSpeed: 1.5,
   /**
-   * The king's escort, with him from the start: each unit's kind and its spot beside him (across,
-   * down; he faces right, on into new land). One that falls is gone for good.
+   * The royals, by when their players joined (the first player's is the king), and their rows at
+   * the start, round the first's (up to 4 players: a room's most).
+   */
+  titles: ["king", "queen", "prince", "princess"] satisfies RoyalTitle[],
+  startRows: [0, -3, 3, -6],
+  /** A royal sees round itself, and so lifts the fog, as it goes. */
+  royalSight: { inner: 7, outer: 10 } satisfies SightStats,
+  /** How fast a royal walks, in tiles per second. */
+  royalSpeed: 1.5,
+  /**
+   * Each royal's escort, with it from the start: each unit's kind and its spot beside it (across,
+   * down; facing right, on into new land). One that falls is gone for good.
    */
   escorts: [
     { kind: "soldier", spot: { x: 1, y: 0 } },
     { kind: "archer", spot: { x: -1, y: 0 } },
   ] satisfies { kind: UnitKindId; spot: { x: number; y: number } }[],
-  /** How far from the king an escort that closes in to fight goes after enemies. */
+  /** How far from its royal an escort that closes in to fight goes after enemies. */
   escortChase: 4,
-  /** The king's HP: swarms that reach him hit him (see sim/floodSwarms.ts). */
-  kingHp: 150,
+  /** A royal's HP: swarms that reach it hit it (see sim/floodSwarms.ts). */
+  royalHp: 150,
   /**
    * Swarms: one for this many tiles of land (an M map: about 17), 4-8 strong, middles this far
-   * apart and from the king's start; one sees him this far off, waking its swarm, and gives up
-   * this long after it last saw him.
+   * apart and from the royals' start; one sees a royal this far off, waking its swarm, and gives
+   * up this long after it last saw one.
    */
   swarm: {
     tilesPerSwarm: 900,
