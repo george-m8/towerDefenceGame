@@ -533,7 +533,7 @@ describe("swarms", () => {
     expect(royal(state).hp).toBeLessThan(FLOOD.royalHp);
   });
 
-  it("goblins run from a flood of water they see; others don't, nor from lava", () => {
+  it("swarms run from a flood of water they see, but not from lava", () => {
     const fleeing = (liquid: FloodLiquid | undefined, kind: "goblin" | "zerg") => {
       const state = blankFlood(liquid);
       state.units = []; // no escort
@@ -549,7 +549,7 @@ describe("swarms", () => {
       return enemy.x - 24;
     };
     expect(fleeing("water", "goblin")).toBeGreaterThan(2); // off away from it
-    expect(fleeing("water", "zerg")).toBe(0); // at its post
+    expect(fleeing("water", "zerg")).toBeGreaterThan(2);
     expect(fleeing(undefined, "goblin")).toBe(0);
   });
 

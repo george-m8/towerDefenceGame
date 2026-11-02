@@ -4,7 +4,7 @@
 // walls), hitting it once they reach it. They give up once they've lost sight of the royals for a
 // while, and go back.
 // A royal they bring down has fallen, as one the lava reaches has.
-// Goblins are scared of water: with a flood of it, one that sees it runs (see fleeWater).
+// They're scared of water: with a flood of it, one that sees it runs (see fleeWater).
 import { ENEMY_KINDS, FLOOD, TICK_RATE, type EnemyKindId } from "./config";
 import { attackUnit, spawnEnemy, unitToFight } from "./enemies";
 import { atTileCentre } from "./movement";
@@ -145,14 +145,14 @@ export function chaseRoyals(state: GameState, enemy: Enemy): void {
 }
 
 /**
- * A goblin (FLOOD.swarm.fleeWater) that sees a flood of water (FLOOD.swarm.sight) runs from it,
+ * An enemy that sees a flood of water (FLOOD.swarm.sight) runs from it,
  * before anything else: FLOOD.swarm.fleeTiles on, away from the nearest of it, then on again
  * while it's still in sight (or as far as it can get), and stays there. True while it runs.
  */
 function fleeWater(state: GameState, enemy: Enemy): boolean {
-  const { sight, fleeWater: kinds, fleeTiles } = FLOOD.swarm;
+  const { sight, fleeTiles } = FLOOD.swarm;
   const mind = enemy.swarm!;
-  if (state.flood!.liquid !== "water" || !(kinds as string[]).includes(enemy.kind)) return false;
+  if (state.flood!.liquid !== "water") return false;
   const water = nearestFloodwater(state, enemy, sight);
   if (!water) {
     mind.flee = null;
