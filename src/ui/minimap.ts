@@ -16,6 +16,12 @@ import type { UiState } from "./state";
 const DRAW_WIDTH = 440;
 /** The view outline, in screen pixels: a white line under black dashes, seen on any ground. */
 const VIEW_LINE_PX = 2;
+/**
+ * The map image is rebuilt (a few ms on a big map) at most this often as the map changes, as it
+ * does all the time in No looking back as the flood comes on. A new map, or the world moving on,
+ * rebuilds it at once.
+ */
+const REBUILD_MS = 250;
 const VIEW_DASH_PX = 4;
 
 /** The colour of one tile on the minimap: the keep, a structure, the spawn, or the ground. */
@@ -48,6 +54,9 @@ export function createMinimap(
   /** The map image, rebuilt only when the map changes. */
   let terrainImage: ImageData | null = null;
   let imageKey = "";
+  /** What the map image was built for besides the grid's version: a change rebuilds at once. */
+  let layoutKey = "";
+  let builtAt = -Infinity;
   let state: GameState | null = null;
 
   // Click or drag to move the view.
@@ -121,10 +130,14 @@ export function createMinimap(
           canvas.style.height = `${height / dpr}px`;
         }
       }
-      const key = `${current.seed}:${current.gridVersion}:${current.fog}:${ui.playerId}:${current.width}x${current.height}:${scale}`;
-      if (key !== imageKey) {
+      const layout = `${current.seed}:${current.fog}:${ui.playerId}:${current.width}x${current.height}:${scale}:${current.flood?.shifted ?? 0}`;
+      const key = `${layout}:${current.gridVersion}`;
+      const now = performance.now();
+      if (key !== imageKey && (layout !== layoutKey || now - builtAt >= REBUILD_MS)) {
         rebuildImage(current);
         imageKey = key;
+        layoutKey = layout;
+        builtAt = now;
       }
       ctx.putImageData(terrainImage!, 0, 0);
 

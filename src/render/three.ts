@@ -16,6 +16,7 @@ import type { GameState, PlayerId } from "../sim/types";
 import { ISO, tilePixels, viewCentre, type Camera } from "../ui/camera";
 import type { UiState } from "../ui/state";
 import { blockHeight, blockSideColour, bubbles, createRenderer, drawnHeight } from "./canvas";
+import { changedTiles, flatPrints, shiftPrints, type FlatPrints } from "./flatChanges";
 import type { Rotation } from "./rotation";
 import { darknessAt, daylight, skyHour } from "./dayNight";
 import { sunDirection } from "./sun";
@@ -39,10 +40,15 @@ const CAMERA_DISTANCE = 400;
 const MAP_TEXTURE_MAX = 8192;
 /** The map texture's pixels a tile, at most (the flat map's own size). */
 const MAP_TEXTURE_TILE_MAX = TILE_SIZE;
-/** Repainting the map texture: at most this often when something changed... */
-const REPAINT_MIN_MS = 300;
-/** ...and at least this often anyway (building progress, damage, ore being mined). */
-const REPAINT_MAX_MS = 1500;
+/**
+ * How often the map texture is checked for tiles that need painting again (see flatChanges.ts):
+ * just those are painted, and uploaded a patch at a time...
+ */
+const REPAINT_MS = 300;
+/** ...in patches this many tiles square... */
+const PATCH_TILES = 16;
+/** ...unless more than this share of the map changed: then all of it. */
+const REPAINT_ALL_SHARE = 0.3;
 /** The glyph atlas: cells across (and down), and each cell's size in pixels. */
 const ATLAS_CELLS = 16;
 const ATLAS_CELL_PX = 64;
@@ -390,33 +396,102 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
     else matrix.makeScale(1, SUNK_DEPTH, 1).setPosition(x + 0.5, h - SUNK_DEPTH, y + 0.5);
   }
 
-  let painted: { key: string; tiers: Uint8Array | null; at: number; shifted: number } = {
-    key: "",
-    tiers: null,
-    at: -Infinity,
-    shifted: 0,
-  };
+  let painted: {
+    at: number;
+    shifted: number;
+    prints: FlatPrints | null;
+    pixels: number;
+    turns: Rotation;
+  } = { at: -Infinity, shifted: 0, prints: null, pixels: 0, turns: 0 };
 
-  /** Repaints the map texture and rebuilds the blocks, when the map or sight changes. */
+  /** Canvases (by size) a patch of the map texture is copied through to the GPU. */
+  const patches = new Map<string, THREE.Texture>();
+  const patchAt = new THREE.Vector2();
+
+  /**
+   * Sends the patches of the painted map holding `tiles` to the map texture, rather than all of
+   * it (it's flipped: its first row is the canvas's last).
+   */
+  function uploadTiles(tiles: number[], width: number, pixels: number) {
+    const touched = new Set<number>();
+    const across = Math.ceil(width / PATCH_TILES);
+    for (const i of tiles) {
+      const x = i % width;
+      const y = (i - x) / width;
+      touched.add(Math.floor(y / PATCH_TILES) * across + Math.floor(x / PATCH_TILES));
+    }
+    let left = touched.size;
+    for (const patch of touched) {
+      const px = (patch % across) * PATCH_TILES * pixels;
+      const py = Math.floor(patch / across) * PATCH_TILES * pixels;
+      const pw = Math.min(PATCH_TILES * pixels, paintCanvas.width - px);
+      const ph = Math.min(PATCH_TILES * pixels, paintCanvas.height - py);
+      let source = patches.get(`${pw}x${ph}`);
+      if (!source) {
+        const c = document.createElement("canvas");
+        c.width = pw;
+        c.height = ph;
+        source = new THREE.Texture(c);
+        patches.set(`${pw}x${ph}`, source);
+      }
+      const c = source.image as HTMLCanvasElement;
+      const g = c.getContext("2d")!;
+      g.clearRect(0, 0, pw, ph);
+      g.drawImage(paintCanvas, px, py, pw, ph, 0, 0, pw, ph);
+      // The zoomed-out levels are made again once, after the last patch.
+      mapTexture.generateMipmaps = --left === 0;
+      renderer.copyTextureToTexture(
+        source,
+        mapTexture,
+        null,
+        patchAt.set(px, paintCanvas.height - py - ph),
+      );
+    }
+    mapTexture.generateMipmaps = true;
+  }
+
+  /**
+   * Repaints the map texture and rebuilds the blocks, when the map or sight changes: checked
+   * every REPAINT_MS, and when No looking back's world moves on (or the ground would lag behind
+   * the blocks and the king). Only the tiles that changed are painted (see flatChanges.ts); the
+   * world moving on slides what's painted along.
+   */
   function build(state: GameState, viewer: PlayerId, now: number, turns: Rotation) {
-    const tiers = state.fog ? getSight(state, viewer) : null;
-    const key = `${state.width}x${state.height}:${state.gridVersion}:${state.fog}`;
-    const changed = key !== painted.key || tiers !== painted.tiers;
-    // No looking back's world moving on moves every tile: repaint at once, or the ground would
-    // lag behind the blocks and the king.
     const shifted = state.flood?.shifted ?? 0;
     const moved = shifted !== painted.shifted;
-    if (!moved && now - painted.at < (changed ? REPAINT_MIN_MS : REPAINT_MAX_MS)) return;
-    painted = { key, tiers, at: now, shifted };
+    if (!moved && now - painted.at < REPAINT_MS) return;
+    const tiers = state.fog ? getSight(state, viewer) : null;
     const { width, height } = state;
     const pixels = Math.max(
       4,
       Math.min(MAP_TEXTURE_TILE_MAX, Math.floor(textureMax / Math.max(width, height))),
     );
     const resized = paintCanvas.width !== width * pixels || paintCanvas.height !== height * pixels;
-    painter.renderFlat(state, viewer, pixels, turns);
-    if (resized) mapTexture.dispose(); // a new size needs a new GPU texture
-    mapTexture.needsUpdate = true;
+    const prints = flatPrints(state, tiers, turns);
+    let before = painted.prints;
+    if (resized || painted.pixels !== pixels || painted.turns !== turns) before = null;
+    if (before && moved) {
+      // Slid along with the world, if it's gone the way the picture can follow.
+      const columns = shifted - painted.shifted;
+      if (turns === 0 && columns > 0 && columns < width) {
+        painter.shiftFlat(columns, pixels);
+        before = { tiles: shiftPrints(before.tiles, width, columns), gates: before.gates };
+      } else before = null;
+    }
+    const changed =
+      before && before.gates === prints.gates ? changedTiles(before.tiles, prints.tiles) : null;
+    painted = { at: now, shifted, prints, pixels, turns };
+    if (changed && changed.length === 0 && !moved) return; // nothing to paint, nor blocks
+    if (!changed || changed.length > REPAINT_ALL_SHARE * width * height) {
+      painter.renderFlat(state, viewer, pixels, turns);
+      if (resized) mapTexture.dispose(); // a new size needs a new GPU texture
+      mapTexture.needsUpdate = true;
+    } else {
+      painter.renderFlatTiles(state, viewer, pixels, turns, changed);
+      // Slid along, every tile's moved: all of it goes up (but little was painted).
+      if (moved) mapTexture.needsUpdate = true;
+      else uploadTiles(changed, width, pixels);
+    }
     mapSize.value.set(width, height);
     ground.scale.set(width, 1, height);
 

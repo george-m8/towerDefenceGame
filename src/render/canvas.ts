@@ -1225,12 +1225,14 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   }
 
   /** A faint S on each spawner's door, over the terrain, so you can see where not to build. */
-  function drawDoors(state: GameState) {
+  /** Gates' doors (on `only` tiles, if given). */
+  function drawDoors(state: GameState, only?: Set<number>) {
     for (const structure of Object.values(state.structures)) {
       const stats: StructureStats = STRUCTURES[structure.kind];
       if (!stats.spawner || !isBuilt(structure)) continue;
       const door = spawnTileOf(state, structure);
       if (!door || !isExplored(state, door.x, door.y, viewer)) continue;
+      if (only && !only.has(door.y * state.width + door.x)) continue;
       ctx!.globalAlpha = DOOR_ALPHA;
       drawGlyph(door.x, door.y, "S", COLOURS.door);
       ctx!.globalAlpha = 1;
@@ -1491,28 +1493,33 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     ctx!.lineWidth = 1;
   }
 
+  /** Ready to paint the flat map (see renderFlat) at `pixelsPerTile`, for `viewer_`. */
+  function flatSetup(viewer_: PlayerId, pixelsPerTile: number) {
+    viewer = viewer_;
+    hover = null;
+    now = performance.now();
+    const scale = pixelsPerTile / TILE_SIZE;
+    ctx!.setTransform(scale, 0, 0, scale, 0, 0);
+    ctx!.textAlign = "center";
+    ctx!.textBaseline = "middle";
+    textured = pixelsPerTile >= TEXTURE_MIN_TILE_PX;
+    barsShown = false;
+  }
+
   return {
     /**
      * The whole map drawn flat, every tile, at `pixelsPerTile`: for the 3D view's ground and
      * block tops. No bars (they're drawn over the 3D view), no shadows or lift; fog as a tint.
      */
     renderFlat(state: GameState, viewer_: PlayerId, pixelsPerTile: number, turns: Rotation = 0) {
-      viewer = viewer_;
-      hover = null;
-      now = performance.now();
       const width = state.width * pixelsPerTile;
       const height = state.height * pixelsPerTile;
       if (canvas.width !== width || canvas.height !== height) {
         canvas.width = width;
         canvas.height = height;
       }
-      const scale = pixelsPerTile / TILE_SIZE;
-      ctx.setTransform(scale, 0, 0, scale, 0, 0);
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
+      flatSetup(viewer_, pixelsPerTile);
       view = { x0: 0, y0: 0, x1: state.width - 1, y1: state.height - 1 };
-      textured = pixelsPerTile >= TEXTURE_MIN_TILE_PX;
-      barsShown = false;
       const showOwners = Object.keys(state.players).length > 1;
       for (let y = 0; y < state.height; y++) {
         for (let x = 0; x < state.width; x++) {
@@ -1536,6 +1543,50 @@ export function createRenderer(canvas: HTMLCanvasElement) {
         ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
       }
       ctx.globalAlpha = 1;
+    },
+
+    /**
+     * Repaints just `tiles` (tile indices) of a flat map renderFlat painted, as it paints them:
+     * for small changes, so the whole map isn't painted again.
+     */
+    renderFlatTiles(
+      state: GameState,
+      viewer_: PlayerId,
+      pixelsPerTile: number,
+      turns: Rotation,
+      tiles: readonly number[],
+    ) {
+      flatSetup(viewer_, pixelsPerTile);
+      const showOwners = Object.keys(state.players).length > 1;
+      const tiers = state.fog ? getSight(state, viewer) : null;
+      for (const i of tiles) {
+        const x = i % state.width;
+        const y = (i - x) / state.width;
+        drawTileContents(state, x, y, showOwners);
+        drawEnclosureTint(state, x, y, 0);
+        view = { x0: x, y0: y, x1: x, y1: y };
+        drawLavaWarning(state, turns, false);
+        if (tiers && tiers[i] !== IN_SIGHT) {
+          ctx.fillStyle = FOG.colour;
+          ctx.globalAlpha = tiers[i] === SEEN ? FOG.seen.opacity : 1;
+          ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+          ctx.globalAlpha = 1;
+        }
+      }
+      drawDoors(state, new Set(tiles));
+      barsShown = true;
+    },
+
+    /**
+     * Moves a flat map renderFlat painted `columns` tiles to the left (No looking back's world
+     * moving on), leaving the columns on the right for renderFlatTiles to paint.
+     */
+    shiftFlat(columns: number, pixelsPerTile: number) {
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.globalCompositeOperation = "copy";
+      ctx.drawImage(canvas, -columns * pixelsPerTile, 0);
+      ctx.restore();
     },
 
     /**
