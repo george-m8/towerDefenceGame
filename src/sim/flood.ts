@@ -708,6 +708,7 @@ export function shiftWorld(state: GameState): void {
     if (e.swarm?.post) {
       e.swarm.post = e.swarm.post.x >= 1 ? { x: e.swarm.post.x - 1, y: e.swarm.post.y } : null;
     }
+    if (e.swarm) e.swarm.flee = null; // worked out again on the moved map
   }
   state.features = state.features
     .filter((f) => f.x >= 1)

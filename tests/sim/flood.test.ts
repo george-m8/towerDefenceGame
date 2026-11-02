@@ -533,6 +533,26 @@ describe("swarms", () => {
     expect(royal(state).hp).toBeLessThan(FLOOD.royalHp);
   });
 
+  it("goblins run from a flood of water they see; others don't, nor from lava", () => {
+    const fleeing = (liquid: FloodLiquid | undefined, kind: "goblin" | "zerg") => {
+      const state = blankFlood(liquid);
+      state.units = []; // no escort
+      royal(state).at = { x: 50, y: 5 };
+      state.flood!.front = -Infinity;
+      // A wall of the flood's own terrain down column 20, a goblin 4 tiles from it.
+      for (let y = 0; y < state.height; y++) {
+        state.terrain[tileIndex(state, 20, y)] = liquid === "water" ? "floodwater" : "lava";
+      }
+      const enemy = spawnEnemy(state, 24, 20, { kind });
+      enemy.swarm = { post: { x: 24, y: 20 }, id: 7, alert: 0, hp: enemy.hp };
+      run(state, 4 * TICK_RATE);
+      return enemy.x - 24;
+    };
+    expect(fleeing("water", "goblin")).toBeGreaterThan(2); // off away from it
+    expect(fleeing("water", "zerg")).toBe(0); // at its post
+    expect(fleeing(undefined, "goblin")).toBe(0);
+  });
+
   it("taking all his HP loses", () => {
     const state = blankFlood();
     royal(state).hp = 0;

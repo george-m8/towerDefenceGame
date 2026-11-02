@@ -188,6 +188,8 @@ export interface SwarmMind {
   alert: number;
   /** Its HP when last checked: less now means it was hurt, which wakes it. */
   hp: number;
+  /** Where it's running to, away from a flood of water it's seen (goblins; see fleeWater). */
+  flee?: Point | null;
 }
 
 /** No looking back's royals: a king, a queen, then a prince and a princess, one per player. */

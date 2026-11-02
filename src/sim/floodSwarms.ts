@@ -4,6 +4,7 @@
 // walls), hitting it once they reach it. They give up once they've lost sight of the royals for a
 // while, and go back.
 // A royal they bring down has fallen, as one the lava reaches has.
+// Goblins are scared of water: with a flood of it, one that sees it runs (see fleeWater).
 import { ENEMY_KINDS, FLOOD, TICK_RATE, type EnemyKindId } from "./config";
 import { attackUnit, spawnEnemy, unitToFight } from "./enemies";
 import { atTileCentre } from "./movement";
@@ -111,6 +112,7 @@ function wake(state: GameState, enemy: Enemy): void {
 export function chaseRoyals(state: GameState, enemy: Enemy): void {
   const flood = state.flood!;
   const mind = enemy.swarm!;
+  if (fleeWater(state, enemy)) return;
   const royal = nearestRoyal(flood, enemy);
   const hurt = enemy.hp < mind.hp;
   mind.hp = enemy.hp;
@@ -140,6 +142,54 @@ export function chaseRoyals(state: GameState, enemy: Enemy): void {
   }
   if (mind.post) headFor(state, enemy, mind.post);
   else roam(state, enemy);
+}
+
+/**
+ * A goblin (FLOOD.swarm.fleeWater) that sees a flood of water (FLOOD.swarm.sight) runs from it,
+ * before anything else: FLOOD.swarm.fleeTiles on, away from the nearest of it, then on again
+ * while it's still in sight (or as far as it can get), and stays there. True while it runs.
+ */
+function fleeWater(state: GameState, enemy: Enemy): boolean {
+  const { sight, fleeWater: kinds, fleeTiles } = FLOOD.swarm;
+  const mind = enemy.swarm!;
+  if (state.flood!.liquid !== "water" || !(kinds as string[]).includes(enemy.kind)) return false;
+  const water = nearestFloodwater(state, enemy, sight);
+  if (!water) {
+    mind.flee = null;
+    return false;
+  }
+  const x = Math.round(enemy.x);
+  const y = Math.round(enemy.y);
+  // Where to, worked out again once there, and every second (the water comes on).
+  if (!mind.flee || (mind.flee.x === x && mind.flee.y === y) || state.tick % TICK_RATE === 0) {
+    const away = Math.hypot(x - water.x, y - water.y) || 1;
+    mind.flee = {
+      x: clampTo(Math.round(x + ((x - water.x) / away) * fleeTiles), state.width),
+      y: clampTo(Math.round(y + ((y - water.y) / away) * fleeTiles), state.height),
+    };
+  }
+  // It settles where it ran to, not back by the water.
+  mind.post = mind.flee;
+  headFor(state, enemy, mind.flee);
+  return true;
+}
+
+const clampTo = (n: number, size: number) => Math.max(0, Math.min(size - 1, n));
+
+/** The nearest tile of floodwater within `reach` of an enemy, or null. */
+function nearestFloodwater(state: GameState, enemy: Enemy, reach: number): Point | null {
+  const ex = Math.round(enemy.x);
+  const ey = Math.round(enemy.y);
+  let best: Point | null = null;
+  let nearest = Infinity;
+  for (let y = Math.max(0, ey - reach); y <= Math.min(state.height - 1, ey + reach); y++) {
+    for (let x = Math.max(0, ex - reach); x <= Math.min(state.width - 1, ex + reach); x++) {
+      if (state.terrain[y * state.width + x] !== "floodwater") continue;
+      const d = Math.hypot(x - ex, y - ey);
+      if (d <= reach && d < nearest) [best, nearest] = [{ x, y }, d];
+    }
+  }
+  return best;
 }
 
 /** The royal still standing nearest an enemy, and how far (as it's drawn, part way along). */

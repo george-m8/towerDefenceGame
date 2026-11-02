@@ -1113,7 +1113,8 @@ export const FLOOD = {
   /**
    * Swarms: one for this many tiles of land (an M map: about 17), 4-8 strong, middles this far
    * apart and from the royals' start; one sees a royal this far off, waking its swarm, and gives
-   * up this long after it last saw one.
+   * up this long after it last saw one. With a flood of water, the kinds in `fleeWater` run from it
+   * once it's in sight, `fleeTiles` on away from the nearest of it at a time.
    */
   swarm: {
     tilesPerSwarm: 900,
@@ -1122,6 +1123,8 @@ export const FLOOD = {
     clearOfStart: 20,
     sight: 6,
     giveUpSeconds: 6,
+    fleeWater: ["goblin"] satisfies EnemyKindId[],
+    fleeTiles: 8,
   },
   /** Swarms (see sim/floodSwarms.ts) get a wave tougher every this many tiles on, up to the hardest. */
   tilesPerWave: 40,
