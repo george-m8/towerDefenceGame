@@ -11,6 +11,7 @@
 import { FLOOD, KEEP_SIZE, TERRAIN, TICK_RATE } from "./config";
 import { placeSwarm } from "./floodSwarms";
 import { randomInt } from "./rng";
+import { spawnUnit } from "./units";
 import { exploreKingSight, isExplored } from "./fog";
 import {
   EMPTY,
@@ -43,6 +44,8 @@ export function createFlood(
     kingHp: FLOOD.kingHp,
     kingMaxHp: FLOOD.kingHp,
     swarms: 1,
+    // Their first come at once (see keepEscort).
+    escortTimers: FLOOD.escorts.map(() => 0),
     plan: [],
     path: [],
     front: 0,
@@ -343,6 +346,7 @@ export function updateFlood(state: GameState): void {
   const flood = state.flood;
   if (!flood) return;
   walkKing(state, flood);
+  keepEscort(state, flood);
   flood.front = Math.min(state.width, flood.front + lavaSpeed(state) / TICK_RATE);
   spreadLava(state, flood);
   flood.glow = lavaGlow(state, flood);
@@ -353,6 +357,49 @@ export function updateFlood(state: GameState): void {
     for (let i = 0; i < FLOOD.shiftColumns; i++) shiftWorld(state);
   }
 }
+
+/**
+ * The king's escort (FLOOD.escorts), always with him: each that's missing (at the start, or
+ * fallen) comes back FLOOD.escortReturnSeconds after it went, beside him.
+ */
+export function keepEscort(state: GameState, flood: Flood): void {
+  FLOOD.escorts.forEach((escort, i) => {
+    const here = state.units.some(
+      (u) => u.hp > 0 && u.escort?.x === escort.spot.x && u.escort.y === escort.spot.y,
+    );
+    if (here) {
+      flood.escortTimers[i] = FLOOD.escortReturnSeconds * TICK_RATE;
+      return;
+    }
+    if (flood.escortTimers[i] > 0) {
+      flood.escortTimers[i]--;
+      return;
+    }
+    // Its spot, or the nearest open tile round him.
+    const { x, y } = flood.king;
+    const tries = [escort.spot, ...besideKing].map((d) => ({ x: x + d.x, y: y + d.y }));
+    for (const p of tries) {
+      const unit = spawnUnit(state, escort.kind, flood.owner, p.x, p.y);
+      if (unit) {
+        unit.escort = { ...escort.spot };
+        flood.escortTimers[i] = FLOOD.escortReturnSeconds * TICK_RATE;
+        break;
+      }
+    }
+  });
+}
+
+/** The tiles round the king, nearest first. */
+const besideKing = [
+  { x: 0, y: -1 },
+  { x: 0, y: 1 },
+  { x: 1, y: 0 },
+  { x: -1, y: 0 },
+  { x: 1, y: -1 },
+  { x: 1, y: 1 },
+  { x: -1, y: -1 },
+  { x: -1, y: 1 },
+];
 
 /** How close to the map's right edge the king gets before new land comes (half a small map). */
 function aheadTiles(state: GameState): number {

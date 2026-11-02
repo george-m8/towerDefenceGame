@@ -1,6 +1,7 @@
 // The player's own people on the map. Each unit belongs to a player, has a kind (UNIT_KINDS)
 // and does what its kind's behaviour says every tick. See SPEC-unit-core.md.
 import {
+  FLOOD,
   STRUCTURES,
   TERRAIN,
   TICK_RATE,
@@ -53,6 +54,30 @@ function guard(state: GameState, unit: Unit) {
     walkTowards(state, unit, `chase ${target.id}`, (x, y) => reach(target, x, y) <= kind.range);
   } else if (spot) {
     walkTowards(state, unit, `spot ${spot.x},${spot.y}`, isAt(spot));
+  }
+}
+
+/**
+ * No looking back's escort: it fights anything in reach; a fighter that closes in (range 1)
+ * goes after enemies near the king; otherwise it walks to its spot beside him (or, if that's
+ * blocked, anywhere beside him) and stands there.
+ */
+function escort(state: GameState, unit: Unit) {
+  if (atTileCentre(unit) && attackNearest(state, unit)) return;
+  const king = state.flood?.king;
+  if (!king || !unit.escort) return;
+  const kind = kindOf(unit);
+  const chase = kind.range <= 1 ? FLOOD.escortChase : 0;
+  const target = chase > 0 ? enemyToChase(state, unit, king, chase) : undefined;
+  if (target) {
+    walkTowards(state, unit, `chase ${target.id}`, (x, y) => reach(target, x, y) <= kind.range);
+    return;
+  }
+  const spot = { x: king.x + unit.escort.x, y: king.y + unit.escort.y };
+  if (canStand(state, spot.x, spot.y)) {
+    walkTowards(state, unit, `escort ${spot.x},${spot.y}`, isAt(spot));
+  } else {
+    walkTowards(state, unit, `by king ${king.x},${king.y}`, (x, y) => reach(king, x, y) <= 1);
   }
 }
 
@@ -256,7 +281,8 @@ export function updateUnits(state: GameState): void {
     if (unit.hp <= 0) continue;
     unit.attackCooldown = Math.max(0, unit.attackCooldown - 1);
     const tile = Math.round(unit.y) * state.width + Math.round(unit.x);
-    BEHAVIOURS[kindOf(unit).behaviour](state, unit);
+    if (unit.escort) escort(state, unit);
+    else BEHAVIOURS[kindOf(unit).behaviour](state, unit);
     if (Math.round(unit.y) * state.width + Math.round(unit.x) !== tile) unitMoved(state, unit);
   }
   occupancy.delete(state); // units have moved: rebuilt when next asked

@@ -46,6 +46,12 @@ An endless solo mode about keeping moving. You have no keep of your own. Your **
 - New land is generated `chunkColumns` (40) columns at a time, as its own map (a river with fords, coast only top or bottom, rocks, forests, ruins, chests, resources), seeded by the game's seed and how far the world has moved. It's handed out a column at a time. A new piece is generated again (up to 20 tries) until you can walk from the left of the land before it right across the new piece, with ruins counted as in the way, and at least `seamRows` (3) open rows where they join.
 - The camera moves with the world, so the view doesn't jump, then glides after the king (see "The camera"); the 3D view repaints its ground at once.
 
+**The king's escort** (`FLOOD.escorts`; `keepEscort` in flood.ts, `escort` in units.ts)
+
+- A barracks soldier and an archer, the player's units, each with a spot beside the king (the soldier ahead of him, the archer behind). They join him on the first tick.
+- Each tick an escort fights anything in reach (as a guard does). One that closes in to fight (range 1, the soldier) goes after the enemy in its sight nearest the king, within `escortChase` (4) tiles of him. Otherwise it walks to its spot beside him, or anywhere beside him if that's blocked, and stands there.
+- One that falls (to a swarm, or the lava) comes back beside the king `escortReturnSeconds` (30 s) later.
+
 **Swarms** (`src/sim/floodSwarms.ts`)
 
 - On the starting map, about one per `FLOOD.swarm.tilesPerSwarm` (900) tiles, 4-8 enemies each round a middle at least `swarm.spacing` (10) from other swarms and `swarm.clearOfStart` (20) from the king's start. Each piece of new land brings as many for its size, placed when the land round their middle has come in. A swarm is as tough as wave 1 + one for each `FLOOD.tilesPerWave` (40) tiles across the world from the king's start, up to `hardestWave` (25).

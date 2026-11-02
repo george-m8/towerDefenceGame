@@ -1091,6 +1091,17 @@ export const FLOOD = {
   kingSight: { inner: 7, outer: 10 } satisfies SightStats,
   /** How fast the king walks, in tiles per second. */
   kingSpeed: 1.5,
+  /**
+   * The king's escort, always with him: each unit's kind and its spot beside him (across, down;
+   * he faces right, on into new land). One that falls comes back this long after.
+   */
+  escorts: [
+    { kind: "soldier", spot: { x: 1, y: 0 } },
+    { kind: "archer", spot: { x: -1, y: 0 } },
+  ] satisfies { kind: UnitKindId; spot: { x: number; y: number } }[],
+  escortReturnSeconds: 30,
+  /** How far from the king an escort that closes in to fight goes after enemies. */
+  escortChase: 4,
   /** The king's HP: swarms that reach him hit him (see sim/floodSwarms.ts). */
   kingHp: 150,
   /**

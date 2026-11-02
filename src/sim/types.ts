@@ -201,6 +201,8 @@ export interface Flood {
   kingMaxHp: number;
   /** The next swarm's number (a swarm wakes together). */
   swarms: number;
+  /** His escort, one of each FLOOD.escorts: ticks until each comes back, once it's fallen. */
+  escortTimers: number[];
   /** His flags, in the order he'll walk to them (as a raider's plan), and his way to the first. */
   plan: Point[];
   path: Point[];
@@ -273,6 +275,8 @@ export interface Unit {
   siegeBlockedAt: number;
   /** It needs a path but the tick's search budget ran out: it goes first next tick. */
   waitingForPath: boolean;
+  /** No looking back: one of the king's escort, at this spot beside him (see sim/units.ts). */
+  escort?: Point;
 }
 
 /** Short-lived visual events recorded by the simulation for the renderer. */

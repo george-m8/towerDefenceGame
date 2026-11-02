@@ -433,6 +433,7 @@ describe("swarms", () => {
 
   it("wake when one sees him, come for him, and hit him", () => {
     const state = blankFlood();
+    state.flood!.escortTimers = state.flood!.escortTimers.map(() => Infinity); // no escort
     const { x, y } = king(state);
     const goblin = spawnEnemy(state, x + 5, y, { kind: "goblin" });
     goblin.swarm = { post: { x: x + 5, y }, id: 7, alert: 0, hp: goblin.hp };
@@ -485,5 +486,60 @@ describe("enclosures", () => {
     expect(discountAt(state, 20, 20, ME)).toBe(ENCLOSURE_DISCOUNT.outer);
     expect(discountAt(state, 30, 20, ME)).toBe(0);
     expect(priceAt(state, "archer", 20, 20, ME)).toBeLessThan(priceAt(state, "archer", 30, 20, ME));
+  });
+});
+
+describe("the king's escort", () => {
+  const escorts = (state: GameState) => state.units.filter((u) => u.escort && u.hp > 0);
+
+  it("is a soldier and an archer, beside him from the start", () => {
+    const state = blankFlood();
+    tick(state);
+    const { x, y } = king(state);
+    expect(
+      escorts(state)
+        .map((u) => u.kind)
+        .sort(),
+    ).toEqual(["archer", "soldier"]);
+    for (const u of escorts(state)) {
+      expect(Math.max(Math.abs(u.x - x), Math.abs(u.y - y))).toBeLessThanOrEqual(1);
+      expect(u.owner).toBe(ME);
+    }
+  });
+
+  it("follows him wherever he goes", () => {
+    const state = blankFlood();
+    const { x, y } = king(state);
+    flag(state, { x: x + 8, y: y + 4 });
+    run(state, walkTicks(12) + 5 * TICK_RATE);
+    expect(king(state)).toEqual({ x: x + 8, y: y + 4 });
+    for (const u of escorts(state)) {
+      expect({ x: u.x, y: u.y }).toEqual({ x: x + 8 + u.escort!.x, y: y + 4 + u.escort!.y });
+    }
+  });
+
+  it("fights for him: the soldier goes after an enemy near him", () => {
+    const state = blankFlood();
+    tick(state);
+    const { x, y } = king(state);
+    const goblin = spawnEnemy(state, x + 3, y + 2, { kind: "goblin" });
+    goblin.swarm = { post: { x: x + 3, y: y + 2 }, id: 3, alert: 0, hp: goblin.hp };
+    run(state, 10 * TICK_RATE);
+    expect(goblin.hp).toBeLessThanOrEqual(0);
+  });
+
+  it("comes back a while after falling", () => {
+    const state = blankFlood();
+    tick(state);
+    const soldier = escorts(state).find((u) => u.kind === "soldier")!;
+    soldier.hp = 0;
+    run(state, 2);
+    expect(escorts(state).map((u) => u.kind)).toEqual(["archer"]);
+    run(state, FLOOD.escortReturnSeconds * TICK_RATE);
+    expect(
+      escorts(state)
+        .map((u) => u.kind)
+        .sort(),
+    ).toEqual(["archer", "soldier"]);
   });
 });
