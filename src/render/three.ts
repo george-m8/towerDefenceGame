@@ -15,7 +15,7 @@ import { ringTiles } from "../sim/keepWalls";
 import type { GameState, PlayerId } from "../sim/types";
 import { ISO, tilePixels, viewCentre, type Camera } from "../ui/camera";
 import type { UiState } from "../ui/state";
-import { blockHeight, blockSideColour, bubbles, bubbling, createRenderer } from "./canvas";
+import { blockHeight, blockSideColour, bubbles, createRenderer, drawnHeight } from "./canvas";
 import type { Rotation } from "./rotation";
 import { darknessAt, daylight, skyHour } from "./dayNight";
 import { sunDirection } from "./sun";
@@ -362,7 +362,7 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
   const cardScale = new THREE.Vector3();
   const turn = new THREE.Matrix4();
 
-  /** The blocks of bare lava, as [instance, x, y, height] in a row, to bubble each frame. */
+  /** The blocks of bare lava and water, as [instance, x, y] in a row, to bubble each frame. */
   let lavaBlocks: number[] = [];
 
   let painted: { key: string; tiers: Uint8Array | null; at: number; shifted: number } = {
@@ -400,7 +400,7 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
     let crowned = 0;
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
-        if (blockHeight(state, x, y) > 0) count++;
+        if (blockHeight(state, x, y) > 0 || bubbles(state, x, y)) count++;
         if (hasRamparts(state, ring, x, y)) crowned++;
       }
     }
@@ -409,12 +409,12 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
     lavaBlocks = [];
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
-        const h = blockTiles(state, x, y);
+        const h = (drawnHeight(state, x, y, now) / TILE_SIZE) * ISO.heightScale;
         const tier = tiers?.[y * width + x];
         if (h <= 0 || tier === UNEXPLORED) continue;
         matrix.makeScale(1, h, 1).setPosition(x + 0.5, 0, y + 0.5);
         mesh.setMatrixAt(mesh.count, matrix);
-        if (bubbles(state, x, y)) lavaBlocks.push(mesh.count, x, y, h);
+        if (bubbles(state, x, y)) lavaBlocks.push(mesh.count, x, y);
         // The sides' colour: the block's own (a tower on a wall, the wall's), misted like its top where it's only been seen.
         side.copy(colourOf(blockSideColour(state, x, y)));
         if (tier === SEEN) side.lerp(fogColour, FOG.seen.opacity);
@@ -438,13 +438,14 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
     ramparts.done();
   }
 
-  /** Lava's blocks rise and fall a little, every frame (see bubbling). */
+  /** Lava's and water's blocks rise and fall a little, every frame (see drawnHeight). */
   function bubble(state: GameState, now: number) {
     const mesh = blocks.mesh();
     if (!mesh) return;
-    for (let k = 0; k < lavaBlocks.length; k += 4) {
-      const [i, x, y, h] = [lavaBlocks[k], lavaBlocks[k + 1], lavaBlocks[k + 2], lavaBlocks[k + 3]];
-      matrix.makeScale(1, h * bubbling(state, x, y, now), 1).setPosition(x + 0.5, 0, y + 0.5);
+    for (let k = 0; k < lavaBlocks.length; k += 3) {
+      const [i, x, y] = [lavaBlocks[k], lavaBlocks[k + 1], lavaBlocks[k + 2]];
+      const h = (drawnHeight(state, x, y, now) / TILE_SIZE) * ISO.heightScale;
+      matrix.makeScale(1, h, 1).setPosition(x + 0.5, 0, y + 0.5);
       mesh.setMatrixAt(i, matrix);
     }
     if (lavaBlocks.length > 0) mesh.instanceMatrix.needsUpdate = true;

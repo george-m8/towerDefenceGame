@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { blockHeight, bubbling, enemyDrawRow, isDamagedWall } from "../../src/render/canvas";
+import { blockHeight, drawnHeight, enemyDrawRow, isDamagedWall } from "../../src/render/canvas";
+import type { Terrain } from "../../src/sim/types";
 import { placeStructure } from "../../src/sim/grid";
 import { textureSpecks } from "../../src/render/textures";
 import { FOG } from "../../src/render/palette";
@@ -106,22 +107,33 @@ describe("No looking back's lava", () => {
     expect(blockHeight(state, 0, 20)).toBe(wallHeight / 2); // off the map counts as lava
   });
 
-  it("bubbles: each tile rises and falls a few percent, on its own beat", () => {
+  it("bubbles, as water ripples: each tile rises and falls, on its own beat", () => {
     const state = createGame(3, { mode: "flood", blankMap: true });
-    state.terrain[state.width * 20 + 5] = "lava";
-    state.terrain[state.width * 20 + 6] = "lava";
+    const at = (x: number, terrain: Terrain) => (state.terrain[state.width * 20 + x] = terrain);
+    at(5, "lava");
+    at(6, "lava");
     const over = (x: number) =>
-      Array.from({ length: 200 }, (_, t) => bubbling(state, x, 20, t * 50));
+      Array.from({ length: 200 }, (_, t) => drawnHeight(state, x, 20, t * 50));
+    // Lava a tile from land stands 1 px: it bubbles by up to a fifth of that.
     const five = over(5);
     expect(Math.min(...five)).toBeGreaterThanOrEqual(0.8);
     expect(Math.max(...five)).toBeLessThanOrEqual(1.2);
     expect(Math.max(...five) - Math.min(...five)).toBeGreaterThan(0.15);
     expect(over(6)).not.toEqual(five);
-    // Not ground, not water, not lava with a wall on it.
-    expect(bubbling(state, 7, 20, 1234)).toBe(1);
-    state.terrain[state.width * 20 + 7] = "floodwater";
-    expect(bubbling(state, 7, 20, 1234)).toBe(1);
-    placeStructure(state, "wall", 6, 20, "N", 1);
-    expect(bubbling(state, 6, 20, 1234)).toBe(1);
+    // Rivers, the sea and floodwater ripple; a river gets a surface to ripple.
+    at(7, "river");
+    at(8, "sea");
+    at(9, "floodwater");
+    for (const x of [7, 8, 9]) {
+      const heights = over(x);
+      expect(Math.min(...heights)).toBeGreaterThan(0);
+      expect(Math.max(...heights) - Math.min(...heights)).toBeGreaterThan(0.1);
+    }
+    // Not ground, nor a bridge on a river, nor lava with a wall on it.
+    expect(drawnHeight(state, 10, 20, 1234)).toBe(0);
+    placeStructure(state, "bridge", 7, 20, "N", 1).buildLeft = 0;
+    expect(drawnHeight(state, 7, 20, 1234)).toBe(blockHeight(state, 7, 20));
+    placeStructure(state, "wall", 6, 20, "N", 1).buildLeft = 0;
+    expect(drawnHeight(state, 6, 20, 1234)).toBe(blockHeight(state, 6, 20));
   });
 });

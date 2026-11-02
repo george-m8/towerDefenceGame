@@ -41,6 +41,7 @@ import type {
   Structure,
   StructureKind,
   Royal,
+  Terrain,
 } from "../sim/types";
 import type { PendingBuild } from "../net/session";
 import { isBuildTool, type UiState } from "../ui/state";
@@ -170,27 +171,36 @@ function lavaHeight(state: GameState, x: number, y: number): number {
   return most;
 }
 
-/** How much lava bubbles: each tile of it rises and falls by up to this share of its height. */
+/** How much lava and water bubble: each tile rises and falls by up to this share of its height. */
 const BUBBLE = 0.2;
+/** Rivers and the sea lie flat, but for a surface this high (in pixels) to ripple. */
+const SURFACE = 1;
+/** Rivers and the sea ripple by this share of SURFACE. */
+const RIPPLE = 0.5;
 
-/** Whether (x, y) bubbles: bare lava (not water, nor lava with a wall on it). */
+/** Terrain that bubbles (lava) or ripples (water). */
+const RIPPLING = new Set<Terrain>(["lava", "floodwater", "river", "sea"]);
+
+/** Whether (x, y) bubbles or ripples: bare lava or water (nothing built on it, such as a bridge). */
 export function bubbles(state: GameState, x: number, y: number): boolean {
-  return terrainAt(state, x, y) === "lava" && !baseAt(state, x, y) && !mountAt(state, x, y);
+  return RIPPLING.has(terrainAt(state, x, y)) && !baseAt(state, x, y) && !mountAt(state, x, y);
 }
 
 /**
- * Lava bubbling: what to scale bare lava's height at (x, y) by at `ms` (1 anywhere else). Each
- * tile has its own beat, by its place in the world (so it keeps it as the world moves on). Only
- * drawn, so each screen bubbles its own way.
+ * How high (x, y) is drawn at `ms`: its height (blockHeight), but lava and water bubble, rising
+ * and falling a little, each tile on its own beat, by its place in the world (so it keeps it as
+ * the world moves on). Only drawn, so each screen bubbles its own way.
  */
-export function bubbling(state: GameState, x: number, y: number, ms: number): number {
-  if (!bubbles(state, x, y)) return 1;
+export function drawnHeight(state: GameState, x: number, y: number, ms: number): number {
+  const height = blockHeight(state, x, y);
+  if (!bubbles(state, x, y)) return height;
   const h = Math.imul(x + (state.flood?.shifted ?? 0), 0x27d4eb2d) ^ Math.imul(y, 0x165667b1);
   const phase = ((h >>> 0) % 1000) * ((2 * Math.PI) / 1000);
   const speed = 0.0015 + ((h >>> 10) % 1000) * 0.0000025; // radians a millisecond
   // Two beats, so it heaves rather than pulses.
   const wave = 0.7 * Math.sin(ms * speed + phase) + 0.3 * Math.sin(ms * speed * 2.3 + phase * 3);
-  return 1 + BUBBLE * wave;
+  // No looking back's lava and floodwater stand up; rivers and the sea get a surface.
+  return height > 0 ? height * (1 + BUBBLE * wave) : SURFACE * (1 + RIPPLE * wave);
 }
 
 /** A No looking back goal game's keep, covering (x, y). */
@@ -335,8 +345,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     const ms = performance.now();
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
-        const h = blockHeight(state, x0 + x, y0 + y);
-        heights.data[y * width + x] = h && h * bubbling(state, x0 + x, y0 + y, ms);
+        heights.data[y * width + x] = drawnHeight(state, x0 + x, y0 + y, ms);
       }
     }
   }
