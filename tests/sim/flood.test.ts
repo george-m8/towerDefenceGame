@@ -433,7 +433,7 @@ describe("swarms", () => {
 
   it("wake when one sees him, come for him, and hit him", () => {
     const state = blankFlood();
-    state.flood!.escortTimers = state.flood!.escortTimers.map(() => Infinity); // no escort
+    state.units = []; // no escort
     const { x, y } = king(state);
     const goblin = spawnEnemy(state, x + 5, y, { kind: "goblin" });
     goblin.swarm = { post: { x: x + 5, y }, id: 7, alert: 0, hp: goblin.hp };
@@ -494,7 +494,6 @@ describe("the king's escort", () => {
 
   it("is a soldier and an archer, beside him from the start", () => {
     const state = blankFlood();
-    tick(state);
     const { x, y } = king(state);
     expect(
       escorts(state)
@@ -528,18 +527,23 @@ describe("the king's escort", () => {
     expect(goblin.hp).toBeLessThanOrEqual(0);
   });
 
-  it("comes back a while after falling", () => {
+  it("doesn't come back once it's fallen", () => {
     const state = blankFlood();
-    tick(state);
     const soldier = escorts(state).find((u) => u.kind === "soldier")!;
     soldier.hp = 0;
-    run(state, 2);
+    run(state, 120 * TICK_RATE);
     expect(escorts(state).map((u) => u.kind)).toEqual(["archer"]);
-    run(state, FLOOD.escortReturnSeconds * TICK_RATE);
-    expect(
-      escorts(state)
-        .map((u) => u.kind)
-        .sort(),
-    ).toEqual(["archer", "soldier"]);
+  });
+
+  it("gets fought: swarm enemies hit the units beside them", () => {
+    const state = blankFlood();
+    const archer = escorts(state).find((u) => u.kind === "archer")!;
+    state.units = [archer];
+    archer.escort = undefined; // standing still, for the test
+    const goblin = spawnEnemy(state, archer.x + 1, archer.y, { kind: "goblin" });
+    goblin.swarm = { post: { x: goblin.x, y: goblin.y }, id: 4, alert: 100, hp: goblin.hp };
+    state.flood!.king = { x: archer.x + 20, y: archer.y }; // well away
+    run(state, 3 * TICK_RATE);
+    expect(archer.hp).toBeLessThan(archer.maxHp);
   });
 });

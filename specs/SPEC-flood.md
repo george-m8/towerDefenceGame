@@ -48,14 +48,14 @@ An endless solo mode about keeping moving. You have no keep of your own. Your **
 
 **The king's escort** (`FLOOD.escorts`; `keepEscort` in flood.ts, `escort` in units.ts)
 
-- A barracks soldier and an archer, the player's units, each with a spot beside the king (the soldier ahead of him, the archer behind). They join him on the first tick.
+- A barracks soldier and an archer, the player's units, each with a spot beside the king (the soldier ahead of him, the archer behind). They join him when the game's made.
 - Each tick an escort fights anything in reach (as a guard does). One that closes in to fight (range 1, the soldier) goes after the enemy in its sight nearest the king, within `escortChase` (4) tiles of him. Otherwise it walks to its spot beside him, or anywhere beside him if that's blocked, and stands there.
-- One that falls (to a swarm, or the lava) comes back beside the king `escortReturnSeconds` (30 s) later.
+- One that falls (to a swarm, or the lava) is gone for good.
 
 **Swarms** (`src/sim/floodSwarms.ts`)
 
 - On the starting map, about one per `FLOOD.swarm.tilesPerSwarm` (900) tiles, 4-8 enemies each round a middle at least `swarm.spacing` (10) from other swarms and `swarm.clearOfStart` (20) from the king's start. Each piece of new land brings as many for its size, placed when the land round their middle has come in. A swarm is as tough as wave 1 + one for each `FLOOD.tilesPerWave` (40) tiles across the world from the king's start, up to `hardestWave` (25).
-- Asleep, a member stands at its post or walks back to it. One that sees the king (`swarm.sight`, 6 tiles) or is hurt wakes its whole swarm. Awake, it walks to the king by a short path round what's in the way (it never breaks walls), and once beside him hits him for its damage every attack interval. It goes back to sleep `swarm.giveUpSeconds` (6 s) after it last saw him (or was hurt).
+- Asleep, a member stands at its post or walks back to it. One that sees the king (`swarm.sight`, 6 tiles) or is hurt wakes its whole swarm. Awake, it walks to the king by a short path round what's in the way (it never breaks walls), and once beside him hits him for its damage every attack interval. On the way, at each tile, it stops to fight a unit of the player's beside it (the weakest), as wave enemies do, so the escort and other units get fought. It goes back to sleep `swarm.giveUpSeconds` (6 s) after it last saw him (or was hurt).
 - The king has `FLOOD.kingHp` (150) HP, shown in the HUD ("King") and as a bar over him once hurt. At 0 the game's over ("The king has fallen.").
 - Kills pay their bounty as usual. Lava kills enemies it reaches (no bounty). They move with the world, posts and all; a post that's dropped off the map leaves its enemy roaming.
 

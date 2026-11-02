@@ -241,7 +241,11 @@ export function attackKeep(state: GameState, enemy: Enemy, keep: Keep) {
  * A unit the enemy stops to fight: one in its way (on its tile or its next step) first, else
  * one on a tile beside it; the weakest, then the oldest. Rams ignore units.
  */
-function unitToFight(state: GameState, enemy: Enemy, pathStep: Point | null): Unit | undefined {
+export function unitToFight(
+  state: GameState,
+  enemy: Enemy,
+  pathStep: Point | null,
+): Unit | undefined {
   if (ENEMY_KINDS[enemy.kind].behaviour === "siege") return undefined;
   const inTheWay = unitsAt(state, enemy.x, enemy.y);
   if (pathStep) inTheWay.push(...unitsAt(state, pathStep.x, pathStep.y));

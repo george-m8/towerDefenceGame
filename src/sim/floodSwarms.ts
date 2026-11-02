@@ -4,7 +4,8 @@
 // him once they reach him. They give up once they've lost sight of him for a while, and go back.
 // The king falling to them ends the game, as the lava does.
 import { ENEMY_KINDS, FLOOD, TICK_RATE, type EnemyKindId } from "./config";
-import { spawnEnemy } from "./enemies";
+import { attackUnit, spawnEnemy, unitToFight } from "./enemies";
+import { atTileCentre } from "./movement";
 import { kingAt } from "./flood";
 import { blocksAt, inBounds } from "./grid";
 import { canCross } from "./pathfinding";
@@ -102,8 +103,9 @@ function wake(state: GameState, enemy: Enemy): void {
 
 /**
  * One tick of a swarm member's mind: seeing the king (or being hurt) wakes its swarm; awake, it
- * comes for him and hits him once it's beside him; asleep, it stands at its post or heads back
- * there (or, its post gone with the land behind, wanders).
+ * comes for him and hits him once it's beside him, and on the way stops to fight any of the
+ * player's units beside it (his escort, say), as wave enemies do; asleep, it stands at its post
+ * or heads back there (or, its post gone with the land behind, wanders).
  */
 export function chaseKing(state: GameState, enemy: Enemy): void {
   const flood = state.flood!;
@@ -125,6 +127,12 @@ export function chaseKing(state: GameState, enemy: Enemy): void {
         flood.kingHp = Math.max(0, flood.kingHp - enemy.damage);
         enemy.attackCooldown = enemy.attackInterval;
       }
+      return;
+    }
+    // A unit beside it (between tiles, it carries on to the next first).
+    const unit = atTileCentre(enemy) ? unitToFight(state, enemy, null) : undefined;
+    if (unit) {
+      attackUnit(enemy, unit);
       return;
     }
     headFor(state, enemy, flood.king);

@@ -24,7 +24,7 @@ import { addCue, updateCues } from "./cues";
 import { updateEffects } from "./effects";
 import { initialExplored, revealKeep } from "./fog";
 import { claimKeepWalls, placeKeepWalls } from "./keepWalls";
-import { createFlood, kingDrowned, kingHome, planKing, updateFlood } from "./flood";
+import { createFlood, joinEscort, kingDrowned, kingHome, planKing, updateFlood } from "./flood";
 import { kingFallen, populateFlood } from "./floodSwarms";
 import { floodLayout, generateTerrain, layoutFor, type MapLayout } from "./mapgen";
 import type { ItemsFile } from "./itemsFile";
@@ -172,8 +172,11 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
   state.explored = initialExplored(state);
   for (const name of options.players ?? ["Player 1"]) addPlayer(state, name);
   if (mode === "pvp") assignKeeps(state);
-  // The king is the player's, in their colour.
-  if (state.flood) state.flood.owner = Number(Object.keys(state.players)[0] ?? 1);
+  // The king is the player's, in their colour, and so is his escort.
+  if (state.flood) {
+    state.flood.owner = Number(Object.keys(state.players)[0] ?? 1);
+    joinEscort(state);
+  }
   updateVotes(state); // with no players, the game starts paused
   for (const spot of map.ruins) {
     const ruin = placeStructure(state, "ruin", spot.x, spot.y, "N", null);

@@ -201,8 +201,6 @@ export interface Flood {
   kingMaxHp: number;
   /** The next swarm's number (a swarm wakes together). */
   swarms: number;
-  /** His escort, one of each FLOOD.escorts: ticks until each comes back, once it's fallen. */
-  escortTimers: number[];
   /** His flags, in the order he'll walk to them (as a raider's plan), and his way to the first. */
   plan: Point[];
   path: Point[];
