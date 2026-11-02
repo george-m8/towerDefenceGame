@@ -1108,11 +1108,6 @@ export const FLOOD = {
   ] satisfies { kind: UnitKindId; spot: { x: number; y: number } }[],
   /** How far from its royal an escort that closes in to fight goes after enemies. */
   escortChase: 4,
-  /**
-   * With a flood of water, the players' units keep this many tiles from it (and off where it's
-   * about to come; see avoidWater in sim/units.ts).
-   */
-  waterBerth: 2,
   /** A royal's HP: swarms that reach it hit it (see sim/floodSwarms.ts). */
   royalHp: 150,
   /**

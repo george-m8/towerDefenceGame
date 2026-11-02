@@ -84,26 +84,13 @@ function escort(state: GameState, unit: Unit) {
 }
 
 /**
- * No looking back, with a flood of water: a unit where the water's about to come (its glow; see
- * lavaWarning) or within FLOOD.waterBerth of it gets out of the way, to the nearest tile that's
- * neither, before doing anything else. True while it does.
+ * No looking back, with a flood of water: a unit on a wet tile, where the water's about to come
+ * (its glow; see lavaWarning), gets out of the way, to the nearest dry tile, before doing anything
+ * else. Beside water that isn't coming (walled off, say) is dry. True while it does.
  */
 function avoidWater(state: GameState, unit: Unit): boolean {
   if (state.flood?.liquid !== "water") return false;
-  const wet = (x: number, y: number) => {
-    if (lavaWarning(state, x, y) !== null) return true;
-    const berth = FLOOD.waterBerth;
-    for (let dy = -berth; dy <= berth; dy++) {
-      for (let dx = -berth; dx <= berth; dx++) {
-        const nx = x + dx;
-        const ny = y + dy;
-        if (inBounds(state, nx, ny) && state.terrain[ny * state.width + nx] === "floodwater") {
-          return true;
-        }
-      }
-    }
-    return false;
-  };
+  const wet = (x: number, y: number) => lavaWarning(state, x, y) !== null;
   if (atTileCentre(unit) && !wet(unit.x, unit.y)) return false;
   // Between tiles it carries on to the next first, and only goes on if that's wet too.
   if (!atTileCentre(unit) && !wet(unit.tx, unit.ty)) return false;

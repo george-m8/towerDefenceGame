@@ -554,20 +554,32 @@ describe("swarms", () => {
     expect(fleeing(undefined, "goblin")).toBe(0);
   });
 
-  it("your units keep clear of a flood of water, but not of lava", () => {
-    const moved = (liquid: FloodLiquid | undefined) => {
+  it("your units get off ground a flood of water's about to take, but not lava's", () => {
+    const soldierBy = (liquid: FloodLiquid | undefined) => {
       const state = blankFlood(liquid);
       royal(state).at = { x: 50, y: 5 };
       state.units = [];
-      for (let y = 0; y < state.height; y++) {
-        state.terrain[tileIndex(state, 20, y)] = liquid === "water" ? "floodwater" : "lava";
-      }
-      const soldier = spawnUnit(state, "soldier", ME, 21, 20)!;
-      run(state, 4 * TICK_RATE);
-      return soldier.x;
+      state.flood!.front = 0;
+      const soldier = spawnUnit(state, "soldier", ME, 1, 20)!;
+      tick(state);
+      expect(lavaWarning(state, 1, 20)).not.toBeNull(); // wet
+      expect(soldier.pathGoal === "dry").toBe(liquid === "water"); // what it's doing first
+      run(state, 3 * TICK_RATE);
+      return { state, soldier };
     };
-    expect(moved("water")).toBe(20 + FLOOD.waterBerth + 1); // just clear of it
-    expect(moved(undefined)).toBe(21);
+    const { state, soldier } = soldierBy("water");
+    expect(lavaWarning(state, Math.round(soldier.x), Math.round(soldier.y))).toBeNull(); // dry
+    soldierBy(undefined);
+  });
+
+  it("your units don't mind water that isn't coming", () => {
+    const state = blankFlood("water");
+    royal(state).at = { x: 50, y: 5 };
+    state.units = [];
+    for (let y = 0; y < state.height; y++) state.terrain[tileIndex(state, 20, y)] = "floodwater";
+    const soldier = spawnUnit(state, "soldier", ME, 21, 20)!;
+    run(state, 3 * TICK_RATE);
+    expect(soldier.x).toBe(21);
   });
 
   it("taking all his HP loses", () => {
