@@ -7,7 +7,7 @@
 // a raft's way. If they shut it off, it waits, and in the end puts them off wherever it can.
 import { RAFTS, RESOURCES, TERRAIN, TICK_RATE, type EnemyKindId } from "./config";
 import { spawnEnemy, type SpawnOptions } from "./enemies";
-import { baseAt, inBounds, isBuilt, isKeepTile, mountAt, removeStructure } from "./grid";
+import { baseAt, blocksAt, inBounds, isKeepTile, mountAt, removeStructure } from "./grid";
 import { nextRandom, randomInt } from "./rng";
 import type { Enemy, GameState, Keep, Point, Raft, Rafts, Terrain } from "./types";
 
@@ -127,12 +127,14 @@ export function updateRafts(state: GameState): void {
   rafts.boats = rafts.boats.filter((raft) => raft.riders.length > 0);
 }
 
-/** Whether the flood can take (x, y): not raised land, the keep, or what stands up from it. */
+/** Whether the flood can take (x, y): not raised land, the keep, walls, or what stands up from it. */
 function floods(state: GameState, x: number, y: number): boolean {
   const t = state.terrain[y * state.width + x];
   if (WATER.has(t) || t === "hill" || t in RESOURCES || isKeepTile(state, x, y)) return false;
+  // A wall holds it from when it's put up, built or not (or the water would take one going up on
+  // the shore), and so does a gate in it.
   const base = baseAt(state, x, y);
-  return !(base && (base.kind === "wall" || base.kind === "ruin") && isBuilt(base));
+  return !(base && (base.kind === "wall" || base.kind === "ruin" || base.kind === "gate"));
 }
 
 /** The tiles beside (x, y) on the map, as indices. */
@@ -343,9 +345,14 @@ function round(state: GameState, x: number, y: number, keep: (p: Point) => boole
   return tiles;
 }
 
-/** The mainland round a raft at (x, y). */
+/** Mainland a rider can step onto: nothing built in the way (a wall, a ruin). */
+function open(state: GameState, land: Uint8Array, p: Point): boolean {
+  return land[p.y * state.width + p.x] === 1 && !blocksAt(state, p.x, p.y);
+}
+
+/** The mainland round a raft at (x, y) its riders can step onto. */
 function shoreBeside(state: GameState, land: Uint8Array, x: number, y: number): Point[] {
-  return round(state, x, y, (p) => land[p.y * state.width + p.x] === 1);
+  return round(state, x, y, (p) => open(state, land, p));
 }
 
 /** The shortest way over water from (x, y) to water beside the mainland, or null. */
@@ -360,9 +367,10 @@ function wayToShore(state: GameState, from: Point): Point[] | null {
     const x = i % width;
     const y = (i - x) / width;
     const ashore = deck(x, y).some((t) =>
-      FOUR.some(
-        (d) => inBounds(state, t.x + d.x, t.y + d.y) && land[(t.y + d.y) * width + t.x + d.x],
-      ),
+      FOUR.some((d) => {
+        const p = { x: t.x + d.x, y: t.y + d.y };
+        return inBounds(state, p.x, p.y) && open(state, land, p);
+      }),
     );
     if (ashore) {
       const path: Point[] = [];
@@ -403,7 +411,8 @@ function sail(state: GameState, raft: Raft): void {
         state,
         at.x,
         at.y,
-        (p) => TERRAIN[state.terrain[p.y * state.width + p.x]].walkable,
+        (p) =>
+          TERRAIN[state.terrain[p.y * state.width + p.x]].walkable && !blocksAt(state, p.x, p.y),
       );
       if (anywhere.length > 0) return land(raft, riders, anywhere);
     }

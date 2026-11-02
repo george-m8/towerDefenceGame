@@ -98,6 +98,20 @@ describe("Rafts", () => {
     expect(state.terrain[tileIndex(state, at.x, at.y)]).toBe("ground");
   });
 
+  it("doesn't take a wall going up on the shore before it's done", () => {
+    const state = raftsGame();
+    // Walls just started (not built yet) on the left edge, where the flood comes in first.
+    const walls = [10, 11, 12].map((y) => {
+      state.terrain[tileIndex(state, 0, y)] = "ground";
+      const wall = placeStructure(state, "wall", 0, y, "N", ME);
+      wall.buildLeft = wall.buildTicks = 60 * TICK_RATE;
+      return wall;
+    });
+    run(state, RAFTS.floodSeconds + 5);
+    for (const wall of walls) expect(state.structures[wall.id]).toBeDefined();
+    expect(state.terrain[tileIndex(state, 1, 11)]).toBe("floodwater"); // round them
+  });
+
   it("lets a tower go on a wall built out over the water", () => {
     const state = raftsGame();
     run(state, 40);

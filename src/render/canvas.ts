@@ -151,6 +151,27 @@ const WALL_HEIGHT = 6;
 const HILL_STEP = 2;
 const HILL_LEVELS = 3;
 
+/**
+ * How high something walking at (x, y) stands on hills: their heights blended between the tiles
+ * it's between, so it goes smoothly up and down a step rather than jumping at the tile's edge.
+ */
+function hillLift(state: GameState, x: number, y: number): number {
+  const x0 = Math.floor(x);
+  const y0 = Math.floor(y);
+  const fx = x - x0;
+  const fy = y - y0;
+  const at = (tx: number, ty: number) =>
+    tx < 0 || ty < 0 || tx >= state.width || ty >= state.height ? 0 : hillHeight(state, tx, ty);
+  const top = at(x0, y0) * (1 - fx) + at(x0 + 1, y0) * fx;
+  const bottom = at(x0, y0 + 1) * (1 - fx) + at(x0 + 1, y0 + 1) * fx;
+  return top * (1 - fy) + bottom * fy;
+}
+
+/** A hill with nothing built on it: ground to walk on, though raised (see drawRaised). */
+function isBareHill(state: GameState, x: number, y: number): boolean {
+  return terrainAt(state, x, y) === "hill" && !baseAt(state, x, y) && !mountAt(state, x, y);
+}
+
 /** How high a hill stands at (x, y): a step for each tile in from its edge (off the map is edge). */
 export function hillHeight(state: GameState, x: number, y: number): number {
   if (terrainAt(state, x, y) !== "hill") return 0;
@@ -424,6 +445,23 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   }
 
   /**
+   * Bare hill, raised `h` pixels: drawn with the flat ground (back to front, so each row's top
+   * covers the face of the one behind), not with the blocks, so what walks on it is always drawn
+   * over it and never cut through by the step in front.
+   */
+  function drawRaised(state: GameState, x: number, y: number, h: number, showOwners: boolean) {
+    ctx!.fillStyle = blockSideColour(state, x, y);
+    ctx!.fillRect(x * TILE_SIZE, (y + 1) * TILE_SIZE - h, TILE_SIZE, h);
+    ctx!.fillStyle = "rgba(0, 0, 0, 0.45)";
+    ctx!.fillRect(x * TILE_SIZE, (y + 1) * TILE_SIZE - h, TILE_SIZE, h);
+    ctx!.save();
+    ctx!.translate(0, -h);
+    drawTileContents(state, x, y, showOwners);
+    ctx!.restore();
+    drawEnclosureTint(state, x, y, h);
+  }
+
+  /**
    * A tile `depth` pixels below the ground (a river or the sea dipping): its contents that much
    * lower, under the bank behind it (as far down as the tile behind isn't already).
    */
@@ -470,6 +508,10 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     for (let y = y0; y <= y1; y++) {
       for (let x = x0; x <= x1; x++) {
         const h = heightAt(x, y);
+        if (h > 0 && isBareHill(state, x, y)) {
+          drawRaised(state, x, y, h, showOwners);
+          continue;
+        }
         if (h > 0) {
           drawGround(x, y);
           continue;
@@ -491,7 +533,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     for (let y = heights.y0; y < heights.y0 + heights.height; y++) {
       for (let x = heights.x0; x < heights.x0 + heights.width; x++) {
         const h = heightAt(x, y);
-        if (h > 0) tracePolygon(sweptTile(x, y, h * dx, h * dy));
+        if (h > 0 && !isBareHill(state, x, y)) tracePolygon(sweptTile(x, y, h * dx, h * dy));
       }
     }
     ctx!.fill();
@@ -513,7 +555,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       drawEnemies(state, enemiesByRow.get(y - 1) ?? []);
       for (let x = x0; x <= x1; x++) {
         const h = heightAt(x, y);
-        if (h <= 0) continue;
+        if (h <= 0 || isBareHill(state, x, y)) continue;
         // Front face: the block's colour, darkened; the top sits h pixels higher.
         ctx!.fillStyle = blockSideColour(state, x, y);
         ctx!.fillRect(x * TILE_SIZE, (y + 1) * TILE_SIZE - h, TILE_SIZE, h);
@@ -1429,7 +1471,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       ctx!.fillStyle = playerColour(unit.owner);
       const glyph = UNIT_KINDS[unit.kind].glyph;
       // On a hill, up on its slope (the 3D view stands it on top as a card).
-      const up = iso ? 0 : hillHeight(state, Math.round(unit.x), Math.round(unit.y));
+      const up = iso ? 0 : hillLift(state, unit.x, unit.y);
       ctx!.fillText(glyph, (unit.x + 0.5) * TILE_SIZE, (unit.y + 0.5) * TILE_SIZE + 1 - up);
       drawHealth(`u${unit.id}`, unit);
     }
@@ -1448,7 +1490,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
         ? 0
         : onRaft(state, enemy.x, enemy.y)
           ? RAFT_LIFT
-          : hillHeight(state, Math.round(enemy.x), Math.round(enemy.y));
+          : hillLift(state, enemy.x, enemy.y);
       ctx!.fillText(kind.glyph, (enemy.x + 0.5) * TILE_SIZE, (enemy.y + 0.5) * TILE_SIZE + 1 - up);
       drawHealth(`e${enemy.id}`, enemy);
     }
