@@ -143,9 +143,10 @@ function findEnclosures(state: GameState): Enclosures {
     flood(members, seen, inside, width, height, true);
     if (!members.some((i) => open[i])) continue;
     // Ruins and terrain alone can box in a pocket on a fresh map; it only counts once
-    // something the players built is part of the wall.
+    // something the players built is part of the wall. No looking back's ruins are made to be
+    // enclosures (forts, halls), so there they count as they are.
     const builders = boundaryBuilders(state, members, inside);
-    if (builders.size === 0) continue;
+    if (builders.size === 0 && state.mode !== "flood") continue;
     const keep = members.map((i) => touchedKeep(state, i)).find((k) => k !== undefined);
     let owner = 0;
     if (state.mode === "pvp") {

@@ -483,6 +483,19 @@ describe("swarms", () => {
 });
 
 describe("enclosures", () => {
+  it("count when ruins alone close them in (forts are made to be)", () => {
+    const state = blankFlood();
+    for (let dy = -2; dy <= 2; dy++) {
+      for (let dx = -2; dx <= 2; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== 2) continue;
+        placeStructure(state, "ruin", 30 + dx, 20 + dy, "N", null);
+      }
+    }
+    state.gridVersion++;
+    expect(discountAt(state, 30, 20, ME)).toBe(ENCLOSURE_DISCOUNT.outer);
+    expect(discountAt(state, 40, 20, ME)).toBe(0);
+  });
+
   it("make building inside walls cheaper, as usual", () => {
     const state = blankFlood();
     // A ring of finished walls round (20, 20).

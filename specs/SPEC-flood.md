@@ -77,7 +77,7 @@ An endless mode about keeping moving, solo or co-op. You have no keep of your ow
 **Building**
 
 - Anywhere you've seen, as usual. Build time is measured from your royal (or, once it's fallen, the nearest one) instead of a keep.
-- Enclosures are cheaper (`ENCLOSURE_DISCOUNT.outer`, 25%) as usual. With no spawn strip, the outside is open ground joined to the map's edges (where new land and swarms come from).
+- Enclosures are cheaper (`ENCLOSURE_DISCOUNT.outer`, 25%), and tinted, as usual, but here an enclosure of ruins alone counts too (elsewhere a player's building has to be part of its wall), since forts and halls are made to be enclosures. With no spawn strip, the outside is open ground joined to the map's edges (where new land and swarms come from).
 
 **The camera** (`src/ui/lavaCamera.ts`)
 
