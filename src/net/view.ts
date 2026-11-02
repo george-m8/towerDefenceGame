@@ -62,6 +62,7 @@ export function applyUpdate(view: GameState, update: StateUpdate): Movers {
     shiftLayer(view.resourceWorth, view.width, view.height, moved, 0);
   }
   view.flood = update.flood;
+  view.rafts = update.rafts;
   view.tick = update.tick;
   view.gridVersion = update.gridVersion;
   view.sightVersion = update.sightVersion;

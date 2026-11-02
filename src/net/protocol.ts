@@ -135,7 +135,8 @@ type DynamicFields =
   | "speed"
   | "gameOver"
   | "fog"
-  | "flood";
+  | "flood"
+  | "rafts";
 
 /** Changed tiles of one grid layer, as [tile index, new value] pairs. */
 export type TileChanges<T> = [number, T][];
@@ -199,10 +200,10 @@ export function parseClientMessage(raw: string): ParseResult {
       if (name === null) return fail("Bad name");
       const message: ClientMessage = { type: "create", name };
       if (data.mode !== undefined) {
-        if (data.mode !== "endless" && data.mode !== "pvp" && data.mode !== "flood") {
+        if (!["endless", "pvp", "flood", "rafts"].includes(data.mode as string)) {
           return fail("Bad mode");
         }
-        message.mode = data.mode;
+        message.mode = data.mode as GameMode;
       }
       if (data.size !== undefined) {
         if (!isMapSize(data.size)) return fail("Bad map size");

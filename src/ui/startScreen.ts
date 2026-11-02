@@ -52,6 +52,13 @@ export const GAME_MODES: {
     description: "Lead your king on into new land, ahead of creeping lava. How far can he get?",
     online: false,
   },
+  {
+    mode: "rafts",
+    name: "Rafts",
+    description:
+      "Your keep stands on high ground as the rest of the land floods. Waves of enemies sail in on rafts. Solo, or co-op with friends.",
+    online: false,
+  },
 ];
 
 /** Campaign, above the other modes: solo only for now, and only once there are levels. */
@@ -396,7 +403,7 @@ function chooseGame(
           ...(items ? { items } : {}),
           ...fogOff,
           ...night,
-          ...(game === "flood" ? { game } : {}),
+          ...(game === "flood" || game === "rafts" ? { game } : {}),
           ...(game === "flood" && goal > 0 ? { goal } : {}),
           ...water,
         });

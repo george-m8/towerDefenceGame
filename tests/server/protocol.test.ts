@@ -27,6 +27,7 @@ describe("parseClientMessage", () => {
     parses({ type: "create", name: "Ann", enemiesCome: "night" });
     parses({ type: "create", name: "Ann", enemiesCome: "always" });
     parses({ type: "create", name: "Ann", mode: "flood", liquid: "water" });
+    parses({ type: "create", name: "Ann", mode: "rafts" });
     parses({ type: "join", room: "ABCD", name: "Bo" });
     parses({ type: "rejoin", room: "WXYZ", token: "a".repeat(32) });
     parses({ type: "restart" });

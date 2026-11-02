@@ -43,11 +43,11 @@ export function createWaitingRoom(root: HTMLElement, session: NetworkSession) {
       room.textContent = session.room ?? "";
       const isHost = lobby.host === session.playerId;
       const pvp = lobby.mode === "pvp";
-      const flood = lobby.mode === "flood";
+      const flood = lobby.mode === "flood" || lobby.mode === "rafts";
       mode.textContent = GAME_MODES.find((m) => m.mode === lobby.mode)?.name ?? "Endless";
       start.hidden = !isHost;
       raiding = state.players[session.playerId]?.role === "raider";
-      // Raiders are Endless's (and PvP's players are both defenders).
+      // Raiders are Endless's (PvP's players are both defenders, and Rafts' enemies sail in).
       role.hidden = pvp || flood;
       role.textContent = raiding ? "Play as a defender instead" : "Play as a raider (the enemy)";
       // PvP is one against one: the host can only start once the rival is in.

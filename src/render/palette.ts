@@ -165,6 +165,9 @@ export function enemyFont(size: EnemyVariant["size"]): string {
 export const COLOURS = {
   /** Grass. */
   ground: "#24361b",
+  /** Rafts' planks, and their rims, beams and gaps. */
+  raft: "#8a6a3c",
+  raftEdge: "#4f3b1f",
   /** The earth bank behind a river or the sea, where it dips below the ground. */
   bank: "#1c160c",
   /** Beyond the map's edge, when the whole map fits with room to spare. */

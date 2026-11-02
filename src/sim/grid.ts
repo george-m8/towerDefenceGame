@@ -212,6 +212,8 @@ function canBuildOnTerrain(
       ? { ok: true }
       : { ok: false, reason: `A wall on ${terrain.name.toLowerCase()} has to join on to a wall` };
   }
+  // On a wall built out over it, the layer rules decide (a tower on the wall, say), as on land.
+  if (isFlooded(terrainAt(state, x, y)) && baseAt(state, x, y)) return { ok: true };
   if (terrain.buildable === "none") {
     return { ok: false, reason: `Can't build on ${terrain.name.toLowerCase()}` };
   }

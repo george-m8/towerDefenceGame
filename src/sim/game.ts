@@ -46,6 +46,7 @@ import { updateTraps } from "./traps";
 import { removeDeadUnits, spawnUnit, updateSpawners, updateUnits } from "./units";
 import { createWaveState, sendWaveEarly, updateWaves } from "./waves";
 import { addPlayer, updateVotes } from "./players";
+import { createRafts, raiseLand, updateRafts } from "./rafts";
 import { applyRaidCommand, raiderRefusal, setRole, updateRaiders } from "./raiders";
 import type {
   Command,
@@ -110,8 +111,15 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
         keeps: file.keeps.map((k) => ({ ...k, size: KEEP_SIZE })),
         spawnTiles: spawnTiles(file),
       }
-    : (flooding?.layout ?? layoutFor(width, height, mode, keepSide));
-  const layout = flooding ? { ...generated, keeps: [], spawnTiles: [] } : generated;
+    : (flooding?.layout ??
+      // Rafts' keep sits in the middle of its raised land, wherever Endless's would.
+      layoutFor(width, height, mode, mode === "rafts" ? "centre" : keepSide));
+  // No looking back has no keep; Rafts' enemies come by water, not from a spawn strip.
+  const layout = flooding
+    ? { ...generated, keeps: [], spawnTiles: [] }
+    : mode === "rafts" && !file
+      ? { ...generated, spawnTiles: [] }
+      : generated;
   const { spawnTiles: spawns } = layout;
   const keepHp = mode === "pvp" ? PVP.keepHp : KEEP_HP;
 
@@ -132,10 +140,15 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
       ? { terrain: new Array<Terrain>(width * height).fill("ground"), ruins: [], chests: [] }
       : generateTerrain(generated, seed);
   // No looking back's starting map gets ruins too, as new land does.
-  const map =
+  const started =
     flooding && !options.blankMap
       ? withStartingRuins(generatedMap, width, height, seed, flooding.king, flooding.home)
       : { ...generatedMap, ruinSwarms: [] };
+  // Rafts: the keep's land raised above the flood to come.
+  const map =
+    mode === "rafts" && !file
+      ? { ...started, terrain: raiseLand(started.terrain, width, height, layout.keeps, seed) }
+      : started;
 
   const state: GameState = {
     seed,
@@ -190,9 +203,11 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
           options.floodLiquid,
         )
       : null,
+    rafts: mode === "rafts" ? createRafts() : null,
     explored: [],
   };
-  if (mode !== "endless") state.wave.countdown = Infinity; // only Endless has waves
+  // Only Endless (and Rafts, Endless by water) has waves.
+  if (mode !== "endless" && mode !== "rafts") state.wave.countdown = Infinity;
   state.explored = initialExplored(state);
   for (const name of options.players ?? ["Player 1"]) addPlayer(state, name);
   if (mode === "pvp") assignKeeps(state);
@@ -262,6 +277,7 @@ export function tick(state: GameState): void {
   updateCues(state);
   updateBuilding(state);
   updateFlood(state);
+  updateRafts(state);
   updateSpawners(state);
   updateUnits(state); // before enemies, so a unit that steps in the way blocks them this tick
   updateEnemies(state);

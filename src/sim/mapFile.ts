@@ -118,6 +118,7 @@ export const KEEPS_FOR_MODE: Record<GameMode, number> = {
   endless: 1,
   pvp: 2,
   flood: 0,
+  rafts: 1,
 };
 
 export function mapWidth(map: Pick<MapFile, "size">): number {

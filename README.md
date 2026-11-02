@@ -58,6 +58,10 @@ Solo or co-op (**No looking back** from Solo or Co-op, `?solo&game=flood`, or a 
 
 All the numbers are in `FLOOD` in `src/sim/config.ts`, and the rules are in `src/sim/flood.ts` and `specs/SPEC-flood.md`.
 
+### Rafts
+
+Endless on a drowning map, solo or co-op (**Rafts** from Solo or Co-op, `?solo&game=rafts`, or a room with `?create&name=Ann&game=rafts`), each player with their own gold, as in Endless. Your keep stands on a wide stretch of raised land, rising in steps, with trees, rock, gold-veined rock and berries on it. Five seconds in, the flood rises from the map's edges, a ring at a time, until everything else is under water but what stands up from it: walls, ruins, trees, rocks and bushes. Waves can't walk in, so they sail: each wave's enemies board rafts (2 by 2 tiles, up to 8 aboard) at the map's edge, which wait a few seconds to fill up, then find their way over the water to your shore and put them off there. Your towers can shoot them on the way. A wall can go on the water if it joins on to a wall (so you can build a line out across it, and towers on top), and water you wall off from the edge drains away, a ring every 4 seconds, so you can win land back. A raft with no way to your shore waits, and after 30 seconds puts its riders off wherever it can.
+
 ### Enemies
 
 Waves 1 and 2 are all goblins. Later waves mix in other kinds from the wave shown: each wave has a threat budget (5 + 3 x wave, where a goblin costs 1) spent on whichever kinds have arrived. HP grows 15% per wave and bounties by 1 every 5 waves, for every kind. Each enemy hits structures in its way, and the keep, with its own damage and speed of attack.

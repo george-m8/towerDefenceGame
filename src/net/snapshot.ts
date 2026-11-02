@@ -94,6 +94,7 @@ export function toUpdate(state: GameState, sent: SentState): StateUpdate {
     gameOver: state.gameOver,
     fog: state.fog,
     flood: clientFlood(state.flood),
+    rafts: state.rafts,
   };
 
   // No looking back's world has moved on: the clients move their layers with it (seeing that

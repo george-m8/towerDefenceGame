@@ -63,7 +63,7 @@ export function createLocalSession(
     enemiesCome?: EnemiesCome;
     lastWave?: number;
     /** No looking back (solo only); Endless otherwise. */
-    mode?: "flood";
+    mode?: "flood" | "rafts";
     /** No looking back: the keep to reach, in tiles (none: on for ever). */
     floodGoal?: number;
     /** No looking back: what the flood is (none: lava). */

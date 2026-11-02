@@ -7,7 +7,7 @@
 // the camera, from a glyph atlas. Effects, bars and the ghost go over it all on the flat
 // renderer's own canvas (renderOverlay). World units are tiles: x east, z south, y up.
 import * as THREE from "three";
-import { ENEMY_KINDS, UNIT_KINDS } from "../sim/config";
+import { ENEMY_KINDS, RAFTS, UNIT_KINDS } from "../sim/config";
 import { livingRoyals, royalAt } from "../sim/flood";
 import { SEEN, UNEXPLORED, canSeeEnemiesAt, getSight } from "../sim/fog";
 import { baseAt, isBuilt, mountAt } from "../sim/grid";
@@ -15,7 +15,15 @@ import { ringTiles } from "../sim/keepWalls";
 import type { GameState, PlayerId } from "../sim/types";
 import { ISO, tilePixels, viewCentre, type Camera } from "../ui/camera";
 import type { UiState } from "../ui/state";
-import { blockHeight, blockSideColour, bubbles, createRenderer, drawnHeight } from "./canvas";
+import {
+  RAFT_LIFT,
+  blockHeight,
+  blockSideColour,
+  bubbles,
+  createRenderer,
+  drawnHeight,
+  onRaft,
+} from "./canvas";
 import { changedTiles, flatPrints, shiftPrints, type FlatPrints } from "./flatChanges";
 import type { Rotation } from "./rotation";
 import { darknessAt, daylight, skyHour } from "./dayNight";
@@ -557,6 +565,32 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
     if (lavaBlocks.length > 0) mesh.instanceMatrix.needsUpdate = true;
   }
 
+  // Rafts: wooden slabs on the water, RAFT_LIFT pixels up (see drawRafts in canvas.ts).
+  const raftSlabs = instances(
+    scene,
+    new THREE.BoxGeometry(1, 1, 1).translate(0.5, 0.5, 0.5),
+    new THREE.MeshLambertMaterial({ color: COLOURS.raft }),
+    true,
+  );
+  /** A raft's top, in tiles up. */
+  const raftTop = (RAFT_LIFT / TILE_SIZE) * ISO.heightScale;
+
+  /** The rafts the viewer can see, every frame. */
+  function placeRafts(state: GameState, viewer: PlayerId) {
+    const boats = state.rafts?.boats ?? [];
+    const mesh = raftSlabs.reserve(boats.length);
+    const n = RAFTS.raftTiles;
+    for (const raft of boats) {
+      if (!canSeeEnemiesAt(state, raft.x + n / 2, raft.y + n / 2, viewer)) continue;
+      const thick = raftTop / 2;
+      matrix
+        .makeScale(n - 0.08, thick, n - 0.08)
+        .setPosition(raft.x + 0.04, raftTop - thick, raft.y + 0.04);
+      mesh.setMatrixAt(mesh.count++, matrix);
+    }
+    raftSlabs.done();
+  }
+
   /** Enemies, units and chests: every frame, where the viewer can see them. */
   function placeMovers(state: GameState, viewer: PlayerId) {
     const royals = state.flood?.royals.length ?? 0;
@@ -564,7 +598,7 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
     const cell = mesh.geometry.getAttribute("cell") as THREE.InstancedBufferAttribute;
     const card = (x: number, y: number, size: number, glyph: string, colour: string) => {
       // Standing on a block (a unit on a wall), it stands on the block's top.
-      const top = blockTiles(state, Math.round(x), Math.round(y));
+      const top = onRaft(state, x, y) ? raftTop : blockTiles(state, Math.round(x), Math.round(y));
       spot.set(x + 0.5, top, y + 0.5);
       matrix.compose(spot, camera.quaternion, cardScale.setScalar(size));
       mesh.setMatrixAt(mesh.count, matrix);
@@ -638,6 +672,7 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
       build(state, ui.playerId, now, ui.rotation);
       bubble(state, now);
       placeMovers(state, ui.playerId);
+      placeRafts(state, ui.playerId);
       renderer.render(scene, camera);
     },
   };

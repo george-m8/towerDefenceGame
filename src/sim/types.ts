@@ -176,6 +176,8 @@ export interface Enemy {
   pathDone: boolean;
   /** No looking back: what it remembers of its swarm and the king (see sim/floodSwarms.ts). */
   swarm?: SwarmMind;
+  /** Rafts mode: the raft it's riding to the shore, by id (it does nothing else till then). */
+  raft?: number;
 }
 
 /** A No looking back swarm member's mind. */
@@ -211,6 +213,34 @@ export interface Royal {
   maxHp: number;
   /** How it fell, once it has: gone for good, and once all have, the game's over. */
   fallen: "flood" | "swarm" | null;
+}
+
+/** A raft (see sim/rafts.ts): land afloat, carrying a wave's enemies to the keep's shore. */
+export interface Raft {
+  id: number;
+  /** Where it is, in tiles; fractional while it moves between them. */
+  x: number;
+  y: number;
+  /** Its way to the shore, tile by tile (empty: there, or no way yet). */
+  path: Point[];
+  /** The grid's version its way was found on: a change finds it again. */
+  pathVersion: number;
+  /** The enemies aboard, by id. */
+  riders: number[];
+  /** Ticks it's been without a way to the shore. */
+  stuck: number;
+  /** The tick it sets off: till then it waits at the edge, taking on more of the wave. */
+  boardUntil: number;
+}
+
+/** Rafts mode: the flood rising over everything but the raised land, and the rafts on it. */
+export interface Rafts {
+  /** The tick the flood next rises a ring. */
+  nextRise: number;
+  boats: Raft[];
+  nextId: number;
+  /** Floodwater walled off from the edge, draining: seconds each tile's been cut off, by index. */
+  draining: Record<number, number>;
 }
 
 /** What No looking back's flood is (see FLOOD_LIQUIDS). */
@@ -393,7 +423,7 @@ export interface WaveState {
  * Endless: hold one shared keep against waves. PvP: two players, a keep each, no waves.
  * No looking back (flood): walk the king as far as he can ahead of the lava (solo; see sim/flood.ts).
  */
-export type GameMode = "endless" | "pvp" | "flood";
+export type GameMode = "endless" | "pvp" | "flood" | "rafts";
 
 /** When enemies come (Endless): all the time, as ever, or only at night (with a clock). */
 export type EnemiesCome = "always" | "night";
@@ -486,6 +516,8 @@ export interface GameState {
   fog: boolean;
   /** No looking back's king, his flags and the lava; null in other modes. There's no keep. */
   flood: Flood | null;
+  /** Rafts: the flood's progress and the rafts on it; null in other modes. */
+  rafts: Rafts | null;
   /** Debug options (offline only), all off to start with. */
   debug: Record<DebugOption, boolean>;
   /** From an `.items` file: the most of each kind a player can have at once (none: no limit). */

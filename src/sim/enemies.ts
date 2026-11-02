@@ -113,6 +113,7 @@ export function updateEnemies(state: GameState): void {
 function advance(state: GameState, enemy: Enemy): void {
   if (enemy.hp <= 0) return; // killed since the last tick; removed with the bounties
   enemy.attackCooldown = Math.max(0, enemy.attackCooldown - 1);
+  if (enemy.raft !== undefined) return; // aboard a raft, which carries it (see rafts.ts)
   const from = { x: Math.round(enemy.x), y: Math.round(enemy.y) };
   if (enemy.controller !== null) steerControlled(state, enemy);
   else if (enemy.steer?.by === "raider")

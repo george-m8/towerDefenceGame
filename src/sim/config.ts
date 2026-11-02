@@ -1210,6 +1210,33 @@ export const FLOOD = {
   seamRows: 3,
 };
 
+/**
+ * Rafts (see sim/rafts.ts): the keep stands on raised land, `raisedRadius` tiles round its middle
+ * (a little more or less here and there), with `patches` patches of resources on it, clear of the
+ * keep's walls. After `floodSeconds`, the flood rises from the map's edges and its rivers and sea,
+ * a ring every `riseSeconds`, over everything but raised land, walls, ruins, trees, rocks and
+ * bushes. Waves come on rafts, launched from the edges, each waiting `boardSeconds` there to take
+ * on more of the wave (up to `riders`), then `raftSpeed` tiles a second; one that's had
+ * no way to the shore for `strandedSeconds` puts its riders off wherever it can.
+ */
+export const RAFTS = {
+  raisedRadius: 15,
+  raisedRough: 0.12,
+  patches: 7,
+  patchSize: { min: 3, max: 7 },
+  patchKinds: ["tree", "rock", "goldRock", "berries"] satisfies Terrain[],
+  floodSeconds: 5,
+  riseSeconds: 0.35,
+  raftSpeed: 1.5,
+  boardSeconds: 4,
+  riders: 8,
+  /** A raft is this many tiles square; its riders stand spread over it. */
+  raftTiles: 2,
+  strandedSeconds: 30,
+  /** Floodwater walled off from the map's edge drains, a tile beside land this long cut off. */
+  drainSeconds: 4,
+};
+
 /** No looking back's goals to pick from: 0 goes on for ever; else a keep that far on, in tiles. */
 export const FLOOD_GOALS = [0, 250, 500, 1000];
 

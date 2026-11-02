@@ -20,6 +20,7 @@ import {
   EFFECT_TICKS,
   HEAL_EFFECT_TICKS,
   KEEP_SIZE,
+  RAFTS,
   TICK_RATE,
   ENEMY_KINDS,
   STRUCTURES,
@@ -190,6 +191,18 @@ function lavaHeight(state: GameState, x: number, y: number): number {
     }
   }
   return most;
+}
+
+/** Rafts float this high, in pixels: on the water, and their riders on them. */
+export const RAFT_LIFT = 3;
+/** A raft's thickness, its front edge, in pixels. */
+const RAFT_THICKNESS = 2;
+
+/** Whether an enemy's on a raft (as a client sees it: standing on water in a Rafts game). */
+export function onRaft(state: GameState, x: number, y: number): boolean {
+  if (!state.rafts) return false;
+  const t = terrainAt(state, Math.round(x), Math.round(y));
+  return t === "floodwater" || t === "river" || t === "sea";
 }
 
 /** How much lava and water bubble: each tile rises and falls by up to this share of its height. */
@@ -495,6 +508,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     }
     for (let y = y0; y <= y1 + 1; y++) {
       drawFeatures(state, y - 1);
+      drawRafts(state, y - 1);
       drawUnits(state, unitsByRow.get(y - 1) ?? []);
       drawEnemies(state, enemiesByRow.get(y - 1) ?? []);
       for (let x = x0; x <= x1; x++) {
@@ -1372,6 +1386,42 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   }
 
   /** Units in their owner's colour. A rival's are hidden in fog, as enemies are. */
+  /**
+   * The part of each raft (in sight) on tile row `row`: wooden planks, a little above the water,
+   * with a darker rim and front edge. Drawn a row at a time, with the enemies, so the water's top
+   * in the rows in front covers what it should and the raft covers its riders' row behind.
+   */
+  function drawRafts(state: GameState, row: number) {
+    const n = RAFTS.raftTiles;
+    for (const raft of state.rafts?.boats ?? []) {
+      if (row < Math.floor(raft.y) || row > Math.floor(raft.y + n - 0.01)) continue;
+      if (!canSeeEnemiesAt(state, raft.x + n / 2, raft.y + n / 2, viewer)) continue;
+      const left = raft.x * TILE_SIZE + 1;
+      const top = raft.y * TILE_SIZE - RAFT_LIFT + 1;
+      const size = n * TILE_SIZE - 2;
+      ctx!.save();
+      ctx!.beginPath();
+      ctx!.rect(left - 1, row * TILE_SIZE - RAFT_LIFT, size + 2, TILE_SIZE);
+      if (row === Math.floor(raft.y + n - 0.01)) {
+        ctx!.rect(left - 1, (row + 1) * TILE_SIZE - RAFT_LIFT, size + 2, RAFT_THICKNESS + 2);
+      }
+      ctx!.clip();
+      ctx!.fillStyle = COLOURS.raftEdge;
+      ctx!.fillRect(left, top + size, size, RAFT_THICKNESS);
+      ctx!.fillStyle = COLOURS.raft;
+      ctx!.fillRect(left, top, size, size);
+      // Planks, lengthways, and the two cross-beams holding them.
+      ctx!.fillStyle = COLOURS.raftEdge;
+      for (let px = 4; px < size; px += 5) ctx!.fillRect(left + px, top, 1, size);
+      ctx!.fillRect(left, top + 3, size, 2);
+      ctx!.fillRect(left, top + size - 5, size, 2);
+      ctx!.strokeStyle = COLOURS.raftEdge;
+      ctx!.lineWidth = 1;
+      ctx!.strokeRect(left + 0.5, top + 0.5, size - 1, size - 1);
+      ctx!.restore();
+    }
+  }
+
   function drawUnits(state: GameState, units: GameState["units"]) {
     ctx!.font = GLYPH_FONT;
     for (const unit of units) {
@@ -1394,7 +1444,11 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       const kind = ENEMY_KINDS[enemy.kind];
       ctx!.font = enemyFont(kind.variants[enemy.variant].size);
       ctx!.fillStyle = ENEMY_COLOURS[enemy.kind];
-      const up = iso ? 0 : hillHeight(state, Math.round(enemy.x), Math.round(enemy.y));
+      const up = iso
+        ? 0
+        : onRaft(state, enemy.x, enemy.y)
+          ? RAFT_LIFT
+          : hillHeight(state, Math.round(enemy.x), Math.round(enemy.y));
       ctx!.fillText(kind.glyph, (enemy.x + 0.5) * TILE_SIZE, (enemy.y + 0.5) * TILE_SIZE + 1 - up);
       drawHealth(`e${enemy.id}`, enemy);
     }
