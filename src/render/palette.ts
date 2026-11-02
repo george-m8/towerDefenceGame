@@ -163,7 +163,8 @@ export function enemyFont(size: EnemyVariant["size"]): string {
 }
 
 export const COLOURS = {
-  ground: "#2b2418",
+  /** Grass. */
+  ground: "#24361b",
   /** Beyond the map's edge, when the whole map fits with room to spare. */
   offMap: "#15110b",
   /** The view's outline on the minimap. */
@@ -178,7 +179,7 @@ export const COLOURS = {
   /** The same tints as solid colours, blended into the minimap. */
   enclosureKeepTint: "#ffc43c",
   enclosureOuterTint: "#78c8ff",
-  groundAlt: "#2f2819",
+  groundAlt: "#263a1c",
   spawn: "#4a1c1c",
   spawnGlyph: "#8a3a3a",
   keep: "#6b6b6b",
@@ -387,12 +388,12 @@ export const TERRAIN_STYLES: Record<
   berries: { bg: "#2f5a2a", glyph: "\u{1FAD0}\uFE0E", fg: "#7a3b4f" },
   lava: { bg: "#8a2a0c", glyph: "≈", fg: "#f2a23a" },
   floodwater: { bg: "#245d8f", glyph: "≈", fg: "#9fd0f2" },
-  hill: { bg: "#4a4128" },
+  hill: { bg: "#3a5426" },
 };
 
 /** The texture over each kind of terrain (see render/textures.ts). */
 export const TERRAIN_TEXTURES: Record<Terrain, TextureStyle> = {
-  ground: "pebbles",
+  ground: "grass",
   ford: "speckle",
   river: "ripple",
   sea: "ripple",
@@ -403,7 +404,7 @@ export const TERRAIN_TEXTURES: Record<Terrain, TextureStyle> = {
   berries: "speckle",
   lava: "ripple",
   floodwater: "ripple",
-  hill: "pebbles",
+  hill: "grass",
 };
 /** The keep's stone walls. */
 export const KEEP_TEXTURE: TextureStyle = "stone";
