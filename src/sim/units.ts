@@ -26,6 +26,7 @@ import { attack, scout } from "./fieldUnits";
 import { guardSpotOf } from "./guards";
 import { siegeTargetAt } from "./towers";
 import { findPath, type PathOptions } from "./unitPaths";
+import { lavaWarning } from "./flood";
 import type { Enemy, Facing, GameState, PlayerId, Point, Structure, Terrain, Unit } from "./types";
 
 type Behaviour = (state: GameState, unit: Unit) => void;
@@ -80,6 +81,34 @@ function escort(state: GameState, unit: Unit) {
   } else {
     walkTowards(state, unit, `by king ${king.x},${king.y}`, (x, y) => reach(king, x, y) <= 1);
   }
+}
+
+/**
+ * No looking back, with a flood of water: a unit where the water's about to come (its glow; see
+ * lavaWarning) or within FLOOD.waterBerth of it gets out of the way, to the nearest tile that's
+ * neither, before doing anything else. True while it does.
+ */
+function avoidWater(state: GameState, unit: Unit): boolean {
+  if (state.flood?.liquid !== "water") return false;
+  const wet = (x: number, y: number) => {
+    if (lavaWarning(state, x, y) !== null) return true;
+    const berth = FLOOD.waterBerth;
+    for (let dy = -berth; dy <= berth; dy++) {
+      for (let dx = -berth; dx <= berth; dx++) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (inBounds(state, nx, ny) && state.terrain[ny * state.width + nx] === "floodwater") {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+  if (atTileCentre(unit) && !wet(unit.x, unit.y)) return false;
+  // Between tiles it carries on to the next first, and only goes on if that's wet too.
+  if (!atTileCentre(unit) && !wet(unit.tx, unit.ty)) return false;
+  walkTowards(state, unit, "dry", (x, y) => !wet(x, y));
+  return true;
 }
 
 /** Whether an enemy (or, in PvP, a rival unit) is within the unit's reach. */
@@ -282,7 +311,9 @@ export function updateUnits(state: GameState): void {
     if (unit.hp <= 0) continue;
     unit.attackCooldown = Math.max(0, unit.attackCooldown - 1);
     const tile = Math.round(unit.y) * state.width + Math.round(unit.x);
-    if (unit.escort) escort(state, unit);
+    if (avoidWater(state, unit)) {
+      // Out of the way of the water first.
+    } else if (unit.escort) escort(state, unit);
     else BEHAVIOURS[kindOf(unit).behaviour](state, unit);
     if (Math.round(unit.y) * state.width + Math.round(unit.x) !== tile) unitMoved(state, unit);
   }

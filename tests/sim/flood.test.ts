@@ -3,6 +3,7 @@ import { ENCLOSURE_DISCOUNT, FLOOD, TICK_RATE } from "../../src/sim/config";
 import { discountAt, priceAt } from "../../src/sim/enclosures";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { swarmWave } from "../../src/sim/floodSwarms";
+import { spawnUnit } from "../../src/sim/units";
 import { applyCommand, createGame, tick } from "../../src/sim/game";
 import {
   blocksAt,
@@ -551,6 +552,22 @@ describe("swarms", () => {
     expect(fleeing("water", "goblin")).toBeGreaterThan(2); // off away from it
     expect(fleeing("water", "zerg")).toBeGreaterThan(2);
     expect(fleeing(undefined, "goblin")).toBe(0);
+  });
+
+  it("your units keep clear of a flood of water, but not of lava", () => {
+    const moved = (liquid: FloodLiquid | undefined) => {
+      const state = blankFlood(liquid);
+      royal(state).at = { x: 50, y: 5 };
+      state.units = [];
+      for (let y = 0; y < state.height; y++) {
+        state.terrain[tileIndex(state, 20, y)] = liquid === "water" ? "floodwater" : "lava";
+      }
+      const soldier = spawnUnit(state, "soldier", ME, 21, 20)!;
+      run(state, 4 * TICK_RATE);
+      return soldier.x;
+    };
+    expect(moved("water")).toBe(20 + FLOOD.waterBerth + 1); // just clear of it
+    expect(moved(undefined)).toBe(21);
   });
 
   it("taking all his HP loses", () => {
