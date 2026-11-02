@@ -24,8 +24,16 @@ import { addCue, updateCues } from "./cues";
 import { updateEffects } from "./effects";
 import { initialExplored, revealKeep } from "./fog";
 import { claimKeepWalls, placeKeepWalls } from "./keepWalls";
-import { assignRoyals, createFlood, planKing, royalHome, royalsFallen, updateFlood } from "./flood";
-import { populateFlood } from "./floodSwarms";
+import {
+  assignRoyals,
+  createFlood,
+  planKing,
+  royalHome,
+  royalsFallen,
+  updateFlood,
+  withStartingForts,
+} from "./flood";
+import { placeSwarm, populateFlood } from "./floodSwarms";
 import { floodLayout, generateTerrain, layoutFor, type MapLayout } from "./mapgen";
 import type { ItemsFile } from "./itemsFile";
 import { mapFromGame, spawnTiles, terrainGrid, type MapFile } from "./mapFile";
@@ -110,7 +118,7 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     }
   }
 
-  const map = file
+  const generatedMap = file
     ? {
         terrain: terrainGrid(file),
         ruins: file.ruins.map(({ x, y, hp }) => ({ x, y, hpFraction: hp })),
@@ -119,6 +127,11 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     : options.blankMap
       ? { terrain: new Array<Terrain>(width * height).fill("ground"), ruins: [], chests: [] }
       : generateTerrain(generated, seed);
+  // No looking back's starting map gets ruined forts too, as new land does.
+  const map =
+    flooding && !options.blankMap
+      ? withStartingForts(generatedMap, width, height, seed, flooding.king, flooding.home)
+      : { ...generatedMap, fortSwarms: [] };
 
   const state: GameState = {
     seed,
@@ -190,8 +203,10 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
       structure.keep = s.keep;
       structure.paid = 0;
     }
-  } else if (state.flood && !options.blankMap) populateFlood(state);
-  else if (!options.blankMap) placeKeepWalls(state);
+  } else if (state.flood && !options.blankMap) {
+    populateFlood(state);
+    for (const middle of map.fortSwarms) placeSwarm(state, middle);
+  } else if (!options.blankMap) placeKeepWalls(state);
   // No looking back: a royal for each player there is (solo); a room's are handed out when it starts.
   if (state.flood) assignRoyals(state);
   return state;

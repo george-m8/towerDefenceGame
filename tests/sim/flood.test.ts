@@ -4,7 +4,14 @@ import { discountAt, priceAt } from "../../src/sim/enclosures";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { swarmWave } from "../../src/sim/floodSwarms";
 import { applyCommand, createGame, tick } from "../../src/sim/game";
-import { canBuild, placeStructure, removeStructure, tileIndex } from "../../src/sim/grid";
+import {
+  blocksAt,
+  canBuild,
+  isWalkable,
+  placeStructure,
+  removeStructure,
+  tileIndex,
+} from "../../src/sim/grid";
 import { getSight, IN_SIGHT } from "../../src/sim/fog";
 import {
   distanceTravelled,
@@ -667,7 +674,64 @@ describe("walled-off lava", () => {
   });
 });
 
+/** The tiles reachable from (x, y) over land that isn't a ruin (and isn't lava). */
+function reachableRoundRuins(state: GameState, from: Point): Set<number> {
+  const seen = new Set([tileIndex(state, from.x, from.y)]);
+  const queue = [from];
+  for (let head = 0; head < queue.length; head++) {
+    const { x, y } = queue[head];
+    for (const [nx, ny] of [
+      [x + 1, y],
+      [x - 1, y],
+      [x, y + 1],
+      [x, y - 1],
+    ]) {
+      if (nx < 0 || ny < 0 || nx >= state.width || ny >= state.height) continue;
+      const i = tileIndex(state, nx, ny);
+      if (seen.has(i) || state.structures[state.base[i]]?.kind === "ruin") continue;
+      seen.add(i);
+      queue.push({ x: nx, y: ny });
+    }
+  }
+  return seen;
+}
+
 describe("ruined forts", () => {
+  it("are on the starting map too, clear of the start, leaving a way on", () => {
+    for (const seed of [1, 2, 3, 4]) {
+      const state = createGame(seed, { mode: "flood" });
+      const start = state.flood!.start;
+      const edge = (i: number) => i % state.width === 0;
+      const shutIn = state.features.filter((c) => ![...reachableRoundRuins(state, c)].some(edge));
+      expect(shutIn.length).toBeGreaterThan(0);
+      for (const chest of shutIn) {
+        expect(Math.hypot(chest.x - start.x, chest.y - start.y)).toBeGreaterThan(
+          FLOOD.swarm.clearOfStart,
+        );
+      }
+      // Walkable land only: a way from the start to the right edge.
+      const walkable = new Set<number>();
+      const queue = [start];
+      walkable.add(tileIndex(state, start.x, start.y));
+      for (let head = 0; head < queue.length; head++) {
+        const { x, y } = queue[head];
+        for (const [nx, ny] of [
+          [x + 1, y],
+          [x - 1, y],
+          [x, y + 1],
+          [x, y - 1],
+        ]) {
+          if (nx < 0 || ny < 0 || nx >= state.width || ny >= state.height) continue;
+          const i = tileIndex(state, nx, ny);
+          if (walkable.has(i) || !isWalkable(state, nx, ny) || blocksAt(state, nx, ny)) continue;
+          walkable.add(i);
+          queue.push({ x: nx, y: ny });
+        }
+      }
+      expect([...walkable].some((i) => i % state.width === state.width - 1)).toBe(true);
+    }
+  });
+
   it("come with new land: closed rings of ruins with a chest inside, which lava can't get into", () => {
     const state = blankFlood();
     for (let i = 0; i < 3 * FLOOD.chunkColumns; i++) shiftWorld(state);

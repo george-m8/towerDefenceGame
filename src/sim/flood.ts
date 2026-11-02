@@ -822,7 +822,7 @@ function nextLand(state: GameState): Land {
  */
 function joinsOn(
   before: { width: number; open: (x: number, y: number) => boolean },
-  chunk: MapGenResult,
+  chunk: Pick<MapGenResult, "terrain" | "ruins">,
   height: number,
 ): boolean {
   const n = FLOOD.chunkColumns;
@@ -865,25 +865,36 @@ function joinsOn(
 }
 
 /**
- * A piece of new land with its ruined forts (FLOOD.forts): closed square rings of ruins, open
- * ground inside with a chest in the middle, which lava can't get into (ruins hold it); some
- * have a swarm shut in. Sell a ruin to get in. Placed with their own RNG, clear of the land's
- * edges and a goal's keep, over whatever was there.
+ * Land (a piece of new land, or the starting map) with ruined forts (FLOOD.forts): closed square
+ * rings of ruins, open ground inside with a chest in the middle, which lava can't get into
+ * (ruins hold it); some have a swarm shut in. Sell a ruin to get in. At most `count`, placed with
+ * their own RNG clear of the land's edges, a goal's keep and anywhere in `clear` (and each other),
+ * over whatever was there.
  */
 function withForts(
-  chunk: MapGenResult,
+  chunk: Pick<MapGenResult, "terrain" | "ruins" | "chests">,
   n: number,
   height: number,
-  { seed, keep }: { seed: number; keep: Point | null },
-): MapGenResult & { fortSwarms: Point[] } {
+  {
+    seed,
+    keep,
+    count = FLOOD.forts.perPiece,
+    clear = [],
+  }: {
+    seed: number;
+    keep: Point | null;
+    count?: number;
+    clear?: { x: number; y: number; radius: number }[];
+  },
+): Pick<MapGenResult, "terrain" | "ruins" | "chests"> & { fortSwarms: Point[] } {
   const rng = { rngState: seed ^ 0x2f6b8c1d };
-  const { perPiece, size, swarmChance, chestGold } = FLOOD.forts;
+  const { size, swarmChance, chestGold } = FLOOD.forts;
   const terrain = [...chunk.terrain];
   let ruins = chunk.ruins;
   let chests = chunk.chests;
   const fortSwarms: Point[] = [];
   const placed: { x: number; y: number; side: number }[] = [];
-  for (let f = 0; f < perPiece; f++) {
+  for (let f = 0; f < count; f++) {
     const side = randomInt(rng, size.min, size.max);
     const x = randomInt(rng, 1, n - side - 1);
     const y = randomInt(rng, 2, height - side - 2);
@@ -891,6 +902,10 @@ function withForts(
       x < a.x + a.side + 2 && a.x < x + side + 2 && y < a.y + a.side + 2 && a.y < y + side + 2;
     if (placed.some(overlaps)) continue;
     if (keep && overlaps({ ...keep, side: KEEP_SIZE })) continue;
+    const middleOf = { x: x + side / 2, y: y + side / 2 };
+    if (clear.some((c) => Math.hypot(c.x - middleOf.x, c.y - middleOf.y) < c.radius + side / 2)) {
+      continue;
+    }
     placed.push({ x, y, side });
     const inFort = (p: { x: number; y: number }) =>
       p.x >= x && p.x < x + side && p.y >= y && p.y < y + side;
@@ -911,10 +926,75 @@ function withForts(
 }
 
 /**
+ * The starting map with ruined forts too, as many for its width as new land gets, clear of the
+ * royals' start and a goal's keep, and only where they leave a way from the start to the map's
+ * right edge (tried a few times, else none).
+ */
+export function withStartingForts(
+  map: Pick<MapGenResult, "terrain" | "ruins" | "chests">,
+  width: number,
+  height: number,
+  seed: number,
+  start: Point,
+  home: Point | null,
+): Pick<MapGenResult, "terrain" | "ruins" | "chests"> & { fortSwarms: Point[] } {
+  const count = Math.round((width / FLOOD.chunkColumns) * FLOOD.forts.perPiece);
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const forts = withForts(map, width, height, {
+      seed: (seed ^ Math.imul(attempt + 1, 0x632be5ab)) | 0,
+      keep: home,
+      count,
+      clear: [{ ...start, radius: FLOOD.swarm.clearOfStart }],
+    });
+    if (crossable(forts, width, height, start)) return forts;
+  }
+  return { ...map, fortSwarms: [] };
+}
+
+/** Whether there's a way over walkable land, round ruins, from `start` to the map's right edge. */
+function crossable(
+  map: Pick<MapGenResult, "terrain" | "ruins">,
+  width: number,
+  height: number,
+  start: Point,
+): boolean {
+  const ruined = new Set(map.ruins.map((r) => r.y * width + r.x));
+  const open = (i: number) => isOpen(map.terrain[i]) && !ruined.has(i);
+  const first = start.y * width + start.x;
+  const seen = new Uint8Array(width * height);
+  seen[first] = 1;
+  const queue = [first];
+  for (let head = 0; head < queue.length; head++) {
+    const i = queue[head];
+    const x = i % width;
+    if (x === width - 1) return true;
+    const y = (i - x) / width;
+    for (const [nx, ny] of [
+      [x + 1, y],
+      [x - 1, y],
+      [x, y + 1],
+      [x, y - 1],
+    ]) {
+      if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+      const n = ny * width + nx;
+      if (seen[n] || !open(n)) continue;
+      seen[n] = 1;
+      queue.push(n);
+    }
+  }
+  return false;
+}
+
+/**
  * Where a new piece of land's swarms go (as many for its size as on any map, apart from each
  * other), on open ground, chosen with their own RNG so the game's isn't touched.
  */
-function swarmMiddles(chunk: MapGenResult, n: number, height: number, seed: number): Point[] {
+function swarmMiddles(
+  chunk: Pick<MapGenResult, "terrain">,
+  n: number,
+  height: number,
+  seed: number,
+): Point[] {
   const rng = { rngState: seed ^ 0x51ed270b };
   const count = Math.round((n * height) / FLOOD.swarm.tilesPerSwarm);
   const middles: Point[] = [];

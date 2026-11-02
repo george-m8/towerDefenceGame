@@ -59,6 +59,7 @@ An endless mode about keeping moving, solo or co-op. You have no keep of your ow
 **Ruined forts** (`FLOOD.forts`; `withForts` in flood.ts)
 
 - Each piece of new land gets up to `perPiece` (2) forts, fewer where they'd overlap each other or a goal's keep: a closed square ring of ruins (full HP) `size` (7-9) tiles across, clear of the piece's edges, with open ground inside and a chest of `chestGold` (60-150) in the middle. They go in before the walk-across check, so they never block the way on.
+- The starting map gets them too (`withStartingForts`), as many for its width as new land gets, clear of the royals' start (`swarm.clearOfStart`) and a goal's keep, and only where they leave a way from the start to the right edge (tried 10 times, else none). Their swarms are placed with the map's others.
 - Ruins hold lava, so the inside stays dry. There's no way in: sell a ruin (they're nobody's) to open one.
 - `swarmChance` (half) of them have a swarm shut inside, placed when the land round the middle has come in (it can't get out until a ruin goes).
 
