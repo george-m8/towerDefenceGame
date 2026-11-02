@@ -94,12 +94,9 @@ import {
   playerColour,
   DOOR_ALPHA,
   KEEP_GLYPH,
-  CAMP_GLYPH,
-  CAMP_PACKED_GLYPH,
   KING_GLYPH,
   GLYPH_FONTS,
 } from "./palette";
-import { isHomeTile } from "../sim/journey";
 import { homeOnMap, isFloodHome, kingAt, lavaWarning } from "../sim/flood";
 import { fromView, type Rotation } from "./rotation";
 import { fogImage, fogSpans, type FogLevel } from "./fog";
@@ -165,15 +162,13 @@ function lavaHeight(state: GameState, x: number, y: number): number {
   return LAVA_HEIGHT;
 }
 
-/** The keep at the end of Journey home, or of a No looking back goal game, covering (x, y). */
+/** A No looking back goal game's keep, covering (x, y). */
 function homeKeepAt(state: GameState, x: number, y: number) {
-  if (isHomeTile(state, x, y)) return { ...state.journey!.home, size: KEEP_SIZE };
-  if (isFloodHome(state, x, y)) return { ...homeOnMap(state)!, size: KEEP_SIZE };
-  return undefined;
+  return isFloodHome(state, x, y) ? { ...homeOnMap(state)!, size: KEEP_SIZE } : undefined;
 }
 
 export function blockHeight(state: GameState, x: number, y: number): number {
-  // The keep at a journey's end stands like any keep.
+  // A goal game's keep stands like any keep.
   const keep = keepAt(state, x, y) ?? homeKeepAt(state, x, y);
   if (keep) {
     // The corners stand a little taller, like towers, round a low middle.
@@ -523,19 +518,13 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     const bg = keep.owner !== null ? playerColour(keep.owner) : COLOURS.keep;
     const centre = Math.floor(keep.size / 2);
     drawTile(x, y, bg);
-    if (state.journey) {
-      // Journey home's camp: a tent, pitched or packed up.
-      const pitched = state.journey.phase === "camped";
-      drawGlyph(x, y, pitched ? CAMP_GLYPH : CAMP_PACKED_GLYPH, COLOURS.keepGlyph);
-      return;
-    }
     drawTexture(x, y, KEEP_TEXTURE);
     if (x !== keep.x + centre || y !== keep.y + centre) {
       drawGlyph(x, y, KEEP_GLYPH, COLOURS.keepGlyph);
     }
   }
 
-  /** The keep at a journey's end (Journey home, or a No looking back goal): no HP to show. */
+  /** A No looking back goal game's keep, where the king's going: no HP to show. */
   function drawHomeTile(state: GameState, x: number, y: number) {
     const home = homeKeepAt(state, x, y)!;
     drawTile(x, y, COLOURS.keep);
@@ -584,7 +573,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
 
   /**
    * No looking back: the king's plan, drawn as a raider's (numbered flags, joined from him by a
-   * faint line), with his way to the next flag as Journey home draws the camp's (a dot a tile);
+   * faint line), with his way to the next flag as a dot a tile;
    * then, on the flat map, the king, part way to his next tile (the 3D view stands him up as a
    * card). Each sits on its tile's top.
    */
@@ -631,20 +620,6 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     ctx!.fillText(KING_GLYPH, kx, ky + 1);
   }
 
-  /** Journey home: the way the camp is going, to where it's going. */
-  function drawCampPath(state: GameState) {
-    const journey = state.journey;
-    if (!journey?.goal) return;
-    ctx!.fillStyle = playerColour(state.keeps[0].owner ?? 1);
-    ctx!.globalAlpha = 0.5;
-    const dot = TILE_SIZE / 4;
-    for (const p of journey.path) {
-      ctx!.fillRect((p.x + 0.5) * TILE_SIZE - dot / 2, (p.y + 0.5) * TILE_SIZE - dot / 2, dot, dot);
-    }
-    ctx!.globalAlpha = 1;
-    outlineTile(journey.goal, playerColour(state.keeps[0].owner ?? 1));
-  }
-
   /**
    * Each keep's HP, over its middle. The middle sits low, mostly hidden by the keep's walls, so
    * the number is drawn after every block, at the height of the walls round it.
@@ -656,7 +631,6 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     ctx!.strokeStyle = "rgba(0, 0, 0, 0.6)"; // an outline, as it crosses walls and their faces
     ctx!.fillStyle = COLOURS.keepGlyph;
     for (const keep of state.keeps) {
-      if (state.journey) continue; // the camp's HP is with the stats
       const centre = Math.floor(keep.size / 2);
       const x = keep.x + centre;
       const y = keep.y + centre;
@@ -917,15 +891,6 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       ctx!.fillStyle = COLOURS.ghostSell;
       ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
       drawGlyph(x, y, "$", "#ffffff");
-      return;
-    }
-    if (ui.tool === "moveCamp") {
-      // Somewhere in sight with nothing on it (the move itself says why not, if it can't).
-      const ok =
-        getSight(state, ui.playerId)[y * state.width + x] === IN_SIGHT && !topAt(state, x, y);
-      ctx!.fillStyle = ok ? COLOURS.ghostOk : COLOURS.ghostBad;
-      ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-      drawGlyph(x, y, CAMP_GLYPH, "#ffffff");
       return;
     }
     if (ui.tool === "route") {
@@ -1566,7 +1531,6 @@ export function createRenderer(canvas: HTMLCanvasElement) {
         drawGhost(state, ui);
       }
       drawHoverEdge(state, ui);
-      drawCampPath(state);
       drawKing(state);
       const raid = state.players[viewer]?.raid;
       if (raid) {

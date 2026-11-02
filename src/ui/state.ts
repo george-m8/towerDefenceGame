@@ -15,11 +15,11 @@ import {
   type Schemes,
 } from "./controls";
 
-/** A structure to build, Sell, (Journey home) Move camp, or (No looking back) the king's Route. */
-export type Tool = StructureKind | "sell" | "moveCamp" | "route";
+/** A structure to build, Sell, or (No looking back) the king's Route. */
+export type Tool = StructureKind | "sell" | "route";
 
 export function isBuildTool(tool: Tool | null): tool is StructureKind {
-  return tool !== null && tool !== "sell" && tool !== "moveCamp" && tool !== "route";
+  return tool !== null && tool !== "sell" && tool !== "route";
 }
 
 /**

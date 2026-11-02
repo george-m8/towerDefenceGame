@@ -182,9 +182,7 @@ export function bindInput(
     dispatch(
       ui.tool === "sell"
         ? { type: "sell", x: p.x, y: p.y }
-        : ui.tool === "moveCamp"
-          ? { type: "moveCamp", x: p.x, y: p.y }
-          : { type: "build", kind: ui.tool, x: p.x, y: p.y, facing: ui.facing },
+        : { type: "build", kind: ui.tool, x: p.x, y: p.y, facing: ui.facing },
     );
   }
 
@@ -324,15 +322,12 @@ export function bindInput(
         if (ui.tool === "sell") ui.tool = beforeSell;
         else [beforeSell, ui.tool] = [ui.tool, "sell"];
         return;
-      case "moveCamp": {
-        // Journey home's Move camp, or No looking back's Route (plain clicks plan too): one key.
-        const state = getState();
-        const tool = state?.journey ? "moveCamp" : state?.flood ? "route" : null;
-        if (!tool) return;
+      case "route":
+        // No looking back's Route (plain clicks plan too, with nothing in hand).
+        if (!getState()?.flood) return;
         ui.debugDamage = false;
-        ui.tool = ui.tool === tool ? null : tool;
+        ui.tool = ui.tool === "route" ? null : "route";
         return;
-      }
       case "prevTool":
         return stepTool(-1);
       case "nextTool":

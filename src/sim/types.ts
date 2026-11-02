@@ -173,37 +173,20 @@ export interface Enemy {
   steer: Steering | null;
   /** It has walked a raiders' path to its end: it keeps to its own field from then on. */
   pathDone: boolean;
-  /** Journey home: what it remembers of its swarm and the camp (see sim/journey.ts). */
-  journey?: JourneyMind;
+  /** No looking back: what it remembers of its swarm and the king (see sim/floodSwarms.ts). */
+  swarm?: SwarmMind;
 }
 
-/** A Journey home enemy's mind. */
-export interface JourneyMind {
-  /** Where its swarm idles, or null for a wandering goblin. */
+/** A No looking back swarm member's mind. */
+export interface SwarmMind {
+  /** Where it idles, or null once that's gone with the land behind (it wanders then). */
   post: Point | null;
-  /** Its swarm (all wake together); 0 for a wanderer. */
-  swarm: number;
-  /** Ticks it keeps chasing the camp for after last seeing it (0: idle). */
+  /** Its swarm (all wake together). */
+  id: number;
+  /** Ticks it keeps after the king for since last seeing him (0: idle). */
   alert: number;
   /** Its HP when last checked: less now means it was hurt, which wakes it. */
   hp: number;
-}
-
-/** Journey home: the camp's travels and the keep it's heading for. */
-export interface Journey {
-  /** The keep at journey's end: where the camp must get to (top-left tile, KEEP_SIZE square). */
-  home: Point;
-  /** Camped (it can build), packing up, on the move, or setting up again. */
-  phase: "camped" | "packing" | "moving" | "unpacking";
-  /** Ticks left packing or setting up. */
-  timer: number;
-  /** Where it's going, and the tiles still to cross to get there. */
-  goal: Point | null;
-  path: Point[];
-  /** How far it is across to the next tile of its path (0 to 1). */
-  progress: number;
-  /** Ticks until another wandering goblin may appear. */
-  wandererTimer: number;
 }
 
 /** No looking back: the king's walk home ahead of the lava (see sim/flood.ts). */
@@ -368,10 +351,9 @@ export interface WaveState {
 
 /**
  * Endless: hold one shared keep against waves. PvP: two players, a keep each, no waves.
- * Journey home: move your camp across the map to the keep (solo; see sim/journey.ts).
  * No looking back (flood): walk the king as far as he can ahead of the lava (solo; see sim/flood.ts).
  */
-export type GameMode = "endless" | "pvp" | "journey" | "flood";
+export type GameMode = "endless" | "pvp" | "flood";
 
 /** When enemies come (Endless): all the time, as ever, or only at night (with a clock). */
 export type EnemiesCome = "always" | "night";
@@ -462,8 +444,6 @@ export interface GameState {
   rngState: number;
   /** False turns fog of war off: every tile is in sight. */
   fog: boolean;
-  /** Journey home's camp and home; null in other modes. The camp itself is keeps[0]. */
-  journey: Journey | null;
   /** No looking back's king, his flags and the lava; null in other modes. There's no keep. */
   flood: Flood | null;
   /** Debug options (offline only), all off to start with. */
@@ -518,8 +498,6 @@ export type Command =
   /** Votes to skip the rest of the day to the early evening (games with enemies at night). */
   | { type: "voteSkipToNight" }
   | { type: "sell"; x: number; y: number }
-  /** Journey home: pack up the camp and move it to a tile in sight. */
-  | { type: "moveCamp"; x: number; y: number }
   /** No looking back: a flag for the king to walk to, or (`queue`) one after his others. */
   | { type: "planKing"; x: number; y: number; queue?: true };
 

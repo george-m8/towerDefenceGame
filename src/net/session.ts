@@ -52,7 +52,7 @@ export function createLocalSession(
    * `fog: false` is the ?fog=off dev switch; `size` is the map size picked at the start; `map`
    * is a `.map` file to play (the map editor's Play); `items` an `.items` file's build limits;
    * `enemiesCome` when enemies come (at night, or all the time); `lastWave` a campaign level's
-   * last wave, beating which wins; `mode` "journey" plays Journey home, "flood" No looking back.
+   * last wave, beating which wins; `mode` "flood" plays No looking back.
    */
   options: {
     fog?: boolean;
@@ -61,8 +61,8 @@ export function createLocalSession(
     items?: ItemsFile;
     enemiesCome?: EnemiesCome;
     lastWave?: number;
-    /** Journey home or No looking back (solo only); Endless otherwise. */
-    mode?: "journey" | "flood";
+    /** No looking back (solo only); Endless otherwise. */
+    mode?: "flood";
     /** No looking back: the keep to reach, in tiles (none: on for ever). */
     floodGoal?: number;
   } = {},

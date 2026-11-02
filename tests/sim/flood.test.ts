@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ENCLOSURE_DISCOUNT, FLOOD, JOURNEY, TICK_RATE } from "../../src/sim/config";
+import { ENCLOSURE_DISCOUNT, FLOOD, TICK_RATE } from "../../src/sim/config";
 import { discountAt, priceAt } from "../../src/sim/enclosures";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { swarmWave } from "../../src/sim/floodSwarms";
@@ -54,7 +54,6 @@ describe("setting out", () => {
   it("has no keep or home: the king on the left edge, open land ahead, no waves", () => {
     const state = floodGame();
     expect(state.keeps).toEqual([]);
-    expect(state.journey).toBeNull();
     const flood = state.flood!;
     expect(flood.king.x).toBe(1);
     expect(flood.owner).toBe(ME);
@@ -424,10 +423,10 @@ describe("swarms", () => {
   it("wait round the map, clear of the king's start, tougher further on", () => {
     const state = floodGame();
     const { king } = state.flood!;
-    const swarmers = state.enemies.filter((e) => e.journey?.post);
-    expect(new Set(swarmers.map((e) => e.journey!.swarm)).size).toBeGreaterThan(3);
+    const swarmers = state.enemies.filter((e) => e.swarm?.post);
+    expect(new Set(swarmers.map((e) => e.swarm!.id)).size).toBeGreaterThan(3);
     for (const e of swarmers) {
-      expect(Math.hypot(e.x - king.x, e.y - king.y)).toBeGreaterThan(JOURNEY.clearOfStart - 3);
+      expect(Math.hypot(e.x - king.x, e.y - king.y)).toBeGreaterThan(FLOOD.swarm.clearOfStart - 3);
     }
     expect(swarmWave(state, state.width - 1)).toBeGreaterThan(swarmWave(state, 0));
   });
@@ -436,11 +435,11 @@ describe("swarms", () => {
     const state = blankFlood();
     const { x, y } = king(state);
     const goblin = spawnEnemy(state, x + 5, y, { kind: "goblin" });
-    goblin.journey = { post: { x: x + 5, y }, swarm: 7, alert: 0, hp: goblin.hp };
+    goblin.swarm = { post: { x: x + 5, y }, id: 7, alert: 0, hp: goblin.hp };
     const friend = spawnEnemy(state, x + 20, y, { kind: "goblin" });
-    friend.journey = { post: { x: x + 20, y }, swarm: 7, alert: 0, hp: friend.hp };
+    friend.swarm = { post: { x: x + 20, y }, id: 7, alert: 0, hp: friend.hp };
     tick(state);
-    expect(friend.journey.alert).toBeGreaterThan(0); // its whole swarm wakes
+    expect(friend.swarm!.alert).toBeGreaterThan(0); // its whole swarm wakes
     run(state, 10 * TICK_RATE);
     expect(state.flood!.kingHp).toBeLessThan(FLOOD.kingHp);
   });
@@ -457,7 +456,7 @@ describe("swarms", () => {
     const state = blankFlood();
     const before = state.enemies.length;
     for (let i = 0; i < 2 * FLOOD.chunkColumns; i++) shiftWorld(state);
-    const swarmers = state.enemies.filter((e) => e.journey?.post);
+    const swarmers = state.enemies.filter((e) => e.swarm?.post);
     expect(swarmers.length).toBeGreaterThan(before);
     for (const e of swarmers) expect(e.x).toBeGreaterThan(state.width - 2 * FLOOD.chunkColumns - 3);
   });
@@ -465,10 +464,10 @@ describe("swarms", () => {
   it("move with the world, posts and all", () => {
     const state = blankFlood();
     const goblin = spawnEnemy(state, 30, 20, { kind: "goblin" });
-    goblin.journey = { post: { x: 30, y: 20 }, swarm: 9, alert: 0, hp: goblin.hp };
+    goblin.swarm = { post: { x: 30, y: 20 }, id: 9, alert: 0, hp: goblin.hp };
     shiftWorld(state);
     expect(goblin).toMatchObject({ x: 29, y: 20, tx: 29 });
-    expect(goblin.journey.post).toEqual({ x: 29, y: 20 });
+    expect(goblin.swarm!.post).toEqual({ x: 29, y: 20 });
   });
 });
 

@@ -72,31 +72,6 @@ export function layoutFor(
 }
 
 /**
- * Journey home: the camp on the left edge and the keep it heads for (home) on the right, each
- * at a seeded height. The map is generated with home as its keep and a spawn strip round the
- * camp, so both ends are clear ground and the camp can always reach home.
- */
-export function journeyLayout(
-  width: number,
-  height: number,
-  seed: number,
-): { layout: MapLayout; camp: Point; home: Point } {
-  const rng = { rngState: seed ^ 0x5bd1e995 };
-  const half = Math.floor(SPAWN_ZONE.height / 2);
-  const campY = randomInt(rng, half, height - 1 - half);
-  const home = { x: width - KEEP_SIZE - 1, y: randomInt(rng, 2, height - KEEP_SIZE - 2) };
-  const spawnTiles: Point[] = [];
-  for (let y = campY - half; y < campY - half + SPAWN_ZONE.height; y++) {
-    for (let x = SPAWN_ZONE.x; x < SPAWN_ZONE.x + SPAWN_ZONE.width; x++) spawnTiles.push({ x, y });
-  }
-  return {
-    layout: { width, height, keeps: [{ ...home, size: KEEP_SIZE }], spawnTiles },
-    camp: { x: SPAWN_ZONE.x + SPAWN_ZONE.width - 1, y: campY },
-    home,
-  };
-}
-
-/**
  * No looking back: the start of the map, with a clear patch round the king's start on the left
  * edge (as a keep's would be) and no spawn strip, so the coast is only ever along the top or
  * bottom and the right edge stays open for new land to join.

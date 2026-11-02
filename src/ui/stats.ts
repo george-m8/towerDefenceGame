@@ -1,13 +1,11 @@
 // The game's stats (gold, income, keep, waves...) as label and value, for the sidebar and the
-// HUD's stat box. PvP has no waves: it shows the rival's keep and the mode instead. Journey home
-// has none either: its keep is the camp, and the wave and next slots say how far home it is and
-// what it's doing; No looking back's say how far behind the lava is and how far the king's got. With enemies
+// HUD's stat box. PvP has no waves: it shows the rival's keep and the mode instead. No looking
+// back has no keep or waves: it shows the lava, the king's HP and how far he's got. With enemies
 // at night, the wave stat shows the night too, and by day the next wave is "At dusk".
 import { TICK_RATE } from "../sim/config";
 import { incomePerMinute } from "../sim/economy";
 import { isSpawningTime } from "../sim/clock";
 import { isLastWave } from "../sim/waves";
-import { tilesFromHome } from "../sim/journey";
 import {
   distanceTravelled,
   lavaBehindKing,
@@ -54,24 +52,8 @@ export function statList(state: GameState, playerId: PlayerId): Stat[] {
     );
     return stats;
   }
-  stats.push({
-    id: "keep",
-    label: state.journey ? "Camp" : "Keep",
-    value: `${mine.hp} / ${mine.maxHp}`,
-  });
-  if (state.journey) {
-    const doing = {
-      camped: "Camped",
-      packing: "Packing up",
-      moving: "On the move",
-      unpacking: "Setting up",
-    }[state.journey.phase];
-    const home = tilesFromHome(state);
-    stats.push(
-      { id: "wave", label: "Home", value: `${home} tile${home === 1 ? "" : "s"}` },
-      { id: "next", label: "Camp", value: doing },
-    );
-  } else if (state.mode === "pvp") {
+  stats.push({ id: "keep", label: "Keep", value: `${mine.hp} / ${mine.maxHp}` });
+  if (state.mode === "pvp") {
     const rival = state.keeps.find((k) => k !== mine);
     stats.push(
       { id: "rival", label: "Rival", value: rival ? `${rival.hp} / ${rival.maxHp}` : "-" },

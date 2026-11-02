@@ -1,7 +1,7 @@
 # Spec: No looking back (flood)
 
 Status: FIRST BUILD (2026-11-01): solo, endless, with swarms; see "Still to do"
-Module: `flood` (a game mode; the code keeps the issue's name). Issue #70. Builds on `fog-of-war`, `raiders` (planning with flags), `journey` (swarms), `build-zone` and `mapgen`.
+Module: `flood` (a game mode; the code keeps the issue's name). Issue #70. Builds on `fog-of-war`, `raiders` (planning with flags), `build-zone` and `mapgen`. It replaces Journey home (#78), whose camp, keep at the end and swarms it covers as variants.
 Last updated: 2026-11-01
 
 ## Objective
@@ -46,17 +46,17 @@ An endless solo mode about keeping moving. You have no keep of your own. Your **
 - New land is generated `chunkColumns` (40) columns at a time, as its own map (a river with fords, coast only top or bottom, rocks, forests, ruins, chests, resources), seeded by the game's seed and how far the world has moved. It's handed out a column at a time. A new piece is generated again (up to 20 tries) until you can walk from the left of the land before it right across the new piece, with ruins counted as in the way, and at least `seamRows` (3) open rows where they join.
 - The camera moves with the world, so the view doesn't jump, then glides after the king (see "The camera"); the 3D view repaints its ground at once.
 
-**Swarms** (`src/sim/floodSwarms.ts`, as Journey home's)
+**Swarms** (`src/sim/floodSwarms.ts`)
 
-- On the starting map, about one per `JOURNEY.tilesPerSwarm` (900) tiles, 4-8 enemies each round a middle at least `swarmSpacing` (10) from other swarms and `clearOfStart` (20) from the king's start. Each piece of new land brings as many for its size, placed when the land round their middle has come in. A swarm is as tough as wave 1 + one for each `FLOOD.tilesPerWave` (40) tiles across the world from the king's start, up to `hardestWave` (25).
-- Asleep, a member stands at its post or walks back to it. One that sees the king (`JOURNEY.enemySight`, 6 tiles) or is hurt wakes its whole swarm. Awake, it walks to the king by a short path round what's in the way (it never breaks walls), and once beside him hits him for its damage every attack interval. It goes back to sleep `giveUpSeconds` (6 s) after it last saw him (or was hurt).
+- On the starting map, about one per `FLOOD.swarm.tilesPerSwarm` (900) tiles, 4-8 enemies each round a middle at least `swarm.spacing` (10) from other swarms and `swarm.clearOfStart` (20) from the king's start. Each piece of new land brings as many for its size, placed when the land round their middle has come in. A swarm is as tough as wave 1 + one for each `FLOOD.tilesPerWave` (40) tiles across the world from the king's start, up to `hardestWave` (25).
+- Asleep, a member stands at its post or walks back to it. One that sees the king (`swarm.sight`, 6 tiles) or is hurt wakes its whole swarm. Awake, it walks to the king by a short path round what's in the way (it never breaks walls), and once beside him hits him for its damage every attack interval. It goes back to sleep `swarm.giveUpSeconds` (6 s) after it last saw him (or was hurt).
 - The king has `FLOOD.kingHp` (150) HP, shown in the HUD ("King") and as a bar over him once hurt. At 0 the game's over ("The king has fallen.").
 - Kills pay their bounty as usual. Lava kills enemies it reaches (no bounty). They move with the world, posts and all; a post that's dropped off the map leaves its enemy roaming.
 
 **Building**
 
 - Anywhere you've seen, as usual. Build time is measured from the king instead of a keep.
-- Enclosures are cheaper (`ENCLOSURE_DISCOUNT.outer`, 25%) as usual. With no spawn strip, the outside is open ground joined to the map's edges (where new land and swarms come from), as in Journey home.
+- Enclosures are cheaper (`ENCLOSURE_DISCOUNT.outer`, 25%) as usual. With no spawn strip, the outside is open ground joined to the map's edges (where new land and swarms come from).
 
 **The camera** (`src/ui/lavaCamera.ts`)
 
@@ -80,7 +80,7 @@ First guesses, checked with a scripted king that plants a flag every second on t
 ## Still to do
 
 - **Campaign levels** using goals (level files with `mode: flood` and a goal).
-- Journey home's wandering goblins.
+- Wandering goblins (as Journey home had).
 - PvP from the issue (a lane each, or one shared map).
 - A best distance kept between games.
 - A HUD button and a pad binding for the Route tool (keyboard H only).

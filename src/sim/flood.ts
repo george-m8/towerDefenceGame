@@ -8,8 +8,8 @@
 // The map never ends: as the king nears its right edge, the column furthest behind (lava, or soon
 // to be) is dropped, everything moves a column left, and a column of new land comes in on the
 // right (see shiftWorld). The camera moves with it.
-import { FLOOD, JOURNEY, KEEP_SIZE, TERRAIN, TICK_RATE } from "./config";
-import { placeFloodSwarm } from "./floodSwarms";
+import { FLOOD, KEEP_SIZE, TERRAIN, TICK_RATE } from "./config";
+import { placeSwarm } from "./floodSwarms";
 import { randomInt } from "./rng";
 import { exploreKingSight, isExplored } from "./fog";
 import {
@@ -508,9 +508,8 @@ export function shiftWorld(state: GameState): void {
     e.px -= 1;
     // Its way was found on the old map, and its post moves with the world (or is gone).
     e.steer = null;
-    if (e.journey?.post) {
-      e.journey.post =
-        e.journey.post.x >= 1 ? { x: e.journey.post.x - 1, y: e.journey.post.y } : null;
+    if (e.swarm?.post) {
+      e.swarm.post = e.swarm.post.x >= 1 ? { x: e.swarm.post.x - 1, y: e.swarm.post.y } : null;
     }
   }
   state.features = state.features
@@ -536,7 +535,7 @@ export function shiftWorld(state: GameState): void {
   }
   // A swarm comes in once the land round its middle has (two columns past it).
   for (const middle of land.swarms.filter((m) => m.x === column - 2)) {
-    placeFloodSwarm(state, { x: width - 3, y: middle.y });
+    placeSwarm(state, { x: width - 3, y: middle.y });
   }
   state.flows = {};
   state.gridVersion++;
@@ -659,14 +658,14 @@ function joinsOn(
  */
 function swarmMiddles(chunk: MapGenResult, n: number, height: number, seed: number): Point[] {
   const rng = { rngState: seed ^ 0x51ed270b };
-  const count = Math.round((n * height) / JOURNEY.tilesPerSwarm);
+  const count = Math.round((n * height) / FLOOD.swarm.tilesPerSwarm);
   const middles: Point[] = [];
   for (let k = 0; k < count; k++) {
     for (let tries = 0; tries < 40; tries++) {
       // Two columns in from its right side, so the land round it has come in with it.
       const p = { x: randomInt(rng, 0, n - 3), y: randomInt(rng, 2, height - 3) };
       if (!isOpen(chunk.terrain[p.y * n + p.x])) continue;
-      if (middles.some((m) => Math.hypot(p.x - m.x, p.y - m.y) < JOURNEY.swarmSpacing)) continue;
+      if (middles.some((m) => Math.hypot(p.x - m.x, p.y - m.y) < FLOOD.swarm.spacing)) continue;
       middles.push(p);
       break;
     }

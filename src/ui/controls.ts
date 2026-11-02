@@ -16,8 +16,8 @@ export type Action =
   | "sell"
   /** Sell in hand, or back to what was in hand before it. */
   | "toggleSell"
-  /** Journey home: Move camp in hand (or put down); No looking back: the king's Route. */
-  | "moveCamp"
+  /** No looking back: the king's Route in hand (or put down). */
+  | "route"
   | "buildTowers"
   | "buildUnits"
   | "buildCivic"
@@ -62,7 +62,7 @@ export const ACTIONS: Action[] = [
   "cancel",
   "sell",
   "toggleSell",
-  "moveCamp",
+  "route",
   "buildTowers",
   "buildUnits",
   "buildCivic",
@@ -97,7 +97,7 @@ export const GAME_ONLY_ACTIONS: Action[] = [
   "debugUnit",
   "debugSwarm",
   "flipView",
-  "moveCamp",
+  "route",
 ];
 
 /** Actions that last while held rather than firing once (a pad's triggers zoom by how far they're pulled). */
@@ -204,7 +204,7 @@ export const KEYBOARD: KeyboardScheme = {
     journal: ["KeyJ"],
     cancel: ["Escape"],
     sell: ["KeyX"],
-    moveCamp: ["KeyH"],
+    route: ["KeyH"],
     buildTowers: ["Digit1"],
     buildUnits: ["Digit2"],
     buildCivic: ["Digit3"],

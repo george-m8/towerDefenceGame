@@ -20,8 +20,8 @@ export type PageIntent =
       items?: string;
       fog?: false;
       enemiesCome?: "night";
-      /** Journey home, or No looking back (solo only). */
-      game?: "journey" | "flood";
+      /** No looking back (solo only). */
+      game?: "flood";
       /** No looking back: the keep to reach, in tiles (none: on for ever). */
       goal?: number;
     }
@@ -31,7 +31,7 @@ export type PageIntent =
  * `?create&name=Ann` creates a room (`&game=pvp` for PvP) and `?room=ABCD&name=Bo` joins one;
  * `?solo` plays offline. `&size=L` picks the map size when playing solo or creating a room;
  * `&map=river-crossing` plays maps/river-crossing.map solo, and `&items=towers-only` plays solo
- * with the limits in items/towers-only.items; `&night` plays solo with enemies at night, `&game=journey` plays Journey home and `&game=flood` No looking back (`&goal=500` with a keep 500 tiles on).
+ * with the limits in items/towers-only.items; `&night` plays solo with enemies at night, `&game=flood` plays No looking back (`&goal=500` with a keep 500 tiles on).
  * `?solo&level=01-starter` plays the campaign level in levels/01-starter/, and `?levels` opens
  * the level select screen (after the intro) for the player picked last.
  * Anything else, or a missing name, opens the start screen (with the room code filled in).
@@ -52,7 +52,6 @@ export function readJoinIntent(search: string): PageIntent {
       ...(map && MAP_NAME_PATTERN.test(map) ? { map } : {}),
       ...(items && MAP_NAME_PATTERN.test(items) ? { items } : {}),
       ...(params.has("night") ? { enemiesCome: "night" as const } : {}),
-      ...(params.get("game") === "journey" ? { game: "journey" as const } : {}),
       ...(params.get("game") === "flood" ? { game: "flood" as const } : {}),
       ...(goal > 0 ? { goal } : {}),
     };

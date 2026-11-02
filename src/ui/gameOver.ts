@@ -1,5 +1,4 @@
 import { TICK_RATE } from "../sim/config";
-import { tilesFromHome } from "../sim/journey";
 import { distanceTravelled, tilesToGoal } from "../sim/flood";
 import { nightsSurvived } from "../sim/clock";
 import { starsFor, type LevelWin } from "../sim/levelFile";
@@ -64,13 +63,6 @@ export function createGameOverDialog(
           : state.flood.goal !== null
             ? `He got ${tiles}, ${tilesToGoal(state.flood)} short of the keep, in ${time}. Map seed ${state.seed}.`
             : `He got ${tiles}, in ${time}. Map seed ${state.seed}.`;
-        return;
-      }
-      if (state.journey) {
-        title.textContent = state.won ? "Home at last!" : "Your camp has fallen.";
-        summary.textContent = state.won
-          ? `Your camp made it home in ${time}. Map seed ${state.seed}.`
-          : `It fell ${tilesFromHome(state)} tiles from home, after ${time}. Map seed ${state.seed}.`;
         return;
       }
       if (state.mode === "pvp") {

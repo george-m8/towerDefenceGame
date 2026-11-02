@@ -124,9 +124,6 @@ export const GLYPH_FONTS = `Unifont, "Apple Symbols", "Segoe UI Symbol", "Segoe 
 export const GLYPH_FONT = `${TILE_SIZE - 4}px ${GLYPH_FONTS}`;
 /** Every keep tile but the middle one (which has its HP over it): a rook. */
 export const KEEP_GLYPH = "♜";
-/** Journey home's camp, a tent: pitched, and packed up (on the move). */
-export const CAMP_GLYPH = "▲";
-export const CAMP_PACKED_GLYPH = "△";
 /** No looking back's king. */
 export const KING_GLYPH = "♚";
 

@@ -1083,39 +1083,6 @@ export const PVP = {
 };
 
 /**
- * Journey home (see sim/journey.ts): your camp starts on the left edge and must reach the keep,
- * somewhere on the right edge, past swarms of enemies.
- */
-export const JOURNEY = {
-  campHp: 200,
-  /** The camp sees less far than a keep, so it has to move to see what's ahead. */
-  campSight: { inner: 8, outer: 12 } satisfies SightStats,
-  /** Seconds to pack up before the camp moves, and to set up again where it stops. */
-  packSeconds: 3,
-  unpackSeconds: 2,
-  /** How fast the packed camp moves, in tiles per second. */
-  campSpeed: 1.2,
-  /** Building only while camped, at most this many tiles from the camp (any direction). */
-  buildRadius: 5,
-  /** One swarm for this many tiles of map (an M map: about 17). */
-  tilesPerSwarm: 900,
-  swarmSize: { min: 4, max: 8 },
-  /** Tiles apart swarms' middles keep, and how far they stay from the camp's start and home. */
-  swarmSpacing: 10,
-  clearOfStart: 20,
-  clearOfHome: 6,
-  /** Swarms are as tough as this wave at the right edge, wave 1 at the left. */
-  hardestWave: 12,
-  /** Tiles an enemy sees the camp from, waking its whole swarm. */
-  enemySight: 6,
-  /** Seconds without seeing the camp before an awake enemy gives up and goes back. */
-  giveUpSeconds: 6,
-  /** Goblins always wandering the map, topped up one at a time, never where you can see. */
-  wanderers: 6,
-  wandererSpawnSeconds: 5,
-};
-
-/**
  * No looking back (see sim/flood.ts): the king walks to the flags you plant, as far as he can,
  * while lava creeps in behind him and new land is generated ahead.
  */
@@ -1124,8 +1091,21 @@ export const FLOOD = {
   kingSight: { inner: 7, outer: 10 } satisfies SightStats,
   /** How fast the king walks, in tiles per second. */
   kingSpeed: 1.5,
-  /** The king's HP: swarms that reach him hit him (as Journey home's do the camp). */
+  /** The king's HP: swarms that reach him hit him (see sim/floodSwarms.ts). */
   kingHp: 150,
+  /**
+   * Swarms: one for this many tiles of land (an M map: about 17), 4-8 strong, middles this far
+   * apart and from the king's start; one sees him this far off, waking its swarm, and gives up
+   * this long after it last saw him.
+   */
+  swarm: {
+    tilesPerSwarm: 900,
+    size: { min: 4, max: 8 },
+    spacing: 10,
+    clearOfStart: 20,
+    sight: 6,
+    giveUpSeconds: 6,
+  },
   /** Swarms (see sim/floodSwarms.ts) get a wave tougher every this many tiles on, up to the hardest. */
   tilesPerWave: 40,
   hardestWave: 25,

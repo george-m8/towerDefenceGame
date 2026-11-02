@@ -213,8 +213,8 @@ function closesRingAt(state: GameState, x: number, y: number): boolean {
 }
 
 /**
- * Endless: everywhere enemies can walk to from the spawn. Modes with no spawn strip (Journey
- * home, No looking back), where enemies (and new land) come from all round: everywhere joined
+ * Endless: everywhere enemies can walk to from the spawn. Modes with no spawn strip (No
+ * looking back), where enemies (and new land) come from all round: everywhere joined
  * to the map's edges.
  */
 function reachableFromSpawn(

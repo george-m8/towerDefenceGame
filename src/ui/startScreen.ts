@@ -22,7 +22,7 @@ export const GAME_MODES: {
   mode: GameMode;
   name: string;
   description: string;
-  /** Online only (PvP), or solo only (Journey home, No looking back); neither: both. */
+  /** Online only (PvP), or solo only (No looking back); neither: both. */
   online: boolean;
   solo?: true;
 }[] = [
@@ -41,18 +41,9 @@ export const GAME_MODES: {
     online: true,
   },
   {
-    mode: "journey",
-    name: "Journey home",
-    description:
-      "Get your camp from the far left of the map to the keep on the right. Swarms lie in wait: come into their sight and they come for you. Move camp to what you can see, and build round it.",
-    online: false,
-    solo: true,
-  },
-  {
     mode: "flood",
     name: "No looking back",
-    description:
-      "No keep to hold, just your king, and lava creeping in behind him, faster and faster. Plant his flags and he walks to them, on into new land. How far can he get before the lava reaches him?",
+    description: "Lead your king on into new land, ahead of creeping lava. How far can he get?",
     online: false,
     solo: true,
   },
@@ -398,7 +389,7 @@ function chooseGame(
           ...(items ? { items } : {}),
           ...fogOff,
           ...night,
-          ...(game === "journey" || game === "flood" ? { game } : {}),
+          ...(game === "flood" ? { game } : {}),
           ...(game === "flood" && goal > 0 ? { goal } : {}),
         });
       }

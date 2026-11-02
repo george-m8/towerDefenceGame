@@ -1,7 +1,6 @@
 import {
   DEFAULT_MAP_SIZE,
   ENEMY,
-  JOURNEY,
   KEEP_HP,
   KEEP_SIZE,
   MAP_SIZES,
@@ -27,8 +26,7 @@ import { initialExplored, revealKeep } from "./fog";
 import { claimKeepWalls, placeKeepWalls } from "./keepWalls";
 import { createFlood, kingDrowned, kingHome, planKing, updateFlood } from "./flood";
 import { kingFallen, populateFlood } from "./floodSwarms";
-import { createJourney, moveCamp, populateJourney, reachedHome, updateJourney } from "./journey";
-import { floodLayout, generateTerrain, journeyLayout, layoutFor, type MapLayout } from "./mapgen";
+import { floodLayout, generateTerrain, layoutFor, type MapLayout } from "./mapgen";
 import type { ItemsFile } from "./itemsFile";
 import { mapFromGame, spawnTiles, terrainGrid, type MapFile } from "./mapFile";
 import { randomInt } from "./rng";
@@ -57,7 +55,7 @@ export interface GameOptions {
   players?: string[];
   /** Fog of war (default on). Off, every tile is in sight. */
   fog?: boolean;
-  /** Endless (default), PvP, Journey home or No looking back (flood). */
+  /** Endless (default), PvP or No looking back (flood). */
   mode?: GameMode;
   /** How big the map is (default M). */
   size?: MapSize;
@@ -89,11 +87,8 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
   // Only Endless has waves; the other modes' enemies come "all the time" (never).
   const enemiesCome: EnemiesCome =
     mode === "endless" ? (options.enemiesCome ?? "always") : "always";
-  // Journey home's map is made with home as its keep and a spawn strip round the camp (see
-  // journeyLayout); the game's one keep is the camp, a single tile, and there's no spawn strip.
-  const journey = mode === "journey" && !file ? journeyLayout(width, height, seed) : null;
-  // No looking back's is made with a clear patch round the king's start (see floodLayout), and
-  // there's no keep at all.
+  // No looking back's map is made with a clear patch round the king's start (see floodLayout),
+  // and there's no keep at all.
   const flooding =
     mode === "flood" && !file ? floodLayout(width, height, seed, options.floodGoal ?? null) : null;
   const generated: MapLayout = file
@@ -103,14 +98,10 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
         keeps: file.keeps.map((k) => ({ ...k, size: KEEP_SIZE })),
         spawnTiles: spawnTiles(file),
       }
-    : (journey?.layout ?? flooding?.layout ?? layoutFor(width, height, mode, keepSide));
-  const layout = flooding
-    ? { ...generated, keeps: [], spawnTiles: [] }
-    : journey
-      ? { ...generated, keeps: [{ ...journey.camp, size: 1 }], spawnTiles: [] }
-      : generated;
+    : (flooding?.layout ?? layoutFor(width, height, mode, keepSide));
+  const layout = flooding ? { ...generated, keeps: [], spawnTiles: [] } : generated;
   const { spawnTiles: spawns } = layout;
-  const keepHp = mode === "pvp" ? PVP.keepHp : journey ? JOURNEY.campHp : KEEP_HP;
+  const keepHp = mode === "pvp" ? PVP.keepHp : KEEP_HP;
 
   const base = new Array<number>(width * height).fill(EMPTY);
   for (const keep of layout.keeps) {
@@ -172,7 +163,6 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     limits: { ...options.items?.limits },
     rngState: seed,
     fog: options.fog ?? true,
-    journey: journey ? createJourney(journey.home) : null,
     flood: flooding
       ? createFlood(flooding.king, width, height, options.floodGoal ?? null, flooding.home)
       : null,
@@ -182,10 +172,8 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
   state.explored = initialExplored(state);
   for (const name of options.players ?? ["Player 1"]) addPlayer(state, name);
   if (mode === "pvp") assignKeeps(state);
-  // The camp (or the king) is the player's, in their colour.
-  const firstPlayer = Number(Object.keys(state.players)[0] ?? 1);
-  if (state.journey) state.keeps[0].owner = firstPlayer;
-  if (state.flood) state.flood.owner = firstPlayer;
+  // The king is the player's, in their colour.
+  if (state.flood) state.flood.owner = Number(Object.keys(state.players)[0] ?? 1);
   updateVotes(state); // with no players, the game starts paused
   for (const spot of map.ruins) {
     const ruin = placeStructure(state, "ruin", spot.x, spot.y, "N", null);
@@ -204,8 +192,7 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
       structure.keep = s.keep;
       structure.paid = 0;
     }
-  } else if (state.journey) populateJourney(state);
-  else if (state.flood && !options.blankMap) populateFlood(state);
+  } else if (state.flood && !options.blankMap) populateFlood(state);
   else if (!options.blankMap) placeKeepWalls(state);
   return state;
 }
@@ -248,7 +235,6 @@ export function tick(state: GameState): void {
   updateEffects(state);
   updateCues(state);
   updateBuilding(state);
-  updateJourney(state);
   updateFlood(state);
   updateSpawners(state);
   updateUnits(state); // before enemies, so a unit that steps in the way blocks them this tick
@@ -270,7 +256,7 @@ export function tick(state: GameState): void {
       state.winner = state.keeps.find((keep) => keep.hp > 0)?.owner ?? null;
     }
     addCue(state, "gameOver");
-  } else if (!state.gameOver && (lastWaveBeaten(state) || reachedHome(state) || kingHome(state))) {
+  } else if (!state.gameOver && (lastWaveBeaten(state) || kingHome(state))) {
     state.gameOver = true;
     state.won = true;
   }
@@ -346,13 +332,10 @@ export function applyCommand(
     }
     case "sell":
       return sellStructure(state, playerId, command.x, command.y);
-    case "moveCamp":
-      return moveCamp(state, playerId, command.x, command.y);
     case "planKing":
       return planKing(state, playerId, command.x, command.y, command.queue === true);
     case "sendWave":
       if (state.mode === "pvp") return { ok: false, reason: "No waves in PvP" };
-      if (state.mode === "journey") return { ok: false, reason: "No waves on the journey home" };
       if (state.mode === "flood") return { ok: false, reason: "No waves, just the lava" };
       return sendWaveEarly(state, playerId);
     case "debugOption":

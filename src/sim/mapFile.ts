@@ -111,11 +111,10 @@ export function mapName(title: string): string {
   return name || "untitled";
 }
 
-/** How many keeps a map of each mode has (Journey home and flood maps are only generated, for now). */
+/** How many keeps a map of each mode has (No looking back maps are only generated, for now). */
 export const KEEPS_FOR_MODE: Record<GameMode, number> = {
   endless: 1,
   pvp: 2,
-  journey: 1,
   flood: 0,
 };
 
