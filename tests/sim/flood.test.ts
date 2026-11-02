@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { FLOOD, JOURNEY, TICK_RATE } from "../../src/sim/config";
+import { ENCLOSURE_DISCOUNT, FLOOD, JOURNEY, TICK_RATE } from "../../src/sim/config";
+import { discountAt, priceAt } from "../../src/sim/enclosures";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { swarmWave } from "../../src/sim/floodSwarms";
 import { applyCommand, createGame, tick } from "../../src/sim/game";
@@ -468,5 +469,22 @@ describe("swarms", () => {
     shiftWorld(state);
     expect(goblin).toMatchObject({ x: 29, y: 20, tx: 29 });
     expect(goblin.journey.post).toEqual({ x: 29, y: 20 });
+  });
+});
+
+describe("enclosures", () => {
+  it("make building inside walls cheaper, as usual", () => {
+    const state = blankFlood();
+    // A ring of finished walls round (20, 20).
+    for (let dy = -2; dy <= 2; dy++) {
+      for (let dx = -2; dx <= 2; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== 2) continue;
+        placeStructure(state, "wall", 20 + dx, 20 + dy, "N", ME).buildLeft = 0;
+      }
+    }
+    state.gridVersion++;
+    expect(discountAt(state, 20, 20, ME)).toBe(ENCLOSURE_DISCOUNT.outer);
+    expect(discountAt(state, 30, 20, ME)).toBe(0);
+    expect(priceAt(state, "archer", 20, 20, ME)).toBeLessThan(priceAt(state, "archer", 30, 20, ME));
   });
 });

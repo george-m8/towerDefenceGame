@@ -1,4 +1,4 @@
-// Enclosures: areas enemies can't walk to from the spawn. Building inside one (or on its walls)
+// Enclosures: areas enemies can't walk to from the spawn (or, with no spawn, from the map's edges). Building inside one (or on its walls)
 // is cheaper: 50% off in the keep's enclosure, 25% off in any other. Worked out from the grid
 // alone, so the server and every client agree.
 //
@@ -212,7 +212,11 @@ function closesRingAt(state: GameState, x: number, y: number): boolean {
   return stats.enclosing === true;
 }
 
-/** Endless: everywhere enemies can walk to from the spawn. */
+/**
+ * Endless: everywhere enemies can walk to from the spawn. Modes with no spawn strip (Journey
+ * home, No looking back), where enemies (and new land) come from all round: everywhere joined
+ * to the map's edges.
+ */
 function reachableFromSpawn(
   state: GameState,
   open: boolean[],
@@ -221,7 +225,8 @@ function reachableFromSpawn(
 ): boolean[] {
   const reachable = new Array<boolean>(open.length).fill(false);
   const queue: number[] = [];
-  for (const p of state.spawnTiles) {
+  const starts = state.spawnTiles.length > 0 ? state.spawnTiles : borderTiles(width, height);
+  for (const p of starts) {
     const i = p.y * width + p.x;
     if (open[i] && !reachable[i]) {
       reachable[i] = true;
@@ -230,6 +235,14 @@ function reachableFromSpawn(
   }
   flood(queue, reachable, open, width, height);
   return reachable;
+}
+
+/** Every tile round the map's edge. */
+function borderTiles(width: number, height: number): { x: number; y: number }[] {
+  const tiles: { x: number; y: number }[] = [];
+  for (let x = 0; x < width; x++) tiles.push({ x, y: 0 }, { x, y: height - 1 });
+  for (let y = 1; y < height - 1; y++) tiles.push({ x: 0, y }, { x: width - 1, y });
+  return tiles;
 }
 
 /** PvP: no-man's land, the biggest connected stretch of open ground. */

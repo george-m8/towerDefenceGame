@@ -56,6 +56,7 @@ An endless solo mode about keeping moving. You have no keep of your own. Your **
 **Building**
 
 - Anywhere you've seen, as usual. Build time is measured from the king instead of a keep.
+- Enclosures are cheaper (`ENCLOSURE_DISCOUNT.outer`, 25%) as usual. With no spawn strip, the outside is open ground joined to the map's edges (where new land and swarms come from), as in Journey home.
 
 **The camera** (`src/ui/lavaCamera.ts`)
 
