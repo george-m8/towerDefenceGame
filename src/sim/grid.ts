@@ -178,6 +178,19 @@ export function canBuild(
   return { ok: true };
 }
 
+/** A wall (finished or not) or a ruin on a tile beside (x, y), not counting diagonals. */
+function joinsAWall(state: GameState, x: number, y: number): boolean {
+  return [
+    [x, y - 1],
+    [x + 1, y],
+    [x, y + 1],
+    [x - 1, y],
+  ].some(([nx, ny]) => {
+    const kind = baseAt(state, nx, ny)?.kind;
+    return kind === "wall" || kind === "ruin";
+  });
+}
+
 function canBuildOnTerrain(
   state: GameState,
   kind: StructureKind,
@@ -187,6 +200,13 @@ function canBuildOnTerrain(
   const terrain: TerrainStats = TERRAIN[terrainAt(state, x, y)];
   const stats: StructureStats = STRUCTURES[kind];
   const spansWater = stats.spansWater === true;
+  // No looking back: a wall can go on lava if it joins on to a wall (or a ruin, an old one) beside
+  // it, so a line of walls can be built out across the lava, a tile at a time.
+  if (terrainAt(state, x, y) === "lava" && kind === "wall") {
+    return joinsAWall(state, x, y)
+      ? { ok: true }
+      : { ok: false, reason: "A wall on lava has to join on to a wall" };
+  }
   if (terrain.buildable === "none") {
     return { ok: false, reason: `Can't build on ${terrain.name.toLowerCase()}` };
   }

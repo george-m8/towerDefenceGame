@@ -606,3 +606,30 @@ describe("co-op", () => {
     expect(state.won).toBe(false);
   });
 });
+
+describe("walls on lava", () => {
+  it("can be built if they join on to a wall, so a line can go out across it", () => {
+    const state = blankFlood();
+    const { y } = king(state);
+    for (let x = 0; x < 8; x++) {
+      state.terrain[tileIndex(state, x, y + 5)] = "lava";
+      state.terrain[tileIndex(state, x, y + 6)] = "lava";
+    }
+    expect(canBuild(state, ME, "wall", 6, y + 5)).toMatchObject({
+      reason: "A wall on lava has to join on to a wall",
+    });
+    expect(canBuild(state, ME, "archer", 6, y + 5).ok).toBe(false); // only walls
+    // A wall on the land beside it, then one on the lava joining it, then the next.
+    state.explored = state.explored.map(() => 1);
+    state.players[ME].gold = 1000;
+    expect(applyCommand(state, ME, { type: "build", kind: "wall", x: 8, y: y + 5 })).toEqual({
+      ok: true,
+    });
+    expect(applyCommand(state, ME, { type: "build", kind: "wall", x: 7, y: y + 5 })).toEqual({
+      ok: true,
+    });
+    expect(canBuild(state, ME, "wall", 6, y + 5).ok).toBe(true);
+    // Below the one on the land is lava too, but only corner to corner with the wall at (7, y + 5).
+    expect(canBuild(state, ME, "wall", 6, y + 6).ok).toBe(false);
+  });
+});
