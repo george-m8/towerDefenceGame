@@ -113,9 +113,9 @@ describe("No looking back's lava", () => {
     const over = (x: number) =>
       Array.from({ length: 200 }, (_, t) => bubbling(state, x, 20, t * 50));
     const five = over(5);
-    expect(Math.min(...five)).toBeGreaterThanOrEqual(0.92);
-    expect(Math.max(...five)).toBeLessThanOrEqual(1.08);
-    expect(Math.max(...five) - Math.min(...five)).toBeGreaterThan(0.05);
+    expect(Math.min(...five)).toBeGreaterThanOrEqual(0.8);
+    expect(Math.max(...five)).toBeLessThanOrEqual(1.2);
+    expect(Math.max(...five) - Math.min(...five)).toBeGreaterThan(0.15);
     expect(over(6)).not.toEqual(five);
     // Not ground, not water, not lava with a wall on it.
     expect(bubbling(state, 7, 20, 1234)).toBe(1);

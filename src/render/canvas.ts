@@ -171,7 +171,7 @@ function lavaHeight(state: GameState, x: number, y: number): number {
 }
 
 /** How much lava bubbles: each tile of it rises and falls by up to this share of its height. */
-const BUBBLE = 0.08;
+const BUBBLE = 0.2;
 
 /** Whether (x, y) bubbles: bare lava (not water, nor lava with a wall on it). */
 export function bubbles(state: GameState, x: number, y: number): boolean {
