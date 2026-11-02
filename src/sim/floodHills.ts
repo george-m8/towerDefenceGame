@@ -20,8 +20,9 @@ export function withHills(
   for (let k = 0; k < count; k++) {
     const rx = randomInt(rng, across.min, across.max) / 2;
     const ry = randomInt(rng, down.min, down.max) / 2;
-    const cx = randomInt(rng, 1, n - 2);
-    const cy = randomInt(rng, 1, height - 2);
+    // Wholly on the land, so it rises all round.
+    const cx = randomInt(rng, Math.ceil(rx), n - 1 - Math.ceil(rx));
+    const cy = randomInt(rng, Math.ceil(ry), height - 1 - Math.ceil(ry));
     for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) {
       for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
         if (x < 0 || y < 0 || x >= n || y >= height) continue;

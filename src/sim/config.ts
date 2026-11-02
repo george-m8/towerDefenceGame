@@ -1194,12 +1194,13 @@ export const FLOOD = {
   /**
    * Hills (see floodHills.ts): high ground the flood never takes, up to `perPiece` on each piece
    * of new land (and as many for its width on the starting map), each a rough oval `across` by
-   * `down` tiles, over open ground only.
+   * `down` tiles, over open ground only: big enough to rise in steps (see hillHeight in
+   * render/canvas.ts), its middle at least three tiles in.
    */
   hills: {
     perPiece: 3,
-    across: { min: 4, max: 10 },
-    down: { min: 3, max: 7 },
+    across: { min: 7, max: 13 },
+    down: { min: 7, max: 11 },
   },
   /** A goal game's land stops coming once this many tiles past the keep are on the map. */
   pastKeep: 8,

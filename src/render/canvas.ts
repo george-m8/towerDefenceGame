@@ -143,8 +143,29 @@ export function isDamagedWall(structure: Structure): boolean {
 const ROCK_HEIGHT = 4;
 /** A wall's height (a finished one, unbattered). */
 const WALL_HEIGHT = 6;
-/** No looking back's hills: high ground, and what's on them stands that much higher. */
-const HILL_HEIGHT = 3;
+/**
+ * No looking back's hills: high ground, rising a step at a time from its edge (HILL_STEP pixels a
+ * tile in, up to HILL_LEVELS steps). What's on a hill stands that much higher.
+ */
+const HILL_STEP = 2;
+const HILL_LEVELS = 3;
+
+/** How high a hill stands at (x, y): a step for each tile in from its edge (off the map is edge). */
+export function hillHeight(state: GameState, x: number, y: number): number {
+  if (terrainAt(state, x, y) !== "hill") return 0;
+  for (let reach = 1; reach < HILL_LEVELS; reach++) {
+    for (let dy = -reach; dy <= reach; dy++) {
+      for (let dx = -reach; dx <= reach; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== reach) continue;
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= state.width || ny >= state.height) return reach * HILL_STEP;
+        if (state.terrain[ny * state.width + nx] !== "hill") return reach * HILL_STEP;
+      }
+    }
+  }
+  return HILL_LEVELS * HILL_STEP;
+}
 /** No looking back's lava: half a wall high where it's deep, lower towards its fringes. */
 const LAVA_HEIGHT = WALL_HEIGHT / 2;
 /** Its water lies lower, a third of a wall at its deepest. */
@@ -226,7 +247,7 @@ export function blockHeight(state: GameState, x: number, y: number): number {
   // A battered wall sinks a little, and a tower on it with it.
   const sunk = base && isDamagedWall(base) ? 1 : 0;
   const terrain = terrainAt(state, x, y);
-  const hill = terrain === "hill" ? HILL_HEIGHT : 0;
+  const hill = hillHeight(state, x, y);
   if (mount) return hill + (base ? 11 - sunk : 8);
   if (base) return hill + (STRUCTURES[base.kind].blocksMovement ? WALL_HEIGHT - sunk : 0);
   if (hill) return hill;
@@ -1332,7 +1353,9 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       if (!canSeeEnemiesAt(state, unit.x, unit.y, viewer)) continue;
       ctx!.fillStyle = playerColour(unit.owner);
       const glyph = UNIT_KINDS[unit.kind].glyph;
-      ctx!.fillText(glyph, (unit.x + 0.5) * TILE_SIZE, (unit.y + 0.5) * TILE_SIZE + 1);
+      // On a hill, up on its slope (the 3D view stands it on top as a card).
+      const up = iso ? 0 : hillHeight(state, Math.round(unit.x), Math.round(unit.y));
+      ctx!.fillText(glyph, (unit.x + 0.5) * TILE_SIZE, (unit.y + 0.5) * TILE_SIZE + 1 - up);
       drawHealth(`u${unit.id}`, unit);
     }
   }
@@ -1346,7 +1369,8 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       const kind = ENEMY_KINDS[enemy.kind];
       ctx!.font = enemyFont(kind.variants[enemy.variant].size);
       ctx!.fillStyle = ENEMY_COLOURS[enemy.kind];
-      ctx!.fillText(kind.glyph, (enemy.x + 0.5) * TILE_SIZE, (enemy.y + 0.5) * TILE_SIZE + 1);
+      const up = iso ? 0 : hillHeight(state, Math.round(enemy.x), Math.round(enemy.y));
+      ctx!.fillText(kind.glyph, (enemy.x + 0.5) * TILE_SIZE, (enemy.y + 0.5) * TILE_SIZE + 1 - up);
       drawHealth(`e${enemy.id}`, enemy);
     }
   }

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { blockHeight, drawnHeight, enemyDrawRow, isDamagedWall } from "../../src/render/canvas";
+import {
+  blockHeight,
+  drawnHeight,
+  enemyDrawRow,
+  hillHeight,
+  isDamagedWall,
+} from "../../src/render/canvas";
 import type { Terrain } from "../../src/sim/types";
 import { placeStructure } from "../../src/sim/grid";
 import { textureSpecks } from "../../src/render/textures";
@@ -135,5 +141,21 @@ describe("No looking back's lava", () => {
     expect(drawnHeight(state, 7, 20, 1234)).toBe(blockHeight(state, 7, 20));
     placeStructure(state, "wall", 6, 20, "N", 1).buildLeft = 0;
     expect(drawnHeight(state, 6, 20, 1234)).toBe(blockHeight(state, 6, 20));
+  });
+});
+
+describe("No looking back's hills", () => {
+  it("rise a step a tile in from their edge, and what's on them stands higher", () => {
+    const state = createGame(3, { mode: "flood", blankMap: true });
+    for (let y = 10; y < 19; y++) {
+      for (let x = 10; x < 19; x++) state.terrain[y * state.width + x] = "hill";
+    }
+    const steps = [10, 11, 12, 13, 14].map((x) => hillHeight(state, x, 14));
+    expect(steps).toEqual([2, 4, 6, 6, 6]);
+    expect(hillHeight(state, 9, 14)).toBe(0);
+    const wall = placeStructure(state, "wall", 25, 25, "N", 1);
+    wall.buildLeft = 0;
+    placeStructure(state, "wall", 14, 14, "N", 1).buildLeft = 0;
+    expect(blockHeight(state, 14, 14)).toBe(6 + blockHeight(state, 25, 25));
   });
 });
