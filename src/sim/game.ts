@@ -31,7 +31,7 @@ import {
   royalHome,
   royalsFallen,
   updateFlood,
-  withStartingForts,
+  withStartingRuins,
 } from "./flood";
 import { placeSwarm, populateFlood } from "./floodSwarms";
 import { floodLayout, generateTerrain, layoutFor, type MapLayout } from "./mapgen";
@@ -127,11 +127,11 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     : options.blankMap
       ? { terrain: new Array<Terrain>(width * height).fill("ground"), ruins: [], chests: [] }
       : generateTerrain(generated, seed);
-  // No looking back's starting map gets ruined forts too, as new land does.
+  // No looking back's starting map gets ruins too, as new land does.
   const map =
     flooding && !options.blankMap
-      ? withStartingForts(generatedMap, width, height, seed, flooding.king, flooding.home)
-      : { ...generatedMap, fortSwarms: [] };
+      ? withStartingRuins(generatedMap, width, height, seed, flooding.king, flooding.home)
+      : { ...generatedMap, ruinSwarms: [] };
 
   const state: GameState = {
     seed,
@@ -205,7 +205,7 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     }
   } else if (state.flood && !options.blankMap) {
     populateFlood(state);
-    for (const middle of map.fortSwarms) placeSwarm(state, middle);
+    for (const middle of map.ruinSwarms) placeSwarm(state, middle);
   } else if (!options.blankMap) placeKeepWalls(state);
   // No looking back: a royal for each player there is (solo); a room's are handed out when it starts.
   if (state.flood) assignRoyals(state);

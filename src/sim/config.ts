@@ -1,5 +1,5 @@
 // All tunable game numbers live here.
-import type { RoyalTitle } from "./types";
+import type { RoyalTitle, Terrain } from "./types";
 
 /**
  * Map sizes players pick from when starting a game, in tiles. M is the default. `keep: "right"`
@@ -1166,15 +1166,30 @@ export const FLOOD = {
   shiftColumns: 3,
   aheadTiles: 48,
   /**
-   * Ruined forts in each piece of new land (at most this many; fewer where they'd overlap):
-   * closed square rings of ruins this many tiles across, lava-proof, a chest of this much gold in
-   * the middle, and this share with a swarm shut in.
+   * The ruins that shape the land (see sim/floodRuins.ts): at most `perPiece` in each 40 columns
+   * of it (fewer where they'd overlap), of each kind by weight. Forts and compounds' rooms are
+   * this many tiles across; halls this big, with this many gaps this wide; lines this long, with a
+   * bend this long this often. Halls and lines are weathered (this share of full HP). In each room
+   * (an enclosure's inside): a chest of this much gold, a patch of one of these resources, and a
+   * swarm, each this often.
    */
-  forts: {
-    perPiece: 2,
-    size: { min: 7, max: 9 },
-    swarmChance: 0.5,
+  ruins: {
+    perPiece: 4,
+    kinds: { fort: 3, hall: 2, compound: 2, line: 3 },
+    fortSize: { min: 7, max: 9 },
+    hallWidth: { min: 11, max: 17 },
+    hallHeight: { min: 9, max: 13 },
+    gaps: { min: 1, max: 3 },
+    gapWidth: 2,
+    lineLength: { min: 6, max: 14 },
+    bendLength: { min: 3, max: 8 },
+    bendChance: 0.5,
+    weathered: 0.6,
+    chestChance: 0.8,
     chestGold: { min: 60, max: 150 },
+    resourceChance: 0.4,
+    resources: ["goldRock", "tree", "berries"] satisfies Terrain[],
+    swarmChance: 0.4,
   },
   /** A goal game's land stops coming once this many tiles past the keep are on the map. */
   pastKeep: 8,

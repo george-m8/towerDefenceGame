@@ -11,8 +11,9 @@
 // to be) is dropped, everything moves a column left, and a column of new land comes in on the
 // right (see shiftWorld). The camera moves with it.
 import { FLOOD, KEEP_SIZE, TERRAIN, TICK_RATE } from "./config";
+import { withRuins } from "./floodRuins";
 import { placeSwarm } from "./floodSwarms";
-import { nextRandom, randomInt } from "./rng";
+import { randomInt } from "./rng";
 import { canStand, spawnUnit } from "./units";
 import { exploreRoyalSight, isExplored } from "./fog";
 import {
@@ -784,12 +785,13 @@ function nextLand(state: GameState): Land {
     goalX !== null && goalX < start + n
       ? Math.min(Math.max(goalX - start, 2), n - KEEP_SIZE - 2)
       : undefined;
-  // Its forts go in before the check, so they never block the way on.
+  // Its ruins go in before the check, so they never block the way on.
   const keepArea = keepX === undefined ? null : { x: keepX, y: Math.floor(height / 2) - 1 };
   const generate = (attempt: number) =>
-    withForts(generateChunk(n, height, chunkSeed(state, attempt), keepX), n, height, {
+    withRuins(generateChunk(n, height, chunkSeed(state, attempt), keepX), n, height, {
       seed: chunkSeed(state, attempt),
       keep: keepArea,
+      count: FLOOD.ruins.perPiece,
     });
   let chunk = generate(0);
   for (let attempt = 1; attempt < 20 && !joinsOn(before, chunk, height); attempt++) {
@@ -804,7 +806,7 @@ function nextLand(state: GameState): Land {
     chunk = { ...chunk, ruins: chunk.ruins.filter(offKeep), chests: chunk.chests.filter(offKeep) };
   }
   flood.land = {
-    swarms: [...swarmMiddles(chunk, n, height, chunkSeed(state, 0)), ...chunk.fortSwarms],
+    swarms: [...swarmMiddles(chunk, n, height, chunkSeed(state, 0)), ...chunk.ruinSwarms],
     width: n,
     next: 0,
     terrain: chunk.terrain,
@@ -865,90 +867,29 @@ function joinsOn(
 }
 
 /**
- * Land (a piece of new land, or the starting map) with ruined forts (FLOOD.forts): closed square
- * rings of ruins, open ground inside with a chest in the middle, which lava can't get into
- * (ruins hold it); some have a swarm shut in. Sell a ruin to get in. At most `count`, placed with
- * their own RNG clear of the land's edges, a goal's keep and anywhere in `clear` (and each other),
- * over whatever was there.
+ * The starting map with ruins too (see floodRuins.ts), as many for its width as new land gets,
+ * clear of the royals' start and a goal's keep, and only where they leave a way from the start to
+ * the map's right edge (tried a few times, else none).
  */
-function withForts(
-  chunk: Pick<MapGenResult, "terrain" | "ruins" | "chests">,
-  n: number,
-  height: number,
-  {
-    seed,
-    keep,
-    count = FLOOD.forts.perPiece,
-    clear = [],
-  }: {
-    seed: number;
-    keep: Point | null;
-    count?: number;
-    clear?: { x: number; y: number; radius: number }[];
-  },
-): Pick<MapGenResult, "terrain" | "ruins" | "chests"> & { fortSwarms: Point[] } {
-  const rng = { rngState: seed ^ 0x2f6b8c1d };
-  const { size, swarmChance, chestGold } = FLOOD.forts;
-  const terrain = [...chunk.terrain];
-  let ruins = chunk.ruins;
-  let chests = chunk.chests;
-  const fortSwarms: Point[] = [];
-  const placed: { x: number; y: number; side: number }[] = [];
-  for (let f = 0; f < count; f++) {
-    const side = randomInt(rng, size.min, size.max);
-    const x = randomInt(rng, 1, n - side - 1);
-    const y = randomInt(rng, 2, height - side - 2);
-    const overlaps = (a: { x: number; y: number; side: number }) =>
-      x < a.x + a.side + 2 && a.x < x + side + 2 && y < a.y + a.side + 2 && a.y < y + side + 2;
-    if (placed.some(overlaps)) continue;
-    if (keep && overlaps({ ...keep, side: KEEP_SIZE })) continue;
-    const middleOf = { x: x + side / 2, y: y + side / 2 };
-    if (clear.some((c) => Math.hypot(c.x - middleOf.x, c.y - middleOf.y) < c.radius + side / 2)) {
-      continue;
-    }
-    placed.push({ x, y, side });
-    const inFort = (p: { x: number; y: number }) =>
-      p.x >= x && p.x < x + side && p.y >= y && p.y < y + side;
-    ruins = ruins.filter((r) => !inFort(r));
-    chests = chests.filter((c) => !inFort(c));
-    for (let dy = 0; dy < side; dy++) {
-      for (let dx = 0; dx < side; dx++) {
-        terrain[(y + dy) * n + x + dx] = "ground";
-        const ring = dx === 0 || dy === 0 || dx === side - 1 || dy === side - 1;
-        if (ring) ruins = [...ruins, { x: x + dx, y: y + dy, hpFraction: 1 }];
-      }
-    }
-    const middle = { x: x + Math.floor(side / 2), y: y + Math.floor(side / 2) };
-    chests = [...chests, { ...middle, gold: randomInt(rng, chestGold.min, chestGold.max) }];
-    if (nextRandom(rng) < swarmChance) fortSwarms.push(middle);
-  }
-  return { ...chunk, terrain, ruins, chests, fortSwarms };
-}
-
-/**
- * The starting map with ruined forts too, as many for its width as new land gets, clear of the
- * royals' start and a goal's keep, and only where they leave a way from the start to the map's
- * right edge (tried a few times, else none).
- */
-export function withStartingForts(
+export function withStartingRuins(
   map: Pick<MapGenResult, "terrain" | "ruins" | "chests">,
   width: number,
   height: number,
   seed: number,
   start: Point,
   home: Point | null,
-): Pick<MapGenResult, "terrain" | "ruins" | "chests"> & { fortSwarms: Point[] } {
-  const count = Math.round((width / FLOOD.chunkColumns) * FLOOD.forts.perPiece);
+): Pick<MapGenResult, "terrain" | "ruins" | "chests"> & { ruinSwarms: Point[] } {
+  const count = Math.round((width / FLOOD.chunkColumns) * FLOOD.ruins.perPiece);
   for (let attempt = 0; attempt < 10; attempt++) {
-    const forts = withForts(map, width, height, {
+    const ruins = withRuins(map, width, height, {
       seed: (seed ^ Math.imul(attempt + 1, 0x632be5ab)) | 0,
       keep: home,
       count,
       clear: [{ ...start, radius: FLOOD.swarm.clearOfStart }],
     });
-    if (crossable(forts, width, height, start)) return forts;
+    if (crossable(ruins, width, height, start)) return ruins;
   }
-  return { ...map, fortSwarms: [] };
+  return { ...map, ruinSwarms: [] };
 }
 
 /** Whether there's a way over walkable land, round ruins, from `start` to the map's right edge. */

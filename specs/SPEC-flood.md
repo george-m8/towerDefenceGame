@@ -56,12 +56,16 @@ An endless mode about keeping moving, solo or co-op. You have no keep of your ow
 - Each tick an escort fights anything in reach (as a guard does). One that closes in to fight (range 1, the soldier) goes after the enemy in its sight nearest its royal, within `escortChase` (4) tiles of it. Otherwise it walks to its spot beside the royal, or anywhere beside it if that's blocked, and stands there. Its royal fallen, it stands where it is and fights.
 - One that falls (to a swarm, or the lava) is gone for good.
 
-**Ruined forts** (`FLOOD.forts`; `withForts` in flood.ts)
+**Ruins** (`FLOOD.ruins`; `src/sim/floodRuins.ts`)
 
-- Each piece of new land gets up to `perPiece` (2) forts, fewer where they'd overlap each other or a goal's keep: a closed square ring of ruins (full HP) `size` (7-9) tiles across, clear of the piece's edges, with open ground inside and a chest of `chestGold` (60-150) in the middle. They go in before the walk-across check, so they never block the way on.
-- The starting map gets them too (`withStartingForts`), as many for its width as new land gets, clear of the royals' start (`swarm.clearOfStart`) and a goal's keep, and only where they leave a way from the start to the right edge (tried 10 times, else none). Their swarms are placed with the map's others.
-- Ruins hold lava, so the inside stays dry. There's no way in: sell a ruin (they're nobody's) to open one.
-- `swarmChance` (half) of them have a swarm shut inside, placed when the land round the middle has come in (it can't get out until a ruin goes).
+- Each piece of new land gets up to `perPiece` (4) ruins, fewer where they'd overlap (2 tiles apart at least) or touch a goal's keep, of each kind by weight (`kinds`). They're placed with their own RNG over what the map generator made, clearing the ground under them, and before the walk-across check, so they never block the way on.
+  - **Forts**: closed square rings of ruins, `fortSize` (7-9) across, at full HP.
+  - **Halls**: rings `hallWidth` (11-17) by `hallHeight` (9-13), weathered (`weathered`, 60% HP), with `gaps` (1-3) gaps `gapWidth` (2) wide in their sides, never at a corner.
+  - **Compounds**: two forts side by side (across or down), sharing a wall with a one-tile doorway in it, at full HP.
+  - **Lines**: a straight stretch of ruined wall `lineLength` (6-14) long, across or down, with (half the time) a bend `bendLength` (3-8) long at its far end; weathered.
+- In each room (an enclosure's inside): a chest of `chestGold` (60-150) in the middle (`chestChance`, 80%); a 2x2 to 3x2 patch of gold-veined rock, trees or berries in a corner (`resourceChance`, 40%), never on the middle row or column; and a swarm (`swarmChance`, 40%; rooms at least 5 across), placed when the land round the room's middle has come in.
+- Ruins hold lava, so a closed fort's inside stays dry. There's no way in but selling a ruin (they're nobody's).
+- The starting map gets them too (`withStartingRuins`), as many for its width as new land gets, clear of the royals' start (`swarm.clearOfStart`) and a goal's keep, and only where they leave a way from the start to the right edge (tried 10 times, else none). Their swarms are placed with the map's others.
 
 **Swarms** (`src/sim/floodSwarms.ts`)
 
