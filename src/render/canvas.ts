@@ -170,6 +170,29 @@ function lavaHeight(state: GameState, x: number, y: number): number {
   return most;
 }
 
+/** How much lava bubbles: each tile of it rises and falls by up to this share of its height. */
+const BUBBLE = 0.08;
+
+/** Whether (x, y) bubbles: bare lava (not water, nor lava with a wall on it). */
+export function bubbles(state: GameState, x: number, y: number): boolean {
+  return terrainAt(state, x, y) === "lava" && !baseAt(state, x, y) && !mountAt(state, x, y);
+}
+
+/**
+ * Lava bubbling: what to scale bare lava's height at (x, y) by at `ms` (1 anywhere else). Each
+ * tile has its own beat, by its place in the world (so it keeps it as the world moves on). Only
+ * drawn, so each screen bubbles its own way.
+ */
+export function bubbling(state: GameState, x: number, y: number, ms: number): number {
+  if (!bubbles(state, x, y)) return 1;
+  const h = Math.imul(x + (state.flood?.shifted ?? 0), 0x27d4eb2d) ^ Math.imul(y, 0x165667b1);
+  const phase = ((h >>> 0) % 1000) * ((2 * Math.PI) / 1000);
+  const speed = 0.0015 + ((h >>> 10) % 1000) * 0.0000025; // radians a millisecond
+  // Two beats, so it heaves rather than pulses.
+  const wave = 0.7 * Math.sin(ms * speed + phase) + 0.3 * Math.sin(ms * speed * 2.3 + phase * 3);
+  return 1 + BUBBLE * wave;
+}
+
 /** A No looking back goal game's keep, covering (x, y). */
 function homeKeepAt(state: GameState, x: number, y: number) {
   return isFloodHome(state, x, y) ? { ...homeOnMap(state)!, size: KEEP_SIZE } : undefined;
@@ -299,7 +322,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
    * Blocks' heights this frame, for the view and a shadow's reach round it, so the shadow passes
    * (which look at every tile round each block) don't work each one out again.
    */
-  let heights = { x0: 0, y0: 0, width: 0, height: 0, data: new Uint8Array(0) };
+  let heights = { x0: 0, y0: 0, width: 0, height: 0, data: new Float32Array(0) };
 
   /** Works out every block's height for the view and a shadow's reach round it. */
   function measureHeights(state: GameState) {
@@ -307,11 +330,14 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     const y0 = Math.max(0, view.y0 - SUN.reachTiles);
     const width = Math.min(state.width - 1, view.x1 + SUN.reachTiles) - x0 + 1;
     const height = Math.min(state.height - 1, view.y1 + SUN.reachTiles) - y0 + 1;
-    if (heights.data.length < width * height) heights.data = new Uint8Array(width * height);
+    if (heights.data.length < width * height) heights.data = new Float32Array(width * height);
     heights = { x0, y0, width, height, data: heights.data };
+    const ms = performance.now();
     for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++)
-        heights.data[y * width + x] = blockHeight(state, x0 + x, y0 + y);
+      for (let x = 0; x < width; x++) {
+        const h = blockHeight(state, x0 + x, y0 + y);
+        heights.data[y * width + x] = h && h * bubbling(state, x0 + x, y0 + y, ms);
+      }
     }
   }
 

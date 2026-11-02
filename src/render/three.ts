@@ -15,7 +15,7 @@ import { ringTiles } from "../sim/keepWalls";
 import type { GameState, PlayerId } from "../sim/types";
 import { ISO, tilePixels, viewCentre, type Camera } from "../ui/camera";
 import type { UiState } from "../ui/state";
-import { blockHeight, blockSideColour, createRenderer } from "./canvas";
+import { blockHeight, blockSideColour, bubbles, bubbling, createRenderer } from "./canvas";
 import type { Rotation } from "./rotation";
 import { darknessAt, daylight, skyHour } from "./dayNight";
 import { sunDirection } from "./sun";
@@ -188,6 +188,8 @@ function instances(
       mesh.count = 0;
       return mesh;
     },
+    /** The mesh as last filled, to change some of it in place. */
+    mesh: () => mesh,
     /** Says the matrices, colours and attributes set since reserve() are ready to draw. */
     done() {
       if (!mesh) return;
@@ -360,6 +362,9 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
   const cardScale = new THREE.Vector3();
   const turn = new THREE.Matrix4();
 
+  /** The blocks of bare lava, as [instance, x, y, height] in a row, to bubble each frame. */
+  let lavaBlocks: number[] = [];
+
   let painted: { key: string; tiers: Uint8Array | null; at: number; shifted: number } = {
     key: "",
     tiers: null,
@@ -401,6 +406,7 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
     }
     const mesh = blocks.reserve(count);
     const walls = ramparts.reserve(crowned * 4);
+    lavaBlocks = [];
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const h = blockTiles(state, x, y);
@@ -408,6 +414,7 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
         if (h <= 0 || tier === UNEXPLORED) continue;
         matrix.makeScale(1, h, 1).setPosition(x + 0.5, 0, y + 0.5);
         mesh.setMatrixAt(mesh.count, matrix);
+        if (bubbles(state, x, y)) lavaBlocks.push(mesh.count, x, y, h);
         // The sides' colour: the block's own (a tower on a wall, the wall's), misted like its top where it's only been seen.
         side.copy(colourOf(blockSideColour(state, x, y)));
         if (tier === SEEN) side.lerp(fogColour, FOG.seen.opacity);
@@ -429,6 +436,18 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
     }
     blocks.done();
     ramparts.done();
+  }
+
+  /** Lava's blocks rise and fall a little, every frame (see bubbling). */
+  function bubble(state: GameState, now: number) {
+    const mesh = blocks.mesh();
+    if (!mesh) return;
+    for (let k = 0; k < lavaBlocks.length; k += 4) {
+      const [i, x, y, h] = [lavaBlocks[k], lavaBlocks[k + 1], lavaBlocks[k + 2], lavaBlocks[k + 3]];
+      matrix.makeScale(1, h * bubbling(state, x, y, now), 1).setPosition(x + 0.5, 0, y + 0.5);
+      mesh.setMatrixAt(i, matrix);
+    }
+    if (lavaBlocks.length > 0) mesh.instanceMatrix.needsUpdate = true;
   }
 
   /** Enemies, units and chests: every frame, where the viewer can see them. */
@@ -508,7 +527,9 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
       renderer.setSize(cam.viewWidth, cam.viewHeight, false);
       placeCamera(camera, ui);
       placeSun(state, ui);
-      build(state, ui.playerId, performance.now(), ui.rotation);
+      const now = performance.now();
+      build(state, ui.playerId, now, ui.rotation);
+      bubble(state, now);
       placeMovers(state, ui.playerId);
       renderer.render(scene, camera);
     },

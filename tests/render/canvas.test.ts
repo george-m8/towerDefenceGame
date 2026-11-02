@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { blockHeight, enemyDrawRow, isDamagedWall } from "../../src/render/canvas";
+import { blockHeight, bubbling, enemyDrawRow, isDamagedWall } from "../../src/render/canvas";
 import { placeStructure } from "../../src/sim/grid";
 import { textureSpecks } from "../../src/render/textures";
 import { FOG } from "../../src/render/palette";
@@ -104,5 +104,24 @@ describe("No looking back's lava", () => {
     expect(blockHeight(state, 8, 20)).toBe(2);
     expect(blockHeight(state, 5, 20)).toBe(wallHeight / 2);
     expect(blockHeight(state, 0, 20)).toBe(wallHeight / 2); // off the map counts as lava
+  });
+
+  it("bubbles: each tile rises and falls a few percent, on its own beat", () => {
+    const state = createGame(3, { mode: "flood", blankMap: true });
+    state.terrain[state.width * 20 + 5] = "lava";
+    state.terrain[state.width * 20 + 6] = "lava";
+    const over = (x: number) =>
+      Array.from({ length: 200 }, (_, t) => bubbling(state, x, 20, t * 50));
+    const five = over(5);
+    expect(Math.min(...five)).toBeGreaterThanOrEqual(0.92);
+    expect(Math.max(...five)).toBeLessThanOrEqual(1.08);
+    expect(Math.max(...five) - Math.min(...five)).toBeGreaterThan(0.05);
+    expect(over(6)).not.toEqual(five);
+    // Not ground, not water, not lava with a wall on it.
+    expect(bubbling(state, 7, 20, 1234)).toBe(1);
+    state.terrain[state.width * 20 + 7] = "floodwater";
+    expect(bubbling(state, 7, 20, 1234)).toBe(1);
+    placeStructure(state, "wall", 6, 20, "N", 1);
+    expect(bubbling(state, 6, 20, 1234)).toBe(1);
   });
 });
