@@ -8,6 +8,7 @@ import {
   keepAt,
   isWalkable,
   mountAt,
+  isFlooded,
   terrainAt,
   topAt,
 } from "../sim/grid";
@@ -143,24 +144,28 @@ const ROCK_HEIGHT = 4;
 const WALL_HEIGHT = 6;
 /** No looking back's lava: half a wall high where it's deep, lower towards its fringes. */
 const LAVA_HEIGHT = WALL_HEIGHT / 2;
+/** Its water lies lower, a third of a wall at its deepest. */
+const WATER_HEIGHT = WALL_HEIGHT / 3;
 
 /**
- * How high lava stands at (x, y): a pixel at its fringe (beside land), two a tile further in,
- * and LAVA_HEIGHT from two tiles in. Off the map counts as lava, so it's deep at the edges.
+ * How high lava (or water) stands at (x, y): a pixel at its fringe (beside land), two a tile
+ * further in, and its most (LAVA_HEIGHT, or WATER_HEIGHT) from there in. Off the map counts as
+ * under, so it's deep at the edges.
  */
 function lavaHeight(state: GameState, x: number, y: number): number {
-  for (let reach = 1; reach < LAVA_HEIGHT; reach++) {
+  const most = terrainAt(state, x, y) === "floodwater" ? WATER_HEIGHT : LAVA_HEIGHT;
+  for (let reach = 1; reach < most; reach++) {
     for (let dy = -reach; dy <= reach; dy++) {
       for (let dx = -reach; dx <= reach; dx++) {
         if (Math.max(Math.abs(dx), Math.abs(dy)) !== reach) continue;
         const nx = x + dx;
         const ny = y + dy;
         if (nx < 0 || ny < 0 || nx >= state.width || ny >= state.height) continue;
-        if (state.terrain[ny * state.width + nx] !== "lava") return reach;
+        if (!isFlooded(state.terrain[ny * state.width + nx])) return reach;
       }
     }
   }
-  return LAVA_HEIGHT;
+  return most;
 }
 
 /** A No looking back goal game's keep, covering (x, y). */
@@ -188,7 +193,7 @@ export function blockHeight(state: GameState, x: number, y: number): number {
   if (mount) return base ? 11 - sunk : 8;
   if (base) return STRUCTURES[base.kind].blocksMovement ? WALL_HEIGHT - sunk : 0;
   const terrain = terrainAt(state, x, y);
-  if (terrain === "lava") return lavaHeight(state, x, y);
+  if (isFlooded(terrain)) return lavaHeight(state, x, y);
   if (terrain === "tree") return 7;
   if (terrain === "rock" || terrain === "goldRock") {
     // Ore sinks as it's mined: full height while untouched, down to a sliver near the end.
@@ -552,7 +557,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
         const pulse = pulsing
           ? 0.5 + 0.5 * Math.sin(performance.now() / (400 - 300 * warning))
           : 0.5;
-        ctx!.fillStyle = COLOURS.lavaWarn;
+        ctx!.fillStyle = flood.liquid === "water" ? COLOURS.waterWarn : COLOURS.lavaWarn;
         ctx!.globalAlpha = 0.08 + warning * (0.2 + 0.25 * pulse);
         ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
         ctx!.globalAlpha = 1;

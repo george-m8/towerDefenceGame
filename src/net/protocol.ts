@@ -1,6 +1,7 @@
 // The messages between browser and game server. Shared by both, so no Node or DOM APIs here.
 import {
   ENEMY_KINDS,
+  FLOOD_LIQUIDS,
   MAP_SIZES,
   STRUCTURES,
   type EnemyKindId,
@@ -14,6 +15,7 @@ import type {
   DebugCommand,
   Enemy,
   Facing,
+  FloodLiquid,
   GameMode,
   GameState,
   PlayerId,
@@ -57,6 +59,8 @@ export type ClientMessage =
       enemiesCome?: EnemiesCome;
       /** No looking back: a keep this many tiles on, reaching which wins (none: on for ever). */
       goal?: number;
+      /** No looking back: what the flood is (none: lava). */
+      liquid?: FloodLiquid;
     }
   | { type: "join"; room: string; name: string }
   | { type: "rejoin"; room: string; token: string }
@@ -213,6 +217,12 @@ export function parseClientMessage(raw: string): ParseResult {
       if (data.goal !== undefined) {
         if (!isInt(data.goal, 1, MAX_FLOOD_GOAL)) return fail("Bad goal");
         message.goal = data.goal;
+      }
+      if (data.liquid !== undefined) {
+        if (typeof data.liquid !== "string" || !Object.hasOwn(FLOOD_LIQUIDS, data.liquid)) {
+          return fail("Bad liquid");
+        }
+        message.liquid = data.liquid as FloodLiquid;
       }
       return ok(message);
     }

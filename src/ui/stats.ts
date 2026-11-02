@@ -2,7 +2,7 @@
 // HUD's stat box. PvP has no waves: it shows the rival's keep and the mode instead. No looking
 // back has no keep or waves: it shows the lava, your royal's HP and how far the royals have got. With enemies
 // at night, the wave stat shows the night too, and by day the next wave is "At dusk".
-import { TICK_RATE } from "../sim/config";
+import { FLOOD_LIQUIDS, TICK_RATE } from "../sim/config";
 import { incomePerMinute } from "../sim/economy";
 import { isSpawningTime } from "../sim/clock";
 import { isLastWave } from "../sim/waves";
@@ -38,6 +38,7 @@ export function statList(state: GameState, playerId: PlayerId): Stat[] {
     // how fast the lava's coming, or how far it is to a goal's keep.
     const tiles = (n: number) => `${n} tile${n === 1 ? "" : "s"}`;
     const startsIn = lavaStartsIn(state);
+    const { name } = FLOOD_LIQUIDS[state.flood.liquid];
     // Yours, or (once it's fallen) how many of the team's still stand.
     const own = royalOf(state.flood, playerId);
     const standing = livingRoyals(state.flood).length;
@@ -48,14 +49,14 @@ export function statList(state: GameState, playerId: PlayerId): Stat[] {
           ? `${tiles(lavaBehind(state, own))} behind`
           : "-";
     stats.push(
-      { id: "wave", label: "Lava", value: lava },
+      { id: "wave", label: name, value: lava },
       own
         ? { id: "keep", label: titleCase(own.title), value: `${own.hp} / ${own.maxHp}` }
         : { id: "keep", label: "Royals", value: `${standing} standing` },
       { id: "mode", label: "Distance", value: tiles(distanceTravelled(state.flood)) },
       // A goal game: how far still to the keep; else how fast the lava's coming.
       tilesToGoal(state.flood) === null
-        ? { id: "next", label: "Lava speed", value: `${lavaSpeed(state).toFixed(2)} tiles/s` }
+        ? { id: "next", label: `${name} speed`, value: `${lavaSpeed(state).toFixed(2)} tiles/s` }
         : { id: "next", label: "Keep", value: `${tiles(tilesToGoal(state.flood)!)} to go` },
       { id: "seed", label: "Seed", value: String(state.seed) },
     );

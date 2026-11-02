@@ -223,6 +223,8 @@ export const COLOURS = {
   raidPath: "#f4efcf",
   /** No looking back: where lava will run next. */
   lavaWarn: "#e0541c",
+  /** ...or water. */
+  waterWarn: "#4fa8e8",
   /** The flag on each raiders' path's end, where enemies leave it. */
   raidPathEnd: "#d9a13b",
   spikesUp: "#c8c8c8",
@@ -384,6 +386,7 @@ export const TERRAIN_STYLES: Record<
   // Unifont's blueberries, kept as text like the tree.
   berries: { bg: "#2f5a2a", glyph: "\u{1FAD0}\uFE0E", fg: "#7a3b4f" },
   lava: { bg: "#8a2a0c", glyph: "≈", fg: "#f2a23a" },
+  floodwater: { bg: "#245d8f", glyph: "≈", fg: "#9fd0f2" },
 };
 
 /** The texture over each kind of terrain (see render/textures.ts). */
@@ -398,6 +401,7 @@ export const TERRAIN_TEXTURES: Record<Terrain, TextureStyle> = {
   goldRock: "ore",
   berries: "speckle",
   lava: "ripple",
+  floodwater: "ripple",
 };
 /** The keep's stone walls. */
 export const KEEP_TEXTURE: TextureStyle = "stone";

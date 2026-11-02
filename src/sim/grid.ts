@@ -51,6 +51,11 @@ export function terrainAt(state: GameState, x: number, y: number): Terrain {
   return state.terrain[tileIndex(state, x, y)];
 }
 
+/** No looking back's flood, lava or water (see FLOOD_LIQUIDS): a game only ever has the one. */
+export function isFlooded(terrain: Terrain): boolean {
+  return terrain === "lava" || terrain === "floodwater";
+}
+
 /** Changes terrain at runtime (e.g. clearing a tree), so pathfinding recomputes. */
 export function setTerrain(state: GameState, x: number, y: number, terrain: Terrain): void {
   state.terrain[tileIndex(state, x, y)] = terrain;
@@ -200,12 +205,12 @@ function canBuildOnTerrain(
   const terrain: TerrainStats = TERRAIN[terrainAt(state, x, y)];
   const stats: StructureStats = STRUCTURES[kind];
   const spansWater = stats.spansWater === true;
-  // No looking back: a wall can go on lava if it joins on to a wall (or a ruin, an old one) beside
-  // it, so a line of walls can be built out across the lava, a tile at a time.
-  if (terrainAt(state, x, y) === "lava" && kind === "wall") {
+  // No looking back: a wall can go on lava (or floodwater) if it joins on to a wall (or a ruin, an
+  // old one) beside it, so a line of walls can be built out across it, a tile at a time.
+  if (isFlooded(terrainAt(state, x, y)) && kind === "wall") {
     return joinsAWall(state, x, y)
       ? { ok: true }
-      : { ok: false, reason: "A wall on lava has to join on to a wall" };
+      : { ok: false, reason: `A wall on ${terrain.name.toLowerCase()} has to join on to a wall` };
   }
   if (terrain.buildable === "none") {
     return { ok: false, reason: `Can't build on ${terrain.name.toLowerCase()}` };

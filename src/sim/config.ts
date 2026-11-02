@@ -1200,6 +1200,16 @@ export const FLOOD = {
 /** No looking back's goals to pick from: 0 goes on for ever; else a keep that far on, in tiles. */
 export const FLOOD_GOALS = [0, 250, 500, 1000];
 
+/**
+ * What No looking back's flood is: lava takes everything in its way but walls and ruins; water
+ * leaves trees, rocks and bushes standing too, and goes round them. `terrain` is what a tile
+ * under it becomes.
+ */
+export const FLOOD_LIQUIDS = {
+  lava: { name: "Lava", terrain: "lava", spares: "walls and ruins" },
+  water: { name: "Water", terrain: "floodwater", spares: "walls, ruins, trees, rocks and bushes" },
+} as const satisfies Record<string, { name: string; terrain: string; spares: string }>;
+
 /** Selling refunds this fraction of cost, scaled by remaining HP. */
 export const SELL_REFUND = 0.5;
 /** Build discounts in enclosed areas: inside the keep's walls, and inside any other walls. */
@@ -1223,6 +1233,8 @@ export const TERRAIN = {
   berries: { name: "Berry bush", walkable: true, buildable: "none" },
   /** No looking back's lava (see sim/flood.ts). */
   lava: { name: "Lava", walkable: false, buildable: "none" },
+  /** No looking back's flood, when it's water (see FLOOD_LIQUIDS). */
+  floodwater: { name: "Floodwater", walkable: false, buildable: "none" },
 } satisfies Record<string, TerrainStats>;
 
 /**

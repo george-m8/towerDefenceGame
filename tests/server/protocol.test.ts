@@ -26,6 +26,7 @@ describe("parseClientMessage", () => {
     parses({ type: "create", name: "Ann", mode: "pvp", size: "XL" });
     parses({ type: "create", name: "Ann", enemiesCome: "night" });
     parses({ type: "create", name: "Ann", enemiesCome: "always" });
+    parses({ type: "create", name: "Ann", mode: "flood", liquid: "water" });
     parses({ type: "join", room: "ABCD", name: "Bo" });
     parses({ type: "rejoin", room: "WXYZ", token: "a".repeat(32) });
     parses({ type: "restart" });
@@ -81,6 +82,8 @@ describe("parseClientMessage", () => {
     rejects("not json");
     rejects({ type: "create", name: "Ann", size: "XXL" });
     rejects({ type: "create", name: "Ann", enemiesCome: "dawn" });
+    rejects({ type: "create", name: "Ann", mode: "flood", liquid: "mud" });
+    rejects({ type: "create", name: "Ann", mode: "flood", liquid: "toString" });
     rejects({ type: "create", name: "Ann", mode: "chess" });
     rejects("null");
     rejects([]);

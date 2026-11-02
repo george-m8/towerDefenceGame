@@ -1,4 +1,4 @@
-import { TICK_RATE } from "../sim/config";
+import { FLOOD_LIQUIDS, TICK_RATE } from "../sim/config";
 import { distanceTravelled, tilesToGoal } from "../sim/flood";
 import { nightsSurvived } from "../sim/clock";
 import { starsFor, type LevelWin } from "../sim/levelFile";
@@ -63,7 +63,9 @@ export function createGameOverDialog(
         } else if (royals.length === 1 && only) {
           const who = `The ${only.title}`;
           title.textContent =
-            only.fallen === "lava" ? `The lava took the ${only.title}.` : `${who} has fallen.`;
+            only.fallen === "flood"
+              ? `The ${FLOOD_LIQUIDS[state.flood.liquid].name.toLowerCase()} took the ${only.title}.`
+              : `${who} has fallen.`;
           summary.textContent = `${who} got ${tiles}${short}, in ${time}. Map seed ${state.seed}.`;
         } else {
           title.textContent = "All the royals have fallen.";

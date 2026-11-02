@@ -35,6 +35,16 @@ describe("readJoinIntent", () => {
       name: "Ann",
       game: "pvp",
     });
+    expect(readJoinIntent("?create&name=Ann&game=flood&liquid=water")).toEqual({
+      mode: "create",
+      name: "Ann",
+      game: "flood",
+      liquid: "water",
+    });
+    expect(readJoinIntent("?solo&game=flood&liquid=mud")).toEqual({
+      mode: "offline",
+      game: "flood",
+    });
     expect(readJoinIntent("?create&name=  ")).toEqual({ mode: "menu" });
   });
 

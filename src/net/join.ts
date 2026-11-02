@@ -1,6 +1,7 @@
 // How a page joins a game: from the URL, or the start screen when the URL doesn't say.
 import { MAP_SIZES, type MapSize } from "../sim/config";
 import { MAP_NAME_PATTERN } from "../sim/mapFile";
+import type { FloodLiquid } from "../sim/types";
 import { MAX_NAME_LENGTH } from "./protocol";
 import type { JoinIntent } from "./networkSession";
 
@@ -24,6 +25,8 @@ export type PageIntent =
       game?: "flood";
       /** No looking back: the keep to reach, in tiles (none: on for ever). */
       goal?: number;
+      /** No looking back: what the flood is (none: lava). */
+      liquid?: FloodLiquid;
     }
   | JoinIntent;
 
@@ -31,7 +34,7 @@ export type PageIntent =
  * `?create&name=Ann` creates a room (`&game=pvp` for PvP, `&game=flood` for No looking back) and `?room=ABCD&name=Bo` joins one;
  * `?solo` plays offline. `&size=L` picks the map size when playing solo or creating a room;
  * `&map=river-crossing` plays maps/river-crossing.map solo, and `&items=towers-only` plays solo
- * with the limits in items/towers-only.items; `&night` plays solo with enemies at night, `&game=flood` plays No looking back (`&goal=500` with a keep 500 tiles on).
+ * with the limits in items/towers-only.items; `&night` plays solo with enemies at night, `&game=flood` plays No looking back (`&goal=500` with a keep 500 tiles on, `&liquid=water` with a flood of water).
  * `?solo&level=01-starter` plays the campaign level in levels/01-starter/, and `?levels` opens
  * the level select screen (after the intro) for the player picked last.
  * Anything else, or a missing name, opens the start screen (with the room code filled in).
@@ -44,6 +47,7 @@ export function readJoinIntent(search: string): PageIntent {
   const items = params.get("items");
   const level = params.get("level");
   const goal = Math.floor(Number(params.get("goal")) || 0);
+  const liquid = params.get("liquid") === "water" ? { liquid: "water" as const } : {};
   if (params.has("solo")) {
     if (level && MAP_NAME_PATTERN.test(level)) return { mode: "offline", level };
     return {
@@ -54,6 +58,7 @@ export function readJoinIntent(search: string): PageIntent {
       ...(params.has("night") ? { enemiesCome: "night" as const } : {}),
       ...(params.get("game") === "flood" ? { game: "flood" as const } : {}),
       ...(goal > 0 ? { goal } : {}),
+      ...liquid,
     };
   }
   const room = params.get("room")?.toUpperCase();
@@ -67,6 +72,7 @@ export function readJoinIntent(search: string): PageIntent {
       ...(params.get("game") === "flood" ? { game: "flood" as const } : {}),
       ...(size ? { size } : {}),
       ...(goal > 0 ? { goal } : {}),
+      ...liquid,
     };
   }
   if (room) return { mode: "menu", room };

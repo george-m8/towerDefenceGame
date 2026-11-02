@@ -24,7 +24,7 @@ import {
   isFloodHome,
   tilesToGoal,
 } from "../../src/sim/flood";
-import type { GameState, Point } from "../../src/sim/types";
+import type { FloodLiquid, GameState, Point } from "../../src/sim/types";
 
 const ME = 1;
 
@@ -38,8 +38,8 @@ function floodGame(seed = 3): GameState {
 }
 
 /** Open ground, no flood yet (each test brings it on as it needs). */
-function blankFlood(): GameState {
-  const state = createGame(3, { mode: "flood", blankMap: true });
+function blankFlood(floodLiquid?: FloodLiquid): GameState {
+  const state = createGame(3, { mode: "flood", blankMap: true, floodLiquid });
   state.flood!.front = -Infinity;
   return state;
 }
@@ -327,6 +327,60 @@ describe("the lava", () => {
     run(state, 10 * TICK_RATE);
     expect(state.gameOver).toBe(true);
     expect(state.won).toBe(false);
+  });
+});
+
+describe("water", () => {
+  /** A tree, a rock and a bush in the flood's way, and a tower, and the flood far past them. */
+  function inTheWay(liquid?: FloodLiquid) {
+    const state = blankFlood(liquid);
+    royal(state).at = { x: 40, y: 10 };
+    for (const [x, terrain] of [
+      [3, "tree"],
+      [5, "rock"],
+      [7, "berries"],
+    ] as const) {
+      state.terrain[tileIndex(state, x, 20)] = terrain;
+    }
+    const tower = placeStructure(state, "archer", 4, 22, "E", ME);
+    tower.buildLeft = 0;
+    state.flood!.front = 20;
+    run(state, 30 * TICK_RATE);
+    return { state, tower, at: (x: number, y = 20) => state.terrain[tileIndex(state, x, y)] };
+  }
+
+  it("leaves trees, rocks and bushes standing, and goes round them", () => {
+    const { state, tower, at } = inTheWay("water");
+    expect(state.flood!.liquid).toBe("water");
+    expect([at(3), at(5), at(7)]).toEqual(["tree", "rock", "berries"]);
+    expect([at(4), at(6), at(8), at(9)]).toEqual(Array(4).fill("floodwater"));
+    expect(state.structures[tower.id]).toBeUndefined(); // the rest it takes, as lava does
+    expect(lavaWarning(state, 3, 20)).toBeNull();
+  });
+
+  it("isn't how lava goes: that takes them", () => {
+    const { at } = inTheWay();
+    expect([at(3), at(5), at(7)]).toEqual(Array(3).fill("lava"));
+  });
+
+  it("takes a royal it reaches", () => {
+    const state = blankFlood("water");
+    const { x } = king(state);
+    state.flood!.front = x + 2 + FLOOD.edge.reach + FLOOD.edge.rough;
+    run(state, 10 * TICK_RATE);
+    expect(royal(state).fallen).toBe("flood");
+  });
+
+  it("can be walled across, as lava can", () => {
+    const state = blankFlood("water");
+    state.explored = state.explored.map(() => 1);
+    state.terrain[tileIndex(state, 20, 5)] = "floodwater";
+    expect(canBuild(state, ME, "wall", 20, 5)).toMatchObject({
+      ok: false,
+      reason: "A wall on floodwater has to join on to a wall",
+    });
+    placeStructure(state, "wall", 21, 5, "N", ME).buildLeft = 0;
+    expect(canBuild(state, ME, "wall", 20, 5)).toEqual({ ok: true });
   });
 });
 

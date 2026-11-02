@@ -8,6 +8,7 @@ import type {
   Command,
   CommandResult,
   Facing,
+  FloodLiquid,
   GameState,
   PlayerId,
   StructureKind,
@@ -65,6 +66,8 @@ export function createLocalSession(
     mode?: "flood";
     /** No looking back: the keep to reach, in tiles (none: on for ever). */
     floodGoal?: number;
+    /** No looking back: what the flood is (none: lava). */
+    floodLiquid?: FloodLiquid;
   } = {},
 ): Session {
   let state = createGame(seed, options);

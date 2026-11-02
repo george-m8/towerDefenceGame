@@ -75,6 +75,7 @@ export const TERRAIN_CHARS: Record<Terrain, string> = {
   tree: "T",
   berries: "b",
   lava: "^",
+  floodwater: "w",
 };
 const TERRAIN_BY_CHAR = new Map(
   Object.entries(TERRAIN_CHARS).map(([terrain, char]) => [char, terrain as Terrain]),

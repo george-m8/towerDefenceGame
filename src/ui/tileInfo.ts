@@ -63,6 +63,7 @@ const TERRAIN_DESCRIPTIONS: Record<Terrain, string> = {
   goldRock: "Gold-veined rock - impassable",
   berries: "Berry bush",
   lava: "Lava - nothing crosses it",
+  floodwater: "Floodwater - nothing crosses it",
 };
 
 /** Human-readable lines describing what is on a tile, for the hover info box. */

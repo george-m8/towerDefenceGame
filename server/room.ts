@@ -8,6 +8,7 @@ import { NO_VOTES, addPlayer, setConnected, updateVotes } from "../src/sim/playe
 import { freshRaid, raiders, setRole } from "../src/sim/raiders";
 import type {
   EnemiesCome,
+  FloodSettings,
   Command,
   CommandResult,
   GameMode,
@@ -44,8 +45,8 @@ export interface Room {
   size: MapSize;
   /** When enemies come, as the room was created with; restarts keep it. */
   enemiesCome: EnemiesCome;
-  /** No looking back: the keep to reach, as the room was created with (none: on for ever). */
-  goal?: number;
+  /** No looking back's goal and liquid, as the room was created with; restarts keep them. */
+  flood: FloodSettings;
 }
 
 export type JoinResult =
@@ -59,9 +60,16 @@ export function createRoom(
   mode: GameMode = "endless",
   size: MapSize = DEFAULT_MAP_SIZE,
   enemiesCome: EnemiesCome = "always",
-  goal?: number,
+  flood: FloodSettings = {},
 ): Room {
-  const state = createGame(seed, { players: [], mode, size, enemiesCome, floodGoal: goal });
+  const state = createGame(seed, {
+    players: [],
+    mode,
+    size,
+    enemiesCome,
+    floodGoal: flood.goal,
+    floodLiquid: flood.liquid,
+  });
   return {
     code,
     state,
@@ -75,7 +83,7 @@ export function createRoom(
     fog: true,
     size,
     enemiesCome,
-    ...(goal ? { goal } : {}),
+    flood,
   };
 }
 
@@ -245,7 +253,8 @@ export function restartRoom(room: Room, seed: number): CommandResult {
     mode: old.mode,
     size: room.size,
     enemiesCome: room.enemiesCome,
-    floodGoal: room.goal,
+    floodGoal: room.flood.goal,
+    floodLiquid: room.flood.liquid,
   });
   for (const player of Object.values(old.players)) {
     state.players[player.id] = {

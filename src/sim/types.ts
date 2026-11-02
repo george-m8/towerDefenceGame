@@ -1,5 +1,6 @@
 import type {
   EnemyKindId,
+  FLOOD_LIQUIDS,
   MovementProfile,
   ProjectileKind,
   STRUCTURES,
@@ -207,7 +208,19 @@ export interface Royal {
   hp: number;
   maxHp: number;
   /** How it fell, once it has: gone for good, and once all have, the game's over. */
-  fallen: "lava" | "swarm" | null;
+  fallen: "flood" | "swarm" | null;
+}
+
+/** What No looking back's flood is (see FLOOD_LIQUIDS). */
+export type FloodLiquid = keyof typeof FLOOD_LIQUIDS;
+
+/**
+ * No looking back's settings: a keep this many tiles on, reaching which wins (none: on for
+ * ever), and the flood's liquid (none: lava).
+ */
+export interface FloodSettings {
+  goal?: number;
+  liquid?: FloodLiquid;
 }
 
 /** No looking back: the royals' walk on ahead of the lava (see sim/flood.ts). */
@@ -220,6 +233,8 @@ export interface Flood {
   best: number;
   /** The next swarm's number (a swarm wakes together). */
   swarms: number;
+  /** Lava, or water (see FLOOD_LIQUIDS): "lava" in comments here means either. */
+  liquid: FloodLiquid;
   /** How far in from the left the lava has come, in tiles, on average (see lavaEdge). */
   front: number;
   /** The tiles beside the lava not yet under (tile indices): where it spreads to next... */

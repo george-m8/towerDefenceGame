@@ -14,8 +14,14 @@ import {
 import { createPictureView, roomAbove } from "./pictureCanvas";
 import { LEVEL_GRID, MAX_STARS, levelSlots, loadProgress, recordStars } from "./campaign";
 import { loadPlayers, putPlayer, removePlayer, savePlayers, type Profile } from "./profiles";
-import type { EnemiesCome, GameMode } from "../sim/types";
-import { DEFAULT_MAP_SIZE, FLOOD_GOALS, MAP_SIZES, type MapSize } from "../sim/config";
+import type { EnemiesCome, FloodLiquid, GameMode } from "../sim/types";
+import {
+  DEFAULT_MAP_SIZE,
+  FLOOD_GOALS,
+  FLOOD_LIQUIDS,
+  MAP_SIZES,
+  type MapSize,
+} from "../sim/config";
 
 /** The game modes, as the mode screen offers them. */
 export const GAME_MODES: {
@@ -376,7 +382,9 @@ function chooseGame(
             showLevelScreen(root, player, levels, again, (level) =>
               playLevel(root, options, level),
             ),
-    onChoose: (game, size, map, items, fog, enemiesCome, goal) => {
+    onChoose: (game, size, map, items, fog, enemiesCome, goal, liquid) => {
+      // Only water is sent: the flood is lava unless asked otherwise.
+      const water = game === "flood" && liquid === "water" ? { liquid } : {};
       // Only "off" is sent: fog of war is on unless asked otherwise. Likewise only "night".
       const fogOff = fog ? {} : { fog: false as const };
       const night = enemiesCome === "night" ? { enemiesCome: "night" as const } : {};
@@ -390,12 +398,21 @@ function chooseGame(
           ...night,
           ...(game === "flood" ? { game } : {}),
           ...(game === "flood" && goal > 0 ? { goal } : {}),
+          ...water,
         });
       }
       options.onChoose(
         game === "endless"
           ? { mode: "create", name, size, ...fogOff, ...night }
-          : { mode: "create", name, game, size, ...fogOff, ...(goal > 0 ? { goal } : {}) },
+          : {
+              mode: "create",
+              name,
+              game,
+              size,
+              ...fogOff,
+              ...(goal > 0 ? { goal } : {}),
+              ...water,
+            },
       );
     },
   });
@@ -501,6 +518,8 @@ interface ModeSettings {
   enemiesCome: EnemiesCome;
   /** No looking back: the keep to reach, in tiles from the start, or 0 to go on for ever. */
   goal: number;
+  /** No looking back: what the flood is. */
+  liquid: FloodLiquid;
 }
 
 /**
@@ -524,6 +543,7 @@ function showModeScreen(
       fog: boolean,
       enemiesCome: EnemiesCome,
       goal: number,
+      liquid: FloodLiquid,
     ) => void;
   },
   settings: ModeSettings = {
@@ -533,6 +553,7 @@ function showModeScreen(
     fog: true,
     enemiesCome: "always",
     goal: 0,
+    liquid: "lava",
   },
 ) {
   root.innerHTML = `
@@ -720,6 +741,15 @@ function showSettingsScreen(
           (g) =>
             `<button class="size-choice" role="radio" data-goal="${g}">${g === 0 ? "Endless" : `Keep at ${g}`}</button>`,
         ).join("")}
+      </div>
+      <div class="map-sizes" role="radiogroup" aria-label="Flood">
+        <span title="Lava takes everything but walls and ruins. Water leaves trees, rocks and bushes standing too, and goes round them">Flood</span>
+        ${(Object.keys(FLOOD_LIQUIDS) as FloodLiquid[])
+          .map(
+            (l) =>
+              `<button class="size-choice" role="radio" data-liquid="${l}" title="Spares ${FLOOD_LIQUIDS[l].spares}">${FLOOD_LIQUIDS[l].name}</button>`,
+          )
+          .join("")}
       </div>`
           : ""
       }
@@ -733,6 +763,7 @@ function showSettingsScreen(
   const fogButtons = [...root.querySelectorAll<HTMLButtonElement>("[data-fog]")];
   const enemiesButtons = [...root.querySelectorAll<HTMLButtonElement>("[data-enemies]")];
   const goalButtons = [...root.querySelectorAll<HTMLButtonElement>("[data-goal]")];
+  const liquidButtons = [...root.querySelectorAll<HTMLButtonElement>("[data-liquid]")];
   const sizeButtons = [...sizes.querySelectorAll<HTMLButtonElement>("[data-size]")];
   const mapSelect = root.querySelector<HTMLSelectElement>('select[name="map"]');
   const itemsSelect = root.querySelector<HTMLSelectElement>('select[name="items"]');
@@ -748,6 +779,9 @@ function showSettingsScreen(
     }
     for (const b of goalButtons) {
       b.setAttribute("aria-checked", String(Number(b.dataset.goal) === settings.goal));
+    }
+    for (const b of liquidButtons) {
+      b.setAttribute("aria-checked", String(b.dataset.liquid === settings.liquid));
     }
     // A hand-made map has its own size, so the size only matters for a generated one.
     sizes.hidden = settings.map !== "";
@@ -776,6 +810,12 @@ function showSettingsScreen(
       show();
     });
   }
+  for (const b of liquidButtons) {
+    b.addEventListener("click", () => {
+      settings.liquid = b.dataset.liquid as FloodLiquid;
+      show();
+    });
+  }
   mapSelect?.addEventListener("change", () => {
     settings.map = mapSelect.value;
     show();
@@ -795,6 +835,7 @@ function showSettingsScreen(
       settings.fog,
       offerNight ? settings.enemiesCome : "always",
       offerGoal ? settings.goal : 0,
+      offerGoal ? settings.liquid : "lava",
     ),
   );
   start.focus();

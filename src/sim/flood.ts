@@ -4,13 +4,14 @@
 // flags after it, and it walks to each in turn by the shortest way your team knows (over land
 // you've seen). Behind them lava creeps in from the left, slowly at first and a little faster all
 // the time, with a ragged edge (see lavaEdge), turning each tile it reaches to lava with all
-// that's on it, but for walls and ruins, which it flows round (spreadLava). A royal the lava
+// that's on it, but for walls and ruins, which it flows round (spreadLava). Or it can be water
+// (see FLOOD_LIQUIDS), which flows round trees, rocks and bushes too: "lava" here means either. A royal the lava
 // reaches, or a swarm brings down, has fallen; its player builds on with the rest of the team.
 // Once all have fallen the game's over; the furthest any got is the score.
 // The map never ends: as a royal nears its right edge, the column furthest behind (lava, or soon
 // to be) is dropped, everything moves a column left, and a column of new land comes in on the
 // right (see shiftWorld). The camera moves with it.
-import { FLOOD, KEEP_SIZE, TERRAIN, TICK_RATE } from "./config";
+import { FLOOD, FLOOD_LIQUIDS, KEEP_SIZE, RESOURCES, TERRAIN, TICK_RATE } from "./config";
 import { withRuins } from "./floodRuins";
 import { placeSwarm } from "./floodSwarms";
 import { randomInt } from "./rng";
@@ -22,6 +23,7 @@ import {
   blocksAt,
   inBounds,
   isBuilt,
+  isFlooded,
   isWalkable,
   mountAt,
   placeStructure,
@@ -34,6 +36,7 @@ import { startingWork, startingWorth } from "./resources";
 import type {
   CommandResult,
   Flood,
+  FloodLiquid,
   GameState,
   Land,
   PlayerId,
@@ -48,9 +51,11 @@ export function createFlood(
   height: number,
   goal: number | null = null,
   home: Point | null = null,
+  liquid: FloodLiquid = "lava",
 ): Flood {
   return {
     royals: [],
+    liquid,
     start,
     best: 0,
     swarms: 1,
@@ -209,7 +214,7 @@ export function royalsFallen(state: GameState): boolean {
 /** Royals the lava's reached, or swarms have brought down, fall. */
 function fallRoyals(state: GameState, flood: Flood): void {
   for (const royal of livingRoyals(flood)) {
-    if (terrainAt(state, royal.at.x, royal.at.y) === "lava") royal.fallen = "lava";
+    if (isFlooded(terrainAt(state, royal.at.x, royal.at.y))) royal.fallen = "flood";
     else if (royal.hp <= 0) royal.fallen = "swarm";
     if (royal.fallen) {
       royal.plan = [];
@@ -282,7 +287,7 @@ function lavaGlow(state: GameState, flood: Flood): number[] {
     if (step >= FLOOD.warnTiles) continue;
     const x = i % width;
     for (const n of besideOnMap(state, x, (i - x) / width)) {
-      if (steps.has(n) || state.terrain[n] === "lava") continue;
+      if (steps.has(n) || isFlooded(state.terrain[n])) continue;
       const nx = n % width;
       const ny = (n - nx) / width;
       if (holdsLava(state, nx, ny)) continue;
@@ -323,7 +328,9 @@ export function planKing(
     return { ok: true };
   }
   if (!isExplored(state, x, y, player)) return { ok: false, reason: "You can't see there" };
-  if (terrainAt(state, x, y) === "lava") return { ok: false, reason: "That's lava" };
+  if (isFlooded(terrainAt(state, x, y))) {
+    return { ok: false, reason: `That's ${FLOOD_LIQUIDS[flood.liquid].name.toLowerCase()}` };
+  }
   if (queue) {
     if (royal.plan.length >= FLOOD.maxFlags) return { ok: false, reason: "Too many flags" };
     royal.plan = [...royal.plan, { x, y }];
@@ -496,10 +503,11 @@ function nextWay(state: GameState, royal: Royal): void {
 
 /**
  * Whether lava stops at (x, y): a finished wall or a ruin (an old wall) holds it, and a tower on
- * it, however long; so does a goal's keep.
+ * it, however long; so does a goal's keep. Water leaves trees, rocks and bushes standing too.
  */
 function holdsLava(state: GameState, x: number, y: number): boolean {
   if (isFloodHome(state, x, y)) return true;
+  if (state.flood?.liquid === "water" && terrainAt(state, x, y) in RESOURCES) return true;
   const base = baseAt(state, x, y);
   return base !== undefined && (base.kind === "wall" || base.kind === "ruin") && isBuilt(base);
 }
@@ -516,7 +524,7 @@ function spreadLava(state: GameState, flood: Flood): void {
   const rate = (Math.max(lavaSpeed(state), FLOOD.lavaSpeed.start) * FLOOD.flowRate) / TICK_RATE;
   const next = new Map<number, number>();
   flood.edge.forEach((i, k) => {
-    if (state.terrain[i] === "lava") return;
+    if (isFlooded(state.terrain[i])) return;
     const x = i % width;
     const y = (i - x) / width;
     if (holdsLava(state, x, y) || aheadOfLava(state, x, y) > 0) {
@@ -531,7 +539,7 @@ function spreadLava(state: GameState, flood: Flood): void {
     sinkTile(state, flood, x, y);
     next.delete(i);
     for (const n of besideOnMap(state, x, y)) {
-      if (state.terrain[n] !== "lava" && !next.has(n)) next.set(n, 0);
+      if (!isFlooded(state.terrain[n]) && !next.has(n)) next.set(n, 0);
     }
   });
   flood.edge = [...next.keys()];
@@ -547,7 +555,7 @@ function liveLava(state: GameState): Uint8Array {
   const live = new Uint8Array(width * height);
   const flows = (i: number) => {
     const x = i % width;
-    return state.terrain[i] === "lava" && !holdsLava(state, x, (i - x) / width);
+    return isFlooded(state.terrain[i]) && !holdsLava(state, x, (i - x) / width);
   };
   const queue: number[] = [];
   for (let y = 0; y < height; y++) {
@@ -594,14 +602,14 @@ function coolLava(state: GameState, flood: Flood): void {
   flood.fill = fill;
   const cooling: Record<number, number> = {};
   for (let i = 0; i < width * height; i++) {
-    if (state.terrain[i] !== "lava" || live[i]) continue;
+    if (!isFlooded(state.terrain[i]) || live[i]) continue;
     const x = i % width;
     const y = (i - x) / width;
     // The lava beyond the left edge is live: a tile there never cools.
     if (x === 0) continue;
     const beside = besideOnMap(state, x, y);
     const byLand = beside.some(
-      (n) => state.terrain[n] !== "lava" || holdsLava(state, n % width, Math.floor(n / width)),
+      (n) => !isFlooded(state.terrain[n]) || holdsLava(state, n % width, Math.floor(n / width)),
     );
     if (!byLand) continue;
     const key = (x + flood.shifted) * 65536 + y;
@@ -622,7 +630,7 @@ function lavaEdgeTiles(state: GameState): number[] {
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const i = y * width + x;
-      if (state.terrain[i] === "lava") continue;
+      if (isFlooded(state.terrain[i])) continue;
       if (x === 0 || besideOnMap(state, x, y).some((n) => live[n])) {
         edge.push(i);
       }
@@ -637,7 +645,7 @@ function sinkTile(state: GameState, flood: Flood, x: number, y: number): void {
   if (mount) removeStructure(state, mount);
   const base = baseAt(state, x, y);
   if (base) removeStructure(state, base);
-  state.terrain[tileIndex(state, x, y)] = "lava";
+  state.terrain[tileIndex(state, x, y)] = FLOOD_LIQUIDS[flood.liquid].terrain;
   const on = (p: { x: number; y: number }) => Math.round(p.x) === x && Math.round(p.y) === y;
   for (const unit of state.units) if (on(unit)) unit.hp = 0;
   state.enemies = state.enemies.filter((e) => !on(e));

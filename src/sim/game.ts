@@ -1,6 +1,7 @@
 import {
   DEFAULT_MAP_SIZE,
   ENEMY,
+  FLOOD_LIQUIDS,
   KEEP_HP,
   KEEP_SIZE,
   MAP_SIZES,
@@ -50,6 +51,7 @@ import type {
   Command,
   CommandResult,
   EnemiesCome,
+  FloodLiquid,
   GameMode,
   GameState,
   PlayerId,
@@ -82,6 +84,8 @@ export interface GameOptions {
   lastWave?: number;
   /** No looking back: a keep this many tiles on, reaching which wins (default none: on for ever). */
   floodGoal?: number;
+  /** No looking back: what the flood is (default lava). */
+  floodLiquid?: FloodLiquid;
 }
 
 export function createGame(seed: number, options: GameOptions = {}): GameState {
@@ -177,7 +181,14 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     rngState: seed,
     fog: options.fog ?? true,
     flood: flooding
-      ? createFlood(flooding.king, width, height, options.floodGoal ?? null, flooding.home)
+      ? createFlood(
+          flooding.king,
+          width,
+          height,
+          options.floodGoal ?? null,
+          flooding.home,
+          options.floodLiquid,
+        )
       : null,
     explored: [],
   };
@@ -350,7 +361,10 @@ export function applyCommand(
       return planKing(state, playerId, command.x, command.y, command.queue === true);
     case "sendWave":
       if (state.mode === "pvp") return { ok: false, reason: "No waves in PvP" };
-      if (state.mode === "flood") return { ok: false, reason: "No waves, just the lava" };
+      if (state.flood) {
+        const { name } = FLOOD_LIQUIDS[state.flood.liquid];
+        return { ok: false, reason: `No waves, just the ${name.toLowerCase()}` };
+      }
       return sendWaveEarly(state, playerId);
     case "debugOption":
       state.debug[command.option] = command.on;

@@ -15,8 +15,8 @@ import {
 } from "../../server/room";
 
 /** A No looking back room, its messages dropped. */
-function floodRoom(goal?: number): Room {
-  return createRoom("FLOD", 7, () => {}, "flood", "S", "always", goal);
+function floodRoom(goal?: number, liquid?: "water"): Room {
+  return createRoom("FLOD", 7, () => {}, "flood", "S", "always", { goal, liquid });
 }
 
 function join(room: Room, name: string) {
@@ -59,6 +59,17 @@ describe("No looking back online", () => {
     expect(restartRoom(room, 8)).toEqual({ ok: true });
     expect(room.state.flood!.royals.map((r) => r.owner)).toEqual([ann, bo]);
     expect(room.state.flood!.goal).toBe(300);
+  });
+
+  it("floods with water if the room was made so, and again on restart", () => {
+    const room = floodRoom(undefined, "water");
+    const ann = join(room, "Ann");
+    startRoom(room, ann);
+    expect(room.state.flood!.liquid).toBe("water");
+    room.state.gameOver = true;
+    expect(restartRoom(room, 8)).toEqual({ ok: true });
+    expect(room.state.flood!.liquid).toBe("water");
+    expect(floodRoom().state.flood!.liquid).toBe("lava");
   });
 
   it("keeps a client's map the same as the server's as the world moves on, sending just the new land", () => {
