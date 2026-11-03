@@ -1,7 +1,7 @@
 // Turns what the server sends into a GameState the UI can draw, so offline and online
 // share the renderer, panel and hover info. Pure: no DOM, no sockets.
 import { ENEMY_KIND_ORDER, UNIT_KIND_ORDER } from "../sim/config";
-import type { Enemy, GameState, Structure, Unit } from "../sim/types";
+import type { Enemy, GameState, Raft, Structure, Unit } from "../sim/types";
 import type {
   ClientEnemy,
   ClientState,
@@ -16,6 +16,8 @@ import { shiftLayers } from "./snapshot";
 export interface Movers {
   enemies: ClientEnemy[];
   units: ClientUnit[];
+  /** Rafts, smoothed with the enemies riding them. */
+  rafts: Raft[];
 }
 
 /** A full GameState from a welcome snapshot, with server-only fields defaulted. */
@@ -91,7 +93,17 @@ export function applyUpdate(view: GameState, update: StateUpdate): Movers {
   }
   if (update.features) view.features = update.features;
   if (update.raidPaths) view.raidPaths = update.raidPaths;
-  return { enemies, units };
+  return { enemies, units, rafts: update.rafts?.boats ?? [] };
+}
+
+/** Rafts a fraction `t` (0-1) of the way from `previous` to `next`, as for enemies. */
+export function interpolateRafts(previous: Raft[], next: Raft[], t: number): Raft[] {
+  const f = Math.min(1, Math.max(0, t));
+  const before = new Map(previous.map((r) => [r.id, r]));
+  return next.map((r) => {
+    const from = before.get(r.id);
+    return from ? { ...r, x: lerp(from.x, r.x, f), y: lerp(from.y, r.y, f) } : r;
+  });
 }
 
 /** Units a fraction `t` (0-1) of the way from `previous` to `next`, as for enemies. */

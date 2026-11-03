@@ -12,6 +12,7 @@ import {
   interpolateUnits,
   interpolationFraction,
 } from "../../src/net/view";
+import { interpolateRafts } from "../../src/net/view";
 import { spawnUnit } from "../../src/sim/units";
 import { harvest, placeResource, resourceAt } from "../../src/sim/resources";
 import { describeTile } from "../../src/ui/tileInfo";
@@ -294,5 +295,25 @@ describe("resources over the network", () => {
     applyUpdate(view, overTheWire(toUpdate(server, sent)));
     expect(resourceAt(view, 5, 5)).toBeNull();
     expect(view.terrain[5 * view.width + 5]).toBe("ground");
+  });
+});
+
+describe("rafts online", () => {
+  it("are drawn part way between updates, as the enemies riding them are", () => {
+    const raft = {
+      id: 1,
+      x: 10,
+      y: 4,
+      path: [],
+      pathVersion: 0,
+      riders: [],
+      stuck: 0,
+      docked: false,
+      boardUntil: 0,
+      emptyUntil: null,
+    };
+    const [half] = interpolateRafts([raft], [{ ...raft, x: 12 }], 0.5);
+    expect(half.x).toBe(11);
+    expect(interpolateRafts([], [raft], 0.5)).toEqual([raft]); // a new one, where it is
   });
 });

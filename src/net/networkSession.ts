@@ -23,6 +23,7 @@ import {
   applyUpdate,
   fromClientState,
   interpolateEnemies,
+  interpolateRafts,
   interpolateUnits,
   interpolationFraction,
   type Movers,
@@ -177,6 +178,12 @@ export function createNetworkSession(
       const t = interpolationFraction(previous.at, newest.at, now);
       view.enemies = interpolateEnemies(previous.movers.enemies, newest.movers.enemies, t);
       view.units = interpolateUnits(previous.movers.units, newest.movers.units, t);
+      if (view.rafts) {
+        view.rafts = {
+          ...view.rafts,
+          boats: interpolateRafts(previous.movers.rafts, newest.movers.rafts, t),
+        };
+      }
     },
     close() {
       closedByUs = true;

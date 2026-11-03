@@ -3,6 +3,7 @@
 // game: every tile layer, structure, enemy, unit, keep, chest and effect moved to where it
 // sits once the map is turned, and every facing turned with it. The game itself never turns:
 // clicks are turned back into map tiles before they become commands.
+import { RAFTS } from "../sim/config";
 import type { Facing, GameState, Point } from "../sim/types";
 import { centerOn, setViewport, tilePixels } from "../ui/camera";
 import type { UiState } from "../ui/state";
@@ -175,6 +176,18 @@ export function viewOf(state: GameState, turns: Rotation): GameState {
     const b = cornerToView(keep.x + keep.size, keep.y + keep.size, turns, w, h);
     return { ...keep, x: Math.min(a.x, b.x), y: Math.min(a.y, b.y) };
   });
+  // Rafts are squares too, turned as keeps are, so they stay under their riders.
+  if (state.rafts) {
+    const n = RAFTS.raftTiles;
+    view.rafts = {
+      ...state.rafts,
+      boats: state.rafts.boats.map((raft) => {
+        const a = cornerToView(raft.x, raft.y, turns, w, h);
+        const b = cornerToView(raft.x + n, raft.y + n, turns, w, h);
+        return { ...raft, x: Math.min(a.x, b.x), y: Math.min(a.y, b.y) };
+      }),
+    };
+  }
   // No looking back's royals, their flags and their ways.
   if (state.flood) {
     view.flood = {
