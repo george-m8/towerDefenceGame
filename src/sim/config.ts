@@ -1,4 +1,5 @@
 // All tunable game numbers live here.
+import type { RoyalTitle, Terrain } from "./types";
 
 /**
  * Map sizes players pick from when starting a game, in tiles. M is the default. `keep: "right"`
@@ -1082,6 +1083,179 @@ export const PVP = {
   keepInset: 0.3,
 };
 
+/**
+ * No looking back (see sim/flood.ts): each player's royal walks to the flags they plant, as far
+ * as it can, while lava creeps in behind and new land is generated ahead.
+ */
+export const FLOOD = {
+  /**
+   * The royals, by when their players joined (the first player's is the king), and their rows at
+   * the start, round the first's (up to 4 players: a room's most).
+   */
+  titles: ["king", "queen", "prince", "princess"] satisfies RoyalTitle[],
+  startRows: [0, -3, 3, -6],
+  /** A royal sees round itself, and so lifts the fog, as it goes. */
+  royalSight: { inner: 7, outer: 10 } satisfies SightStats,
+  /** How fast a royal walks, in tiles per second. */
+  royalSpeed: 1.5,
+  /**
+   * Each royal's escort, with it from the start: each unit's kind and its spot beside it (across,
+   * down; facing right, on into new land). One that falls is gone for good.
+   */
+  escorts: [
+    { kind: "soldier", spot: { x: 1, y: 0 } },
+    { kind: "archer", spot: { x: -1, y: 0 } },
+  ] satisfies { kind: UnitKindId; spot: { x: number; y: number } }[],
+  /** How far from its royal an escort that closes in to fight goes after enemies. */
+  escortChase: 4,
+  /** A royal's HP: swarms that reach it hit it (see sim/floodSwarms.ts). */
+  royalHp: 150,
+  /**
+   * Swarms: one for this many tiles of land (an M map: about 17), 4-8 strong, middles this far
+   * apart and from the royals' start; one sees a royal this far off, waking its swarm, and gives
+   * up this long after it last saw one. With a flood of water, they run from it once it's in
+   * sight, `fleeTiles` on away from the nearest of it at a time.
+   */
+  swarm: {
+    tilesPerSwarm: 900,
+    size: { min: 4, max: 8 },
+    spacing: 10,
+    clearOfStart: 20,
+    sight: 6,
+    giveUpSeconds: 6,
+    fleeTiles: 8,
+  },
+  /** Swarms (see sim/floodSwarms.ts) get a wave tougher every this many tiles on, up to the hardest. */
+  tilesPerWave: 40,
+  hardestWave: 25,
+  /** The most flags he can have planned at once. */
+  maxFlags: 10,
+  /** Seconds before the lava starts to creep in. */
+  graceSeconds: 20,
+  /**
+   * How fast the lava creeps, in tiles a second: at first, more each minute, and at most (in the
+   * end faster than the king walks, so every game ends).
+   */
+  lavaSpeed: { start: 0.35, perMinute: 0.06, most: 1.8 },
+  /**
+   * The lava's edge isn't straight: each row's is up to `reach` tiles on or back from the front,
+   * by `waves` across the rows (each its share of that, a wavelength in rows, and how fast it
+   * drifts, in radians a second), and each tile goes under up to `rough` tiles later, at random.
+   */
+  edge: {
+    reach: 3,
+    waves: [
+      { share: 0.65, rows: 23, drift: 0.05 },
+      { share: 0.35, rows: 9, drift: -0.11 },
+    ],
+    rough: 1.5,
+  },
+  /**
+   * Lava walled off from where it comes in (the left edge) cools back to ground, from its edges
+   * in: a tile of it beside land cools after this long.
+   */
+  coolSeconds: 4,
+  /** How fast a tile beside lava fills, as a share of the lava's speed: it keeps up, just. */
+  flowRate: 1.25,
+  /** Tiles ahead of the lava that glow, to show what it takes next. */
+  warnTiles: 4,
+  /** New land is generated this many columns at a time... */
+  chunkColumns: 40,
+  /**
+   * ...and comes in this many at a time, as the king gets within `aheadTiles` of the map's right
+   * edge (at most half the map's width).
+   */
+  shiftColumns: 3,
+  aheadTiles: 48,
+  /**
+   * The ruins that shape the land (see sim/floodRuins.ts): at most `perPiece` in each 40 columns
+   * of it (fewer where they'd overlap), of each kind by weight. Forts and compounds' rooms are
+   * this many tiles across; halls this big, with this many gaps this wide; lines this long, with a
+   * bend this long this often. Halls and lines are weathered (this share of full HP). In each room
+   * (an enclosure's inside): a chest of this much gold, a patch of one of these resources, and a
+   * swarm, each this often.
+   */
+  ruins: {
+    perPiece: 4,
+    kinds: { fort: 3, hall: 2, compound: 2, line: 3 },
+    fortSize: { min: 7, max: 9 },
+    hallWidth: { min: 11, max: 17 },
+    hallHeight: { min: 9, max: 13 },
+    gaps: { min: 1, max: 3 },
+    gapWidth: 2,
+    lineLength: { min: 6, max: 14 },
+    bendLength: { min: 3, max: 8 },
+    bendChance: 0.5,
+    weathered: 0.6,
+    chestChance: 0.8,
+    chestGold: { min: 60, max: 150 },
+    resourceChance: 0.4,
+    resources: ["goldRock", "tree", "berries"] satisfies Terrain[],
+    swarmChance: 0.4,
+  },
+  /**
+   * Hills (see floodHills.ts): high ground the flood never takes, up to `perPiece` on each piece
+   * of new land (and as many for its width on the starting map), each a rough oval `across` by
+   * `down` tiles, over open ground only: big enough to rise in steps (see hillHeight in
+   * render/canvas.ts), its middle at least three tiles in.
+   */
+  hills: {
+    perPiece: 3,
+    across: { min: 7, max: 13 },
+    down: { min: 7, max: 11 },
+  },
+  /** A goal game's land stops coming once this many tiles past the keep are on the map. */
+  pastKeep: 8,
+  /** Rows open on both sides of where new land joins the old, at least. */
+  seamRows: 3,
+};
+
+/**
+ * Rafts (see sim/rafts.ts): the keep stands on raised land, `raisedRadius` tiles round its middle
+ * (a little more or less here and there), with `patches` patches of resources on it, clear of the
+ * keep's walls. After `floodSeconds`, the flood rises from the map's edges and its rivers and sea,
+ * a ring every `riseSeconds`, over everything but raised land, walls, ruins, trees, rocks and
+ * bushes. Waves come on rafts, launched from the edges, each waiting `boardSeconds` there to take
+ * on more of the wave (up to `riders`), then `raftSpeed` tiles a second; one that's had
+ * no way to the shore for `strandedSeconds` puts its riders off wherever it can.
+ */
+export const RAFTS = {
+  raisedRadius: 15,
+  raisedRough: 0.12,
+  patches: 7,
+  patchSize: { min: 3, max: 7 },
+  patchKinds: ["tree", "rock", "goldRock", "berries"] satisfies Terrain[],
+  floodSeconds: 5,
+  riseSeconds: 0.35,
+  raftSpeed: 1.5,
+  boardSeconds: 4,
+  riders: 8,
+  /** An empty raft (its riders off, or shot) stays on the water this long before it goes. */
+  emptySeconds: 15,
+  /** A raft is this many tiles square; its riders stand spread over it. */
+  raftTiles: 2,
+  strandedSeconds: 30,
+  /** Floodwater walled off from the map's edge drains, a tile beside land this long cut off. */
+  drainSeconds: 4,
+};
+
+/** No looking back's goals to pick from: 0 goes on for ever; else a keep that far on, in tiles. */
+export const FLOOD_GOALS = [0, 250, 500, 1000];
+
+/**
+ * What No looking back's flood is: lava takes everything in its way but walls, ruins, hills and
+ * rock; water leaves trees and bushes standing too, and goes round them. `terrain` is what a tile
+ * under it becomes.
+ */
+export const FLOOD_LIQUIDS = {
+  lava: { name: "Lava", terrain: "lava", spares: "walls, ruins, hills and rocks" },
+  water: {
+    name: "Water",
+    terrain: "floodwater",
+    spares: "walls, ruins, hills, rocks, trees and bushes",
+  },
+} as const satisfies Record<string, { name: string; terrain: string; spares: string }>;
+
 /** Selling refunds this fraction of cost, scaled by remaining HP. */
 export const SELL_REFUND = 0.5;
 /** Build discounts in enclosed areas: inside the keep's walls, and inside any other walls. */
@@ -1103,6 +1277,12 @@ export const TERRAIN = {
   tree: { name: "Tree", walkable: false, buildable: "none" },
   goldRock: { name: "Gold-veined rock", walkable: false, buildable: "none" },
   berries: { name: "Berry bush", walkable: true, buildable: "none" },
+  /** No looking back's lava (see sim/flood.ts). */
+  lava: { name: "Lava", walkable: false, buildable: "none" },
+  /** High ground: No looking back's flood never takes it (see sim/floodHills.ts). */
+  hill: { name: "Hill", walkable: true, buildable: "any" },
+  /** No looking back's flood, when it's water (see FLOOD_LIQUIDS). */
+  floodwater: { name: "Floodwater", walkable: false, buildable: "none" },
 } satisfies Record<string, TerrainStats>;
 
 /**

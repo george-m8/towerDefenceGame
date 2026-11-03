@@ -1,5 +1,5 @@
 import type { EnemyKindId, EnemyVariant, ProjectileKind } from "../sim/config";
-import type { Facing, StructureKind, Terrain } from "../sim/types";
+import type { Facing, StructureKind, Terrain, RoyalTitle } from "../sim/types";
 import type { TextureStyle } from "./textures";
 
 export const TILE_SIZE = 20;
@@ -124,6 +124,13 @@ export const GLYPH_FONTS = `Unifont, "Apple Symbols", "Segoe UI Symbol", "Segoe 
 export const GLYPH_FONT = `${TILE_SIZE - 4}px ${GLYPH_FONTS}`;
 /** Every keep tile but the middle one (which has its HP over it): a rook. */
 export const KEEP_GLYPH = "♜";
+/** No looking back's royals: the king, the queen, a prince and a princess. */
+export const ROYAL_GLYPHS: Record<RoyalTitle, string> = {
+  king: "♚",
+  queen: "♛",
+  prince: "♔",
+  princess: "♕",
+};
 
 /** Each enemy kind's glyph colour. Variants never change it; they change the glyph size. */
 export const ENEMY_COLOURS: Record<EnemyKindId, string> = {
@@ -156,7 +163,13 @@ export function enemyFont(size: EnemyVariant["size"]): string {
 }
 
 export const COLOURS = {
-  ground: "#2b2418",
+  /** Grass. */
+  ground: "#24361b",
+  /** Rafts' planks, and their rims, beams and gaps. */
+  raft: "#8a6a3c",
+  raftEdge: "#4f3b1f",
+  /** The earth bank behind a river or the sea, where it dips below the ground. */
+  bank: "#1c160c",
   /** Beyond the map's edge, when the whole map fits with room to spare. */
   offMap: "#15110b",
   /** The view's outline on the minimap. */
@@ -171,7 +184,7 @@ export const COLOURS = {
   /** The same tints as solid colours, blended into the minimap. */
   enclosureKeepTint: "#ffc43c",
   enclosureOuterTint: "#78c8ff",
-  groundAlt: "#2f2819",
+  groundAlt: "#263a1c",
   spawn: "#4a1c1c",
   spawnGlyph: "#8a3a3a",
   keep: "#6b6b6b",
@@ -214,6 +227,10 @@ export const COLOURS = {
   flagPole: "#e6e1c1",
   /** The raiders' paths, washed over the tiles they painted. */
   raidPath: "#f4efcf",
+  /** No looking back: where lava will run next. */
+  lavaWarn: "#e0541c",
+  /** ...or water. */
+  waterWarn: "#4fa8e8",
   /** The flag on each raiders' path's end, where enemies leave it. */
   raidPathEnd: "#d9a13b",
   spikesUp: "#c8c8c8",
@@ -374,11 +391,14 @@ export const TERRAIN_STYLES: Record<
   goldRock: { bg: "#4a4a4a", glyph: "o", fg: "#e3c04d" },
   // Unifont's blueberries, kept as text like the tree.
   berries: { bg: "#2f5a2a", glyph: "\u{1FAD0}\uFE0E", fg: "#7a3b4f" },
+  lava: { bg: "#8a2a0c", glyph: "≈", fg: "#f2a23a" },
+  floodwater: { bg: "#245d8f", glyph: "≈", fg: "#9fd0f2" },
+  hill: { bg: "#3a5426" },
 };
 
 /** The texture over each kind of terrain (see render/textures.ts). */
 export const TERRAIN_TEXTURES: Record<Terrain, TextureStyle> = {
-  ground: "pebbles",
+  ground: "grass",
   ford: "speckle",
   river: "ripple",
   sea: "ripple",
@@ -387,6 +407,9 @@ export const TERRAIN_TEXTURES: Record<Terrain, TextureStyle> = {
   tree: "speckle",
   goldRock: "ore",
   berries: "speckle",
+  lava: "ripple",
+  floodwater: "ripple",
+  hill: "grass",
 };
 /** The keep's stone walls. */
 export const KEEP_TEXTURE: TextureStyle = "stone";

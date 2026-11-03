@@ -8,6 +8,9 @@ import {
   type Rotation,
 } from "../../src/render/rotation";
 import { spawnEnemy } from "../../src/sim/enemies";
+import { RAFTS, TICK_RATE } from "../../src/sim/config";
+import { createGame, tick } from "../../src/sim/game";
+import { launchRaft } from "../../src/sim/rafts";
 import { baseAt, isKeepTile, placeStructure, terrainAt } from "../../src/sim/grid";
 import { setViewport, tilePixels } from "../../src/ui/camera";
 import { createUiState } from "../../src/ui/state";
@@ -58,6 +61,26 @@ describe("turning the view", () => {
     expect(isKeepTile(view, vk.x, vk.y)).toBe(true);
     expect(isKeepTile(view, vk.x + vk.size - 1, vk.y + vk.size - 1)).toBe(true);
     expect(state.structures[wall.id].x).toBe(6); // the game itself never turns
+  });
+
+  it.each(TURNS)("turn %i: a raft stays under its riders", (turns) => {
+    const state = createGame(11, { mode: "rafts", size: "S" });
+    state.wave.countdown = Infinity;
+    for (let i = 0; i < 40 * TICK_RATE; i++) tick(state);
+    expect(launchRaft(state, ["goblin", "goblin", "goblin", "goblin"], { wave: 1 })).toBe(true);
+    for (let i = 0; i < (RAFTS.boardSeconds + 3) * TICK_RATE; i++) tick(state);
+    const view = viewOf(state, turns);
+    const [raft] = view.rafts!.boats;
+    const n = RAFTS.raftTiles;
+    const riders = view.enemies.filter((e) => raft.riders.includes(e.id));
+    expect(riders).toHaveLength(4);
+    for (const rider of riders) {
+      // Each rider stands on one of the raft's tiles.
+      expect(rider.x).toBeGreaterThanOrEqual(raft.x - 1e-9);
+      expect(rider.x).toBeLessThanOrEqual(raft.x + n - 1 + 1e-9);
+      expect(rider.y).toBeGreaterThanOrEqual(raft.y - 1e-9);
+      expect(rider.y).toBeLessThanOrEqual(raft.y + n - 1 + 1e-9);
+    }
   });
 
   it("keeps the same map spot in the middle of the screen when flipped (or turned)", () => {

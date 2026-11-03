@@ -1,4 +1,5 @@
-import { TICK_RATE } from "../sim/config";
+import { FLOOD_LIQUIDS, TICK_RATE } from "../sim/config";
+import { distanceTravelled, tilesToGoal } from "../sim/flood";
 import { nightsSurvived } from "../sim/clock";
 import { starsFor, type LevelWin } from "../sim/levelFile";
 import { playerName } from "../sim/players";
@@ -47,6 +48,31 @@ export function createGameOverDialog(
       stars.hidden = true;
       levels.hidden = win === null;
       restart.textContent = "Restart";
+      if (state.flood) {
+        // Endless, the lava always wins in the end, and how far the royals got is the score;
+        // with a goal, reaching the keep wins.
+        const distance = distanceTravelled(state.flood);
+        const tiles = `${distance} tile${distance === 1 ? "" : "s"}`;
+        const { royals } = state.flood;
+        const [only] = royals;
+        const short =
+          state.flood.goal !== null ? `, ${tilesToGoal(state.flood)} short of the keep` : "";
+        if (state.won) {
+          title.textContent = "Made it to the keep!";
+          summary.textContent = `${tiles}, in ${time}. Map seed ${state.seed}.`;
+        } else if (royals.length === 1 && only) {
+          const who = `The ${only.title}`;
+          title.textContent =
+            only.fallen === "flood"
+              ? `The ${FLOOD_LIQUIDS[state.flood.liquid].name.toLowerCase()} took the ${only.title}.`
+              : `${who} has fallen.`;
+          summary.textContent = `${who} got ${tiles}${short}, in ${time}. Map seed ${state.seed}.`;
+        } else {
+          title.textContent = "All the royals have fallen.";
+          summary.textContent = `They got ${tiles}${short}, in ${time}. Map seed ${state.seed}.`;
+        }
+        return;
+      }
       if (state.mode === "pvp") {
         title.textContent = state.winner === playerId ? "Victory!" : "Your keep has fallen.";
         const winner = state.winner !== null ? playerName(state, state.winner) : "Nobody";

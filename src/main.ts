@@ -1,4 +1,6 @@
 import { GRID_HEIGHT, GRID_WIDTH, type MapSize } from "./sim/config";
+import { royalOf } from "./sim/flood";
+import { createKingFollow, moveWithWorld } from "./ui/lavaCamera";
 import { createRenderer } from "./render/canvas";
 import { toView, turnFacing, turnView, viewOf } from "./render/rotation";
 import { GLYPH_FONT, TERRAIN_STYLES } from "./render/palette";
@@ -187,6 +189,11 @@ window.addEventListener("keydown", (e) => {
 });
 /** The map the camera was last centred for, so a new game re-centres on its keep. */
 let centredFor = "";
+/** No looking back: how far the world had moved on (and in which game), last frame. */
+let worldShifted = 0;
+let worldShiftedFor = "";
+/** No looking back: the camera's glide after the king when the world moves on. */
+const kingFollow = createKingFollow();
 
 /** Fits the canvas to the space CSS gives it, at the screen's pixel density. */
 function fitCanvas(mapWidth: number, mapHeight: number) {
@@ -499,7 +506,15 @@ function startSession(intent: Exclude<PageIntent, { mode: "menu" }>) {
   } else if (intent.mode === "offline") {
     const map = intent.map ? bundledMaps[intent.map] : undefined;
     const items = intent.items ? bundledItems[intent.items] : undefined;
-    session = soloSession(map, items, intent.size, fog && intent.fog !== false, intent.enemiesCome);
+    session = intent.game
+      ? createLocalSession(Date.now() >>> 0, undefined, {
+          fog: fog && intent.fog !== false,
+          size: intent.size,
+          mode: intent.game,
+          ...(intent.goal ? { floodGoal: intent.goal } : {}),
+          ...(intent.liquid ? { floodLiquid: intent.liquid } : {}),
+        })
+      : soloSession(map, items, intent.size, fog && intent.fog !== false, intent.enemiesCome);
   } else {
     network = createNetworkSession(
       serverUrl(location),
@@ -776,17 +791,40 @@ function frame(now: number) {
       fitCanvas(view.width, view.height);
       // A new map (first game, restart, or joining a room): start looking at the keep.
       // (PvP keeps are handed out at the start, so that counts as a new map too.)
+      // (So are No looking back's royals: having yours counts as a new map too.)
       const mine = state.keeps.findIndex((k) => k.owner === ui.playerId);
-      const mapKey = `${state.seed}:${state.width}x${state.height}:${mine}`;
+      const royal = view.flood && royalOf(view.flood, ui.playerId);
+      const mapKey = `${state.seed}:${state.width}x${state.height}:${mine}:${royal?.title}`;
       if (mapKey !== centredFor) {
         ui.camera.zoom = 1;
-        // Your own keep in PvP (once they're handed out), else the shared one.
+        // Your own keep in PvP (once they're handed out), else the shared one (or your royal).
         const keep = view.keeps[mine] ?? view.keeps[0];
-        centerOn(ui.camera, keep.x + keep.size / 2, keep.y + keep.size / 2);
+        if (keep) centerOn(ui.camera, keep.x + keep.size / 2, keep.y + keep.size / 2);
+        else if (royal) centerOn(ui.camera, royal.at.x + 0.5, royal.at.y + 0.5);
         centredFor = mapKey;
       }
       input.frame(seconds);
       followRaider(state);
+      // No looking back: the camera's yours, but when the world moves on (new land coming in
+      // as a royal walks), it moves with the world and then glides after your royal.
+      if (state.flood) {
+        const moved = state.flood.shifted - worldShifted;
+        if (worldShiftedFor !== mapKey) kingFollow.stop();
+        else if (moved > 0) {
+          moveWithWorld(ui.camera, moved, state.width, state.height, ui.rotation);
+          kingFollow.worldMoved(ui.camera);
+        }
+        [worldShifted, worldShiftedFor] = [state.flood.shifted, mapKey];
+        kingFollow.frame(
+          ui.camera,
+          state.flood,
+          ui.playerId,
+          state.width,
+          state.height,
+          ui.rotation,
+          seconds,
+        );
+      }
       updateCurtain(now);
       const viewUi = turnedUi(state);
       const pending = session.pending.map((p) => ({

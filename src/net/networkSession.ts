@@ -1,6 +1,14 @@
 // A Session backed by the game server: sends commands, draws what the server sends.
 import type { MapSize } from "../sim/config";
-import type { Command, CommandResult, GameMode, GameState, PlayerId, Role } from "../sim/types";
+import type {
+  Command,
+  CommandResult,
+  FloodLiquid,
+  GameMode,
+  GameState,
+  PlayerId,
+  Role,
+} from "../sim/types";
 import { isDebugCommand } from "../sim/types";
 import { tokenKey } from "./join";
 import {
@@ -15,6 +23,7 @@ import {
   applyUpdate,
   fromClientState,
   interpolateEnemies,
+  interpolateRafts,
   interpolateUnits,
   interpolationFraction,
   type Movers,
@@ -29,6 +38,10 @@ export type JoinIntent =
       size?: MapSize;
       fog?: false;
       enemiesCome?: "night";
+      /** No looking back: a keep this many tiles on (none: on for ever). */
+      goal?: number;
+      /** No looking back: what the flood is (none: lava). */
+      liquid?: FloodLiquid;
     }
   | { mode: "join"; room: string; name: string };
 
@@ -165,6 +178,12 @@ export function createNetworkSession(
       const t = interpolationFraction(previous.at, newest.at, now);
       view.enemies = interpolateEnemies(previous.movers.enemies, newest.movers.enemies, t);
       view.units = interpolateUnits(previous.movers.units, newest.movers.units, t);
+      if (view.rafts) {
+        view.rafts = {
+          ...view.rafts,
+          boats: interpolateRafts(previous.movers.rafts, newest.movers.rafts, t),
+        };
+      }
     },
     close() {
       closedByUs = true;
@@ -218,6 +237,8 @@ export function createNetworkSession(
         ...(create?.game ? { mode: create.game } : {}),
         ...(create?.size ? { size: create.size } : {}),
         ...(create?.enemiesCome ? { enemiesCome: create.enemiesCome } : {}),
+        ...(create?.goal ? { goal: create.goal } : {}),
+        ...(create?.liquid ? { liquid: create.liquid } : {}),
       });
     }
   }

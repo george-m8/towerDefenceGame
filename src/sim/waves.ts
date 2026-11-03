@@ -9,6 +9,7 @@ import {
 import { addCue } from "./cues";
 import { isSpawningTime } from "./clock";
 import { spawnEnemy } from "./enemies";
+import { launchRaft } from "./rafts";
 import { nextRandom, randomInt } from "./rng";
 import { addGold } from "./players";
 import type { CommandResult, GameState, PlayerId, WaveState } from "./types";
@@ -106,7 +107,11 @@ export function updateWaves(state: GameState): void {
   wave.spawnTimer--;
   if (wave.spawnTimer > 0) return;
   const group = pickWaveGroup(state, wave.number, wave.threatLeft);
-  if (group) {
+  if (group && state.rafts) {
+    // Rafts: they come by water.
+    launchRaft(state, group, { wave: wave.number, variant: "random" });
+    wave.threatLeft -= threatOf(group);
+  } else if (group) {
     const p = state.spawnTiles[randomInt(state, 0, state.spawnTiles.length - 1)];
     const [first, ...band] = group;
     const options = { wave: wave.number, variant: "random" as const };

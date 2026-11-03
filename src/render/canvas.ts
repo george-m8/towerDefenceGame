@@ -8,6 +8,7 @@ import {
   keepAt,
   isWalkable,
   mountAt,
+  isFlooded,
   terrainAt,
   topAt,
 } from "../sim/grid";
@@ -18,6 +19,8 @@ import { facingAngle } from "../sim/aiming";
 import {
   EFFECT_TICKS,
   HEAL_EFFECT_TICKS,
+  KEEP_SIZE,
+  RAFTS,
   TICK_RATE,
   ENEMY_KINDS,
   STRUCTURES,
@@ -38,6 +41,8 @@ import type {
   Point,
   Structure,
   StructureKind,
+  Royal,
+  Terrain,
 } from "../sim/types";
 import type { PendingBuild } from "../net/session";
 import { isBuildTool, type UiState } from "../ui/state";
@@ -93,8 +98,11 @@ import {
   playerColour,
   DOOR_ALPHA,
   KEEP_GLYPH,
+  ROYAL_GLYPHS,
   GLYPH_FONTS,
 } from "./palette";
+import { homeOnMap, isFloodHome, lavaWarning, livingRoyals, royalAt, royalOf } from "../sim/flood";
+import { fromView, type Rotation } from "./rotation";
 import { fogImage, fogSpans, type FogLevel } from "./fog";
 import { createHpBarTracker } from "./hpBars";
 import { burstPixels, burstWaiting } from "./burst";
@@ -134,11 +142,131 @@ export function isDamagedWall(structure: Structure): boolean {
 
 /** How tall untouched rock (and gold rock) stands, in pixels. */
 const ROCK_HEIGHT = 4;
+/** A wall's height (a finished one, unbattered). */
+const WALL_HEIGHT = 6;
+/**
+ * No looking back's hills: high ground, rising a step at a time from its edge (HILL_STEP pixels a
+ * tile in, up to HILL_LEVELS steps). What's on a hill stands that much higher.
+ */
+const HILL_STEP = 2;
+const HILL_LEVELS = 3;
+
+/**
+ * How high something walking at (x, y) stands on hills: their heights blended between the tiles
+ * it's between, so it goes smoothly up and down a step rather than jumping at the tile's edge.
+ */
+function hillLift(state: GameState, x: number, y: number): number {
+  const x0 = Math.floor(x);
+  const y0 = Math.floor(y);
+  const fx = x - x0;
+  const fy = y - y0;
+  const at = (tx: number, ty: number) =>
+    tx < 0 || ty < 0 || tx >= state.width || ty >= state.height ? 0 : hillHeight(state, tx, ty);
+  const top = at(x0, y0) * (1 - fx) + at(x0 + 1, y0) * fx;
+  const bottom = at(x0, y0 + 1) * (1 - fx) + at(x0 + 1, y0 + 1) * fx;
+  return top * (1 - fy) + bottom * fy;
+}
+
+/** A hill with nothing built on it: ground to walk on, though raised (see drawRaised). */
+function isBareHill(state: GameState, x: number, y: number): boolean {
+  return terrainAt(state, x, y) === "hill" && !baseAt(state, x, y) && !mountAt(state, x, y);
+}
+
+/** How high a hill stands at (x, y): a step for each tile in from its edge (off the map is edge). */
+export function hillHeight(state: GameState, x: number, y: number): number {
+  if (terrainAt(state, x, y) !== "hill") return 0;
+  for (let reach = 1; reach < HILL_LEVELS; reach++) {
+    for (let dy = -reach; dy <= reach; dy++) {
+      for (let dx = -reach; dx <= reach; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== reach) continue;
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= state.width || ny >= state.height) return reach * HILL_STEP;
+        if (state.terrain[ny * state.width + nx] !== "hill") return reach * HILL_STEP;
+      }
+    }
+  }
+  return HILL_LEVELS * HILL_STEP;
+}
+/** No looking back's lava: half a wall high where it's deep, lower towards its fringes. */
+const LAVA_HEIGHT = WALL_HEIGHT / 2;
+/** Its water lies lower, a third of a wall at its deepest. */
+const WATER_HEIGHT = WALL_HEIGHT / 3;
+
+/**
+ * How high lava (or water) stands at (x, y): a pixel at its fringe (beside land), two a tile
+ * further in, and its most (LAVA_HEIGHT, or WATER_HEIGHT) from there in. Off the map counts as
+ * under, so it's deep at the edges.
+ */
+function lavaHeight(state: GameState, x: number, y: number): number {
+  const most = terrainAt(state, x, y) === "floodwater" ? WATER_HEIGHT : LAVA_HEIGHT;
+  for (let reach = 1; reach < most; reach++) {
+    for (let dy = -reach; dy <= reach; dy++) {
+      for (let dx = -reach; dx <= reach; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== reach) continue;
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= state.width || ny >= state.height) continue;
+        if (!isFlooded(state.terrain[ny * state.width + nx])) return reach;
+      }
+    }
+  }
+  return most;
+}
+
+/** Rafts float this high, in pixels: on the water, and their riders on them. */
+export const RAFT_LIFT = 3;
+/** A raft's thickness, its front edge, in pixels. */
+const RAFT_THICKNESS = 2;
+
+/** Whether an enemy's on a raft (as a client sees it: standing on water in a Rafts game). */
+export function onRaft(state: GameState, x: number, y: number): boolean {
+  if (!state.rafts) return false;
+  const t = terrainAt(state, Math.round(x), Math.round(y));
+  return t === "floodwater" || t === "river" || t === "sea";
+}
+
+/** How much lava and water bubble: each tile rises and falls by up to this share of its height. */
+const BUBBLE = 0.2;
+/** Rivers and the sea ripple down to this deep below the ground (in pixels), and back up to it. */
+const DIP = 2;
+
+/** Terrain that bubbles (lava) or ripples (water). */
+const RIPPLING = new Set<Terrain>(["lava", "floodwater", "river", "sea"]);
+
+/** Whether (x, y) bubbles or ripples: bare lava or water (nothing built on it, such as a bridge). */
+export function bubbles(state: GameState, x: number, y: number): boolean {
+  return RIPPLING.has(terrainAt(state, x, y)) && !baseAt(state, x, y) && !mountAt(state, x, y);
+}
+
+/**
+ * How high (x, y) is drawn at `ms`: its height (blockHeight), but lava and water bubble, rising
+ * and falling a little, each tile on its own beat, by its place in the world (so it keeps it as
+ * the world moves on). Only drawn, so each screen bubbles its own way.
+ */
+export function drawnHeight(state: GameState, x: number, y: number, ms: number): number {
+  const height = blockHeight(state, x, y);
+  if (!bubbles(state, x, y)) return height;
+  const h = Math.imul(x + (state.flood?.shifted ?? 0), 0x27d4eb2d) ^ Math.imul(y, 0x165667b1);
+  const phase = ((h >>> 0) % 1000) * ((2 * Math.PI) / 1000);
+  const speed = 0.0015 + ((h >>> 10) % 1000) * 0.0000025; // radians a millisecond
+  // Two beats, so it heaves rather than pulses.
+  const wave = 0.7 * Math.sin(ms * speed + phase) + 0.3 * Math.sin(ms * speed * 2.3 + phase * 3);
+  // No looking back's lava and floodwater stand up; rivers and the sea dip below the ground,
+  // never above it.
+  return height > 0 ? height * (1 + BUBBLE * wave) : -DIP * ((1 - wave) / 2);
+}
+
+/** A No looking back goal game's keep, covering (x, y). */
+function homeKeepAt(state: GameState, x: number, y: number) {
+  return isFloodHome(state, x, y) ? { ...homeOnMap(state)!, size: KEEP_SIZE } : undefined;
+}
 
 export function blockHeight(state: GameState, x: number, y: number): number {
-  if (isKeepTile(state, x, y)) {
+  // A goal game's keep stands like any keep.
+  const keep = keepAt(state, x, y) ?? homeKeepAt(state, x, y);
+  if (keep) {
     // The corners stand a little taller, like towers, round a low middle.
-    const keep = keepAt(state, x, y)!;
     const last = keep.size - 1;
     const corner = (x - keep.x) % last === 0 && (y - keep.y) % last === 0;
     const centre = Math.floor(keep.size / 2);
@@ -151,9 +279,12 @@ export function blockHeight(state: GameState, x: number, y: number): number {
   const mount = built(mountAt(state, x, y));
   // A battered wall sinks a little, and a tower on it with it.
   const sunk = base && isDamagedWall(base) ? 1 : 0;
-  if (mount) return base ? 11 - sunk : 8;
-  if (base) return STRUCTURES[base.kind].blocksMovement ? 6 - sunk : 0;
   const terrain = terrainAt(state, x, y);
+  const hill = hillHeight(state, x, y);
+  if (mount) return hill + (base ? 11 - sunk : 8);
+  if (base) return hill + (STRUCTURES[base.kind].blocksMovement ? WALL_HEIGHT - sunk : 0);
+  if (hill) return hill;
+  if (isFlooded(terrain)) return lavaHeight(state, x, y);
   if (terrain === "tree") return 7;
   if (terrain === "rock" || terrain === "goldRock") {
     // Ore sinks as it's mined: full height while untouched, down to a sliver near the end.
@@ -255,7 +386,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
    * Blocks' heights this frame, for the view and a shadow's reach round it, so the shadow passes
    * (which look at every tile round each block) don't work each one out again.
    */
-  let heights = { x0: 0, y0: 0, width: 0, height: 0, data: new Uint8Array(0) };
+  let heights = { x0: 0, y0: 0, width: 0, height: 0, data: new Float32Array(0) };
 
   /** Works out every block's height for the view and a shadow's reach round it. */
   function measureHeights(state: GameState) {
@@ -263,11 +394,13 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     const y0 = Math.max(0, view.y0 - SUN.reachTiles);
     const width = Math.min(state.width - 1, view.x1 + SUN.reachTiles) - x0 + 1;
     const height = Math.min(state.height - 1, view.y1 + SUN.reachTiles) - y0 + 1;
-    if (heights.data.length < width * height) heights.data = new Uint8Array(width * height);
+    if (heights.data.length < width * height) heights.data = new Float32Array(width * height);
     heights = { x0, y0, width, height, data: heights.data };
+    const ms = performance.now();
     for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++)
-        heights.data[y * width + x] = blockHeight(state, x0 + x, y0 + y);
+      for (let x = 0; x < width; x++) {
+        heights.data[y * width + x] = drawnHeight(state, x0 + x, y0 + y, ms);
+      }
     }
   }
 
@@ -311,12 +444,49 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     ctx!.fill();
   }
 
+  /**
+   * Bare hill, raised `h` pixels: drawn with the flat ground (back to front, so each row's top
+   * covers the face of the one behind), not with the blocks, so what walks on it is always drawn
+   * over it and never cut through by the step in front.
+   */
+  function drawRaised(state: GameState, x: number, y: number, h: number, showOwners: boolean) {
+    ctx!.fillStyle = blockSideColour(state, x, y);
+    ctx!.fillRect(x * TILE_SIZE, (y + 1) * TILE_SIZE - h, TILE_SIZE, h);
+    ctx!.fillStyle = "rgba(0, 0, 0, 0.45)";
+    ctx!.fillRect(x * TILE_SIZE, (y + 1) * TILE_SIZE - h, TILE_SIZE, h);
+    ctx!.save();
+    ctx!.translate(0, -h);
+    drawTileContents(state, x, y, showOwners);
+    ctx!.restore();
+    drawEnclosureTint(state, x, y, h);
+  }
+
+  /**
+   * A tile `depth` pixels below the ground (a river or the sea dipping): its contents that much
+   * lower, under the bank behind it (as far down as the tile behind isn't already).
+   */
+  function drawSunk(state: GameState, x: number, y: number, depth: number, showOwners: boolean) {
+    ctx!.save();
+    ctx!.beginPath();
+    ctx!.rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    ctx!.clip();
+    ctx!.translate(0, depth);
+    drawTileContents(state, x, y, showOwners);
+    ctx!.restore();
+    drawEnclosureTint(state, x, y, 0);
+    const bank = depth - Math.max(0, -heightAt(x, y - 1));
+    if (bank <= 0) return;
+    ctx!.fillStyle = COLOURS.bank;
+    ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, bank);
+  }
+
   function drawTileContents(state: GameState, x: number, y: number, showOwners: boolean) {
     const base = baseAt(state, x, y);
     // A construction site shows the ground through it.
     if (base && !isBuilt(base)) drawTerrain(state, x, y);
     if (base) drawStructure(base);
     else if (isKeepTile(state, x, y)) drawKeepTile(state, x, y);
+    else if (homeKeepAt(state, x, y)) drawHomeTile(state, x, y);
     else if (isSpawnTile(state, x, y)) drawTile(x, y, COLOURS.spawn, ".", COLOURS.spawnGlyph);
     else drawTerrain(state, x, y);
     const mount = mountAt(state, x, y);
@@ -337,8 +507,17 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     // block's lifted top covers the row behind it.
     for (let y = y0; y <= y1; y++) {
       for (let x = x0; x <= x1; x++) {
-        if (heightAt(x, y) > 0) {
+        const h = heightAt(x, y);
+        if (h > 0 && isBareHill(state, x, y)) {
+          drawRaised(state, x, y, h, showOwners);
+          continue;
+        }
+        if (h > 0) {
           drawGround(x, y);
+          continue;
+        }
+        if (h < 0) {
+          drawSunk(state, x, y, -h, showOwners);
           continue;
         }
         drawTileContents(state, x, y, showOwners);
@@ -354,7 +533,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     for (let y = heights.y0; y < heights.y0 + heights.height; y++) {
       for (let x = heights.x0; x < heights.x0 + heights.width; x++) {
         const h = heightAt(x, y);
-        if (h > 0) tracePolygon(sweptTile(x, y, h * dx, h * dy));
+        if (h > 0 && !isBareHill(state, x, y)) tracePolygon(sweptTile(x, y, h * dx, h * dy));
       }
     }
     ctx!.fill();
@@ -371,11 +550,12 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     }
     for (let y = y0; y <= y1 + 1; y++) {
       drawFeatures(state, y - 1);
+      drawRafts(state, y - 1);
       drawUnits(state, unitsByRow.get(y - 1) ?? []);
       drawEnemies(state, enemiesByRow.get(y - 1) ?? []);
       for (let x = x0; x <= x1; x++) {
         const h = heightAt(x, y);
-        if (h === 0) continue;
+        if (h <= 0 || isBareHill(state, x, y)) continue;
         // Front face: the block's colour, darkened; the top sits h pixels higher.
         ctx!.fillStyle = blockSideColour(state, x, y);
         ctx!.fillRect(x * TILE_SIZE, (y + 1) * TILE_SIZE - h, TILE_SIZE, h);
@@ -487,6 +667,107 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     if (x !== keep.x + centre || y !== keep.y + centre) {
       drawGlyph(x, y, KEEP_GLYPH, COLOURS.keepGlyph);
     }
+  }
+
+  /** A No looking back goal game's keep, where the king's going: no HP to show. */
+  function drawHomeTile(state: GameState, x: number, y: number) {
+    const home = homeKeepAt(state, x, y)!;
+    drawTile(x, y, COLOURS.keep);
+    drawTexture(x, y, KEEP_TEXTURE);
+    if (x !== home.x + 1 || y !== home.y + 1) drawGlyph(x, y, KEEP_GLYPH, COLOURS.keepGlyph);
+  }
+
+  /**
+   * No looking back: a glow over the land the lava's about to take, stronger and quicker to pulse
+   * the nearer it is (under the fog). The lava's edge is worked out on the map (its rows and the
+   * world's columns), so each tile of the (maybe turned) view is looked up by its place there.
+   */
+  function drawLavaWarning(state: GameState, turns: Rotation, pulsing = true) {
+    const flood = state.flood;
+    if (!flood) return;
+    const odd = turns % 2 === 1;
+    const w = odd ? state.height : state.width;
+    const h = odd ? state.width : state.height;
+    for (let y = view.y0; y <= view.y1; y++) {
+      for (let x = view.x0; x <= view.x1; x++) {
+        const on = turns === 0 ? { x, y } : fromView({ x, y }, turns, w, h);
+        const warning = lavaWarning(state, on.x, on.y);
+        if (warning === null) continue;
+        const pulse = pulsing
+          ? 0.5 + 0.5 * Math.sin(performance.now() / (400 - 300 * warning))
+          : 0.5;
+        ctx!.fillStyle = flood.liquid === "water" ? COLOURS.waterWarn : COLOURS.lavaWarn;
+        ctx!.globalAlpha = 0.08 + warning * (0.2 + 0.25 * pulse);
+        ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        ctx!.globalAlpha = 1;
+      }
+    }
+  }
+
+  /**
+   * Where a map point on (x, y)'s top shows, as a point on the ground: up the screen on the flat
+   * map, and over the 3D view, the ground point further from the camera that it covers.
+   */
+  function onTop(state: GameState, p: Point): Point {
+    const height = blockHeight(state, Math.round(p.x), Math.round(p.y));
+    if (!iso) return { x: p.x, y: p.y - height / TILE_SIZE };
+    const rise = isoRise(iso.cam);
+    const tiles = (height / TILE_SIZE) * ISO.heightScale;
+    return { x: p.x - rise.x * tiles, y: p.y - rise.y * tiles };
+  }
+
+  /**
+   * No looking back's royals still standing, each in its player's colour: on the flat map, part
+   * way to its next tile (the 3D view stands each up as a card), with its HP over it once hurt.
+   * The viewer's own royal's plan goes under it, drawn as a raider's (numbered flags, joined from
+   * it by a faint line), with its way to the next flag as a dot a tile. Each sits on its tile's top.
+   */
+  function drawRoyals(state: GameState) {
+    const flood = state.flood;
+    if (!flood) return;
+    const own = royalOf(flood, viewer);
+    if (own) drawRoyalPlan(state, own);
+    for (const royal of livingRoyals(flood)) {
+      const at = onTop(state, royalAt(royal));
+      if (royal.hp < royal.maxHp) drawHpBar(at.x, at.y - 0.2, royal.hp / royal.maxHp);
+      if (iso) continue;
+      const x = (at.x + 0.5) * TILE_SIZE;
+      const y = (at.y + 0.5) * TILE_SIZE;
+      ctx!.fillStyle = playerColour(royal.owner);
+      ctx!.beginPath();
+      ctx!.arc(x, y, TILE_SIZE * 0.45, 0, Math.PI * 2);
+      ctx!.fill();
+      ctx!.strokeStyle = COLOURS.keepGlyph;
+      ctx!.lineWidth = 1.5;
+      ctx!.stroke();
+      ctx!.lineWidth = 1;
+      ctx!.font = GLYPH_FONT;
+      ctx!.fillStyle = COLOURS.keepGlyph;
+      ctx!.fillText(ROYAL_GLYPHS[royal.title], x, y + 1);
+    }
+  }
+
+  /** A royal's flags and its way to the next (see drawRoyals). */
+  function drawRoyalPlan(state: GameState, royal: Royal) {
+    const colour = playerColour(royal.owner);
+    ctx!.fillStyle = colour;
+    ctx!.globalAlpha = 0.5;
+    const dot = TILE_SIZE / 4;
+    for (const p of royal.path) {
+      const at = onTop(state, p);
+      ctx!.fillRect(
+        (at.x + 0.5) * TILE_SIZE - dot / 2,
+        (at.y + 0.5) * TILE_SIZE - dot / 2,
+        dot,
+        dot,
+      );
+    }
+    ctx!.globalAlpha = 1;
+    drawPathFlags(
+      royal.plan.map((p) => onTop(state, p)),
+      colour,
+      onTop(state, royalAt(royal)),
+    );
   }
 
   /**
@@ -762,6 +1043,12 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       drawGlyph(x, y, "$", "#ffffff");
       return;
     }
+    if (ui.tool === "route") {
+      // Where the next flag would go.
+      ctx!.fillStyle = COLOURS.ghostOk;
+      ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      return;
+    }
     const ok = canBuild(state, ui.playerId, ui.tool, x, y).ok;
     ctx!.fillStyle = ok ? COLOURS.ghostOk : COLOURS.ghostBad;
     ctx!.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
@@ -994,12 +1281,14 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   }
 
   /** A faint S on each spawner's door, over the terrain, so you can see where not to build. */
-  function drawDoors(state: GameState) {
+  /** Gates' doors (on `only` tiles, if given). */
+  function drawDoors(state: GameState, only?: Set<number>) {
     for (const structure of Object.values(state.structures)) {
       const stats: StructureStats = STRUCTURES[structure.kind];
       if (!stats.spawner || !isBuilt(structure)) continue;
       const door = spawnTileOf(state, structure);
       if (!door || !isExplored(state, door.x, door.y, viewer)) continue;
+      if (only && !only.has(door.y * state.width + door.x)) continue;
       ctx!.globalAlpha = DOOR_ALPHA;
       drawGlyph(door.x, door.y, "S", COLOURS.door);
       ctx!.globalAlpha = 1;
@@ -1139,13 +1428,55 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   }
 
   /** Units in their owner's colour. A rival's are hidden in fog, as enemies are. */
+  /**
+   * The part of each raft (in sight) on tile row `row`: wooden planks, a little above the water,
+   * with a darker rim and front edge. Drawn a row at a time, with the enemies, so the water's top
+   * in the rows in front covers what it should and the raft covers its riders' row behind.
+   */
+  function drawRafts(state: GameState, row: number) {
+    const n = RAFTS.raftTiles;
+    for (const raft of state.rafts?.boats ?? []) {
+      if (row < Math.floor(raft.y) || row > Math.floor(raft.y + n - 0.01)) continue;
+      if (!canSeeEnemiesAt(state, raft.x + n / 2, raft.y + n / 2, viewer)) continue;
+      const left = raft.x * TILE_SIZE + 1;
+      const top = raft.y * TILE_SIZE - RAFT_LIFT + 1;
+      const size = n * TILE_SIZE - 2;
+      ctx!.save();
+      // An empty raft fades out over its last second.
+      if (raft.emptyUntil !== null) {
+        ctx!.globalAlpha = Math.min(1, Math.max(0, (raft.emptyUntil - state.tick) / TICK_RATE));
+      }
+      ctx!.beginPath();
+      ctx!.rect(left - 1, row * TILE_SIZE - RAFT_LIFT, size + 2, TILE_SIZE);
+      if (row === Math.floor(raft.y + n - 0.01)) {
+        ctx!.rect(left - 1, (row + 1) * TILE_SIZE - RAFT_LIFT, size + 2, RAFT_THICKNESS + 2);
+      }
+      ctx!.clip();
+      ctx!.fillStyle = COLOURS.raftEdge;
+      ctx!.fillRect(left, top + size, size, RAFT_THICKNESS);
+      ctx!.fillStyle = COLOURS.raft;
+      ctx!.fillRect(left, top, size, size);
+      // Planks, lengthways, and the two cross-beams holding them.
+      ctx!.fillStyle = COLOURS.raftEdge;
+      for (let px = 4; px < size; px += 5) ctx!.fillRect(left + px, top, 1, size);
+      ctx!.fillRect(left, top + 3, size, 2);
+      ctx!.fillRect(left, top + size - 5, size, 2);
+      ctx!.strokeStyle = COLOURS.raftEdge;
+      ctx!.lineWidth = 1;
+      ctx!.strokeRect(left + 0.5, top + 0.5, size - 1, size - 1);
+      ctx!.restore();
+    }
+  }
+
   function drawUnits(state: GameState, units: GameState["units"]) {
     ctx!.font = GLYPH_FONT;
     for (const unit of units) {
       if (!canSeeEnemiesAt(state, unit.x, unit.y, viewer)) continue;
       ctx!.fillStyle = playerColour(unit.owner);
       const glyph = UNIT_KINDS[unit.kind].glyph;
-      ctx!.fillText(glyph, (unit.x + 0.5) * TILE_SIZE, (unit.y + 0.5) * TILE_SIZE + 1);
+      // On a hill, up on its slope (the 3D view stands it on top as a card).
+      const up = iso ? 0 : hillLift(state, unit.x, unit.y);
+      ctx!.fillText(glyph, (unit.x + 0.5) * TILE_SIZE, (unit.y + 0.5) * TILE_SIZE + 1 - up);
       drawHealth(`u${unit.id}`, unit);
     }
   }
@@ -1159,7 +1490,12 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       const kind = ENEMY_KINDS[enemy.kind];
       ctx!.font = enemyFont(kind.variants[enemy.variant].size);
       ctx!.fillStyle = ENEMY_COLOURS[enemy.kind];
-      ctx!.fillText(kind.glyph, (enemy.x + 0.5) * TILE_SIZE, (enemy.y + 0.5) * TILE_SIZE + 1);
+      const up = iso
+        ? 0
+        : onRaft(state, enemy.x, enemy.y)
+          ? RAFT_LIFT
+          : hillLift(state, enemy.x, enemy.y);
+      ctx!.fillText(kind.glyph, (enemy.x + 0.5) * TILE_SIZE, (enemy.y + 0.5) * TILE_SIZE + 1 - up);
       drawHealth(`e${enemy.id}`, enemy);
     }
   }
@@ -1257,28 +1593,33 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     ctx!.lineWidth = 1;
   }
 
+  /** Ready to paint the flat map (see renderFlat) at `pixelsPerTile`, for `viewer_`. */
+  function flatSetup(viewer_: PlayerId, pixelsPerTile: number) {
+    viewer = viewer_;
+    hover = null;
+    now = performance.now();
+    const scale = pixelsPerTile / TILE_SIZE;
+    ctx!.setTransform(scale, 0, 0, scale, 0, 0);
+    ctx!.textAlign = "center";
+    ctx!.textBaseline = "middle";
+    textured = pixelsPerTile >= TEXTURE_MIN_TILE_PX;
+    barsShown = false;
+  }
+
   return {
     /**
      * The whole map drawn flat, every tile, at `pixelsPerTile`: for the 3D view's ground and
      * block tops. No bars (they're drawn over the 3D view), no shadows or lift; fog as a tint.
      */
-    renderFlat(state: GameState, viewer_: PlayerId, pixelsPerTile: number) {
-      viewer = viewer_;
-      hover = null;
-      now = performance.now();
+    renderFlat(state: GameState, viewer_: PlayerId, pixelsPerTile: number, turns: Rotation = 0) {
       const width = state.width * pixelsPerTile;
       const height = state.height * pixelsPerTile;
       if (canvas.width !== width || canvas.height !== height) {
         canvas.width = width;
         canvas.height = height;
       }
-      const scale = pixelsPerTile / TILE_SIZE;
-      ctx.setTransform(scale, 0, 0, scale, 0, 0);
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
+      flatSetup(viewer_, pixelsPerTile);
       view = { x0: 0, y0: 0, x1: state.width - 1, y1: state.height - 1 };
-      textured = pixelsPerTile >= TEXTURE_MIN_TILE_PX;
-      barsShown = false;
       const showOwners = Object.keys(state.players).length > 1;
       for (let y = 0; y < state.height; y++) {
         for (let x = 0; x < state.width; x++) {
@@ -1287,6 +1628,9 @@ export function createRenderer(canvas: HTMLCanvasElement) {
         }
       }
       drawDoors(state);
+      // No looking back's glow over the land the next wave of lava takes (repainted every so
+      // often, so it doesn't pulse here).
+      drawLavaWarning(state, turns, false);
       barsShown = true;
       if (!state.fog) return;
       const tiers = getSight(state, viewer);
@@ -1299,6 +1643,50 @@ export function createRenderer(canvas: HTMLCanvasElement) {
         ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
       }
       ctx.globalAlpha = 1;
+    },
+
+    /**
+     * Repaints just `tiles` (tile indices) of a flat map renderFlat painted, as it paints them:
+     * for small changes, so the whole map isn't painted again.
+     */
+    renderFlatTiles(
+      state: GameState,
+      viewer_: PlayerId,
+      pixelsPerTile: number,
+      turns: Rotation,
+      tiles: readonly number[],
+    ) {
+      flatSetup(viewer_, pixelsPerTile);
+      const showOwners = Object.keys(state.players).length > 1;
+      const tiers = state.fog ? getSight(state, viewer) : null;
+      for (const i of tiles) {
+        const x = i % state.width;
+        const y = (i - x) / state.width;
+        drawTileContents(state, x, y, showOwners);
+        drawEnclosureTint(state, x, y, 0);
+        view = { x0: x, y0: y, x1: x, y1: y };
+        drawLavaWarning(state, turns, false);
+        if (tiers && tiers[i] !== IN_SIGHT) {
+          ctx.fillStyle = FOG.colour;
+          ctx.globalAlpha = tiers[i] === SEEN ? FOG.seen.opacity : 1;
+          ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+          ctx.globalAlpha = 1;
+        }
+      }
+      drawDoors(state, new Set(tiles));
+      barsShown = true;
+    },
+
+    /**
+     * Moves a flat map renderFlat painted `columns` tiles to the left (No looking back's world
+     * moving on), leaving the columns on the right for renderFlatTiles to paint.
+     */
+    shiftFlat(columns: number, pixelsPerTile: number) {
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.globalCompositeOperation = "copy";
+      ctx.drawImage(canvas, -columns * pixelsPerTile, 0);
+      ctx.restore();
     },
 
     /**
@@ -1327,6 +1715,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
         drawGhost(state, ui);
       }
       drawHoverEdge(state, ui);
+      drawRoyals(state);
       const raid = state.players[viewer]?.raid;
       const own = raid ? state.enemies.find((e) => e.id === raid.enemyId) : undefined;
       if (raid) {
@@ -1380,6 +1769,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       drawKeepHp(state);
       if (ui.showFlow) drawFlow(state);
       drawEffects(state);
+      drawLavaWarning(state, ui.rotation);
       drawFog(state);
       if (hour !== undefined) drawNight(state, darknessAt(hour));
       drawPending(pending);
@@ -1389,6 +1779,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
         drawGhost(state, ui);
       }
       drawHoverEdge(state, ui);
+      drawRoyals(state);
       const raid = state.players[viewer]?.raid;
       if (raid) {
         // The paths every free enemy keeps to, the raider's target, and their enemy's flags.

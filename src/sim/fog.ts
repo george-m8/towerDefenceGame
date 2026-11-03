@@ -5,6 +5,7 @@
 // players can build: enemies move and fight the same either way.
 import { angleTo, facingAngle, inArc } from "./aiming";
 import {
+  FLOOD,
   KEEP_SIGHT,
   SIGHT_CLOSE_RADIUS,
   STRUCTURES,
@@ -13,7 +14,7 @@ import {
   type StructureStats,
 } from "./config";
 import { inBounds } from "./grid";
-import type { Facing, GameState, Keep, PlayerId, StructureKind, Unit } from "./types";
+import type { Facing, GameState, Keep, PlayerId, StructureKind, Unit, Royal } from "./types";
 
 export const UNEXPLORED = 0;
 export const SEEN = 1;
@@ -137,6 +138,13 @@ export function unitMoved(state: GameState, unit: Unit): void {
   state.sightVersion++;
 }
 
+/** No looking back: a royal has moved (or arrived); what it sees now is explored, for good. */
+export function exploreRoyalSight(state: GameState, royal: Royal): void {
+  const bit = 1 << teamOf(state, royal.owner);
+  forEachCircleTile(state, royal.at.x, royal.at.y, FLOOD.royalSight, (i) => explore(state, i, bit));
+  state.sightVersion++;
+}
+
 /** A unit sees all round from the tile it's nearest. */
 function forEachUnitSightTile(
   state: GameState,
@@ -237,6 +245,12 @@ function findSight(state: GameState, team: number): Uint8Array {
   for (const keep of state.keeps) {
     if (teamOf(state, keep.owner) === team && (state.mode !== "pvp" || keep.owner !== null)) {
       forEachKeepSightTile(state, keep, see);
+    }
+  }
+  // No looking back's royals still standing.
+  for (const royal of state.flood?.royals ?? []) {
+    if (royal.fallen === null && teamOf(state, royal.owner) === team) {
+      forEachCircleTile(state, royal.at.x, royal.at.y, FLOOD.royalSight, see);
     }
   }
   // Ruins have no sight, so only what players built counts.

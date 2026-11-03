@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { blockHeight, enemyDrawRow, isDamagedWall } from "../../src/render/canvas";
+import {
+  blockHeight,
+  drawnHeight,
+  enemyDrawRow,
+  hillHeight,
+  isDamagedWall,
+} from "../../src/render/canvas";
+import type { Terrain } from "../../src/sim/types";
 import { placeStructure } from "../../src/sim/grid";
 import { textureSpecks } from "../../src/render/textures";
 import { FOG } from "../../src/render/palette";
@@ -7,6 +14,7 @@ import { RESOURCES } from "../../src/sim/config";
 import { spawnEnemy } from "../../src/sim/enemies";
 import { harvest, placeResource } from "../../src/sim/resources";
 import { createGameWithoutWaves } from "../sim/helpers";
+import { createGame } from "../../src/sim/game";
 
 describe("enemy draw order", () => {
   it("draws an enemy with its own row", () => {
@@ -86,5 +94,73 @@ describe("damaged walls", () => {
     expect(textureSpecks("crackedStone", 0).length).toBeGreaterThan(
       textureSpecks("stone", 0).length,
     );
+  });
+});
+
+describe("No looking back's lava", () => {
+  it("stands half a wall high where it's deep, lower towards its fringe", () => {
+    const state = createGame(3, { mode: "flood", blankMap: true });
+    // Lava over the left 10 columns.
+    for (let y = 0; y < state.height; y++) {
+      for (let x = 0; x < 10; x++) state.terrain[y * state.width + x] = "lava";
+    }
+    const wall = placeStructure(state, "wall", 20, 20, "N", 1);
+    wall.buildLeft = 0;
+    const wallHeight = blockHeight(state, 20, 20);
+    expect(blockHeight(state, 9, 20)).toBe(1); // beside land
+    expect(blockHeight(state, 8, 20)).toBe(2);
+    expect(blockHeight(state, 5, 20)).toBe(wallHeight / 2);
+    expect(blockHeight(state, 0, 20)).toBe(wallHeight / 2); // off the map counts as lava
+  });
+
+  it("bubbles, as water ripples: each tile rises and falls, on its own beat", () => {
+    const state = createGame(3, { mode: "flood", blankMap: true });
+    const at = (x: number, terrain: Terrain) => (state.terrain[state.width * 20 + x] = terrain);
+    at(5, "lava");
+    at(6, "lava");
+    const over = (x: number) =>
+      Array.from({ length: 200 }, (_, t) => drawnHeight(state, x, 20, t * 50));
+    // Lava a tile from land stands 1 px: it bubbles by up to a fifth of that.
+    const five = over(5);
+    expect(Math.min(...five)).toBeGreaterThanOrEqual(0.8);
+    expect(Math.max(...five)).toBeLessThanOrEqual(1.2);
+    expect(Math.max(...five) - Math.min(...five)).toBeGreaterThan(0.15);
+    expect(over(6)).not.toEqual(five);
+    // Floodwater ripples as lava bubbles; rivers and the sea dip below the ground and back up to
+    // it, never above.
+    at(7, "river");
+    at(8, "sea");
+    at(9, "floodwater");
+    for (const x of [7, 8, 9]) {
+      const heights = over(x);
+      expect(Math.max(...heights) - Math.min(...heights)).toBeGreaterThan(0.1);
+      if (x === 9) expect(Math.min(...heights)).toBeGreaterThan(0);
+      else {
+        expect(Math.max(...heights)).toBeLessThanOrEqual(0);
+        expect(Math.min(...heights)).toBeGreaterThanOrEqual(-2);
+      }
+    }
+    // Not ground, nor a bridge on a river, nor lava with a wall on it.
+    expect(drawnHeight(state, 10, 20, 1234)).toBe(0);
+    placeStructure(state, "bridge", 7, 20, "N", 1).buildLeft = 0;
+    expect(drawnHeight(state, 7, 20, 1234)).toBe(blockHeight(state, 7, 20));
+    placeStructure(state, "wall", 6, 20, "N", 1).buildLeft = 0;
+    expect(drawnHeight(state, 6, 20, 1234)).toBe(blockHeight(state, 6, 20));
+  });
+});
+
+describe("No looking back's hills", () => {
+  it("rise a step a tile in from their edge, and what's on them stands higher", () => {
+    const state = createGame(3, { mode: "flood", blankMap: true });
+    for (let y = 10; y < 19; y++) {
+      for (let x = 10; x < 19; x++) state.terrain[y * state.width + x] = "hill";
+    }
+    const steps = [10, 11, 12, 13, 14].map((x) => hillHeight(state, x, 14));
+    expect(steps).toEqual([2, 4, 6, 6, 6]);
+    expect(hillHeight(state, 9, 14)).toBe(0);
+    const wall = placeStructure(state, "wall", 25, 25, "N", 1);
+    wall.buildLeft = 0;
+    placeStructure(state, "wall", 14, 14, "N", 1).buildLeft = 0;
+    expect(blockHeight(state, 14, 14)).toBe(6 + blockHeight(state, 25, 25));
   });
 });

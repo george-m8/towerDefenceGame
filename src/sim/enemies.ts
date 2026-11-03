@@ -15,6 +15,7 @@ import { DIRECTIONS, canCross, distanceAt, nextStep } from "./pathfinding";
 import { stepTo, walk } from "./movement";
 import { damageUnit, unitsAt } from "./units";
 import { nextRandom, randomInt } from "./rng";
+import { chaseRoyals } from "./floodSwarms";
 import { followAim, roam, steerControlled } from "./raiders";
 import { pathFieldFor } from "./raidPaths";
 import type { Enemy, GameState, Keep, PlayerId, Point, Structure, Unit } from "./types";
@@ -112,11 +113,14 @@ export function updateEnemies(state: GameState): void {
 function advance(state: GameState, enemy: Enemy): void {
   if (enemy.hp <= 0) return; // killed since the last tick; removed with the bounties
   enemy.attackCooldown = Math.max(0, enemy.attackCooldown - 1);
+  if (enemy.raft !== undefined) return; // aboard a raft, which carries it (see rafts.ts)
   const from = { x: Math.round(enemy.x), y: Math.round(enemy.y) };
   if (enemy.controller !== null) steerControlled(state, enemy);
   else if (enemy.steer?.by === "raider")
     followAim(state, enemy); // left still on its way
   else if (enemy.roamer) roam(state, enemy);
+  else if (enemy.swarm && state.flood)
+    chaseRoyals(state, enemy); // No looking back's swarms
   else if (!BEHAVIOURS[ENEMY_KINDS[enemy.kind].behaviour](state, enemy)) {
     walk(enemy, speedOf(state, enemy), () => chooseNextTile(state, enemy));
   }
@@ -238,7 +242,11 @@ export function attackKeep(state: GameState, enemy: Enemy, keep: Keep) {
  * A unit the enemy stops to fight: one in its way (on its tile or its next step) first, else
  * one on a tile beside it; the weakest, then the oldest. Rams ignore units.
  */
-function unitToFight(state: GameState, enemy: Enemy, pathStep: Point | null): Unit | undefined {
+export function unitToFight(
+  state: GameState,
+  enemy: Enemy,
+  pathStep: Point | null,
+): Unit | undefined {
   if (ENEMY_KINDS[enemy.kind].behaviour === "siege") return undefined;
   const inTheWay = unitsAt(state, enemy.x, enemy.y);
   if (pathStep) inTheWay.push(...unitsAt(state, pathStep.x, pathStep.y));

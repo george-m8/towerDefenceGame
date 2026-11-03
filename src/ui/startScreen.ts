@@ -14,27 +14,52 @@ import {
 import { createPictureView, roomAbove } from "./pictureCanvas";
 import { LEVEL_GRID, MAX_STARS, levelSlots, loadProgress, recordStars } from "./campaign";
 import { loadPlayers, putPlayer, removePlayer, savePlayers, type Profile } from "./profiles";
-import type { EnemiesCome, GameMode } from "../sim/types";
-import { DEFAULT_MAP_SIZE, MAP_SIZES, type MapSize } from "../sim/config";
+import type { EnemiesCome, FloodLiquid, GameMode } from "../sim/types";
+import {
+  DEFAULT_MAP_SIZE,
+  FLOOD_GOALS,
+  FLOOD_LIQUIDS,
+  MAP_SIZES,
+  type MapSize,
+} from "../sim/config";
 
 /** The game modes, as the mode screen offers them. */
-export const GAME_MODES: { mode: GameMode; name: string; description: string; online: boolean }[] =
-  [
-    {
-      mode: "endless",
-      name: "Endless",
-      description:
-        "Hold your keep against endless waves of enemies, each bigger than the last. Solo, or co-op with friends.",
-      online: false,
-    },
-    {
-      mode: "pvp",
-      name: "PvP",
-      description:
-        "Two players, a keep each. Build towers to tear down your rival's walls and keep. You only see your own land, and can't build inside their walls. Last keep standing wins.",
-      online: true,
-    },
-  ];
+export const GAME_MODES: {
+  mode: GameMode;
+  name: string;
+  description: string;
+  /** Online only (PvP), or solo only; neither: both. */
+  online: boolean;
+  solo?: true;
+}[] = [
+  {
+    mode: "endless",
+    name: "Endless",
+    description:
+      "Hold your keep against endless waves of enemies, each bigger than the last. Solo, or co-op with friends.",
+    online: false,
+  },
+  {
+    mode: "pvp",
+    name: "PvP",
+    description:
+      "Two players, a keep each. Build towers to tear down your rival's walls and keep. You only see your own land, and can't build inside their walls. Last keep standing wins.",
+    online: true,
+  },
+  {
+    mode: "flood",
+    name: "No looking back",
+    description: "Lead your king on into new land, ahead of creeping lava. How far can he get?",
+    online: false,
+  },
+  {
+    mode: "rafts",
+    name: "Rafts",
+    description:
+      "Your keep stands on high ground as the rest of the land floods. Waves of enemies sail in on rafts. Solo, or co-op with friends.",
+    online: false,
+  },
+];
 
 /** Campaign, above the other modes: solo only for now, and only once there are levels. */
 export const CAMPAIGN = {
@@ -364,7 +389,9 @@ function chooseGame(
             showLevelScreen(root, player, levels, again, (level) =>
               playLevel(root, options, level),
             ),
-    onChoose: (game, size, map, items, fog, enemiesCome) => {
+    onChoose: (game, size, map, items, fog, enemiesCome, goal, liquid) => {
+      // Only water is sent: the flood is lava unless asked otherwise.
+      const water = game === "flood" && liquid === "water" ? { liquid } : {};
       // Only "off" is sent: fog of war is on unless asked otherwise. Likewise only "night".
       const fogOff = fog ? {} : { fog: false as const };
       const night = enemiesCome === "night" ? { enemiesCome: "night" as const } : {};
@@ -376,12 +403,23 @@ function chooseGame(
           ...(items ? { items } : {}),
           ...fogOff,
           ...night,
+          ...(game === "flood" || game === "rafts" ? { game } : {}),
+          ...(game === "flood" && goal > 0 ? { goal } : {}),
+          ...water,
         });
       }
       options.onChoose(
         game === "endless"
           ? { mode: "create", name, size, ...fogOff, ...night }
-          : { mode: "create", name, game, size, ...fogOff },
+          : {
+              mode: "create",
+              name,
+              game,
+              size,
+              ...fogOff,
+              ...(goal > 0 ? { goal } : {}),
+              ...water,
+            },
       );
     },
   });
@@ -485,6 +523,10 @@ interface ModeSettings {
   fog: boolean;
   /** When enemies come (Endless): all the time (to start with), or at night. */
   enemiesCome: EnemiesCome;
+  /** No looking back: the keep to reach, in tiles from the start, or 0 to go on for ever. */
+  goal: number;
+  /** No looking back: what the flood is. */
+  liquid: FloodLiquid;
 }
 
 /**
@@ -507,6 +549,8 @@ function showModeScreen(
       items: string | undefined,
       fog: boolean,
       enemiesCome: EnemiesCome,
+      goal: number,
+      liquid: FloodLiquid,
     ) => void;
   },
   settings: ModeSettings = {
@@ -515,6 +559,8 @@ function showModeScreen(
     items: "",
     fog: true,
     enemiesCome: "always",
+    goal: 0,
+    liquid: "lava",
   },
 ) {
   root.innerHTML = `
@@ -526,7 +572,7 @@ function showModeScreen(
           <span>${CAMPAIGN.description}</span>
           ${options.onCampaign ? "" : "<em>Coming soon.</em>"}
         </button>
-        ${GAME_MODES.filter((m) => options.online || !m.online)
+        ${GAME_MODES.filter((m) => (options.online ? !m.solo : !m.online))
           .map(
             (m) => `
           <button class="mode-card" data-mode="${m.mode}">
@@ -641,6 +687,8 @@ function showSettingsScreen(
   const offerItems = solo && options.items.length > 0;
   // Waves (and so when they come) are Endless only, solo or in a room.
   const offerNight = mode === "endless";
+  // No looking back: on for ever, or as far as a keep.
+  const offerGoal = mode === "flood";
   const name = GAME_MODES.find((m) => m.mode === mode)!.name;
   const option = (value: string, text: string, chosen: string) =>
     `<option value="${escapeHtml(value)}" ${value === chosen ? "selected" : ""}>${escapeHtml(text)}</option>`;
@@ -692,6 +740,26 @@ function showSettingsScreen(
       </div>`
           : ""
       }
+      ${
+        offerGoal
+          ? `<div class="map-sizes" role="radiogroup" aria-label="Goal">
+        <span title="Endless: as far as you can. A keep: it turns up that far on, and reaching it wins">Goal</span>
+        ${FLOOD_GOALS.map(
+          (g) =>
+            `<button class="size-choice" role="radio" data-goal="${g}">${g === 0 ? "Endless" : `Keep at ${g}`}</button>`,
+        ).join("")}
+      </div>
+      <div class="map-sizes" role="radiogroup" aria-label="Flood">
+        <span title="Lava takes everything but walls, ruins, hills and rocks. Water leaves trees and bushes standing too, and goes round them">Flood</span>
+        ${(Object.keys(FLOOD_LIQUIDS) as FloodLiquid[])
+          .map(
+            (l) =>
+              `<button class="size-choice" role="radio" data-liquid="${l}" title="Spares ${FLOOD_LIQUIDS[l].spares}">${FLOOD_LIQUIDS[l].name}</button>`,
+          )
+          .join("")}
+      </div>`
+          : ""
+      }
       <div class="choices together">
         <button class="button" data-action="back">Back</button>
         <button class="button" data-action="start">Start</button>
@@ -701,6 +769,8 @@ function showSettingsScreen(
   const sizes = root.querySelector<HTMLElement>('[aria-label="Map size"]')!;
   const fogButtons = [...root.querySelectorAll<HTMLButtonElement>("[data-fog]")];
   const enemiesButtons = [...root.querySelectorAll<HTMLButtonElement>("[data-enemies]")];
+  const goalButtons = [...root.querySelectorAll<HTMLButtonElement>("[data-goal]")];
+  const liquidButtons = [...root.querySelectorAll<HTMLButtonElement>("[data-liquid]")];
   const sizeButtons = [...sizes.querySelectorAll<HTMLButtonElement>("[data-size]")];
   const mapSelect = root.querySelector<HTMLSelectElement>('select[name="map"]');
   const itemsSelect = root.querySelector<HTMLSelectElement>('select[name="items"]');
@@ -713,6 +783,12 @@ function showSettingsScreen(
     }
     for (const b of enemiesButtons) {
       b.setAttribute("aria-checked", String(b.dataset.enemies === settings.enemiesCome));
+    }
+    for (const b of goalButtons) {
+      b.setAttribute("aria-checked", String(Number(b.dataset.goal) === settings.goal));
+    }
+    for (const b of liquidButtons) {
+      b.setAttribute("aria-checked", String(b.dataset.liquid === settings.liquid));
     }
     // A hand-made map has its own size, so the size only matters for a generated one.
     sizes.hidden = settings.map !== "";
@@ -735,6 +811,18 @@ function showSettingsScreen(
       show();
     });
   }
+  for (const b of goalButtons) {
+    b.addEventListener("click", () => {
+      settings.goal = Number(b.dataset.goal);
+      show();
+    });
+  }
+  for (const b of liquidButtons) {
+    b.addEventListener("click", () => {
+      settings.liquid = b.dataset.liquid as FloodLiquid;
+      show();
+    });
+  }
   mapSelect?.addEventListener("change", () => {
     settings.map = mapSelect.value;
     show();
@@ -753,6 +841,8 @@ function showSettingsScreen(
       offerItems ? settings.items || undefined : undefined,
       settings.fog,
       offerNight ? settings.enemiesCome : "always",
+      offerGoal ? settings.goal : 0,
+      offerGoal ? settings.liquid : "lava",
     ),
   );
   start.focus();

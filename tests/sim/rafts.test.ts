@@ -1,0 +1,226 @@
+import { describe, expect, it } from "vitest";
+import { RAFTS, TICK_RATE } from "../../src/sim/config";
+import { applyCommand, createGame, tick } from "../../src/sim/game";
+import {
+  canBuild,
+  isKeepTile,
+  placeStructure,
+  removeStructure,
+  tileIndex,
+} from "../../src/sim/grid";
+import { spawnEnemy } from "../../src/sim/enemies";
+import { launchRaft } from "../../src/sim/rafts";
+import { KEEP, NONE, enclosureAt } from "../../src/sim/enclosures";
+import type { GameState } from "../../src/sim/types";
+
+const ME = 1;
+
+function run(state: GameState, seconds: number) {
+  for (let i = 0; i < seconds * TICK_RATE; i++) tick(state);
+}
+
+/** A Rafts game, the waves held off (each test brings them on as it needs). */
+function raftsGame(): GameState {
+  const state = createGame(11, { mode: "rafts" });
+  state.wave.countdown = Infinity;
+  return state;
+}
+
+describe("Rafts", () => {
+  it("raises the keep's land, with resources on it, and floods the rest", () => {
+    const state = raftsGame();
+    const keep = state.keeps[0];
+    const mid = { x: keep.x + 1, y: keep.y + 1 };
+    const near = (x: number, y: number, r: number) => Math.hypot(x - mid.x, y - mid.y) < r;
+    let hill = 0;
+    let resources = 0;
+    for (let y = 0; y < state.height; y++) {
+      for (let x = 0; x < state.width; x++) {
+        if (!near(x, y, RAFTS.raisedRadius * 0.8)) continue;
+        const t = state.terrain[tileIndex(state, x, y)];
+        if (t === "hill") hill++;
+        if (t === "tree" || t === "rock" || t === "goldRock" || t === "berries") resources++;
+      }
+    }
+    expect(hill).toBeGreaterThan(300);
+    expect(resources).toBeGreaterThan(5);
+    expect(state.spawnTiles).toEqual([]);
+    run(state, 40);
+    // Away from the keep's land it's water, but for what stands up from it (and the odd pocket
+    // of land that shuts in).
+    let dry = 0;
+    let away = 0;
+    for (let y = 0; y < state.height; y++) {
+      for (let x = 0; x < state.width; x++) {
+        if (near(x, y, RAFTS.raisedRadius * 1.3)) continue;
+        away++;
+        if (state.terrain[tileIndex(state, x, y)] === "ground") dry++;
+      }
+    }
+    expect(dry / away).toBeLessThan(0.05);
+    expect(state.terrain[tileIndex(state, mid.x + 6, mid.y)]).not.toBe("floodwater");
+  });
+
+  it("sails a wave in on rafts that put them off on the keep's shore", () => {
+    const state = raftsGame();
+    run(state, 40);
+    expect(launchRaft(state, ["goblin", "goblin", "goblin"], { wave: 1 })).toBe(true);
+    const [raft] = state.rafts!.boats;
+    expect(raft.riders).toHaveLength(3);
+    // More of the wave boards it while it waits at the edge.
+    launchRaft(state, ["goblin"], { wave: 1 });
+    expect(state.rafts!.boats).toHaveLength(1);
+    expect(raft.riders).toHaveLength(4);
+    const start = { x: raft.x, y: raft.y };
+    run(state, RAFTS.boardSeconds + 2);
+    expect(Math.hypot(raft.x - start.x, raft.y - start.y)).toBeGreaterThan(1); // under way
+    for (let t = 0; t < 120 * TICK_RATE && raft.riders.length > 0; t++) tick(state);
+    // Ashore, on land joined to the keep.
+    expect(state.enemies.length).toBeGreaterThan(0);
+    for (const e of state.enemies) {
+      expect(e.raft).toBeUndefined();
+      expect(state.terrain[tileIndex(state, Math.round(e.x), Math.round(e.y))]).not.toBe(
+        "floodwater",
+      );
+    }
+    // The empty raft stays on the water a while, then goes.
+    run(state, RAFTS.emptySeconds - 1);
+    expect(state.rafts!.boats).toEqual([raft]);
+    run(state, 2);
+    expect(state.rafts!.boats).toEqual([]);
+  }, 30_000);
+
+  it("parks against a walled shore, and its riders break the wall to get off", () => {
+    const state = raftsGame();
+    run(state, 40);
+    const { width, height } = state;
+    const water = (x: number, y: number) =>
+      ["floodwater", "river", "sea"].includes(state.terrain[y * width + x]);
+    const walls = [];
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const t = state.terrain[y * width + x];
+        if (!(t === "hill" || t === "ground" || t === "berries") || state.base[y * width + x])
+          continue;
+        if (
+          [
+            [1, 0],
+            [-1, 0],
+            [0, 1],
+            [0, -1],
+          ].some(([dx, dy]) => water(x + dx, y + dy))
+        ) {
+          const wall = placeStructure(state, "wall", x, y, "N", ME);
+          wall.buildLeft = 0;
+          walls.push(wall);
+        }
+      }
+    }
+    launchRaft(state, ["goblin", "goblin", "goblin", "goblin"], { wave: 5 });
+    const [raft] = state.rafts!.boats;
+    const before = performance.now();
+    run(state, 150);
+    expect(performance.now() - before).toBeLessThan(15_000); // doesn't grind to a halt
+    expect(walls.some((w) => !state.structures[w.id])).toBe(true); // broken through
+    expect(state.rafts!.boats).not.toContain(raft);
+    expect(state.enemies.some((e) => e.raft === undefined)).toBe(true); // ashore
+  }, 30_000);
+
+  it("counts the open island as open: only land walled off from the water's an enclosure", () => {
+    const state = raftsGame();
+    run(state, 40);
+    const keep = state.keeps[0];
+    // On the raised land, well out from the keep's walls but not by the water.
+    const x = keep.x + 7;
+    const y = keep.y + 1;
+    expect(state.terrain[tileIndex(state, x, y)]).not.toBe("floodwater");
+    expect(enclosureAt(state, x, y)).toBe(NONE);
+    expect(enclosureAt(state, keep.x - 1, keep.y + 1)).toBe(KEEP); // inside its starter walls
+  });
+
+  it("lets those on land the flood comes over get out of its way, rather than drown", () => {
+    const state = raftsGame();
+    run(state, 40);
+    // Low ground beside the water, held back by a wall, with high ground behind it: the wall goes
+    // (as riders break it), and the water comes through.
+    const i = state.terrain.findIndex(
+      (t, k) =>
+        t === "floodwater" &&
+        state.terrain[k + 1] === "floodwater" &&
+        k % state.width < state.width - 6,
+    );
+    const x = (i % state.width) + 1;
+    const y = Math.floor(i / state.width);
+    state.terrain[tileIndex(state, x + 1, y)] = "ground";
+    state.terrain[tileIndex(state, x + 2, y)] = "hill";
+    for (const [dx, dy] of [
+      [1, -1],
+      [1, 1],
+      [2, -1],
+      [2, 1],
+    ]) {
+      state.terrain[tileIndex(state, x + dx, y + dy)] = "rock";
+    }
+    const wall = placeStructure(state, "wall", x, y, "N", ME);
+    wall.buildLeft = 0;
+    state.terrain[tileIndex(state, x, y)] = "ground";
+    const goblin = spawnEnemy(state, x + 1, y, { kind: "goblin" });
+    run(state, 1);
+    expect(state.terrain[tileIndex(state, x + 1, y)]).toBe("ground"); // held back
+    removeStructure(state, wall);
+    run(state, 2);
+    expect(state.terrain[tileIndex(state, x + 1, y)]).toBe("floodwater");
+    expect(state.enemies).toContain(goblin);
+    expect([Math.round(goblin.x), Math.round(goblin.y)]).toEqual([x + 2, y]); // up on the hill
+  });
+
+  it("drains water walled off from the edge", () => {
+    const state = raftsGame();
+    run(state, 40);
+    const keep = state.keeps[0];
+    // A pocket of floodwater by the keep's land, closed round with walls.
+    const at = { x: keep.x, y: keep.y - RAFTS.raisedRadius - 6 };
+    for (let dy = -2; dy <= 2; dy++) {
+      for (let dx = -2; dx <= 2; dx++) {
+        const x = at.x + dx;
+        const y = at.y + dy;
+        if (Math.abs(dx) === 2 || Math.abs(dy) === 2) {
+          state.terrain[tileIndex(state, x, y)] = "floodwater";
+          placeStructure(state, "wall", x, y, "N", ME).buildLeft = 0;
+        } else state.terrain[tileIndex(state, x, y)] = "floodwater";
+      }
+    }
+    run(state, RAFTS.drainSeconds * 3 + 2);
+    expect(state.terrain[tileIndex(state, at.x, at.y)]).toBe("ground");
+  });
+
+  it("doesn't take a wall going up on the shore before it's done", () => {
+    const state = raftsGame();
+    // Walls just started (not built yet) on the left edge, where the flood comes in first.
+    const walls = [10, 11, 12].map((y) => {
+      state.terrain[tileIndex(state, 0, y)] = "ground";
+      const wall = placeStructure(state, "wall", 0, y, "N", ME);
+      wall.buildLeft = wall.buildTicks = 60 * TICK_RATE;
+      return wall;
+    });
+    run(state, RAFTS.floodSeconds + 5);
+    for (const wall of walls) expect(state.structures[wall.id]).toBeDefined();
+    expect(state.terrain[tileIndex(state, 1, 11)]).toBe("floodwater"); // round them
+  });
+
+  it("lets a tower go on a wall built out over the water", () => {
+    const state = raftsGame();
+    run(state, 40);
+    state.explored = state.explored.map(() => 1);
+    const i = state.terrain.indexOf("floodwater");
+    const x = i % state.width;
+    const y = Math.floor(i / state.width);
+    placeStructure(state, "wall", x, y, "N", ME).buildLeft = 0;
+    expect(canBuild(state, ME, "archer", x, y)).toEqual({ ok: true });
+    state.players[ME].gold = 1000;
+    expect(applyCommand(state, ME, { type: "build", kind: "archer", x, y, facing: "E" })).toEqual({
+      ok: true,
+    });
+    expect(isKeepTile(state, x, y)).toBe(false);
+  });
+});

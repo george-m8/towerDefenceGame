@@ -4,7 +4,7 @@
 import { STRUCTURES, TERRAIN } from "../sim/config";
 import { terrainOf } from "../sim/mapFile";
 import { COLOURS, GLYPHS, STRUCTURE_COLOURS, TERRAIN_STYLES } from "../render/palette";
-import { BUILD_TABS, TOOLS, type BuildTab, type UiState } from "../ui/state";
+import { BUILD_TABS, TOOLS, isBuildTool, type BuildTab, type UiState } from "../ui/state";
 import { createKeyLabels } from "../ui/keyLabels";
 import { MAP_ITEMS, itemName, toolName, type Editor, type MapItem } from "./editor";
 import { CAN_SAVE, type FileActions } from "./files";
@@ -196,7 +196,7 @@ export function createToolbar(
       const glyph =
         ui.tool === "sell"
           ? "✕"
-          : ui.tool !== null
+          : isBuildTool(ui.tool)
             ? GLYPHS[ui.tool]
             : editor.item !== null
               ? itemSwatch(editor.item).glyph || "□"

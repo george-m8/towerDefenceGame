@@ -59,6 +59,8 @@ export function bindInput(
   let painting = false;
   let debugKind = 0;
   let lastPainted: Point | null = null;
+  /** No looking back: this click adds a flag after the king's others (Shift held). */
+  let queueFlag = false;
   /** Raiders: the mouse is held on open ground, so their enemy follows the pointer. */
   let following = false;
   let mouse: { clientX: number; clientY: number } | null = null;
@@ -166,7 +168,16 @@ export function bindInput(
   });
 
   function useToolAt(p: Point) {
-    if (!ui.tool || !playing()) return;
+    if (!playing()) return;
+    // No looking back, as a raider plans: with nothing in hand (or the Route tool), a click
+    // sends the king there, and Shift adds a flag after his others.
+    if ((ui.tool === null || ui.tool === "route") && getState()?.flood) {
+      dispatch(
+        queueFlag ? { type: "planKing", ...p, queue: true } : { type: "planKing", x: p.x, y: p.y },
+      );
+      return;
+    }
+    if (!ui.tool || ui.tool === "route") return;
     // Refusals come back through the session's onResult.
     dispatch(
       ui.tool === "sell"
@@ -311,6 +322,12 @@ export function bindInput(
         if (ui.tool === "sell") ui.tool = beforeSell;
         else [beforeSell, ui.tool] = [ui.tool, "sell"];
         return;
+      case "route":
+        // No looking back's Route (plain clicks plan too, with nothing in hand).
+        if (!getState()?.flood) return;
+        ui.debugDamage = false;
+        ui.tool = ui.tool === "route" ? null : "route";
+        return;
       case "prevTool":
         return stepTool(-1);
       case "nextTool":
@@ -412,7 +429,9 @@ export function bindInput(
       }
       return;
     }
+    queueFlag = e.shiftKey;
     pressAt(p);
+    queueFlag = false;
   });
 
   canvas.addEventListener("mousemove", (e) => {

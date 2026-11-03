@@ -1,5 +1,6 @@
 import type {
   EnemyKindId,
+  FLOOD_LIQUIDS,
   MovementProfile,
   ProjectileKind,
   STRUCTURES,
@@ -173,6 +174,143 @@ export interface Enemy {
   steer: Steering | null;
   /** It has walked a raiders' path to its end: it keeps to its own field from then on. */
   pathDone: boolean;
+  /** No looking back: what it remembers of its swarm and the king (see sim/floodSwarms.ts). */
+  swarm?: SwarmMind;
+  /** Rafts mode: the raft it's riding to the shore, by id (it does nothing else till then). */
+  raft?: number;
+}
+
+/** A No looking back swarm member's mind. */
+export interface SwarmMind {
+  /** Where it idles, or null once that's gone with the land behind (it wanders then). */
+  post: Point | null;
+  /** Its swarm (all wake together). */
+  id: number;
+  /** Ticks it keeps after the king for since last seeing him (0: idle). */
+  alert: number;
+  /** Its HP when last checked: less now means it was hurt, which wakes it. */
+  hp: number;
+  /** Where it's running to, away from a flood of water it's seen (see fleeWater). */
+  flee?: Point | null;
+}
+
+/** No looking back's royals: a king, a queen, then a prince and a princess, one per player. */
+export type RoyalTitle = "king" | "queen" | "prince" | "princess";
+
+/** One of No looking back's royals (see sim/flood.ts): a player's to lead, and to keep alive. */
+export interface Royal {
+  /** Whose: they plan its way, and the fog it lifts is their team's. */
+  owner: PlayerId;
+  title: RoyalTitle;
+  /** The tile it stands on, and how far it is across to the next (0 to 1). */
+  at: Point;
+  progress: number;
+  /** Its flags, in the order it'll walk to them (as a raider's plan), and its way to the first. */
+  plan: Point[];
+  path: Point[];
+  /** Swarms hit it (see floodSwarms.ts). */
+  hp: number;
+  maxHp: number;
+  /** How it fell, once it has: gone for good, and once all have, the game's over. */
+  fallen: "flood" | "swarm" | null;
+}
+
+/** A raft (see sim/rafts.ts): land afloat, carrying a wave's enemies to the keep's shore. */
+export interface Raft {
+  id: number;
+  /** Where it is, in tiles; fractional while it moves between them. */
+  x: number;
+  y: number;
+  /** Its way to the shore, tile by tile (empty: there, or no way yet). */
+  path: Point[];
+  /** The grid's version its way was found on: a change finds it again. */
+  pathVersion: number;
+  /** The enemies aboard, by id. */
+  riders: number[];
+  /** Ticks it's been without a way to the shore. */
+  stuck: number;
+  /** At the shore: its riders get off, or break the wall in their way first. */
+  docked: boolean;
+  /** Once it's empty, the tick it goes (it stays a while, see RAFTS.emptySeconds); null till then. */
+  emptyUntil: number | null;
+  /** The tick it sets off: till then it waits at the edge, taking on more of the wave. */
+  boardUntil: number;
+}
+
+/** Rafts mode: the flood rising over everything but the raised land, and the rafts on it. */
+export interface Rafts {
+  /** The tick the flood next rises a ring. */
+  nextRise: number;
+  boats: Raft[];
+  nextId: number;
+  /** Floodwater walled off from the edge, draining: seconds each tile's been cut off, by index. */
+  draining: Record<number, number>;
+}
+
+/** What No looking back's flood is (see FLOOD_LIQUIDS). */
+export type FloodLiquid = keyof typeof FLOOD_LIQUIDS;
+
+/**
+ * No looking back's settings: a keep this many tiles on, reaching which wins (none: on for
+ * ever), and the flood's liquid (none: lava).
+ */
+export interface FloodSettings {
+  goal?: number;
+  liquid?: FloodLiquid;
+}
+
+/** No looking back: the royals' walk on ahead of the lava (see sim/flood.ts). */
+export interface Flood {
+  /** One per player (handed out when the game starts; see assignRoyals). */
+  royals: Royal[];
+  /** Where the first starts, and the column the distance is counted from. */
+  start: Point;
+  /** The furthest any royal has got, in tiles across the world from the start: the score. */
+  best: number;
+  /** The next swarm's number (a swarm wakes together). */
+  swarms: number;
+  /** Lava, or water (see FLOOD_LIQUIDS): "lava" in comments here means either. */
+  liquid: FloodLiquid;
+  /** How far in from the left the lava has come, in tiles, on average (see lavaEdge). */
+  front: number;
+  /** The tiles beside the lava not yet under (tile indices): where it spreads to next... */
+  edge: number[];
+  /** ...and how full of lava each is (0 to 1: under once full). */
+  fill: number[];
+  /** The tiles about to go under, for their glow, as [x, y, warning] in a row (see lavaWarning). */
+  glow: number[];
+  /**
+   * Lava walled off from where it comes in, cooling (see coolLava): seconds each tile of it has
+   * been cut off and beside land, by its place in the world (column across the world * 65536 +
+   * row).
+   */
+  cooling: Record<number, number>;
+  /** Columns the world has moved on by (see shiftWorld). */
+  shifted: number;
+  /** The new land still to come in on the right, a column at a time (see shiftWorld). */
+  land: Land | null;
+  /**
+   * A goal: the tiles across the world (from the royals' start) that the keep stands at, and
+   * reaching it wins; null goes on for ever. `home` is the keep once it's in the world (its
+   * top-left tile, its column counted across the world as `shifted` is), KEEP_SIZE square.
+   */
+  goal: number | null;
+  home: { worldX: number; y: number } | null;
+}
+
+/** A piece of new land for No looking back, generated whole and handed out a column at a time. */
+export interface Land {
+  /** Its size across, and the next of its columns to come in. */
+  width: number;
+  next: number;
+  /** Per tile (index y * width + x), as GameState's layers. */
+  terrain: Terrain[];
+  resources: number[];
+  worth: number[];
+  /** Its ruins and chests, placed as their columns come in, and its swarms' middles. */
+  ruins: { x: number; y: number; hpFraction: number }[];
+  chests: { x: number; y: number; gold: number }[];
+  swarms: Point[];
 }
 
 /** One of a player's own units (see sim/units.ts). Moves tile to tile like an enemy. */
@@ -207,6 +345,8 @@ export interface Unit {
   siegeBlockedAt: number;
   /** It needs a path but the tick's search budget ran out: it goes first next tick. */
   waitingForPath: boolean;
+  /** No looking back: one of a royal's escort (that royal's index), at this spot beside it. */
+  escort?: { x: number; y: number; royal: number };
 }
 
 /** Short-lived visual events recorded by the simulation for the renderer. */
@@ -283,8 +423,11 @@ export interface WaveState {
   countdown: number;
 }
 
-/** Endless: hold one shared keep against waves. PvP: two players, a keep each, no waves. */
-export type GameMode = "endless" | "pvp";
+/**
+ * Endless: hold one shared keep against waves. PvP: two players, a keep each, no waves.
+ * No looking back (flood): walk the king as far as he can ahead of the lava (solo; see sim/flood.ts).
+ */
+export type GameMode = "endless" | "pvp" | "flood" | "rafts";
 
 /** When enemies come (Endless): all the time, as ever, or only at night (with a clock). */
 export type EnemiesCome = "always" | "night";
@@ -375,6 +518,10 @@ export interface GameState {
   rngState: number;
   /** False turns fog of war off: every tile is in sight. */
   fog: boolean;
+  /** No looking back's king, his flags and the lava; null in other modes. There's no keep. */
+  flood: Flood | null;
+  /** Rafts: the flood's progress and the rafts on it; null in other modes. */
+  rafts: Rafts | null;
   /** Debug options (offline only), all off to start with. */
   debug: Record<DebugOption, boolean>;
   /** From an `.items` file: the most of each kind a player can have at once (none: no limit). */
@@ -426,7 +573,9 @@ export type Command =
   | { type: "sendWave" }
   /** Votes to skip the rest of the day to the early evening (games with enemies at night). */
   | { type: "voteSkipToNight" }
-  | { type: "sell"; x: number; y: number };
+  | { type: "sell"; x: number; y: number }
+  /** No looking back: a flag for the king to walk to, or (`queue`) one after his others. */
+  | { type: "planKing"; x: number; y: number; queue?: true };
 
 /** Commands for testing: offline only, refused online. */
 export type DebugCommand = Extract<

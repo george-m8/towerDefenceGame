@@ -2,6 +2,7 @@
 // fires nothing, earns nothing) until it's finished. The further from your keep, the longer
 // that takes: nothing at all next to it, up to BUILD_TIME.maxSeconds far away.
 import { BUILD_TIME, STRUCTURES, TICK_RATE } from "./config";
+import { livingRoyals, royalOf } from "./flood";
 import { enemyOccupies, inBounds, isBuilt } from "./grid";
 import type { GameState, Keep, PlayerId, Structure } from "./types";
 
@@ -21,7 +22,14 @@ function homeKeeps(state: GameState, player?: PlayerId): Keep[] {
 /** How long building at (x, y) takes, as a fraction of the longest build time (0 to 1). */
 export function buildFractionAt(state: GameState, x: number, y: number, player?: PlayerId): number {
   if (!inBounds(state, x, y)) return 0;
-  const distance = Math.min(...homeKeeps(state, player).map((k) => distanceToKeep(k, x, y)));
+  // No looking back has no keep: building is quickest next to your royal (or, once yours has
+  // fallen, whichever's nearest).
+  const flood = state.flood;
+  const own = flood && player !== undefined ? royalOf(flood, player) : undefined;
+  const royals = flood ? (own ? [own] : livingRoyals(flood)) : [];
+  const distance = flood
+    ? Math.min(...royals.map(({ at }) => Math.max(Math.abs(x - at.x), Math.abs(y - at.y))))
+    : Math.min(...homeKeeps(state, player).map((k) => distanceToKeep(k, x, y)));
   const fraction = (distance - 1) / (BUILD_TIME.fullDistance - 1);
   return Math.min(1, Math.max(0, fraction));
 }

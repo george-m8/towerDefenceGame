@@ -1,6 +1,7 @@
 import {
   DEFAULT_MAP_SIZE,
   ENEMY,
+  FLOOD_LIQUIDS,
   KEEP_HP,
   KEEP_SIZE,
   MAP_SIZES,
@@ -24,7 +25,17 @@ import { addCue, updateCues } from "./cues";
 import { updateEffects } from "./effects";
 import { initialExplored, revealKeep } from "./fog";
 import { claimKeepWalls, placeKeepWalls } from "./keepWalls";
-import { generateTerrain, layoutFor } from "./mapgen";
+import {
+  assignRoyals,
+  createFlood,
+  planKing,
+  royalHome,
+  royalsFallen,
+  updateFlood,
+  withStartingRuins,
+} from "./flood";
+import { placeSwarm, populateFlood } from "./floodSwarms";
+import { floodLayout, generateTerrain, layoutFor, type MapLayout } from "./mapgen";
 import type { ItemsFile } from "./itemsFile";
 import { mapFromGame, spawnTiles, terrainGrid, type MapFile } from "./mapFile";
 import { randomInt } from "./rng";
@@ -35,11 +46,13 @@ import { updateTraps } from "./traps";
 import { removeDeadUnits, spawnUnit, updateSpawners, updateUnits } from "./units";
 import { createWaveState, sendWaveEarly, updateWaves } from "./waves";
 import { addPlayer, updateVotes } from "./players";
+import { createRafts, raiseLand, updateRafts } from "./rafts";
 import { applyRaidCommand, raiderRefusal, setRole, updateRaiders } from "./raiders";
 import type {
   Command,
   CommandResult,
   EnemiesCome,
+  FloodLiquid,
   GameMode,
   GameState,
   PlayerId,
@@ -53,7 +66,7 @@ export interface GameOptions {
   players?: string[];
   /** Fog of war (default on). Off, every tile is in sight. */
   fog?: boolean;
-  /** Endless (default) or PvP. */
+  /** Endless (default), PvP or No looking back (flood). */
   mode?: GameMode;
   /** How big the map is (default M). */
   size?: MapSize;
@@ -70,6 +83,10 @@ export interface GameOptions {
   enemiesCome?: EnemiesCome;
   /** A campaign level's last wave: beating it wins (default none: waves go on). */
   lastWave?: number;
+  /** No looking back: a keep this many tiles on, reaching which wins (default none: on for ever). */
+  floodGoal?: number;
+  /** No looking back: what the flood is (default lava). */
+  floodLiquid?: FloodLiquid;
 }
 
 export function createGame(seed: number, options: GameOptions = {}): GameState {
@@ -80,16 +97,29 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     keep: keepSide,
   } = MAP_SIZES[file?.size ?? options.size ?? DEFAULT_MAP_SIZE];
   const mode = file?.mode ?? options.mode ?? "endless";
-  // PvP has no waves, so its enemies come "all the time" (never).
-  const enemiesCome: EnemiesCome = mode === "pvp" ? "always" : (options.enemiesCome ?? "always");
-  const layout = file
+  // Only Endless has waves; the other modes' enemies come "all the time" (never).
+  const enemiesCome: EnemiesCome =
+    mode === "endless" ? (options.enemiesCome ?? "always") : "always";
+  // No looking back's map is made with a clear patch round the king's start (see floodLayout),
+  // and there's no keep at all.
+  const flooding =
+    mode === "flood" && !file ? floodLayout(width, height, seed, options.floodGoal ?? null) : null;
+  const generated: MapLayout = file
     ? {
         width,
         height,
         keeps: file.keeps.map((k) => ({ ...k, size: KEEP_SIZE })),
         spawnTiles: spawnTiles(file),
       }
-    : layoutFor(width, height, mode, keepSide);
+    : (flooding?.layout ??
+      // Rafts' keep sits in the middle of its raised land, wherever Endless's would.
+      layoutFor(width, height, mode, mode === "rafts" ? "centre" : keepSide));
+  // No looking back has no keep; Rafts' enemies come by water, not from a spawn strip.
+  const layout = flooding
+    ? { ...generated, keeps: [], spawnTiles: [] }
+    : mode === "rafts" && !file
+      ? { ...generated, spawnTiles: [] }
+      : generated;
   const { spawnTiles: spawns } = layout;
   const keepHp = mode === "pvp" ? PVP.keepHp : KEEP_HP;
 
@@ -100,7 +130,7 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     }
   }
 
-  const map = file
+  const generatedMap = file
     ? {
         terrain: terrainGrid(file),
         ruins: file.ruins.map(({ x, y, hp }) => ({ x, y, hpFraction: hp })),
@@ -108,7 +138,17 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
       }
     : options.blankMap
       ? { terrain: new Array<Terrain>(width * height).fill("ground"), ruins: [], chests: [] }
-      : generateTerrain(layout, seed);
+      : generateTerrain(generated, seed);
+  // No looking back's starting map gets ruins too, as new land does.
+  const started =
+    flooding && !options.blankMap
+      ? withStartingRuins(generatedMap, width, height, seed, flooding.king, flooding.home)
+      : { ...generatedMap, ruinSwarms: [] };
+  // Rafts: the keep's land raised above the flood to come.
+  const map =
+    mode === "rafts" && !file
+      ? { ...started, terrain: raiseLand(started.terrain, width, height, layout.keeps, seed) }
+      : started;
 
   const state: GameState = {
     seed,
@@ -153,9 +193,21 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
     limits: { ...options.items?.limits },
     rngState: seed,
     fog: options.fog ?? true,
+    flood: flooding
+      ? createFlood(
+          flooding.king,
+          width,
+          height,
+          options.floodGoal ?? null,
+          flooding.home,
+          options.floodLiquid,
+        )
+      : null,
+    rafts: mode === "rafts" ? createRafts() : null,
     explored: [],
   };
-  if (mode === "pvp") state.wave.countdown = Infinity; // no waves in PvP
+  // Only Endless (and Rafts, Endless by water) has waves.
+  if (mode !== "endless" && mode !== "rafts") state.wave.countdown = Infinity;
   state.explored = initialExplored(state);
   for (const name of options.players ?? ["Player 1"]) addPlayer(state, name);
   if (mode === "pvp") assignKeeps(state);
@@ -177,7 +229,12 @@ export function createGame(seed: number, options: GameOptions = {}): GameState {
       structure.keep = s.keep;
       structure.paid = 0;
     }
+  } else if (state.flood && !options.blankMap) {
+    populateFlood(state);
+    for (const middle of map.ruinSwarms) placeSwarm(state, middle);
   } else if (!options.blankMap) placeKeepWalls(state);
+  // No looking back: a royal for each player there is (solo); a room's are handed out when it starts.
+  if (state.flood) assignRoyals(state);
   return state;
 }
 
@@ -219,6 +276,8 @@ export function tick(state: GameState): void {
   updateEffects(state);
   updateCues(state);
   updateBuilding(state);
+  updateFlood(state);
+  updateRafts(state);
   updateSpawners(state);
   updateUnits(state); // before enemies, so a unit that steps in the way blocks them this tick
   updateEnemies(state);
@@ -230,7 +289,7 @@ export function tick(state: GameState): void {
   removeDeadUnits(state);
   collectIncome(state);
   collectFarmIncome(state);
-  const fallen = state.keeps.find((keep) => keep.hp <= 0);
+  const fallen = state.keeps.find((keep) => keep.hp <= 0) ?? royalsFallen(state);
   if (fallen && !state.gameOver) {
     state.gameOver = true;
     // PvP: the player whose keep still stands wins.
@@ -238,7 +297,7 @@ export function tick(state: GameState): void {
       state.winner = state.keeps.find((keep) => keep.hp > 0)?.owner ?? null;
     }
     addCue(state, "gameOver");
-  } else if (!state.gameOver && lastWaveBeaten(state)) {
+  } else if (!state.gameOver && (lastWaveBeaten(state) || royalHome(state))) {
     state.gameOver = true;
     state.won = true;
   }
@@ -314,8 +373,14 @@ export function applyCommand(
     }
     case "sell":
       return sellStructure(state, playerId, command.x, command.y);
+    case "planKing":
+      return planKing(state, playerId, command.x, command.y, command.queue === true);
     case "sendWave":
       if (state.mode === "pvp") return { ok: false, reason: "No waves in PvP" };
+      if (state.flood) {
+        const { name } = FLOOD_LIQUIDS[state.flood.liquid];
+        return { ok: false, reason: `No waves, just the ${name.toLowerCase()}` };
+      }
       return sendWaveEarly(state, playerId);
     case "debugOption":
       state.debug[command.option] = command.on;

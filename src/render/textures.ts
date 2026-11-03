@@ -1,5 +1,5 @@
 // Tile textures: a few faint pixel specks laid over a terrain tile's flat colour, so the ground
-// reads as dirt and water as rippling. Each style has a few variants, picked per tile from its
+// reads as grass and water as rippling. Each style has a few variants, picked per tile from its
 // position, so neighbouring tiles don't repeat. Worked out once (deterministically) and drawn as
 // cached images.
 import { TILE_SIZE } from "./palette";
@@ -10,11 +10,13 @@ import { TILE_SIZE } from "./palette";
  * rows, like the keep's walls. Cracked stone: the same blocks, chipped and cracked (a wall
  * that's been badly hit). Ruined stone: the same blocks, crumbling: some knocked out, mortar
  * worn away, and cracks. Planks: upright wooden boards held by two iron bands (gates). Haze: a
- * checker dither in faint bands, over the fog of war's top.
+ * checker dither in faint bands, over the fog of war's top. Grass: tufts of blades, light over
+ * dark, and the odd flower.
  */
 export type TextureStyle =
   | "speckle"
   | "pebbles"
+  | "grass"
   | "ore"
   | "ripple"
   | "stone"
@@ -41,6 +43,9 @@ const LIGHT = "rgba(255, 255, 255, 0.07)";
 const DARK = "rgba(0, 0, 0, 0.14)";
 const PEBBLE = "rgba(255, 240, 210, 0.12)";
 const RIPPLE = "rgba(255, 255, 255, 0.12)";
+const BLADE = "rgba(190, 235, 140, 0.13)";
+const BLADE_SHADE = "rgba(0, 20, 0, 0.18)";
+const FLOWER = "rgba(250, 240, 170, 0.45)";
 /** Haze: a cool grey, as white would vanish on the fog's off-white checker. */
 const HAZE = "rgba(130, 145, 170, 0.1)";
 const MORTAR = "rgba(0, 0, 0, 0.3)";
@@ -65,6 +70,25 @@ export function textureSpecks(style: TextureStyle, variant: number): Speck[] {
   if (style === "ruinedStone") return ruinedStoneSpecks(random);
   if (style === "planks") return plankSpecks(random);
   if (style === "haze") return hazeSpecks(random);
+  if (style === "grass") {
+    // Tufts: a few blades two grains tall, each with a shadow at its root; now and then a flower.
+    for (let tuft = 3 + Math.floor(random() * 3); tuft > 0; tuft--) {
+      const gx = Math.floor(random() * (GRAINS - 2));
+      const gy = Math.floor(random() * (GRAINS - 2));
+      specks.push({ x: gx * GRAIN_PX, y: gy * GRAIN_PX, w: 1, h: 2 * GRAIN_PX, colour: BLADE });
+      if (random() < 0.6) {
+        const x = gx * GRAIN_PX + 2;
+        specks.push({ x, y: gy * GRAIN_PX + 1, w: 1, h: 2 * GRAIN_PX - 1, colour: BLADE });
+      }
+      grain(gx, gy + 2, 2, BLADE_SHADE);
+    }
+    if (random() < 0.15) {
+      const x = 2 + Math.floor(random() * (TILE_SIZE - 4));
+      const y = 2 + Math.floor(random() * (TILE_SIZE - 4));
+      specks.push({ x, y, w: 1, h: 1, colour: FLOWER });
+    }
+    return specks;
+  }
   if (style === "ripple") {
     // Short light dashes, a few per tile, spread down it.
     for (let row = 1; row < GRAINS; row += 3) {

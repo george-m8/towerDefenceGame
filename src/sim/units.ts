@@ -1,6 +1,7 @@
 // The player's own people on the map. Each unit belongs to a player, has a kind (UNIT_KINDS)
 // and does what its kind's behaviour says every tick. See SPEC-unit-core.md.
 import {
+  FLOOD,
   STRUCTURES,
   TERRAIN,
   TICK_RATE,
@@ -25,6 +26,7 @@ import { attack, scout } from "./fieldUnits";
 import { guardSpotOf } from "./guards";
 import { siegeTargetAt } from "./towers";
 import { findPath, type PathOptions } from "./unitPaths";
+import { lavaWarning } from "./flood";
 import type { Enemy, Facing, GameState, PlayerId, Point, Structure, Terrain, Unit } from "./types";
 
 type Behaviour = (state: GameState, unit: Unit) => void;
@@ -54,6 +56,46 @@ function guard(state: GameState, unit: Unit) {
   } else if (spot) {
     walkTowards(state, unit, `spot ${spot.x},${spot.y}`, isAt(spot));
   }
+}
+
+/**
+ * No looking back's escort: it fights anything in reach; a fighter that closes in (range 1)
+ * goes after enemies near its royal; otherwise it walks to its spot beside the royal (or, if
+ * that's blocked, anywhere beside it) and stands there. Its royal fallen, it stands and fights.
+ */
+function escort(state: GameState, unit: Unit) {
+  if (atTileCentre(unit) && attackNearest(state, unit)) return;
+  const royal = unit.escort && state.flood?.royals[unit.escort.royal];
+  if (!royal || royal.fallen || !unit.escort) return;
+  const king = royal.at;
+  const kind = kindOf(unit);
+  const chase = kind.range <= 1 ? FLOOD.escortChase : 0;
+  const target = chase > 0 ? enemyToChase(state, unit, king, chase) : undefined;
+  if (target) {
+    walkTowards(state, unit, `chase ${target.id}`, (x, y) => reach(target, x, y) <= kind.range);
+    return;
+  }
+  const spot = { x: king.x + unit.escort.x, y: king.y + unit.escort.y };
+  if (canStand(state, spot.x, spot.y)) {
+    walkTowards(state, unit, `escort ${spot.x},${spot.y}`, isAt(spot));
+  } else {
+    walkTowards(state, unit, `by king ${king.x},${king.y}`, (x, y) => reach(king, x, y) <= 1);
+  }
+}
+
+/**
+ * No looking back, with a flood of water: a unit on a wet tile, where the water's about to come
+ * (its glow; see lavaWarning), gets out of the way, to the nearest dry tile, before doing anything
+ * else. Beside water that isn't coming (walled off, say) is dry. True while it does.
+ */
+function avoidWater(state: GameState, unit: Unit): boolean {
+  if (state.flood?.liquid !== "water") return false;
+  const wet = (x: number, y: number) => lavaWarning(state, x, y) !== null;
+  if (atTileCentre(unit) && !wet(unit.x, unit.y)) return false;
+  // Between tiles it carries on to the next first, and only goes on if that's wet too.
+  if (!atTileCentre(unit) && !wet(unit.tx, unit.ty)) return false;
+  walkTowards(state, unit, "dry", (x, y) => !wet(x, y));
+  return true;
 }
 
 /** Whether an enemy (or, in PvP, a rival unit) is within the unit's reach. */
@@ -256,7 +298,10 @@ export function updateUnits(state: GameState): void {
     if (unit.hp <= 0) continue;
     unit.attackCooldown = Math.max(0, unit.attackCooldown - 1);
     const tile = Math.round(unit.y) * state.width + Math.round(unit.x);
-    BEHAVIOURS[kindOf(unit).behaviour](state, unit);
+    if (avoidWater(state, unit)) {
+      // Out of the way of the water first.
+    } else if (unit.escort) escort(state, unit);
+    else BEHAVIOURS[kindOf(unit).behaviour](state, unit);
     if (Math.round(unit.y) * state.width + Math.round(unit.x) !== tile) unitMoved(state, unit);
   }
   occupancy.delete(state); // units have moved: rebuilt when next asked

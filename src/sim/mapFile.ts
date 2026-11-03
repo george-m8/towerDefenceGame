@@ -74,6 +74,9 @@ export const TERRAIN_CHARS: Record<Terrain, string> = {
   goldRock: "$",
   tree: "T",
   berries: "b",
+  lava: "^",
+  floodwater: "w",
+  hill: "h",
 };
 const TERRAIN_BY_CHAR = new Map(
   Object.entries(TERRAIN_CHARS).map(([terrain, char]) => [char, terrain as Terrain]),
@@ -110,8 +113,13 @@ export function mapName(title: string): string {
   return name || "untitled";
 }
 
-/** How many keeps a map of each mode has. */
-export const KEEPS_FOR_MODE: Record<GameMode, number> = { endless: 1, pvp: 2 };
+/** How many keeps a map of each mode has (No looking back maps are only generated, for now). */
+export const KEEPS_FOR_MODE: Record<GameMode, number> = {
+  endless: 1,
+  pvp: 2,
+  flood: 0,
+  rafts: 1,
+};
 
 export function mapWidth(map: Pick<MapFile, "size">): number {
   return MAP_SIZES[map.size].width;

@@ -89,7 +89,10 @@ export function handleConnection(hub: Hub, socket: WebSocket): void {
         if (seat) return send({ type: "error", reason: "Already in a room" });
         const room =
           message.type === "create"
-            ? openRoom(hub.registry, message.mode, message.size, message.enemiesCome)
+            ? openRoom(hub.registry, message.mode, message.size, message.enemiesCome, {
+                goal: message.goal,
+                liquid: message.liquid,
+              })
             : findRoom(hub.registry, message.room);
         if (!room) return send({ type: "error", reason: "No room with that code" });
         const result =

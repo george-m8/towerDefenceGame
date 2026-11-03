@@ -51,6 +51,11 @@ export function terrainAt(state: GameState, x: number, y: number): Terrain {
   return state.terrain[tileIndex(state, x, y)];
 }
 
+/** No looking back's flood, lava or water (see FLOOD_LIQUIDS): a game only ever has the one. */
+export function isFlooded(terrain: Terrain): boolean {
+  return terrain === "lava" || terrain === "floodwater";
+}
+
 /** Changes terrain at runtime (e.g. clearing a tree), so pathfinding recomputes. */
 export function setTerrain(state: GameState, x: number, y: number, terrain: Terrain): void {
   state.terrain[tileIndex(state, x, y)] = terrain;
@@ -178,6 +183,19 @@ export function canBuild(
   return { ok: true };
 }
 
+/** A wall (finished or not) or a ruin on a tile beside (x, y), not counting diagonals. */
+function joinsAWall(state: GameState, x: number, y: number): boolean {
+  return [
+    [x, y - 1],
+    [x + 1, y],
+    [x, y + 1],
+    [x - 1, y],
+  ].some(([nx, ny]) => {
+    const kind = baseAt(state, nx, ny)?.kind;
+    return kind === "wall" || kind === "ruin";
+  });
+}
+
 function canBuildOnTerrain(
   state: GameState,
   kind: StructureKind,
@@ -187,6 +205,15 @@ function canBuildOnTerrain(
   const terrain: TerrainStats = TERRAIN[terrainAt(state, x, y)];
   const stats: StructureStats = STRUCTURES[kind];
   const spansWater = stats.spansWater === true;
+  // No looking back: a wall can go on lava (or floodwater) if it joins on to a wall (or a ruin, an
+  // old one) beside it, so a line of walls can be built out across it, a tile at a time.
+  if (isFlooded(terrainAt(state, x, y)) && kind === "wall") {
+    return joinsAWall(state, x, y)
+      ? { ok: true }
+      : { ok: false, reason: `A wall on ${terrain.name.toLowerCase()} has to join on to a wall` };
+  }
+  // On a wall built out over it, the layer rules decide (a tower on the wall, say), as on land.
+  if (isFlooded(terrainAt(state, x, y)) && baseAt(state, x, y)) return { ok: true };
   if (terrain.buildable === "none") {
     return { ok: false, reason: `Can't build on ${terrain.name.toLowerCase()}` };
   }

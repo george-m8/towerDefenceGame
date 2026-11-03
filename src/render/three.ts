@@ -7,14 +7,25 @@
 // the camera, from a glyph atlas. Effects, bars and the ghost go over it all on the flat
 // renderer's own canvas (renderOverlay). World units are tiles: x east, z south, y up.
 import * as THREE from "three";
-import { ENEMY_KINDS, UNIT_KINDS } from "../sim/config";
+import { ENEMY_KINDS, RAFTS, UNIT_KINDS } from "../sim/config";
+import { livingRoyals, royalAt } from "../sim/flood";
 import { SEEN, UNEXPLORED, canSeeEnemiesAt, getSight } from "../sim/fog";
 import { baseAt, isBuilt, mountAt } from "../sim/grid";
 import { ringTiles } from "../sim/keepWalls";
 import type { GameState, PlayerId } from "../sim/types";
 import { ISO, tilePixels, viewCentre, type Camera } from "../ui/camera";
 import type { UiState } from "../ui/state";
-import { blockHeight, blockSideColour, createRenderer } from "./canvas";
+import {
+  RAFT_LIFT,
+  blockHeight,
+  blockSideColour,
+  bubbles,
+  createRenderer,
+  drawnHeight,
+  onRaft,
+} from "./canvas";
+import { changedTiles, flatPrints, shiftPrints, type FlatPrints } from "./flatChanges";
+import type { Rotation } from "./rotation";
 import { darknessAt, daylight, skyHour } from "./dayNight";
 import { sunDirection } from "./sun";
 import {
@@ -23,6 +34,7 @@ import {
   FOG,
   ENEMY_GLYPH_SCALE,
   GLYPH_FONTS,
+  ROYAL_GLYPHS,
   TILE_SIZE,
   playerColour,
 } from "./palette";
@@ -36,10 +48,15 @@ const CAMERA_DISTANCE = 400;
 const MAP_TEXTURE_MAX = 8192;
 /** The map texture's pixels a tile, at most (the flat map's own size). */
 const MAP_TEXTURE_TILE_MAX = TILE_SIZE;
-/** Repainting the map texture: at most this often when something changed... */
-const REPAINT_MIN_MS = 300;
-/** ...and at least this often anyway (building progress, damage, ore being mined). */
-const REPAINT_MAX_MS = 1500;
+/**
+ * How often the map texture is checked for tiles that need painting again (see flatChanges.ts):
+ * just those are painted, and uploaded a patch at a time...
+ */
+const REPAINT_MS = 300;
+/** ...in patches this many tiles square... */
+const PATCH_TILES = 16;
+/** ...unless more than this share of the map changed: then all of it. */
+const REPAINT_ALL_SHARE = 0.3;
 /** The glyph atlas: cells across (and down), and each cell's size in pixels. */
 const ATLAS_CELLS = 16;
 const ATLAS_CELL_PX = 64;
@@ -50,6 +67,11 @@ const SUN_LIGHT = 2;
 const NIGHT_SKY = 0.25;
 /** How tall an enemy's or unit's card stands, in tiles, before its size. */
 const CARD_TILES = 1.1;
+/** No looking back's royals stand a little taller than the rest. */
+const ROYAL_CARD_TILES = 1.5;
+
+/** How thick the slab of a river or the sea is below the ground, in tiles (see blockAt). */
+const SUNK_DEPTH = 0.25;
 
 /** A tower on a wall's ramparts: how tall they stand above its top, in tiles, and their merlons. */
 const RAMPART_TILES = 0.3;
@@ -183,6 +205,8 @@ function instances(
       mesh.count = 0;
       return mesh;
     },
+    /** The mesh as last filled, to change some of it in place. */
+    mesh: () => mesh,
     /** Says the matrices, colours and attributes set since reserve() are ready to draw. */
     done() {
       if (!mesh) return;
@@ -271,9 +295,22 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
   /** The map's size in tiles, for the block tops' UVs. */
   const mapSize = { value: new THREE.Vector2(1, 1) };
 
+  // Holes in the ground where rivers and the sea dip below it (see drawnHeight): a texel a tile,
+  // set where there's one, laid out as the map texture is (its first row the map's last).
+  const holes = { value: new THREE.DataTexture(new Uint8Array(4), 1, 1) };
+  const groundMaterial = new THREE.MeshLambertMaterial({ map: mapTexture });
+  groundMaterial.onBeforeCompile = (shader) => {
+    shader.uniforms.holes = holes;
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", "#include <common>\nuniform sampler2D holes;")
+      .replace(
+        "#include <map_fragment>",
+        "if (texture2D(holes, vMapUv).r > 0.5) discard;\n#include <map_fragment>",
+      );
+  };
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2).translate(0.5, 0, 0.5),
-    new THREE.MeshLambertMaterial({ map: mapTexture }),
+    groundMaterial,
   );
   ground.receiveShadow = true;
   scene.add(ground);
@@ -355,28 +392,114 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
   const cardScale = new THREE.Vector3();
   const turn = new THREE.Matrix4();
 
-  let painted: { key: string; tiers: Uint8Array | null; at: number } = {
-    key: "",
-    tiers: null,
-    at: -Infinity,
-  };
+  /** The blocks of bare lava and water, as [instance, x, y] in a row, to bubble each frame. */
+  let lavaBlocks: number[] = [];
 
-  /** Repaints the map texture and rebuilds the blocks, when the map or sight changes. */
-  function build(state: GameState, viewer: PlayerId, now: number) {
+  /**
+   * A block `h` tiles high at (x, y) into `matrix`. Below the ground (a river or the sea dipping),
+   * it's a slab SUNK_DEPTH thick with its top there, seen through a hole in the ground.
+   */
+  function blockAt(h: number, x: number, y: number) {
+    if (h >= 0) matrix.makeScale(1, h, 1).setPosition(x + 0.5, 0, y + 0.5);
+    else matrix.makeScale(1, SUNK_DEPTH, 1).setPosition(x + 0.5, h - SUNK_DEPTH, y + 0.5);
+  }
+
+  let painted: {
+    at: number;
+    shifted: number;
+    prints: FlatPrints | null;
+    pixels: number;
+    turns: Rotation;
+  } = { at: -Infinity, shifted: 0, prints: null, pixels: 0, turns: 0 };
+
+  /** Canvases (by size) a patch of the map texture is copied through to the GPU. */
+  const patches = new Map<string, THREE.Texture>();
+  const patchAt = new THREE.Vector2();
+
+  /**
+   * Sends the patches of the painted map holding `tiles` to the map texture, rather than all of
+   * it (it's flipped: its first row is the canvas's last).
+   */
+  function uploadTiles(tiles: number[], width: number, pixels: number) {
+    const touched = new Set<number>();
+    const across = Math.ceil(width / PATCH_TILES);
+    for (const i of tiles) {
+      const x = i % width;
+      const y = (i - x) / width;
+      touched.add(Math.floor(y / PATCH_TILES) * across + Math.floor(x / PATCH_TILES));
+    }
+    let left = touched.size;
+    for (const patch of touched) {
+      const px = (patch % across) * PATCH_TILES * pixels;
+      const py = Math.floor(patch / across) * PATCH_TILES * pixels;
+      const pw = Math.min(PATCH_TILES * pixels, paintCanvas.width - px);
+      const ph = Math.min(PATCH_TILES * pixels, paintCanvas.height - py);
+      let source = patches.get(`${pw}x${ph}`);
+      if (!source) {
+        const c = document.createElement("canvas");
+        c.width = pw;
+        c.height = ph;
+        source = new THREE.Texture(c);
+        patches.set(`${pw}x${ph}`, source);
+      }
+      const c = source.image as HTMLCanvasElement;
+      const g = c.getContext("2d")!;
+      g.clearRect(0, 0, pw, ph);
+      g.drawImage(paintCanvas, px, py, pw, ph, 0, 0, pw, ph);
+      // The zoomed-out levels are made again once, after the last patch.
+      mapTexture.generateMipmaps = --left === 0;
+      renderer.copyTextureToTexture(
+        source,
+        mapTexture,
+        null,
+        patchAt.set(px, paintCanvas.height - py - ph),
+      );
+    }
+    mapTexture.generateMipmaps = true;
+  }
+
+  /**
+   * Repaints the map texture and rebuilds the blocks, when the map or sight changes: checked
+   * every REPAINT_MS, and when No looking back's world moves on (or the ground would lag behind
+   * the blocks and the king). Only the tiles that changed are painted (see flatChanges.ts); the
+   * world moving on slides what's painted along.
+   */
+  function build(state: GameState, viewer: PlayerId, now: number, turns: Rotation) {
+    const shifted = state.flood?.shifted ?? 0;
+    const moved = shifted !== painted.shifted;
+    if (!moved && now - painted.at < REPAINT_MS) return;
     const tiers = state.fog ? getSight(state, viewer) : null;
-    const key = `${state.width}x${state.height}:${state.gridVersion}:${state.fog}`;
-    const changed = key !== painted.key || tiers !== painted.tiers;
-    if (now - painted.at < (changed ? REPAINT_MIN_MS : REPAINT_MAX_MS)) return;
-    painted = { key, tiers, at: now };
     const { width, height } = state;
     const pixels = Math.max(
       4,
       Math.min(MAP_TEXTURE_TILE_MAX, Math.floor(textureMax / Math.max(width, height))),
     );
     const resized = paintCanvas.width !== width * pixels || paintCanvas.height !== height * pixels;
-    painter.renderFlat(state, viewer, pixels);
-    if (resized) mapTexture.dispose(); // a new size needs a new GPU texture
-    mapTexture.needsUpdate = true;
+    const prints = flatPrints(state, tiers, turns);
+    let before = painted.prints;
+    if (resized || painted.pixels !== pixels || painted.turns !== turns) before = null;
+    if (before && moved) {
+      // Slid along with the world, if it's gone the way the picture can follow.
+      const columns = shifted - painted.shifted;
+      if (turns === 0 && columns > 0 && columns < width) {
+        painter.shiftFlat(columns, pixels);
+        before = { tiles: shiftPrints(before.tiles, width, columns), gates: before.gates };
+      } else before = null;
+    }
+    const changed =
+      before && before.gates === prints.gates ? changedTiles(before.tiles, prints.tiles) : null;
+    painted = { at: now, shifted, prints, pixels, turns };
+    if (changed && changed.length === 0 && !moved) return; // nothing to paint, nor blocks
+    if (!changed || changed.length > REPAINT_ALL_SHARE * width * height) {
+      painter.renderFlat(state, viewer, pixels, turns);
+      if (resized) mapTexture.dispose(); // a new size needs a new GPU texture
+      mapTexture.needsUpdate = true;
+    } else {
+      painter.renderFlatTiles(state, viewer, pixels, turns, changed);
+      // Slid along, every tile's moved: all of it goes up (but little was painted).
+      if (moved) mapTexture.needsUpdate = true;
+      else uploadTiles(changed, width, pixels);
+    }
     mapSize.value.set(width, height);
     ground.scale.set(width, 1, height);
 
@@ -385,19 +508,25 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
     let crowned = 0;
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
-        if (blockHeight(state, x, y) > 0) count++;
+        if (blockHeight(state, x, y) > 0 || bubbles(state, x, y)) count++;
         if (hasRamparts(state, ring, x, y)) crowned++;
       }
     }
     const mesh = blocks.reserve(count);
     const walls = ramparts.reserve(crowned * 4);
+    lavaBlocks = [];
+    const holed = new Uint8Array(width * height * 4);
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
-        const h = blockTiles(state, x, y);
+        const h = (drawnHeight(state, x, y, now) / TILE_SIZE) * ISO.heightScale;
         const tier = tiers?.[y * width + x];
-        if (h <= 0 || tier === UNEXPLORED) continue;
-        matrix.makeScale(1, h, 1).setPosition(x + 0.5, 0, y + 0.5);
+        // Rivers and the sea dip below the ground, through a hole in it.
+        const sinks = bubbles(state, x, y) && blockHeight(state, x, y) === 0;
+        if ((h <= 0 && !sinks) || tier === UNEXPLORED) continue;
+        if (sinks) holed[((height - 1 - y) * width + x) * 4] = 255;
+        blockAt(h, x, y);
         mesh.setMatrixAt(mesh.count, matrix);
+        if (bubbles(state, x, y)) lavaBlocks.push(mesh.count, x, y);
         // The sides' colour: the block's own (a tower on a wall, the wall's), misted like its top where it's only been seen.
         side.copy(colourOf(blockSideColour(state, x, y)));
         if (tier === SEEN) side.lerp(fogColour, FOG.seen.opacity);
@@ -419,15 +548,57 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
     }
     blocks.done();
     ramparts.done();
+    holes.value.dispose();
+    holes.value = new THREE.DataTexture(holed, width, height);
+    holes.value.needsUpdate = true;
+  }
+
+  /** Lava's and water's blocks rise and fall a little, every frame (see drawnHeight). */
+  function bubble(state: GameState, now: number) {
+    const mesh = blocks.mesh();
+    if (!mesh) return;
+    for (let k = 0; k < lavaBlocks.length; k += 3) {
+      const [i, x, y] = [lavaBlocks[k], lavaBlocks[k + 1], lavaBlocks[k + 2]];
+      blockAt((drawnHeight(state, x, y, now) / TILE_SIZE) * ISO.heightScale, x, y);
+      mesh.setMatrixAt(i, matrix);
+    }
+    if (lavaBlocks.length > 0) mesh.instanceMatrix.needsUpdate = true;
+  }
+
+  // Rafts: wooden slabs on the water, RAFT_LIFT pixels up (see drawRafts in canvas.ts).
+  const raftSlabs = instances(
+    scene,
+    new THREE.BoxGeometry(1, 1, 1).translate(0.5, 0.5, 0.5),
+    new THREE.MeshLambertMaterial({ color: COLOURS.raft }),
+    true,
+  );
+  /** A raft's top, in tiles up. */
+  const raftTop = (RAFT_LIFT / TILE_SIZE) * ISO.heightScale;
+
+  /** The rafts the viewer can see, every frame. */
+  function placeRafts(state: GameState, viewer: PlayerId) {
+    const boats = state.rafts?.boats ?? [];
+    const mesh = raftSlabs.reserve(boats.length);
+    const n = RAFTS.raftTiles;
+    for (const raft of boats) {
+      if (!canSeeEnemiesAt(state, raft.x + n / 2, raft.y + n / 2, viewer)) continue;
+      const thick = raftTop / 2;
+      matrix
+        .makeScale(n - 0.08, thick, n - 0.08)
+        .setPosition(raft.x + 0.04, raftTop - thick, raft.y + 0.04);
+      mesh.setMatrixAt(mesh.count++, matrix);
+    }
+    raftSlabs.done();
   }
 
   /** Enemies, units and chests: every frame, where the viewer can see them. */
   function placeMovers(state: GameState, viewer: PlayerId) {
-    const mesh = cards.reserve(state.enemies.length + state.units.length);
+    const royals = state.flood?.royals.length ?? 0;
+    const mesh = cards.reserve(state.enemies.length + state.units.length + royals);
     const cell = mesh.geometry.getAttribute("cell") as THREE.InstancedBufferAttribute;
     const card = (x: number, y: number, size: number, glyph: string, colour: string) => {
       // Standing on a block (a unit on a wall), it stands on the block's top.
-      const top = blockTiles(state, Math.round(x), Math.round(y));
+      const top = onRaft(state, x, y) ? raftTop : blockTiles(state, Math.round(x), Math.round(y));
       spot.set(x + 0.5, top, y + 0.5);
       matrix.compose(spot, camera.quaternion, cardScale.setScalar(size));
       mesh.setMatrixAt(mesh.count, matrix);
@@ -445,6 +616,12 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
     for (const unit of state.units) {
       if (!canSeeEnemiesAt(state, unit.x, unit.y, viewer)) continue;
       card(unit.x, unit.y, CARD_TILES, UNIT_KINDS[unit.kind].glyph, playerColour(unit.owner));
+    }
+    // No looking back's royals, always in sight (they're what see).
+    for (const royal of state.flood ? livingRoyals(state.flood) : []) {
+      const at = royalAt(royal);
+      const glyph = ROYAL_GLYPHS[royal.title];
+      card(at.x, at.y, ROYAL_CARD_TILES, glyph, playerColour(royal.owner));
     }
     cards.done();
 
@@ -491,8 +668,11 @@ export function createRenderer3d(canvas: HTMLCanvasElement) {
       renderer.setSize(cam.viewWidth, cam.viewHeight, false);
       placeCamera(camera, ui);
       placeSun(state, ui);
-      build(state, ui.playerId, performance.now());
+      const now = performance.now();
+      build(state, ui.playerId, now, ui.rotation);
+      bubble(state, now);
       placeMovers(state, ui.playerId);
+      placeRafts(state, ui.playerId);
       renderer.render(scene, camera);
     },
   };
