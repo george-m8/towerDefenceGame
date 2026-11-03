@@ -3,6 +3,7 @@ import { RAFTS, TICK_RATE } from "../../src/sim/config";
 import { applyCommand, createGame, tick } from "../../src/sim/game";
 import { canBuild, isKeepTile, placeStructure, tileIndex } from "../../src/sim/grid";
 import { launchRaft } from "../../src/sim/rafts";
+import { KEEP, NONE, enclosureAt } from "../../src/sim/enclosures";
 import type { GameState } from "../../src/sim/types";
 
 const ME = 1;
@@ -76,6 +77,54 @@ describe("Rafts", () => {
         "floodwater",
       );
     }
+  });
+
+  it("parks against a walled shore, and its riders break the wall to get off", () => {
+    const state = raftsGame();
+    run(state, 40);
+    const { width, height } = state;
+    const water = (x: number, y: number) =>
+      ["floodwater", "river", "sea"].includes(state.terrain[y * width + x]);
+    const walls = [];
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const t = state.terrain[y * width + x];
+        if (!(t === "hill" || t === "ground" || t === "berries") || state.base[y * width + x])
+          continue;
+        if (
+          [
+            [1, 0],
+            [-1, 0],
+            [0, 1],
+            [0, -1],
+          ].some(([dx, dy]) => water(x + dx, y + dy))
+        ) {
+          const wall = placeStructure(state, "wall", x, y, "N", ME);
+          wall.buildLeft = 0;
+          walls.push(wall);
+        }
+      }
+    }
+    launchRaft(state, ["goblin", "goblin", "goblin", "goblin"], { wave: 5 });
+    const [raft] = state.rafts!.boats;
+    const before = performance.now();
+    run(state, 150);
+    expect(performance.now() - before).toBeLessThan(15_000); // doesn't grind to a halt
+    expect(walls.some((w) => !state.structures[w.id])).toBe(true); // broken through
+    expect(state.rafts!.boats).not.toContain(raft);
+    expect(state.enemies.some((e) => e.raft === undefined)).toBe(true); // ashore
+  });
+
+  it("counts the open island as open: only land walled off from the water's an enclosure", () => {
+    const state = raftsGame();
+    run(state, 40);
+    const keep = state.keeps[0];
+    // On the raised land, well out from the keep's walls but not by the water.
+    const x = keep.x + 7;
+    const y = keep.y + 1;
+    expect(state.terrain[tileIndex(state, x, y)]).not.toBe("floodwater");
+    expect(enclosureAt(state, x, y)).toBe(NONE);
+    expect(enclosureAt(state, keep.x - 1, keep.y + 1)).toBe(KEEP); // inside its starter walls
   });
 
   it("drains water walled off from the edge", () => {

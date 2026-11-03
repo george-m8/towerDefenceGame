@@ -229,6 +229,8 @@ export interface Raft {
   riders: number[];
   /** Ticks it's been without a way to the shore. */
   stuck: number;
+  /** At the shore: its riders get off, or break the wall in their way first. */
+  docked: boolean;
   /** The tick it sets off: till then it waits at the edge, taking on more of the wave. */
   boardUntil: number;
 }

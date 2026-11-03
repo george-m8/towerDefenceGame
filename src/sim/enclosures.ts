@@ -1,4 +1,5 @@
-// Enclosures: areas enemies can't walk to from the spawn (or, with no spawn, from the map's edges). Building inside one (or on its walls)
+// Enclosures: areas enemies can't walk to from the spawn (or, with no spawn, from the map's edges;
+// in Rafts, sailing as well as walking). Building inside one (or on its walls)
 // is cheaper: 50% off in the keep's enclosure, 25% off in any other. Worked out from the grid
 // alone, so the server and every client agree.
 //
@@ -100,15 +101,24 @@ export function priceAt(
 function findEnclosures(state: GameState): Enclosures {
   const { width, height } = state;
   const size = width * height;
-  /** Open: somewhere an enemy could stand (walkable, nothing blocking, not the keep). */
+  /**
+   * Open: somewhere an enemy could stand (walkable, nothing blocking, not the keep). In Rafts,
+   * open water too, with nothing built on it: enemies come over it, on rafts.
+   */
   const open = new Array<boolean>(size);
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
+      const t = state.terrain[y * width + x];
+      const sailed =
+        state.rafts !== null &&
+        (t === "floodwater" || t === "river" || t === "sea") &&
+        !baseAt(state, x, y);
       open[y * width + x] =
-        isWalkable(state, x, y) &&
-        !blocksAt(state, x, y) &&
-        !closesRingAt(state, x, y) &&
-        !isKeepTile(state, x, y);
+        sailed ||
+        (isWalkable(state, x, y) &&
+          !blocksAt(state, x, y) &&
+          !closesRingAt(state, x, y) &&
+          !isKeepTile(state, x, y));
     }
   }
 

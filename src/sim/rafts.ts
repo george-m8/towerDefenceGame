@@ -6,7 +6,7 @@
 // Towers can shoot them on the way; walls built out across the water (see canBuild) can block
 // a raft's way. If they shut it off, it waits, and in the end puts them off wherever it can.
 import { RAFTS, RESOURCES, TERRAIN, TICK_RATE, type EnemyKindId } from "./config";
-import { spawnEnemy, type SpawnOptions } from "./enemies";
+import { attack, spawnEnemy, type SpawnOptions } from "./enemies";
 import { baseAt, blocksAt, inBounds, isKeepTile, mountAt, removeStructure } from "./grid";
 import { nextRandom, randomInt } from "./rng";
 import type { Enemy, GameState, Keep, Point, Raft, Rafts, Terrain } from "./types";
@@ -123,7 +123,8 @@ export function updateRafts(state: GameState): void {
   if (state.tick % TICK_RATE === 0 && state.tick >= RAFTS.floodSeconds * TICK_RATE) {
     drain(state, rafts, liveWater(state));
   }
-  for (const raft of rafts.boats) sail(state, raft);
+  const aboard = new Map(state.enemies.map((e) => [e.id, e]));
+  for (const raft of rafts.boats) sail(state, raft, aboard);
   rafts.boats = rafts.boats.filter((raft) => raft.riders.length > 0);
 }
 
@@ -277,6 +278,7 @@ export function launchRaft(
     pathVersion: -1,
     riders: [],
     stuck: 0,
+    docked: false,
     boardUntil: state.tick + RAFTS.boardSeconds * TICK_RATE,
   };
   board(raft, riders);
@@ -355,7 +357,10 @@ function shoreBeside(state: GameState, land: Uint8Array, x: number, y: number): 
   return round(state, x, y, (p) => open(state, land, p));
 }
 
-/** The shortest way over water from (x, y) to water beside the mainland, or null. */
+/**
+ * The shortest way over water from (x, y) to water beside the mainland (walled or not: riders
+ * break their way in), or null.
+ */
 function wayToShore(state: GameState, from: Point): Point[] | null {
   const { width } = state;
   const land = mainland(state);
@@ -369,7 +374,7 @@ function wayToShore(state: GameState, from: Point): Point[] | null {
     const ashore = deck(x, y).some((t) =>
       FOUR.some((d) => {
         const p = { x: t.x + d.x, y: t.y + d.y };
-        return inBounds(state, p.x, p.y) && open(state, land, p);
+        return inBounds(state, p.x, p.y) && land[p.y * width + p.x] === 1;
       }),
     );
     if (ashore) {
@@ -391,22 +396,35 @@ function wayToShore(state: GameState, from: Point): Point[] | null {
   return null;
 }
 
-/** One tick of a raft: on along its way, its riders with it; at the shore, they get off. */
-function sail(state: GameState, raft: Raft): void {
-  const aboard = new Map(state.enemies.map((e) => [e.id, e]));
+/**
+ * One tick of a raft: on along its way to the shore, its riders with it. There, they get off; if
+ * the shore's walled (the raft's as good as land), they break the wall from the raft, as they
+ * would standing on land, and get off once it's down. A raft finds its way again when the map
+ * changes, and with no way at all, tries again once a second; after RAFTS.strandedSeconds it puts
+ * them off wherever it can, or they break whatever's beside it.
+ */
+function sail(state: GameState, raft: Raft, aboard: Map<number, Enemy>): void {
   const riders = raft.riders.map((id) => aboard.get(id)).filter((e): e is Enemy => !!e && e.hp > 0);
   raft.riders = riders.map((e) => e.id);
   if (riders.length === 0) return;
   if (raft.boardUntil > state.tick) return; // still boarding, at the edge
   const at = { x: Math.round(raft.x), y: Math.round(raft.y) };
   const settled = raft.x === at.x && raft.y === at.y;
-  if (settled && (raft.path.length === 0 || raft.pathVersion !== state.gridVersion)) {
+  const stale = raft.pathVersion !== state.gridVersion;
+  const lost = raft.path.length === 0 && !raft.docked;
+  if (settled && (stale || (lost && raft.stuck % TICK_RATE === 0))) {
     const way = wayToShore(state, at);
     raft.pathVersion = state.gridVersion;
     raft.path = way ?? [];
-    if (way && way.length === 0)
-      return land(raft, riders, shoreBeside(state, mainland(state), at.x, at.y));
-    if (!way && ++raft.stuck > RAFTS.strandedSeconds * TICK_RATE) {
+    raft.docked = way !== null && way.length === 0;
+    if (way) raft.stuck = 0;
+  }
+  if (settled && raft.docked) {
+    const shore = shoreBeside(state, mainland(state), at.x, at.y);
+    if (shore.length > 0) return land(raft, riders, shore);
+    besiege(state, riders, at);
+  } else if (settled && raft.path.length === 0) {
+    if (++raft.stuck > RAFTS.strandedSeconds * TICK_RATE) {
       const anywhere = round(
         state,
         at.x,
@@ -415,6 +433,7 @@ function sail(state: GameState, raft: Raft): void {
           TERRAIN[state.terrain[p.y * state.width + p.x]].walkable && !blocksAt(state, p.x, p.y),
       );
       if (anywhere.length > 0) return land(raft, riders, anywhere);
+      besiege(state, riders, at);
     }
   }
   const next = raft.path[0];
@@ -422,6 +441,7 @@ function sail(state: GameState, raft: Raft): void {
     // The water might have been built over since: find the way again from here.
     if (settled && !afloat(state, next.x, next.y)) {
       raft.path = [];
+      raft.pathVersion = -1;
       return;
     }
     let step = RAFTS.raftSpeed / TICK_RATE;
@@ -432,6 +452,7 @@ function sail(state: GameState, raft: Raft): void {
       raft.x = next.x;
       raft.y = next.y;
       raft.path = raft.path.slice(1);
+      if (raft.path.length === 0) raft.pathVersion = -1; // there: see what's ashore
     } else {
       step /= left;
       raft.x += dx * step;
@@ -447,6 +468,16 @@ function sail(state: GameState, raft: Raft): void {
     rider.tx = Math.round(spot.x);
     rider.ty = Math.round(spot.y);
   });
+}
+
+/** The riders break what's in their way beside the raft (a wall on the shore, say). */
+function besiege(state: GameState, riders: Enemy[], at: Point): void {
+  const [target] = round(state, at.x, at.y, (p) => blocksAt(state, p.x, p.y))
+    .map((p) => baseAt(state, p.x, p.y) ?? mountAt(state, p.x, p.y))
+    .filter((s) => s !== undefined)
+    .sort((a, b) => a.id - b.id);
+  if (!target) return;
+  for (const rider of riders) attack(state, rider, target);
 }
 
 /** The riders get off, onto the `shore` tiles round the raft, and it's done. */
