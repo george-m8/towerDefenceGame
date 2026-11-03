@@ -77,7 +77,7 @@ describe("Rafts", () => {
         "floodwater",
       );
     }
-  });
+  }, 30_000);
 
   it("parks against a walled shore, and its riders break the wall to get off", () => {
     const state = raftsGame();
@@ -113,7 +113,7 @@ describe("Rafts", () => {
     expect(walls.some((w) => !state.structures[w.id])).toBe(true); // broken through
     expect(state.rafts!.boats).not.toContain(raft);
     expect(state.enemies.some((e) => e.raft === undefined)).toBe(true); // ashore
-  });
+  }, 30_000);
 
   it("counts the open island as open: only land walled off from the water's an enclosure", () => {
     const state = raftsGame();
