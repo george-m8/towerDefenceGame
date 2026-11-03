@@ -1230,6 +1230,8 @@ export const RAFTS = {
   raftSpeed: 1.5,
   boardSeconds: 4,
   riders: 8,
+  /** An empty raft (its riders off, or shot) stays on the water this long before it goes. */
+  emptySeconds: 15,
   /** A raft is this many tiles square; its riders stand spread over it. */
   raftTiles: 2,
   strandedSeconds: 30,

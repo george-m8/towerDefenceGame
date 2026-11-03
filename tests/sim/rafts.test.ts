@@ -74,8 +74,7 @@ describe("Rafts", () => {
     const start = { x: raft.x, y: raft.y };
     run(state, RAFTS.boardSeconds + 2);
     expect(Math.hypot(raft.x - start.x, raft.y - start.y)).toBeGreaterThan(1); // under way
-    run(state, 120);
-    expect(state.rafts!.boats).toEqual([]);
+    for (let t = 0; t < 120 * TICK_RATE && raft.riders.length > 0; t++) tick(state);
     // Ashore, on land joined to the keep.
     expect(state.enemies.length).toBeGreaterThan(0);
     for (const e of state.enemies) {
@@ -84,6 +83,11 @@ describe("Rafts", () => {
         "floodwater",
       );
     }
+    // The empty raft stays on the water a while, then goes.
+    run(state, RAFTS.emptySeconds - 1);
+    expect(state.rafts!.boats).toEqual([raft]);
+    run(state, 2);
+    expect(state.rafts!.boats).toEqual([]);
   }, 30_000);
 
   it("parks against a walled shore, and its riders break the wall to get off", () => {

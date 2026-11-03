@@ -231,6 +231,8 @@ export interface Raft {
   stuck: number;
   /** At the shore: its riders get off, or break the wall in their way first. */
   docked: boolean;
+  /** Once it's empty, the tick it goes (it stays a while, see RAFTS.emptySeconds); null till then. */
+  emptyUntil: number | null;
   /** The tick it sets off: till then it waits at the edge, taking on more of the wave. */
   boardUntil: number;
 }

@@ -125,7 +125,10 @@ export function updateRafts(state: GameState): void {
   }
   const aboard = new Map(state.enemies.map((e) => [e.id, e]));
   for (const raft of rafts.boats) sail(state, raft, aboard);
-  rafts.boats = rafts.boats.filter((raft) => raft.riders.length > 0);
+  // An empty raft (its riders off, or shot) stays a while, then goes.
+  rafts.boats = rafts.boats.filter(
+    (raft) => raft.emptyUntil === null || state.tick < raft.emptyUntil,
+  );
 }
 
 /** Whether the flood can take (x, y): not raised land, the keep, walls, or what stands up from it. */
@@ -316,6 +319,7 @@ export function launchRaft(
     stuck: 0,
     docked: false,
     boardUntil: state.tick + RAFTS.boardSeconds * TICK_RATE,
+    emptyUntil: null,
   };
   board(raft, riders);
   rafts.boats.push(raft);
@@ -447,7 +451,10 @@ function wayToShore(state: GameState, from: Point): Point[] | null {
 function sail(state: GameState, raft: Raft, aboard: Map<number, Enemy>): void {
   const riders = raft.riders.map((id) => aboard.get(id)).filter((e): e is Enemy => !!e && e.hp > 0);
   raft.riders = riders.map((e) => e.id);
-  if (riders.length === 0) return;
+  if (riders.length === 0) {
+    raft.emptyUntil ??= state.tick + RAFTS.emptySeconds * TICK_RATE;
+    return;
+  }
   if (raft.boardUntil > state.tick) return; // still boarding, at the edge
   const at = { x: Math.round(raft.x), y: Math.round(raft.y) };
   const settled = raft.x === at.x && raft.y === at.y;

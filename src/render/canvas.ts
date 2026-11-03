@@ -1442,6 +1442,10 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       const top = raft.y * TILE_SIZE - RAFT_LIFT + 1;
       const size = n * TILE_SIZE - 2;
       ctx!.save();
+      // An empty raft fades out over its last second.
+      if (raft.emptyUntil !== null) {
+        ctx!.globalAlpha = Math.min(1, Math.max(0, (raft.emptyUntil - state.tick) / TICK_RATE));
+      }
       ctx!.beginPath();
       ctx!.rect(left - 1, row * TILE_SIZE - RAFT_LIFT, size + 2, TILE_SIZE);
       if (row === Math.floor(raft.y + n - 0.01)) {
