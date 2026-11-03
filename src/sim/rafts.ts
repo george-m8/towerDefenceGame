@@ -189,7 +189,8 @@ function rise(state: GameState, live: Uint8Array): void {
       if (edge || besideOnMap(state, x, y).some((n) => live[n])) under.push(y * width + x);
     }
   }
-  for (const i of under) drown(state, i % width, Math.floor(i / width));
+  const going = new Set(under);
+  for (const i of under) drown(state, i % width, Math.floor(i / width), going);
 }
 
 /**
@@ -219,16 +220,51 @@ function drain(state: GameState, rafts: Rafts, live: Uint8Array): void {
   rafts.draining = draining;
 }
 
-/** A tile goes under: floodwater, with what's on it gone (units and enemies drown). */
-function drown(state: GameState, x: number, y: number): void {
+/**
+ * A tile goes under: floodwater, with what's built and lying on it gone. Units and enemies on it
+ * scramble to dry land beside it (not going under too), or drown if there's none: so riders who
+ * break a wall holding the water back aren't all washed away as it comes through behind them.
+ */
+function drown(state: GameState, x: number, y: number, going: Set<number>): void {
   const mount = mountAt(state, x, y);
   if (mount) removeStructure(state, mount);
   const base = baseAt(state, x, y);
   if (base) removeStructure(state, base);
   state.terrain[y * state.width + x] = "floodwater";
   const on = (p: Point) => Math.round(p.x) === x && Math.round(p.y) === y;
-  for (const unit of state.units) if (on(unit)) unit.hp = 0;
-  state.enemies = state.enemies.filter((e) => e.raft !== undefined || !on(e));
+  const dry = round(state, x, y, 1, (p) => {
+    const i = p.y * state.width + p.x;
+    return (
+      TERRAIN[state.terrain[i]].walkable &&
+      !going.has(i) &&
+      !blocksAt(state, p.x, p.y) &&
+      !isKeepTile(state, p.x, p.y)
+    );
+  });
+  const ashore = (mover: { x: number; y: number; tx: number; ty: number }, k: number) => {
+    const p = dry[k % dry.length];
+    mover.x = mover.tx = p.x;
+    mover.y = mover.ty = p.y;
+  };
+  let k = 0;
+  for (const unit of state.units) {
+    if (!on(unit)) continue;
+    if (dry.length === 0) unit.hp = 0;
+    else {
+      ashore(unit, k++);
+      unit.path = [];
+      unit.pathGoal = null;
+    }
+  }
+  state.enemies = state.enemies.filter((e) => {
+    if (e.raft !== undefined || !on(e)) return true;
+    if (dry.length === 0) return false;
+    ashore(e, k++);
+    e.px = e.x;
+    e.py = e.y;
+    e.steer = null;
+    return true;
+  });
   state.features = state.features.filter((f) => !on(f));
   state.gridVersion++;
 }
@@ -333,9 +369,14 @@ function mainland(state: GameState): Uint8Array {
   return land;
 }
 
-/** The tiles round a raft at (x, y) (not under it) where `keep` holds. */
-function round(state: GameState, x: number, y: number, keep: (p: Point) => boolean): Point[] {
-  const n = RAFTS.raftTiles;
+/** The tiles round an n-tile square at (x, y) (a raft, say; not under it) where `keep` holds. */
+function round(
+  state: GameState,
+  x: number,
+  y: number,
+  n: number,
+  keep: (p: Point) => boolean,
+): Point[] {
   const tiles: Point[] = [];
   for (let ty = y - 1; ty <= y + n; ty++) {
     for (let tx = x - 1; tx <= x + n; tx++) {
@@ -354,7 +395,7 @@ function open(state: GameState, land: Uint8Array, p: Point): boolean {
 
 /** The mainland round a raft at (x, y) its riders can step onto. */
 function shoreBeside(state: GameState, land: Uint8Array, x: number, y: number): Point[] {
-  return round(state, x, y, (p) => open(state, land, p));
+  return round(state, x, y, RAFTS.raftTiles, (p) => open(state, land, p));
 }
 
 /**
@@ -429,6 +470,7 @@ function sail(state: GameState, raft: Raft, aboard: Map<number, Enemy>): void {
         state,
         at.x,
         at.y,
+        RAFTS.raftTiles,
         (p) =>
           TERRAIN[state.terrain[p.y * state.width + p.x]].walkable && !blocksAt(state, p.x, p.y),
       );
@@ -472,7 +514,7 @@ function sail(state: GameState, raft: Raft, aboard: Map<number, Enemy>): void {
 
 /** The riders break what's in their way beside the raft (a wall on the shore, say). */
 function besiege(state: GameState, riders: Enemy[], at: Point): void {
-  const [target] = round(state, at.x, at.y, (p) => blocksAt(state, p.x, p.y))
+  const [target] = round(state, at.x, at.y, RAFTS.raftTiles, (p) => blocksAt(state, p.x, p.y))
     .map((p) => baseAt(state, p.x, p.y) ?? mountAt(state, p.x, p.y))
     .filter((s) => s !== undefined)
     .sort((a, b) => a.id - b.id);

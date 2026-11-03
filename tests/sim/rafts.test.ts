@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { RAFTS, TICK_RATE } from "../../src/sim/config";
 import { applyCommand, createGame, tick } from "../../src/sim/game";
-import { canBuild, isKeepTile, placeStructure, tileIndex } from "../../src/sim/grid";
+import {
+  canBuild,
+  isKeepTile,
+  placeStructure,
+  removeStructure,
+  tileIndex,
+} from "../../src/sim/grid";
+import { spawnEnemy } from "../../src/sim/enemies";
 import { launchRaft } from "../../src/sim/rafts";
 import { KEEP, NONE, enclosureAt } from "../../src/sim/enclosures";
 import type { GameState } from "../../src/sim/types";
@@ -125,6 +132,42 @@ describe("Rafts", () => {
     expect(state.terrain[tileIndex(state, x, y)]).not.toBe("floodwater");
     expect(enclosureAt(state, x, y)).toBe(NONE);
     expect(enclosureAt(state, keep.x - 1, keep.y + 1)).toBe(KEEP); // inside its starter walls
+  });
+
+  it("lets those on land the flood comes over get out of its way, rather than drown", () => {
+    const state = raftsGame();
+    run(state, 40);
+    // Low ground beside the water, held back by a wall, with high ground behind it: the wall goes
+    // (as riders break it), and the water comes through.
+    const i = state.terrain.findIndex(
+      (t, k) =>
+        t === "floodwater" &&
+        state.terrain[k + 1] === "floodwater" &&
+        k % state.width < state.width - 6,
+    );
+    const x = (i % state.width) + 1;
+    const y = Math.floor(i / state.width);
+    state.terrain[tileIndex(state, x + 1, y)] = "ground";
+    state.terrain[tileIndex(state, x + 2, y)] = "hill";
+    for (const [dx, dy] of [
+      [1, -1],
+      [1, 1],
+      [2, -1],
+      [2, 1],
+    ]) {
+      state.terrain[tileIndex(state, x + dx, y + dy)] = "rock";
+    }
+    const wall = placeStructure(state, "wall", x, y, "N", ME);
+    wall.buildLeft = 0;
+    state.terrain[tileIndex(state, x, y)] = "ground";
+    const goblin = spawnEnemy(state, x + 1, y, { kind: "goblin" });
+    run(state, 1);
+    expect(state.terrain[tileIndex(state, x + 1, y)]).toBe("ground"); // held back
+    removeStructure(state, wall);
+    run(state, 2);
+    expect(state.terrain[tileIndex(state, x + 1, y)]).toBe("floodwater");
+    expect(state.enemies).toContain(goblin);
+    expect([Math.round(goblin.x), Math.round(goblin.y)]).toEqual([x + 2, y]); // up on the hill
   });
 
   it("drains water walled off from the edge", () => {
