@@ -26,6 +26,22 @@ function discounts(state: GameState, points: Point[]): number[] {
 }
 
 describe("finding enclosures", () => {
+  it("walling in the enemy spawn doesn't enclose the rest of the map", () => {
+    const state = createGameWithoutWaves();
+    const xs = state.spawnTiles.map((p) => p.x);
+    const ys = state.spawnTiles.map((p) => p.y);
+    const walls = ring(
+      Math.min(...xs) - 1,
+      Math.min(...ys) - 1,
+      Math.max(...xs) + 1,
+      Math.max(...ys) + 1,
+    ).filter((p) => p.x >= 0 && p.y >= 0 && p.x < state.width && p.y < state.height);
+    buildAt(state, walls);
+    const keep = state.keeps[0];
+    expect(getEnclosures(state).kind.every((k) => k === NONE)).toBe(true);
+    expect(discountAt(state, keep.x - 1, keep.y)).toBe(0);
+  });
+
   it("an open map has none", () => {
     const state = createGameWithoutWaves();
     expect(getEnclosures(state).discount.every((d) => d === 0)).toBe(true);
