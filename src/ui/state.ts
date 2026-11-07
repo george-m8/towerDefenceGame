@@ -37,7 +37,7 @@ export const BUILD_TABS: { tab: BuildTab; name: string; action: Action }[] = [
 
 export interface ToolDef {
   tool: Tool;
-  /** Which tab it's in; "all" shows on every tab (sell). */
+  /** Which tab it's in; "all" shows on every tab (Move camp, Sell). */
   tab: BuildTab | "all";
   /** The small subtitle it's listed under in its tab, if the tab has any. */
   group?: string;
@@ -71,12 +71,12 @@ export const TOOLS: ToolDef[] = [
   { tool: "foragerHut", tab: "civic", paintable: false },
   { tool: "timberYard", tab: "civic", paintable: false },
   { tool: "mine", tab: "civic", paintable: false },
-  // Journey home only (see offeredInGame in hud.ts), last of the Civic tools.
-  { tool: "moveCamp", tab: "civic", action: "moveCamp", paintable: false },
+  // Journey home only (hud.ts hides it otherwise), on every tab like Sell.
+  { tool: "moveCamp", tab: "all", action: "moveCamp", paintable: false },
   { tool: "sell", tab: "all", action: "sell", paintable: true },
 ];
 
-/** The tools shown on a tab, in order (sell last, on every tab). */
+/** The tools shown on a tab, in order (Move camp and Sell last, on every tab). */
 export function toolsInTab(tab: BuildTab): ToolDef[] {
   return TOOLS.filter((t) => t.tab === tab || t.tab === "all");
 }

@@ -206,7 +206,7 @@ describe("heldTime", () => {
 describe("build tabs", () => {
   const tools = (tab: BuildTab) => toolsInTab(tab).map((t) => t.tool);
 
-  it("put each tool in its tab, with sell on every tab", () => {
+  it("put each tool in its tab, with move camp and sell on every tab", () => {
     expect(tools("towers")).toEqual([
       "wall",
       "gate",
@@ -217,6 +217,7 @@ describe("build tabs", () => {
       "catapult",
       "floorSpikes",
       "wallSpikes",
+      "moveCamp",
       "sell",
     ]);
     expect(tools("units")).toEqual([
@@ -226,6 +227,7 @@ describe("build tabs", () => {
       "scoutCamp",
       "barracks",
       "archeryRange",
+      "moveCamp",
       "sell",
     ]);
     expect(tools("civic")).toEqual([

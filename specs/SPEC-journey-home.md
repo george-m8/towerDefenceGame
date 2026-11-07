@@ -37,7 +37,7 @@ A solo mode about getting somewhere rather than holding somewhere. Your **camp**
 
 ## Still to do
 - Online (co-op: one shared camp, or a camp each), and its lobby.
-- A pad binding for Move camp (keyboard `C`, or the build menu's Civic tab, for now).
+- A pad binding for Move camp (keyboard `C`, or the build menu, for now).
 - The camp and home in the 3D view look like generic blocks.
 - Hand-made Journey home maps in the map editor.
 - Balance: swarm sizes, the camp's HP and sight, and how hard the right edge is are first guesses.
