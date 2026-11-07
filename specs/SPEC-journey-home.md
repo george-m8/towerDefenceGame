@@ -8,7 +8,7 @@ Last updated: 2026-11-01
 
 A solo mode about getting somewhere rather than holding somewhere. Your **camp** starts on the far left edge of the map, and the keep you're heading for is somewhere on the right edge. Swarms of enemies wait across the map. They're idle until they see you, and then they come for you. You move the camp a hop at a time to land it can see, and build round it to survive what comes.
 
-**Player-facing outcome:** pick Solo, then Journey home. The map opens on a small tent in your colour at the left edge, with the keep shown far off on the right. You press H and click a tile at the edge of what the camp sees. The tent packs up, walks there and pitches again, and the fog lifts round it. Three goblins at the edge of sight look up and come running, and the archer tower you put up beside the tent drops them. You move on.
+**Player-facing outcome:** pick Solo, then Journey home. The map opens on a small tent in your colour at the left edge, with the keep shown far off on the right. You press C and click a tile at the edge of what the camp sees. The tent packs up, walks there and pitches again, and the fog lifts round it. Three goblins at the edge of sight look up and come running, and the archer tower you put up beside the tent drops them. You move on.
 
 ## Rules
 
@@ -19,11 +19,11 @@ A solo mode about getting somewhere rather than holding somewhere. Your **camp**
 **The camp**
 - The game's one keep: a single tile in the player's colour, `▲` when pitched and `△` when packed. It has `JOURNEY.campHp` (200) HP, and enemies come for it and hit it as they would a keep. At 0 the game is lost.
 - It sees `JOURNEY.campSight` (8 tiles clearly, 12 dimly), from wherever it is. What it sees is explored.
-- `moveCamp {x, y}`: the tile must be in sight now, open walkable ground with nothing built on it, and reachable over such ground. Otherwise the command is refused with the reason. The camp packs up (`packSeconds`, 3 s), walks the shortest such way at `campSpeed` (1.2 tiles a second), then sets up again (`unpackSeconds`, 2 s). Moving it again on the way changes its course, with no new pack-up. If something is built in its way, it finds another way, or stops and sets up where it is.
+- `moveCamp {x, y}`: the tile must be in sight now, open walkable ground with nothing built on it (or a built bridge), and reachable over such ground. On a bridge the bridge stays, and can't be sold while the camp is on it. Otherwise the command is refused with the reason. The camp packs up (`packSeconds`, 3 s), walks the shortest such way at `campSpeed` (1.2 tiles a second), then sets up again (`unpackSeconds`, 2 s). Moving it again on the way changes its course, with no new pack-up. If something is built in its way, it finds another way, or stops and sets up where it is. Each treasure chest it walks over is claimed.
 - Reaching home (on, or next to, any of its tiles) wins.
 
 **Building**
-- Only while the camp is set up ("Set up camp first"), and only within `buildRadius` (5) tiles of it, in any direction ("Too far from your camp"). Everything else is as in Endless: prices, gold, build times (quickest next to the camp), selling anywhere.
+- Only while the camp is set up ("Set up camp first"), and only within `buildRadius` (5) tiles of it, in any direction ("Too far from your camp"). Selling (and clearing trees) is also only within `buildRadius`, camped or not. Everything else is as in Endless: prices, gold, build times (quickest next to the camp).
 
 **Swarms**
 - About one per `tilesPerSwarm` (900) tiles of map. Each is 4-8 enemies round a middle at least `swarmSpacing` (10) from other swarms, `clearOfStart` (20) from the camp's start and `clearOfHome` (6) from home. Each member's post is the tile it starts on.
@@ -37,7 +37,7 @@ A solo mode about getting somewhere rather than holding somewhere. Your **camp**
 
 ## Still to do
 - Online (co-op: one shared camp, or a camp each), and its lobby.
-- A Move camp button in the HUD, and a pad binding (keyboard `H` only for now).
+- A pad binding for Move camp (keyboard `C`, or the build menu's Civic tab, for now).
 - The camp and home in the 3D view look like generic blocks.
 - Hand-made Journey home maps in the map editor.
 - Balance: swarm sizes, the camp's HP and sight, and how hard the right edge is are first guesses.

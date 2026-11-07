@@ -41,7 +41,7 @@ export interface ToolDef {
   tab: BuildTab | "all";
   /** The small subtitle it's listed under in its tab, if the tab has any. */
   group?: string;
-  /** An action that picks it (see controls.ts). Only sell has one: tools are picked by click. */
+  /** An action that picks it (see controls.ts). Only Sell and Move camp have one. */
   action?: Action;
   /** Click-and-drag places along the dragged tiles. */
   paintable: boolean;
@@ -71,6 +71,8 @@ export const TOOLS: ToolDef[] = [
   { tool: "foragerHut", tab: "civic", paintable: false },
   { tool: "timberYard", tab: "civic", paintable: false },
   { tool: "mine", tab: "civic", paintable: false },
+  // Journey home only (see offeredInGame in hud.ts), last of the Civic tools.
+  { tool: "moveCamp", tab: "civic", action: "moveCamp", paintable: false },
   { tool: "sell", tab: "all", action: "sell", paintable: true },
 ];
 

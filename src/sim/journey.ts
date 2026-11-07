@@ -4,10 +4,28 @@
 // enemies idle across the map, tougher further right. One that sees the camp (or is hurt) wakes
 // its whole swarm, and they come for the camp as any enemy comes for a keep, until they've lost
 // sight of it for a while and go back. A few goblins always wander. The camp falling loses.
-import { ENEMY_KINDS, JOURNEY, KEEP_SIZE, TICK_RATE, type EnemyKindId } from "./config";
+import {
+  ENEMY_KINDS,
+  JOURNEY,
+  KEEP_SIZE,
+  STRUCTURES,
+  TICK_RATE,
+  type EnemyKindId,
+  type StructureStats,
+} from "./config";
+import { claimChest } from "./economy";
 import { spawnEnemy } from "./enemies";
 import { IN_SIGHT, getSight, revealKeep } from "./fog";
-import { EMPTY, KEEP_TILE, blocksAt, inBounds, isSpawnTile, keepAt, tileIndex } from "./grid";
+import {
+  EMPTY,
+  KEEP_TILE,
+  baseAt,
+  blocksAt,
+  inBounds,
+  isSpawnTile,
+  keepAt,
+  tileIndex,
+} from "./grid";
 import { DIRECTIONS, canCross } from "./pathfinding";
 import { headFor, roam } from "./raiders";
 import { nextRandom, randomInt } from "./rng";
@@ -45,11 +63,13 @@ export function reachedHome(state: GameState): boolean {
   return state.journey !== null && tilesFromHome(state) <= 1;
 }
 
-/** Somewhere the camp can stand: open, walkable ground with nothing built on it. */
+/** Somewhere the camp can stand: open, walkable ground with nothing built on it, or a bridge. */
 function canCampAt(state: GameState, x: number, y: number): boolean {
   if (!inBounds(state, x, y) || !canCross(state, "follower", x, y)) return false;
-  const i = tileIndex(state, x, y);
-  return (state.base[i] === EMPTY || state.base[i] === KEEP_TILE) && state.mount[i] === EMPTY;
+  const base = baseAt(state, x, y); // walkable, so a bridge is built
+  const stats: StructureStats | undefined = base && STRUCTURES[base.kind];
+  const bridge = stats?.spansWater === true;
+  return (base === undefined || bridge) && state.mount[tileIndex(state, x, y)] === EMPTY;
 }
 
 /** The tiles from the camp to `to`, not counting where it stands; null if it can't get there. */
@@ -138,15 +158,22 @@ function updateCamp(state: GameState, journey: Journey): void {
   }
 }
 
-/** Moves the camp (the keep) a tile: the grid, so enemies' fields follow it, and its sight. */
+/**
+ * Moves the camp (the keep) a tile: the grid, so enemies' fields follow it, and its sight. On a
+ * bridge the bridge stays in the base layer (the keep is found by where it stands), so selling
+ * or losing it never takes the camp with it. Treasure it reaches is claimed.
+ */
 function stepCamp(state: GameState, to: Point): void {
   const camp = state.keeps[0];
-  state.base[tileIndex(state, camp.x, camp.y)] = EMPTY;
-  state.base[tileIndex(state, to.x, to.y)] = KEEP_TILE;
+  const from = tileIndex(state, camp.x, camp.y);
+  if (state.base[from] === KEEP_TILE) state.base[from] = EMPTY;
+  const into = tileIndex(state, to.x, to.y);
+  if (state.base[into] === EMPTY) state.base[into] = KEEP_TILE;
   camp.x = to.x;
   camp.y = to.y;
   state.gridVersion++;
   revealKeep(state, camp);
+  if (camp.owner !== null) claimChest(state, camp.owner, to.x, to.y);
 }
 
 /**

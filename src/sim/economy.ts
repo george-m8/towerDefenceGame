@@ -3,6 +3,7 @@ import {
   enemyOccupies,
   isBuilt,
   isKeepTile,
+  outOfCampReach,
   refundFor,
   removeStructure,
   terrainAt,
@@ -56,6 +57,8 @@ export function sellStructure(
 ): CommandResult {
   if (state.gameOver) return { ok: false, reason: "Game over" };
   if (isKeepTile(state, x, y)) return { ok: false, reason: "Can't sell the keep" };
+  const far = outOfCampReach(state, x, y);
+  if (far) return { ok: false, reason: far };
   if (!isExplored(state, x, y, player))
     return { ok: false, reason: "Can't sell on unexplored land" };
   const structure = topAt(state, x, y);
@@ -86,7 +89,7 @@ function clearTerrain(state: GameState, player: PlayerId, x: number, y: number):
   return { ok: false, reason: "Nothing to sell" };
 }
 
-/** Building on a treasure chest's tile claims its gold. */
+/** Building on a treasure chest's tile (or, on the journey home, the camp reaching it) claims its gold. */
 export function claimChest(state: GameState, player: PlayerId, x: number, y: number): void {
   const chest = state.features.find((f) => f.kind === "chest" && f.x === x && f.y === y);
   if (!chest) return;

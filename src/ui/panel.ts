@@ -20,10 +20,14 @@ const HELP: [Action, string][] = [
   ["cancel", "close menu / drop tool"],
 ];
 
-/** The Keys panel's first line for the device in use: buttons, then how to point and move. */
-export function helpLine(ui: UiState): string {
+/**
+ * The Keys panel's first line for the device in use: buttons, then how to point and move.
+ * Journey home adds Move camp.
+ */
+export function helpLine(ui: UiState, journey = false): string {
   const key = (action: Action) => keyText(ui, action);
-  const buttons = HELP.filter(([action]) => key(action)).map(([a, what]) => `${key(a)} ${what}`);
+  const help: [Action, string][] = journey ? [...HELP, ["moveCamp", "move camp"]] : HELP;
+  const buttons = help.filter(([action]) => key(action)).map(([a, what]) => `${key(a)} ${what}`);
   const scheme = ui.schemes[ui.device];
   if (scheme.device === "keyboard") {
     buttons.unshift(`${key("buildTowers")}-${key("buildCivic")} then 1-0 build`);
@@ -82,7 +86,7 @@ export function createPanel(
       const pauseKey = keyText(ui, "pause");
       pauseButton.title = `${state.paused ? "Resume" : "Pause"}${keyHint("pause")}`;
       fastForwardButton.title = `Fast forward${keyHint("fastForward")}`;
-      const help = helpLine(ui);
+      const help = helpLine(ui, state.journey !== null);
       if (keysLine.textContent !== help) keysLine.textContent = help;
       pauseButton.classList.toggle(
         "selected",

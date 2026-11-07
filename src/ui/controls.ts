@@ -204,7 +204,7 @@ export const KEYBOARD: KeyboardScheme = {
     journal: ["KeyJ"],
     cancel: ["Escape"],
     sell: ["KeyX"],
-    moveCamp: ["KeyH"],
+    moveCamp: ["KeyC"],
     buildTowers: ["Digit1"],
     buildUnits: ["Digit2"],
     buildCivic: ["Digit3"],

@@ -64,7 +64,7 @@ export function createToolbar(
               )
               .join("")}
           </div>
-          ${TOOLS.filter((t) => t.tool !== "sell")
+          ${TOOLS.filter((t) => isBuildTool(t.tool))
             .map(
               (t) => `
             <button class="tool" data-tool="${t.tool}" data-tab="${t.tab}">

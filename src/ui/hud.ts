@@ -4,6 +4,7 @@
 // clicking any stat box opens the stat menu, where each stat toggles on and off. Clicks
 // anywhere else pass through to the map.
 import {
+  JOURNEY,
   SELL_REFUND,
   STRUCTURES,
   TICK_RATE,
@@ -23,6 +24,7 @@ import {
   pickerLayout,
   rotateFacing,
   type BuildTab,
+  type Tool,
   type UiState,
 } from "./state";
 import { statList, type Stat, type StatId } from "./stats";
@@ -140,6 +142,28 @@ export function sellCard(): PickerCard {
   };
 }
 
+/** The Move camp tool's card (Journey home): how the camp moves. */
+export function moveCampCard(): PickerCard {
+  return {
+    title: `${CAMP_GLYPH} Move camp`,
+    cost: "Free",
+    description:
+      "Pack up the camp and walk it to a tile it can see. It sets up again when it gets there.",
+    numbers: [
+      `Packs up in ${JOURNEY.packSeconds}s, walks ${JOURNEY.campSpeed} tiles a second, sets up in ${JOURNEY.unpackSeconds}s`,
+    ],
+    traits: "Crosses bridges · Picks up treasure on the way",
+    hints: ["C to pick it", "Click again on the way to change course"],
+  };
+}
+
+/** A picker button's glyph, name and cost. */
+function toolButtonText(tool: Tool): { glyph: string; name: string; cost: string } {
+  if (tool === "sell") return { glyph: "$", name: "Sell", cost: `${SELL_REFUND * 100}%` };
+  if (tool === "moveCamp") return { glyph: CAMP_GLYPH, name: "Move camp", cost: "" };
+  return { glyph: GLYPHS[tool], name: STRUCTURES[tool].name, cost: `${STRUCTURES[tool].cost}g` };
+}
+
 /** Fills the tooltip card element with a picker item's card. */
 function renderCard(root: HTMLElement, card: PickerCard) {
   const line = (className: string, text: string) =>
@@ -222,9 +246,9 @@ export function createHud(root: HTMLElement, ui: UiState) {
               : ""
           }
           <button class="tool" data-tool="${t.tool}" data-tab="${t.tab}">
-            <span class="glyph">${isBuildTool(t.tool) ? GLYPHS[t.tool] : "$"}</span>
-            <span class="name">${isBuildTool(t.tool) ? STRUCTURES[t.tool].name : "Sell"}</span>
-            <span class="cost">${isBuildTool(t.tool) ? `${STRUCTURES[t.tool].cost}g` : `${SELL_REFUND * 100}%`}</span>
+            <span class="glyph">${toolButtonText(t.tool).glyph}</span>
+            <span class="name">${toolButtonText(t.tool).name}</span>
+            <span class="cost">${toolButtonText(t.tool).cost}</span>
             ${t.action ? `<kbd data-action="${t.action}"></kbd>` : '<span class="keys"><span class="limit"></span><kbd class="number" hidden></kbd></span>'}
           </button>`,
         ).join("")}
@@ -284,7 +308,14 @@ export function createHud(root: HTMLElement, ui: UiState) {
   function showCard(button: HTMLButtonElement) {
     const tool = button.dataset.tool as UiState["tool"];
     if (!tool || !cardState) return hideCard();
-    renderCard(card, isBuildTool(tool) ? pickerCard(cardState, ui.playerId, tool) : sellCard());
+    renderCard(
+      card,
+      isBuildTool(tool)
+        ? pickerCard(cardState, ui.playerId, tool)
+        : tool === "moveCamp"
+          ? moveCampCard()
+          : sellCard(),
+    );
     card.hidden = false;
     const at = button.getBoundingClientRect();
     const box = picker.getBoundingClientRect();
@@ -485,7 +516,9 @@ export function createHud(root: HTMLElement, ui: UiState) {
         button.classList.toggle("selected", tool === ui.tool);
         const tab = button.dataset.tab;
         // An items file can rule a kind out (not offered) or cap it (shows "2/5").
-        const offered = !isBuildTool(tool) || allowed(state, tool);
+        const offered = isBuildTool(tool)
+          ? allowed(state, tool)
+          : tool !== "moveCamp" || !!state.journey;
         button.hidden = !offered || (!row && tab !== "all" && tab !== ui.tab);
         if (isBuildTool(tool)) {
           const count = button.querySelector<HTMLElement>(".limit")!;
