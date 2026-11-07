@@ -112,10 +112,13 @@ function findEnclosures(state: GameState): Enclosures {
     }
   }
 
+  // Enemies reach the biggest stretch of open ground as well as anywhere from their spawn, so
+  // walling in the spawn (or having none) doesn't make the whole map an enclosure.
+  const biggest = largestArea(open, width, height);
   const reachable =
     state.mode === "pvp"
-      ? largestArea(open, width, height)
-      : reachableFromSpawn(state, open, width, height);
+      ? biggest
+      : reachableFromSpawn(state, open, width, height).map((r, i) => r || biggest[i]);
 
   // Inside: walkable ground enemies can't reach and that doesn't border ground they can reach.
   // That includes structures standing inside a ring (a tower in a corner), but not the ring's
