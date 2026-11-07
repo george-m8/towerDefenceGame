@@ -274,8 +274,9 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     const base = baseAt(state, x, y);
     // A construction site shows the ground through it.
     if (base && !isBuilt(base)) drawTerrain(state, x, y);
-    if (base) drawStructure(base);
-    else if (isKeepTile(state, x, y)) drawKeepTile(state, x, y);
+    // The keep first: Journey home's camp can stand on a bridge.
+    if (isKeepTile(state, x, y)) drawKeepTile(state, x, y);
+    else if (base) drawStructure(base);
     else if (isHomeTile(state, x, y)) drawHomeTile(state, x, y);
     else if (isSpawnTile(state, x, y)) drawTile(x, y, COLOURS.spawn, ".", COLOURS.spawnGlyph);
     else drawTerrain(state, x, y);

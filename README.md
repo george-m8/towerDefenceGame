@@ -43,8 +43,8 @@ Endless's settings (after picking the mode, solo or as a room's host) have **Ene
 
 A solo mode (**Solo**, then **Journey home**, or `?solo&game=journey`). There's no keep to defend and there are no waves. Your **camp** (`▲`, 200 HP) starts on the far left edge of the map, and you have to get it to the keep on the right edge, which you can see in the distance from the start. If the camp is destroyed, you lose. If it reaches the keep, you win.
 
-- **Moving:** press `H` and click a tile the camp can see. It packs up (3 s, shown as `△`), walks there along the shortest open way at 1.2 tiles a second, then sets up again (2 s). It sees 8 tiles clearly and 12 dimly, less than a keep, and everything it sees on the way is explored. It walks round anything built, and can't cross bridges, so look for fords. Click another tile in sight to change course while it's on the way.
-- **Building:** only while the camp is set up, and only within 5 tiles of it, paid for with gold from kills as usual. Building is quickest right next to the camp. What you build stays where it is when you move on.
+- **Moving:** press `C` (or pick **Move camp** at the bottom of any build menu tab, above Sell) and click a tile the camp can see. It packs up (3 s, shown as `△`), walks there along the shortest open way at 1.2 tiles a second, then sets up again (2 s). It sees 8 tiles clearly and 12 dimly, less than a keep, and everything it sees on the way is explored. It walks round anything built and crosses bridges, and picks up any treasure it walks over. Click another tile in sight to change course while it's on the way. Hover over the camp for a reminder of how it all works.
+- **Building:** only while the camp is set up, and only within 5 tiles of it (selling too, camped or not), paid for with gold from kills as usual. Building is quickest right next to the camp. What you build stays where it is when you move on.
 - **Swarms:** groups of 4-8 enemies wait across the map, tougher the further right they are (as wave 1 on the left edge, as wave 12 on the right). They stand still until one of them sees the camp (within 6 tiles) or is hurt, and then the whole swarm comes for it, the way enemies come for a keep. That includes breaking through your walls. After 6 seconds without seeing the camp they give up and walk back to where they were.
 - **Wanderers:** 6 goblins always wander the map. A new one turns up somewhere out of sight every 5 seconds while there are fewer.
 - The HUD's stats show the camp's HP, how many tiles it is from home, and what it's doing.
@@ -258,7 +258,7 @@ Towers always shoot the enemy closest to the keep. Traps fire on a fixed timer f
 | `1` / `2` / `3`, or the Build box | Open the build picker on the Towers, Units or Civic tab |
 | `1`-`9`, `0` (picker open) | Select that item in the open tab (its number is beside it); the first ten in each tab are numbered |
 | `X` | Select sell |
-| `H` | Journey home: Move camp (then click a tile in sight) |
+| `C` | Journey home: Move camp (then click a tile in sight) |
 | Left click | Place (or sell) |
 | Left drag | Paint walls, spikes, bridges, gates, farmland, or sell/clear along the dragged tiles |
 | `Esc` | Close the build picker; with it closed, clear the selected tool |

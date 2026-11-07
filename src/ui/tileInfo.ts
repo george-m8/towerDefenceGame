@@ -1,6 +1,7 @@
 import {
   ENCLOSURE_DISCOUNT,
   ENEMY_KINDS,
+  JOURNEY,
   RESOURCES,
   STRUCTURES,
   TERRAIN,
@@ -84,7 +85,16 @@ export function describeTile(
   const lines: string[] = [];
   const top = topAt(state, p.x, p.y);
 
-  if (isKeepTile(state, p.x, p.y)) {
+  if (isKeepTile(state, p.x, p.y) && state.journey) {
+    const keep = keepAt(state, p.x, p.y)!;
+    lines.push(
+      "Your camp",
+      `HP ${keep.hp} / ${keep.maxHp}`,
+      "Get it to the keep on the right edge to win. If it falls, you lose.",
+      "C, then click a tile it can see, to move it. It crosses bridges, and picks up treasure on the way.",
+      `Build within ${JOURNEY.buildRadius} tiles of it while it's set up. Enemies that see it come for it.`,
+    );
+  } else if (isKeepTile(state, p.x, p.y)) {
     const keep = keepAt(state, p.x, p.y)!;
     const whose = keep.owner !== null ? `${playerName(state, keep.owner)}'s keep` : "Keep";
     lines.push(whose, `HP ${keep.hp} / ${keep.maxHp}`);
@@ -119,7 +129,10 @@ export function describeTile(
 
   for (const feature of state.features) {
     if (feature.kind === "chest" && feature.x === p.x && feature.y === p.y) {
-      lines.push(`Treasure chest: ${feature.gold}g`, "Build here to claim it");
+      const claim = state.journey
+        ? "Build here, or move your camp here, to claim it"
+        : "Build here to claim it";
+      lines.push(`Treasure chest: ${feature.gold}g`, claim);
     }
   }
 

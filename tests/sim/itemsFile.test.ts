@@ -21,7 +21,7 @@ const sample: ItemsFile = {
 
 describe("items files", () => {
   it("lists every structure the build picker offers, and nothing else", () => {
-    const tools = TOOLS.map((t) => t.tool).filter((t) => t !== "sell");
+    const tools = TOOLS.map((t) => t.tool).filter((t) => t !== "sell" && t !== "moveCamp");
     expect([...BUILDABLE_KINDS].sort()).toEqual([...tools].sort());
   });
 

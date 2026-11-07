@@ -35,8 +35,9 @@ export function tileIndex(state: GameState, x: number, y: number): number {
   return y * state.width + x;
 }
 
+/** Part of a keep. Journey home's camp can stand on a bridge, which stays in the base layer. */
 export function isKeepTile(state: GameState, x: number, y: number): boolean {
-  return inBounds(state, x, y) && state.base[tileIndex(state, x, y)] === KEEP_TILE;
+  return inBounds(state, x, y) && keepAt(state, x, y) !== undefined;
 }
 
 /** The keep covering (x, y), if any. */
@@ -183,8 +184,13 @@ export function canBuild(
 
 /** Journey home: you build only round the camp, while it's camped. */
 function campRefusal(state: GameState, x: number, y: number): string | null {
+  if (state.journey && state.journey.phase !== "camped") return "Set up camp first";
+  return outOfCampReach(state, x, y);
+}
+
+/** Journey home: you build and sell only within JOURNEY.buildRadius of the camp. */
+export function outOfCampReach(state: GameState, x: number, y: number): string | null {
   if (!state.journey) return null;
-  if (state.journey.phase !== "camped") return "Set up camp first";
   const camp = state.keeps[0];
   const far = Math.max(Math.abs(x - camp.x), Math.abs(y - camp.y)) > JOURNEY.buildRadius;
   return far ? "Too far from your camp" : null;

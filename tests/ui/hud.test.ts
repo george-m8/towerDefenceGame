@@ -14,6 +14,7 @@ import {
   TOOLS,
   createUiState,
   hasBuildTools,
+  isBuildTool,
   pickerLayout,
   rotateFacing,
   tabForAction,
@@ -205,7 +206,7 @@ describe("heldTime", () => {
 describe("build tabs", () => {
   const tools = (tab: BuildTab) => toolsInTab(tab).map((t) => t.tool);
 
-  it("put each tool in its tab, with sell on every tab", () => {
+  it("put each tool in its tab, with move camp and sell on every tab", () => {
     expect(tools("towers")).toEqual([
       "wall",
       "gate",
@@ -216,6 +217,7 @@ describe("build tabs", () => {
       "catapult",
       "floorSpikes",
       "wallSpikes",
+      "moveCamp",
       "sell",
     ]);
     expect(tools("units")).toEqual([
@@ -225,6 +227,7 @@ describe("build tabs", () => {
       "scoutCamp",
       "barracks",
       "archeryRange",
+      "moveCamp",
       "sell",
     ]);
     expect(tools("civic")).toEqual([
@@ -235,6 +238,7 @@ describe("build tabs", () => {
       "foragerHut",
       "timberYard",
       "mine",
+      "moveCamp",
       "sell",
     ]);
   });
@@ -274,11 +278,13 @@ describe("build tabs", () => {
     expect(hasBuildTools("civic")).toBe(true);
   });
 
-  it("only sell keeps a key; the old tool keys pick nothing", () => {
+  it("only sell and move camp keep a key; the old tool keys pick nothing", () => {
     expect(TOOLS.filter((t) => t.action).map((t) => [t.tool, t.action])).toEqual([
+      ["moveCamp", "moveCamp"],
       ["sell", "sell"],
     ]);
     expect(keyAction(KEYBOARD, "KeyX")).toBe("sell");
+    expect(keyAction(KEYBOARD, "KeyC")).toBe("moveCamp");
     for (const code of ["Digit4", "Digit7", "Digit0", "KeyT", "KeyG", "KeyB"]) {
       expect(keyAction(KEYBOARD, code)).toBeUndefined();
     }
@@ -347,7 +353,7 @@ describe("one list or three tabs", () => {
 
   it("counts what the items file offers, by tab, sell not counted", () => {
     const all = createGame(1, { blankMap: true, fog: false });
-    const buildable = TOOLS.filter((t) => t.tool !== "sell");
+    const buildable = TOOLS.filter((t) => isBuildTool(t.tool));
     expect(offeredTools(all)).toHaveLength(buildable.length);
     let items = newItems("Few");
     for (const t of buildable)

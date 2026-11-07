@@ -124,6 +124,50 @@ describe("moving the camp", () => {
     });
   });
 
+  it("crosses a bridge, leaving it standing, and can't have it sold from under it", () => {
+    const state = blankJourney();
+    const y = camp(state).y;
+    const bridge = { x: camp(state).x + 2, y };
+    state.terrain[tileIndex(state, bridge.x, y)] = "river";
+    expect(applyCommand(state, ME, { type: "build", kind: "bridge", ...bridge }).ok).toBe(true);
+    run(state, 10 * TICK_RATE); // built
+    const id = state.base[tileIndex(state, bridge.x, y)];
+    expect(id).toBeGreaterThan(0);
+    travel(state, bridge);
+    expect(camp(state)).toEqual(bridge);
+    expect(state.base[tileIndex(state, bridge.x, y)]).toBe(id); // still the bridge
+    expect(applyCommand(state, ME, { type: "sell", ...bridge })).toEqual({
+      ok: false,
+      reason: "Can't sell the keep",
+    });
+    travel(state, { x: bridge.x + 2, y });
+    expect(state.base[tileIndex(state, bridge.x, y)]).toBe(id);
+    expect(state.base[tileIndex(state, bridge.x + 2, y)]).toBe(-1); // the keep tile
+  });
+
+  it("picks up treasure it moves over", () => {
+    const state = blankJourney();
+    const chest = { kind: "chest" as const, x: camp(state).x + 2, y: camp(state).y, gold: 40 };
+    state.features = [chest];
+    const gold = state.players[ME].gold;
+    travel(state, { x: chest.x + 2, y: chest.y });
+    expect(state.features).toEqual([]);
+    expect(state.players[ME].gold).toBe(gold + 40);
+  });
+
+  it("sells only round the camp", () => {
+    const state = blankJourney();
+    const near = { x: camp(state).x + 2, y: camp(state).y };
+    expect(applyCommand(state, ME, { type: "build", kind: "wall", ...near }).ok).toBe(true);
+    run(state, 5 * TICK_RATE);
+    travel(state, { x: camp(state).x, y: camp(state).y + JOURNEY.campSight.inner - 1 });
+    travel(state, { x: camp(state).x, y: camp(state).y + JOURNEY.campSight.inner - 1 });
+    expect(applyCommand(state, ME, { type: "sell", ...near })).toEqual({
+      ok: false,
+      reason: "Too far from your camp",
+    });
+  });
+
   it("builds only round the camp, and only while it's camped", () => {
     const state = blankJourney();
     const near = { x: camp(state).x + JOURNEY.buildRadius, y: camp(state).y };
